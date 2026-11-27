@@ -200,6 +200,9 @@ pub enum Reduction {
     /// Affinity for artifacts (CR 702.41): {1} less for each artifact you control (Emry, Lurker of
     /// the Loch).
     PerArtifactYouControl,
+    /// "This spell costs {N} less to cast if an opponent controls a [color] permanent." (Oakhame
+    /// Adversary: green (WUBRG 4), 2)
+    IfOpponentControlsColor(u8, u8),
 }
 
 /// An activated ability: "[cost]: [effect]" (CR 602).
@@ -331,9 +334,6 @@ pub struct Activated {
     pub needs_threshold: bool,
     /// "Activate only if you attacked with N or more creatures this turn." (Minas Tirith: 2)
     pub min_attackers_this_turn: u8,
-    /// "Tap an untapped creature you control" in the cost (The Shire); the engine picks which (one
-    /// that isn't a mana source, then the least power).
-    pub tap_untapped_creature: bool,
     /// "Sacrifice X [subtype]s" in the cost (Chatterfang: Squirrels): `Action::ActivateX`, X up to
     /// how many you control; the engine picks which (tokens first, then the lowest mana value,
     /// the source last).
@@ -421,10 +421,12 @@ pub struct Activated {
     /// "Return a [subtype] you control to its owner's hand" in the cost (Quirion Ranger: a Forest;
     /// Wirewood Symbiote: an Elf): activated with `Action::ActivateWith`, that permanent the victim.
     pub return_own_subtype: Option<&'static str>,
-    /// "Tap an untapped creature you control" in the cost, the player naming it: activated with
-    /// `Action::ActivateWith`, that creature the victim (Earthcraft). Summoning sickness doesn't
-    /// matter (it isn't the creature's own {T}).
-    pub tap_named_creature: bool,
+    /// "Tap an untapped [permanent matching this filter] you control" in the cost, the player naming
+    /// it: activated with `Action::ActivateWith`, that permanent the victim (Earthcraft, The Shire:
+    /// a creature; Urza, Lord High Artificer: an artifact). Summoning sickness doesn't matter (it
+    /// isn't the permanent's own {T}); it's tapped before the mana is paid, so it can't also tap for
+    /// that mana. Matched with `Game::target_ok` (it isn't targeted, but your own permanents pass).
+    pub tap_named_permanent: Option<crate::effect::Filter>,
 }
 
 /// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,
@@ -1184,6 +1186,22 @@ pub struct CardDef {
     pub enchanted_cant_have_counters: bool,
     /// "[This] can't attack during extra turns." (Medomai the Ageless), from `Game::in_extra_turn`.
     pub cant_attack_during_extra_turns: bool,
+    /// "As this enters, choose a number between `min` and `max`" (Talion, the Kindly Lord: 1 and
+    /// 10), as `Decision::ChooseNumber` while the spell resolves; kept as `Object::chosen_number`.
+    pub choose_number: Option<(u8, u8)>,
+    /// An Aura: "Enchanted creature is an [Insect] artifact creature ... and it loses all other
+    /// ... card types" (Darksteel Mutation: artifact and creature; Kenrith's Transformation:
+    /// creature), in `Game::types_of`: its card types are these only (supertypes stay).
+    /// `enchanted_creature_type_becomes` and its static give the rest.
+    pub enchanted_card_types_become: Option<Types>,
+    /// "Nontoken creatures you control are Forest lands in addition to their other types." (Ashaya,
+    /// Soul of the Wild), in `Game::types_of` and `Game::has_subtype`; it needs a static (a static
+    /// source) so the check is cheap.
+    pub your_nontoken_creatures_are_forest_lands: bool,
+    /// An Aura or Equipment: the permanent it's attached to is these colors and no others (Nim
+    /// Deathmantle: "is a black Zombie"; the Zombie is `enchanted_creature_type_becomes`, which
+    /// works for Equipment too), in `Game::colors_of`.
+    pub attached_colors_become: Option<[bool; 5]>,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1438,6 +1456,38 @@ pub struct ManaExt {
     /// Set with `mana` and `mana_per_kind_counter`: one mana per counter, each removing one, usable
     /// while tapped; a manual activation makes one mana.
     pub counter_mana_no_tap: bool,
+    /// "You may cast this card from your graveyard as long as you control a [subtype]."
+    /// (Gravecrawler: a Zombie): from there with its normal cost and timing.
+    pub cast_from_graveyard_if_control: Option<&'static str>,
+    /// "You may cast this card from your graveyard using its warp ability." (Timeline Culler): from
+    /// there only for its `CardDef::warp` cost (`Action::CastAlternative`).
+    pub warp_from_graveyard: bool,
+    /// The life its warp cost also asks for (Timeline Culler: "Warp—{B}, Pay 2 life."): payable
+    /// only with at least that much life (CR 119.4).
+    pub warp_life: i32,
+    /// "This creature gets +1/+1 for each land you control but don't own." (Herald of Leshrac)
+    pub pt_per_land_controlled_not_owned: bool,
+    /// "{T}: Add {C}. If [this] has a luck counter on it, instead add one mana of any color."
+    /// (Gemstone Caverns): with a kind counter (`Object::kind_counters`) its `mana` is any color.
+    pub any_color_with_kind_counter: bool,
+    /// "Creature spells of the chosen type cost {N} less to cast." (Urza's Incubator: 2), the type
+    /// chosen as it enters (`CardDef::choose_creature_type`, `Object::chosen_type`).
+    pub chosen_type_creature_discount: u8,
+    /// "{T}: Add one mana of any color. Spend this mana only to cast a [subtype] creature spell."
+    /// (Haven of the Spirit Dragon: Dragon); its plain mana is in `mana`.
+    pub any_color_for_subtype_creature: Option<&'static str>,
+    /// "Noncreature spells cost {N} more to cast." (Thalia, Guardian of Thraben: 1), every player's.
+    pub noncreature_spell_tax: u8,
+    /// "[Subtype] spells you cast cost {N} less to cast." (Nogi, Draco-Zealot: Dragon, 1)
+    pub subtype_spell_discount: Option<(&'static str, u8)>,
+    /// Devour N (CR 702.82): "As this enters, you may sacrifice any number of creatures. It enters
+    /// with N times that many +1/+1 counters on it." Asked as `Decision::Devour` before anyone gets
+    /// priority again (`Game::devour_pending`), one creature at a time.
+    pub devour: u8,
+    /// Prototype (CR 702.160): cast from hand with `Action::CastAlternative` for this cost; the
+    /// permanent is then this power, toughness and colors (`Object::prototyped`) (Cradle
+    /// Clearcutter: {2}{G}, 1/3, green).
+    pub prototype: Option<(crate::mana::ManaCost, i32, i32, [bool; 5])>,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana
@@ -1487,6 +1537,10 @@ pub enum TriggerDoubler {
     ShamanOrOtherWizard,
     /// "a creature you control with power N or less" (Delney).
     CreaturePowerAtMost(i32),
+    /// "If a triggered ability of equipped creature triggers, that ability triggers an additional
+    /// time." (Wizard's Staff): the creature it's attached to, and its own granted prowess trigger
+    /// while attached (standing in for the creature's).
+    EquippedCreature,
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -1824,6 +1878,9 @@ impl CardDef {
             enchanted_cant_become_untapped: false,
             enchanted_cant_have_counters: false,
             cant_attack_during_extra_turns: false,
+            enchanted_card_types_become: None,
+            your_nontoken_creatures_are_forest_lands: false,
+            attached_colors_become: None,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1833,6 +1890,7 @@ impl CardDef {
             win_on_empty_draw: false,
             extra_upkeep_for_enchanted: false,
             zones: ZonesExt::default(),
+            choose_number: None,
         }
     }
 
@@ -2136,6 +2194,9 @@ impl CardDef {
             enchanted_cant_become_untapped: false,
             enchanted_cant_have_counters: false,
             cant_attack_during_extra_turns: false,
+            enchanted_card_types_become: None,
+            your_nontoken_creatures_are_forest_lands: false,
+            attached_colors_become: None,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2145,6 +2206,7 @@ impl CardDef {
             win_on_empty_draw: false,
             extra_upkeep_for_enchanted: false,
             zones: ZonesExt::default(),
+            choose_number: None,
         }
     }
 
@@ -2448,6 +2510,9 @@ impl CardDef {
             enchanted_cant_become_untapped: false,
             enchanted_cant_have_counters: false,
             cant_attack_during_extra_turns: false,
+            enchanted_card_types_become: None,
+            your_nontoken_creatures_are_forest_lands: false,
+            attached_colors_become: None,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2457,6 +2522,7 @@ impl CardDef {
             win_on_empty_draw: false,
             extra_upkeep_for_enchanted: false,
             zones: ZonesExt::default(),
+            choose_number: None,
         }
     }
 }

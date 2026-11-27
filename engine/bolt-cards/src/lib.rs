@@ -570,6 +570,10 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         enchanted_cant_become_untapped: false,
         enchanted_cant_have_counters: false,
         cant_attack_during_extra_turns: false,
+        choose_number: None,
+        enchanted_card_types_become: None,
+        your_nontoken_creatures_are_forest_lands: false,
+        attached_colors_become: None,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;

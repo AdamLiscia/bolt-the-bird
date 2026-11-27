@@ -5010,3 +5010,822 @@ fn blackblade_reforged_grows_per_land_and_equips_legends_cheaply() {
         "the {{3}} equip is for legendary creatures"
     );
 }
+
+#[test]
+fn darksteel_mutation_makes_an_indestructible_0_1_insect_artifact_creature() {
+    let mut g = table();
+    let courser = put(&mut g, 1, "Courser of Kruphix");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let m = hand(&mut g, 0, "Darksteel Mutation");
+    play(&mut g, m, false, &[obj(courser)], &[]);
+    assert_eq!(g.obj(m).zone, Zone::Battlefield);
+    let t = g.types_of(courser);
+    assert!(t.artifact && t.creature && !t.enchantment && !t.land);
+    assert_eq!((g.power(courser), g.toughness(courser)), (0, 1));
+    assert!(g.has_subtype(courser, "Insect") && !g.has_subtype(courser, "Centaur"));
+    assert!(g.keywords(courser).has(Keywords::INDESTRUCTIBLE));
+    let wrath = hand(&mut g, 0, "Wrath of God");
+    play(&mut g, wrath, false, &[], &[]);
+    assert_eq!(g.obj(courser).zone, Zone::Battlefield, "indestructible");
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard);
+}
+
+#[test]
+fn ashaya_makes_your_nontoken_creatures_forest_lands_and_counts_them() {
+    let mut g = table();
+    let ashaya = put(&mut g, 0, "Ashaya, Soul of the Wild");
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let theirs = put(&mut g, 1, "Savannah Lions");
+    // 25 lands, plus Ashaya, the Elves and the Lions.
+    assert_eq!((g.power(ashaya), g.toughness(ashaya)), (28, 28));
+    let t = g.types_of(lions);
+    assert!(t.land && t.creature);
+    assert!(g.has_subtype(lions, "Forest") && g.has_subtype(lions, "Cat"));
+    assert!(
+        !g.types_of(theirs).land && !g.has_subtype(theirs, "Forest"),
+        "yours only"
+    );
+    to_main1(&mut g, 5, 0);
+    assert_eq!(
+        colors(&g, lions),
+        [false, false, false, false, true],
+        "a Forest taps for green"
+    );
+    assert_eq!(colors(&g, elves), [false, false, false, false, true]);
+}
+
+#[test]
+fn lorans_escape_gives_hexproof_and_indestructible_then_scries() {
+    let mut g = table();
+    let ring = put(&mut g, 0, "Sol Ring");
+    let top = g.add_card(0, cid("Counterspell"), Zone::Library);
+    let e = hand(&mut g, 0, "Loran's Escape");
+    play(&mut g, e, false, &[obj(ring)], &[Action::Yes]); // the top card to the bottom
+    let k = g.keywords(ring);
+    assert!(k.has(Keywords::HEXPROOF) && k.has(Keywords::INDESTRUCTIBLE));
+    assert_eq!(g.players[0].library[0], top, "scried to the bottom");
+}
+
+#[test]
+fn kenriths_transformation_draws_and_makes_a_green_3_3_elk() {
+    let mut g = table();
+    let courser = put(&mut g, 1, "Courser of Kruphix");
+    let k = hand(&mut g, 0, "Kenrith's Transformation");
+    let cards = g.players[0].hand.len();
+    play(&mut g, k, false, &[obj(courser)], &[]);
+    assert_eq!(g.players[0].hand.len(), cards, "cast one, drew one");
+    let t = g.types_of(courser);
+    assert!(t.creature && !t.enchantment);
+    assert_eq!((g.power(courser), g.toughness(courser)), (3, 3));
+    assert_eq!(g.colors_of(courser), [false, false, false, false, true]);
+    assert!(g.has_subtype(courser, "Elk") && !g.has_subtype(courser, "Centaur"));
+}
+
+#[test]
+fn the_battle_of_bywater_destroys_the_big_ones_then_makes_food() {
+    let mut g = table();
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let courser = put(&mut g, 0, "Courser of Kruphix");
+    let angel = put(&mut g, 1, "Serra Angel");
+    let b = hand(&mut g, 0, "The Battle of Bywater");
+    play(&mut g, b, false, &[], &[]);
+    assert_eq!(g.obj(angel).zone, Zone::Graveyard, "power 4");
+    assert_eq!(
+        (g.obj(lions).zone, g.obj(courser).zone),
+        (Zone::Battlefield, Zone::Battlefield)
+    );
+    assert_eq!(tokens(&g, 0, "Food").len(), 2, "one per creature you control");
+}
+
+#[test]
+fn dakkon_blackblade_counts_your_lands() {
+    let mut g = table();
+    let d = put(&mut g, 0, "Dakkon Blackblade");
+    put(&mut g, 1, "Forest");
+    assert_eq!((g.power(d), g.toughness(d)), (25, 25));
+}
+
+#[test]
+fn scion_of_oona_pumps_and_shrouds_other_faeries() {
+    let mut g = table();
+    let scion = put(&mut g, 0, "Scion of Oona");
+    let cloud = put(&mut g, 0, "Cloud of Faeries");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    assert_eq!((g.power(cloud), g.toughness(cloud)), (2, 2));
+    assert!(g.keywords(cloud).has(Keywords::SHROUD));
+    assert_eq!((g.power(scion), g.toughness(scion)), (1, 1), "other Faeries only");
+    assert!(!g.keywords(scion).has(Keywords::SHROUD));
+    assert_eq!(g.power(lions), 2);
+}
+
+#[test]
+fn sword_of_light_and_shadow_protects_gains_and_returns_a_creature() {
+    let mut g = table();
+    let sword = put(&mut g, 0, "Sword of Light and Shadow");
+    let looter = put(&mut g, 0, "Merfolk Looter");
+    let dead = g.add_card(0, cid("Savannah Lions"), Zone::Graveyard);
+    to_main1(&mut g, 5, 0);
+    act(&mut g, Action::Activate(sword, 0));
+    act(&mut g, Action::Target(obj(looter)));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.power(looter), g.toughness(looter)), (3, 3));
+    assert_eq!(g.protection(looter), [true, false, true, false, false]);
+    let life = g.players[0].life;
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(looter));
+    act(&mut g, Action::FinishAttacks);
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            Pending::ChooseTarget(0) => Action::Target(obj(dead)),
+            Pending::Decide(1) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.players[1].life, 37);
+    assert_eq!(g.players[0].life, life + 3);
+    assert_eq!(g.obj(dead).zone, Zone::Hand);
+}
+
+#[test]
+fn reckless_endeavor_rolls_two_d12_for_damage_and_treasures() {
+    let mut g = table();
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let r = hand(&mut g, 0, "Reckless Endeavor");
+    act(&mut g, Action::Cast(r));
+    while !g.items.is_empty() && !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let treasures = match g.decision.clone() {
+        Some(bolt_core::game::Decision::ChooseDamageRoll { rolls, .. }) => {
+            assert_eq!(g.legal_actions(), vec![Action::Mode(0), Action::Mode(1)]);
+            act(&mut g, Action::Mode(1)); // the second result is the damage
+            rolls[0] as usize
+        }
+        _ => tokens(&g, 0, "Treasure").len(), // a tie: no choice
+    };
+    resolve_all(&mut g, &[]);
+    assert!((1..=12).contains(&treasures));
+    assert_eq!(tokens(&g, 0, "Treasure").len(), treasures);
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard, "at least 1 damage");
+}
+
+#[test]
+fn garruk_primal_hunter_makes_beasts_draws_and_makes_wurms() {
+    let mut g = table();
+    let garruk = hand(&mut g, 0, "Garruk, Primal Hunter");
+    play(&mut g, garruk, false, &[], &[]);
+    act(&mut g, Action::Loyalty(garruk, 0));
+    resolve_all(&mut g, &[]);
+    let beasts = tokens(&g, 0, "Beast");
+    assert_eq!(beasts.len(), 1);
+    assert_eq!((g.power(beasts[0]), g.toughness(beasts[0])), (3, 3));
+    to_main1(&mut g, 5, 0);
+    let cards = g.players[0].hand.len();
+    act(&mut g, Action::Loyalty(garruk, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), cards + 3, "the Beast's power");
+    g.objects[garruk.0 as usize].loyalty = 6;
+    to_main1(&mut g, 7, 0);
+    act(&mut g, Action::Loyalty(garruk, 2));
+    resolve_all(&mut g, &[]);
+    let wurms = tokens(&g, 0, "Wurm");
+    assert_eq!(wurms.len(), 25);
+    assert_eq!((g.power(wurms[0]), g.toughness(wurms[0])), (6, 6));
+    assert_eq!(g.colors_of(wurms[0]), [false, false, false, false, true]);
+}
+
+#[test]
+fn zur_the_enchanter_finds_a_small_enchantment_on_attack() {
+    let mut g = table();
+    let zur = put(&mut g, 0, "Zur the Enchanter");
+    to_main1(&mut g, 5, 0);
+    let small = g.add_card(0, cid("Darksteel Mutation"), Zone::Library);
+    let big = g.add_card(0, cid("Greed"), Zone::Library);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(zur));
+    act(&mut g, Action::FinishAttacks);
+    while !matches!(g.pending, Pending::Decide(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Yes); // search
+    while !matches!(g.pending, Pending::Decide(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(small)) && !legal.contains(&Action::Pick(big)));
+    act(&mut g, Action::Pick(small));
+    assert_eq!(g.obj(small).zone, Zone::Battlefield);
+}
+
+#[test]
+fn nim_deathmantle_makes_a_black_zombie_and_brings_back_the_dead_for_4() {
+    let mut g = table();
+    let nim = put(&mut g, 0, "Nim Deathmantle");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    to_main1(&mut g, 5, 0);
+    act(&mut g, Action::Activate(nim, 0));
+    act(&mut g, Action::Target(obj(lions)));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.power(lions), g.toughness(lions)), (4, 3));
+    assert!(g.keywords(lions).has(Keywords::INTIMIDATE));
+    assert_eq!(g.colors_of(lions), [false, false, true, false, false]);
+    assert!(g.has_subtype(lions, "Zombie") && !g.has_subtype(lions, "Cat"));
+    for _ in 0..4 {
+        put(&mut g, 0, "Plains"); // untapped white for the Wraths
+    }
+    let wrath = hand(&mut g, 0, "Wrath of God");
+    play(&mut g, wrath, false, &[], &[Action::Yes]); // pay {4}
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield, "returned");
+    let zcc = g.obj(lions).zcc;
+    assert_eq!(g.obj(nim).attached_to, Some((lions, zcc)), "and equipped");
+    assert_eq!(g.power(lions), 4);
+    // Declined: it stays in the graveyard.
+    let wrath = hand(&mut g, 0, "Wrath of God");
+    play(&mut g, wrath, false, &[], &[Action::No]);
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard);
+}
+
+/// Attacks with `attacker` in the first combat (declaring no attackers in any extra combat), to the
+/// second main phase; returns how many declare-attackers steps player 0 got.
+fn attack_once_count_combats(g: &mut Game, attacker: ObjId) -> usize {
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(g, Action::PassPriority);
+    }
+    act(g, Action::Attack(attacker));
+    act(g, Action::FinishAttacks);
+    let mut combats = 1;
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            Pending::DeclareAttackers(0) => {
+                combats += 1;
+                Action::FinishAttacks
+            }
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            Pending::Decide(1) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+    combats
+}
+
+#[test]
+fn scourge_of_valkas_burns_for_each_dragon_as_dragons_enter() {
+    let mut g = table();
+    put(&mut g, 0, "Atarka, World Render");
+    let v = hand(&mut g, 0, "Scourge of Valkas");
+    play(&mut g, v, false, &[], &[Action::Target(Target::Player(1))]);
+    assert_eq!(g.players[1].life, 38, "two Dragons");
+    put(&mut g, 0, "Mountain");
+    let t = hand(&mut g, 0, "Scourge of the Throne"); // not legendary: no legend rule
+    play(&mut g, t, false, &[], &[Action::Target(Target::Player(1))]);
+    assert_eq!(g.players[1].life, 35, "another Dragon: three");
+    act(&mut g, Action::Activate(v, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.power(v), 5);
+}
+
+#[test]
+fn atarka_gives_attacking_dragons_double_strike() {
+    let mut g = table();
+    put(&mut g, 0, "Atarka, World Render");
+    let v = put(&mut g, 0, "Scourge of Valkas");
+    to_main1(&mut g, 5, 0);
+    attack_once_count_combats(&mut g, v);
+    assert_eq!(g.players[1].life, 32, "4 double strike");
+}
+
+#[test]
+fn lathliss_makes_a_dragon_for_each_nontoken_dragon_and_pumps_dragons() {
+    let mut g = table();
+    let l = put(&mut g, 0, "Lathliss, Dragon Queen");
+    let lions = hand(&mut g, 0, "Savannah Lions");
+    play(&mut g, lions, false, &[], &[]);
+    assert!(tokens(&g, 0, "Dragon").is_empty(), "not a Dragon");
+    let a = hand(&mut g, 0, "Atarka, World Render");
+    play(&mut g, a, false, &[], &[]);
+    let dragons = tokens(&g, 0, "Dragon");
+    assert_eq!(dragons.len(), 1, "not again for the token");
+    assert_eq!((g.power(dragons[0]), g.toughness(dragons[0])), (5, 5));
+    assert_eq!(
+        g.colors_of(dragons[0]),
+        [false, false, false, true, false],
+        "a red Dragon"
+    );
+    act(&mut g, Action::Activate(l, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.power(a), g.power(dragons[0]), g.power(l)), (7, 6, 7));
+}
+
+#[test]
+fn scourge_of_the_throne_dethrones_and_attacks_again() {
+    let mut g = table();
+    let s = put(&mut g, 0, "Scourge of the Throne");
+    to_main1(&mut g, 5, 0);
+    assert_eq!(attack_once_count_combats(&mut g, s), 2, "an additional combat");
+    assert_eq!(g.obj(s).counters, 1, "dethrone");
+    assert!(!g.obj(s).tapped, "untapped");
+    let mut g = table();
+    let s = put(&mut g, 0, "Scourge of the Throne");
+    to_main1(&mut g, 5, 0);
+    g.players[1].life = 30;
+    assert_eq!(attack_once_count_combats(&mut g, s), 1, "not the most life");
+    assert_eq!(g.obj(s).counters, 0);
+}
+
+/// Broodcaller Scourge's put-from-hand, on a stand-in trigger until d2's damage amount lands: the
+/// limit is the trigger's `amount`, the pick is the player's, and Kodama still sees the card enter.
+fn broodcaller_put(amount: i32) -> (Game, [ObjId; 3]) {
+    use bolt_core::effect::{Ability, Effect, Trigger, When};
+    use bolt_core::game::{StackItem, StackKind};
+    use std::sync::Arc;
+    let mut g = table();
+    let carrier = put(&mut g, 0, "Savannah Lions");
+    let def = g.obj(carrier).def;
+    Arc::make_mut(&mut g.defs)[def].triggers.insert(
+        0,
+        Trigger {
+            when: When::YourSubtypeDealCombatDamageToPlayer("Dragon"),
+            ability: Ability::new(vec![], vec![Effect::MayPutPermanentFromHandMvAtMostAmount]),
+        },
+    );
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    let pippin = hand(&mut g, 0, "Pippin, Guard of the Citadel");
+    let kodama = hand(&mut g, 0, "Kodama of the East Tree");
+    g.triggered.push(StackItem {
+        source: carrier,
+        controller: 0,
+        kind: StackKind::Trigger(0),
+        targets: Vec::new(),
+        kicked: false,
+        flashback: false,
+        extra: None,
+        mode: None,
+        amount,
+        alt: false,
+        x: 0,
+        division: Vec::new(),
+        source_zcc: None,
+    });
+    for _ in 0..6 {
+        if matches!(g.pending, Pending::Decide(_)) || g.triggered.is_empty() && g.items.is_empty() {
+            break;
+        }
+        act(&mut g, Action::PassPriority);
+    }
+    (g, [elves, pippin, kodama])
+}
+
+#[test]
+fn broodcaller_puts_a_permanent_with_mana_value_up_to_the_damage() {
+    let (mut g, [elves, pippin, kodama]) = broodcaller_put(2);
+    assert_eq!(g.pending, Pending::Decide(0));
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(elves)) && legal.contains(&Action::Pick(pippin)));
+    assert!(!legal.contains(&Action::Pick(kodama)), "mana value 5 is over 2");
+    assert!(legal.contains(&Action::No), "a may");
+    act(&mut g, Action::Pick(pippin));
+    assert_eq!(g.obj(pippin).zone, Zone::Battlefield);
+    assert!(!g.obj(pippin).put_by_kodama, "Kodama can still trigger on it");
+    assert_eq!(g.obj(elves).zone, Zone::Hand);
+}
+
+#[test]
+fn broodcaller_may_decline_and_asks_nothing_without_damage() {
+    let (mut g, [elves, pippin, _]) = broodcaller_put(2);
+    assert_eq!(g.pending, Pending::Decide(0));
+    act(&mut g, Action::No);
+    assert_eq!((g.obj(elves).zone, g.obj(pippin).zone), (Zone::Hand, Zone::Hand));
+    let (g, [elves, ..]) = broodcaller_put(0);
+    assert!(!matches!(g.pending, Pending::Decide(_)));
+    assert_eq!(g.obj(elves).zone, Zone::Hand);
+}
+
+// ---- d3 batch 45: Veil of Summer, Allosaurus Shepherd, Finale of Devastation, Song of Totentanz,
+// Urza's {5} ----
+
+/// Player 0 casts `first` (with Veil of Summer resolved first if `veil`) and passes; player 1 then
+/// casts `answer`. Returns the game with player 1 choosing a target.
+fn veil_then_opponent_answers(veil: bool, first: &str, answer: &str) -> (Game, ObjId) {
+    let mut g = table();
+    if veil {
+        let v = hand(&mut g, 0, "Veil of Summer");
+        play(&mut g, v, false, &[], &[]);
+    }
+    let f = hand(&mut g, 0, first);
+    act(&mut g, Action::Cast(f));
+    while g.pending != Pending::Priority(1) {
+        act(&mut g, Action::PassPriority);
+    }
+    let a = hand(&mut g, 1, answer);
+    act(&mut g, Action::Cast(a));
+    (g, f)
+}
+
+#[test]
+fn veil_of_summer_gives_you_and_yours_hexproof_from_blue_and_black() {
+    for veil in [false, true] {
+        let mut g = table();
+        let lions = put(&mut g, 0, "Savannah Lions");
+        if veil {
+            let v = hand(&mut g, 0, "Veil of Summer");
+            play(&mut g, v, false, &[], &[]);
+        }
+        let div = hand(&mut g, 0, "Night's Whisper");
+        act(&mut g, Action::Cast(div));
+        while g.pending != Pending::Priority(1) {
+            act(&mut g, Action::PassPriority);
+        }
+        let db = hand(&mut g, 1, "Doom Blade");
+        // Doom Blade is black: with Veil it has no legal target, so it can't be cast.
+        assert_eq!(
+            g.legal_actions().contains(&Action::Cast(db)),
+            !veil,
+            "veil: {veil}"
+        );
+        if !veil {
+            act(&mut g, Action::Cast(db));
+            assert!(can_target(&g, lions));
+        }
+    }
+    let mut g = table();
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let v = hand(&mut g, 0, "Veil of Summer");
+    play(&mut g, v, false, &[], &[]);
+    let div = hand(&mut g, 0, "Night's Whisper");
+    act(&mut g, Action::Cast(div));
+    while g.pending != Pending::Priority(1) {
+        act(&mut g, Action::PassPriority);
+    }
+    let bolt = hand(&mut g, 1, "Lightning Bolt");
+    act(&mut g, Action::Cast(bolt));
+    assert!(can_target(&g, lions), "a red spell still can");
+}
+
+#[test]
+fn veil_of_summer_spells_you_control_cant_be_countered() {
+    for veil in [false, true] {
+        let (mut g, div) = veil_then_opponent_answers(veil, "Night's Whisper", "Counterspell");
+        let before = g.players[0].hand.len();
+        act(&mut g, Action::Target(obj(div)));
+        resolve_all(&mut g, &[]);
+        let drawn = g.players[0].hand.len() - before;
+        assert_eq!(drawn, if veil { 2 } else { 0 }, "veil: {veil}");
+    }
+}
+
+#[test]
+fn veil_of_summer_draws_only_if_an_opponent_cast_blue_or_black() {
+    for (color, draws) in [(None, 0), (Some(0), 0), (Some(1), 1), (Some(2), 1)] {
+        let mut g = table();
+        if let Some(k) = color {
+            g.color_cast_turn[1][k] = g.turn;
+        }
+        let v = hand(&mut g, 0, "Veil of Summer");
+        let before = g.players[0].hand.len();
+        play(&mut g, v, false, &[], &[]);
+        assert_eq!(g.players[0].hand.len() + 1 - before, draws, "color {color:?}");
+    }
+    // The cast path records each spell's colors.
+    let mut g = table();
+    let div = hand(&mut g, 0, "Night's Whisper");
+    play(&mut g, div, false, &[], &[]);
+    assert_eq!(g.color_cast_turn[0][2], g.turn);
+    assert_eq!(g.color_cast_turn[0][1], 0);
+}
+
+#[test]
+fn allosaurus_shepherd_makes_elves_5_5_dinosaurs_until_end_of_turn() {
+    let mut g = table();
+    let shep = put(&mut g, 0, "Allosaurus Shepherd");
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    act(&mut g, Action::Activate(shep, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.power(elves), g.toughness(elves)), (5, 5));
+    assert_eq!((g.power(shep), g.toughness(shep)), (5, 5), "it's an Elf too");
+    assert!(g.has_subtype(elves, "Dinosaur") && g.has_subtype(elves, "Elf"));
+    assert_eq!((g.power(lions), g.toughness(lions)), (2, 1), "not an Elf");
+    g.start_turn(5, 0);
+    assert_eq!((g.power(elves), g.toughness(elves)), (1, 1));
+    assert!(!g.has_subtype(elves, "Dinosaur"));
+}
+
+#[test]
+fn allosaurus_shepherd_green_spells_cant_be_countered() {
+    let mut g = table();
+    put(&mut g, 0, "Allosaurus Shepherd");
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    act(&mut g, Action::Cast(elves));
+    while g.pending != Pending::Priority(1) {
+        act(&mut g, Action::PassPriority);
+    }
+    let cs = hand(&mut g, 1, "Counterspell");
+    act(&mut g, Action::Cast(cs));
+    act(&mut g, Action::Target(obj(elves)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+}
+
+fn finale(x: u8) -> (Game, [ObjId; 4]) {
+    let mut g = table();
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Library);
+    let kodama = g.add_card(0, cid("Kodama of the East Tree"), Zone::Library);
+    let pippin = g.add_card(0, cid("Pippin, Guard of the Citadel"), Zone::Graveyard);
+    let f = hand(&mut g, 0, "Finale of Devastation");
+    act(&mut g, Action::CastX(f, x));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    (g, [lions, kodama, pippin, f])
+}
+
+#[test]
+fn finale_of_devastation_searches_library_and_graveyard() {
+    let (mut g, [lions, kodama, pippin, _]) = finale(2);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(lions)) && legal.contains(&Action::Pick(pippin)));
+    assert!(!legal.contains(&Action::Pick(kodama)), "mana value 5");
+    resolve_all(&mut g, &[Action::Pick(pippin)]);
+    assert_eq!(g.obj(pippin).zone, Zone::Battlefield);
+    assert_eq!(g.obj(lions).zone, Zone::Library);
+    assert!(!g.keywords(pippin).has(Keywords::HASTE), "X is under 10");
+}
+
+#[test]
+fn finale_of_devastation_with_x_10_pumps_and_hastes() {
+    let (mut g, [lions, ..]) = finale(10);
+    resolve_all(&mut g, &[Action::Pick(lions)]);
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield);
+    assert_eq!((g.power(lions), g.toughness(lions)), (12, 11));
+    assert!(g.keywords(lions).has(Keywords::HASTE));
+}
+
+#[test]
+fn song_of_totentanz_makes_x_rats_that_cant_block_and_hastes() {
+    let mut g = table();
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let song = hand(&mut g, 0, "Song of Totentanz");
+    act(&mut g, Action::CastX(song, 3));
+    resolve_all(&mut g, &[]);
+    let rats = tokens(&g, 0, "Rat");
+    assert_eq!(rats.len(), 3);
+    for &r in &rats {
+        assert!(g.def_of(r).cant_block);
+        assert_eq!(g.colors_of(r), [false, false, true, false, false]);
+        assert_eq!((g.power(r), g.toughness(r)), (1, 1));
+        assert!(g.keywords(r).has(Keywords::HASTE));
+    }
+    assert!(g.keywords(lions).has(Keywords::HASTE));
+}
+
+/// Resolves `effect` from a stand-in trigger on a Savannah Lions of player 0's.
+fn stand_in(g: &mut Game, effect: bolt_core::effect::Effect) {
+    use bolt_core::effect::{Ability, Trigger, When};
+    use bolt_core::game::{StackItem, StackKind};
+    use std::sync::Arc;
+    let carrier = put(g, 0, "Savannah Lions");
+    let def = g.obj(carrier).def;
+    Arc::make_mut(&mut g.defs)[def].triggers.insert(
+        0,
+        Trigger {
+            when: When::Never,
+            ability: Ability::new(vec![], vec![effect]),
+        },
+    );
+    g.triggered.push(StackItem {
+        source: carrier,
+        controller: 0,
+        kind: StackKind::Trigger(0),
+        targets: Vec::new(),
+        kicked: false,
+        flashback: false,
+        extra: None,
+        mode: None,
+        amount: 0,
+        alt: false,
+        x: 0,
+        division: Vec::new(),
+        source_zcc: None,
+    });
+    for _ in 0..6 {
+        if matches!(g.pending, Pending::Decide(_)) || g.triggered.is_empty() && g.items.is_empty() {
+            break;
+        }
+        act(g, Action::PassPriority);
+    }
+}
+
+#[test]
+fn urzas_five_exiles_the_top_card_to_play_free_this_turn() {
+    let mut g = table();
+    g.players[0].library.clear();
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Library);
+    stand_in(&mut g, bolt_core::effect::Effect::ShuffleExileTopPlayFreeThisTurn);
+    assert_eq!(g.obj(elves).zone, Zone::Exile);
+    assert_eq!(g.obj(elves).playable, Some((0, g.turn)));
+    assert!(g.obj(elves).cast_free);
+    while g.pending != Pending::Priority(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(g.legal_actions().contains(&Action::Cast(elves)));
+}
+
+// ---- d3 batch 46: Archon of Cruelty, Papalymo Totolymo ----
+
+#[test]
+fn archon_of_cruelty_enters_opponent_sacrifices_discards_and_loses() {
+    let mut g = table();
+    let elves = put(&mut g, 1, "Llanowar Elves");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let card = hand(&mut g, 1, "Lightning Bolt");
+    let archon = hand(&mut g, 0, "Archon of Cruelty");
+    let (life0, life1, hand0) = (g.players[0].life, g.players[1].life, g.players[0].hand.len());
+    act(&mut g, Action::Cast(archon));
+    for _ in 0..20 {
+        match g.pending {
+            Pending::ChooseTarget(0) => {
+                act(&mut g, Action::Target(Target::Player(1)));
+            }
+            Pending::Decide(1) => {
+                let legal = g.legal_actions();
+                if legal.contains(&Action::Pick(lions)) {
+                    assert!(legal.contains(&Action::Pick(elves)), "their choice");
+                    act(&mut g, Action::Pick(lions));
+                } else {
+                    act(&mut g, Action::Discard(card));
+                }
+            }
+            _ if g.items.is_empty() && g.triggered.is_empty() && g.obj(archon).zone == Zone::Battlefield => {
+                break
+            }
+            _ => {
+                act(&mut g, Action::PassPriority);
+            }
+        }
+    }
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+    assert_eq!(g.obj(card).zone, Zone::Graveyard, "discarded");
+    assert_eq!(g.players[1].life, life1 - 3);
+    assert_eq!(g.players[0].life, life0 + 3);
+    assert_eq!(g.players[0].hand.len(), hand0, "cast the Archon, drew one");
+}
+
+#[test]
+fn papalymo_pings_on_noncreature_casts_and_sacrifices_the_biggest() {
+    let mut g = table();
+    let pap = put(&mut g, 0, "Papalymo Totolymo");
+    let elves = put(&mut g, 1, "Llanowar Elves");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    // No life lost yet: nothing is sacrificed.
+    let mut h = g.clone();
+    act(&mut h, Action::Activate(pap, 0));
+    resolve_all(&mut h, &[]);
+    assert_eq!(
+        (h.obj(elves).zone, h.obj(lions).zone),
+        (Zone::Battlefield, Zone::Battlefield)
+    );
+    // A noncreature spell: 1 damage to the opponent, 1 life for you.
+    let (life0, life1) = (g.players[0].life, g.players[1].life);
+    let nw = hand(&mut g, 0, "Night's Whisper");
+    play(&mut g, nw, false, &[], &[]);
+    assert_eq!(g.players[1].life, life1 - 1);
+    assert_eq!(g.players[0].life, life0 - 2 + 1);
+    act(&mut g, Action::Activate(pap, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(pap).zone, Zone::Graveyard, "sacrificed as a cost");
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard, "the greatest power");
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+}
+
+// ---- d3 batch 47: Urza, Lord High Artificer ----
+
+#[test]
+fn urza_makes_a_construct_taps_artifacts_for_blue_and_plays_the_top_free() {
+    let mut g = table();
+    let urza = hand(&mut g, 0, "Urza, Lord High Artificer");
+    play(&mut g, urza, false, &[], &[]);
+    let cons = tokens(&g, 0, "Construct");
+    assert_eq!(cons.len(), 1);
+    assert_eq!(
+        (g.power(cons[0]), g.toughness(cons[0])),
+        (1, 1),
+        "one artifact: itself"
+    );
+    let ring = put(&mut g, 0, "Sol Ring");
+    assert_eq!(g.power(cons[0]), 2);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::ActivateWith(urza, 0, ring)));
+    assert!(
+        !legal.contains(&Action::ActivateWith(urza, 0, urza)),
+        "Urza isn't an artifact"
+    );
+    act(&mut g, Action::ActivateWith(urza, 0, ring));
+    assert!(g.obj(ring).tapped);
+    assert!(g.players[0].pool.iter().any(|m| m.colors[1]), "blue, no stack");
+    g.players[0].library.clear();
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Library);
+    act(&mut g, Action::Activate(urza, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Exile);
+    assert_eq!(g.obj(elves).playable, Some((0, g.turn)));
+    assert!(g.obj(elves).cast_free);
+}
+
+// ---- d3 batch 48: Toski ----
+
+#[test]
+fn autumns_veil_stops_blue_and_black_counters_and_targets() {
+    for veil in [false, true] {
+        let mut g = table();
+        let lions = put(&mut g, 0, "Savannah Lions");
+        if veil {
+            let v = hand(&mut g, 0, "Autumn's Veil");
+            play(&mut g, v, false, &[], &[]);
+        }
+        let nw = hand(&mut g, 0, "Night's Whisper");
+        act(&mut g, Action::Cast(nw));
+        while g.pending != Pending::Priority(1) {
+            act(&mut g, Action::PassPriority);
+        }
+        let db = hand(&mut g, 1, "Doom Blade");
+        assert_eq!(
+            g.legal_actions().contains(&Action::Cast(db)),
+            !veil,
+            "Doom Blade (veil: {veil})"
+        );
+        let bolt = hand(&mut g, 1, "Lightning Bolt");
+        act(&mut g, Action::Cast(bolt));
+        assert!(can_target(&g, lions), "a red spell can");
+        act(&mut g, Action::Target(Target::Player(0)));
+        while g.pending != Pending::Priority(1) {
+            act(&mut g, Action::PassPriority);
+        }
+        let cs = hand(&mut g, 1, "Counterspell");
+        act(&mut g, Action::Cast(cs));
+        let before = g.players[0].hand.len();
+        act(&mut g, Action::Target(obj(nw)));
+        resolve_all(&mut g, &[]);
+        assert_eq!(
+            g.players[0].hand.len() - before,
+            if veil { 2 } else { 0 },
+            "veil: {veil}"
+        );
+    }
+}
+
+#[test]
+fn regrowth_and_bala_ged_recovery_return_a_card() {
+    for name in ["Regrowth", "Bala Ged Recovery // Bala Ged Sanctuary"] {
+        let mut g = table();
+        let dead = g.add_card(0, cid("Savannah Lions"), Zone::Graveyard);
+        let r = hand(&mut g, 0, name);
+        play(&mut g, r, false, &[obj(dead)], &[]);
+        assert_eq!(g.obj(dead).zone, Zone::Hand, "{name}");
+    }
+}
+
+// ---- d3 batch 49: Broodcaller Scourge ----
+
+#[test]
+fn broodcaller_scourge_puts_a_permanent_up_to_its_combat_damage() {
+    let mut g = table();
+    let brood = put(&mut g, 0, "Broodcaller Scourge");
+    g.objects[brood.0 as usize].since_turn = 0;
+    let pippin = hand(&mut g, 0, "Pippin, Guard of the Citadel"); // mana value 2
+    let kodama = hand(&mut g, 0, "Kodama of the East Tree"); // 6
+    let big = hand(&mut g, 0, "Broodcaller Scourge"); // 7
+    while !g.legal_actions().contains(&Action::Attack(brood)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(brood));
+    act(&mut g, Action::FinishAttacks);
+    for _ in 0..60 {
+        if g.pending == Pending::Decide(0) {
+            break;
+        }
+        let legal = g.legal_actions();
+        let a = if legal.contains(&Action::PassPriority) {
+            Action::PassPriority
+        } else {
+            legal[0]
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.players[1].life, 35, "5 combat damage");
+    assert_eq!(g.pending, Pending::Decide(0));
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(pippin)), "mana value 2 <= 5 damage");
+    assert!(!legal.contains(&Action::Pick(kodama)), "6 is over 5");
+    assert!(!legal.contains(&Action::Pick(big)), "7 is over 5");
+    act(&mut g, Action::Pick(pippin));
+    assert_eq!(g.obj(pippin).zone, Zone::Battlefield);
+}

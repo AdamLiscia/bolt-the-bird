@@ -2332,6 +2332,316 @@ pub fn script(name: &str) -> Option<Script> {
                 equip(d, "{7}");
             },
         ),
+        // Core theme d3, batch 41 (idea decks: Sythis, Toski, Ratadrabik)
+        "Darksteel Mutation" => s(
+            &[
+                "Enchant creature",
+                "Enchanted creature is an Insect artifact creature with base power and toughness 0/1 and has indestructible, and it loses all other abilities, card types, and creature types.",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                d.enchanted_creature_type_becomes = Some("Insect");
+                d.enchanted_card_types_become = Some(Types {
+                    artifact: true,
+                    creature: true,
+                    ..Types::default()
+                });
+                d.statics.push(Static {
+                    scope: Scope::Attached,
+                    lose_abilities: true,
+                    base_pt: Some((0, 1)),
+                    keywords: Keywords::INDESTRUCTIBLE,
+                    ..neutral_static()
+                });
+            },
+        ),
+        "Ashaya, Soul of the Wild" => s(
+            &[
+                "Ashaya's power and toughness are each equal to the number of lands you control.",
+                "Nontoken creatures you control are Forest lands in addition to their other types.",
+            ],
+            |d, _| {
+                d.pt_lands = true;
+                d.your_nontoken_creatures_are_forest_lands = true;
+                // A Forest's "{T}: Add {G}" (CR 305.6), in the mana-source pass.
+                d.your_subtypes_tap_for_green = &["Forest"];
+                d.statics.push(neutral_static()); // so it's among the static sources
+            },
+        ),
+        "Loran's Escape" => s(&["Target artifact or creature gains hexproof and indestructible until end of turn. Scry 1."], |d, _| {
+            let f = Filter { artifacts: true, ..CREATURE };
+            let keywords = Keywords::HEXPROOF.with(Keywords::INDESTRUCTIBLE);
+            spell(d, vec![f], vec![Effect::Grant { slot: 0, keywords }, Effect::Scry { n: 1 }]);
+        }),
+        "Kenrith's Transformation" => s(
+            &[
+                "Enchant creature",
+                "When this Aura enters, draw a card.",
+                "Enchanted creature loses all abilities and is a green Elk creature with base power and toughness 3/3.",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                d.enchanted_creature_type_becomes = Some("Elk");
+                d.enchanted_card_types_become = Some(Types { creature: true, ..Types::default() });
+                d.statics.push(Static {
+                    scope: Scope::Attached,
+                    lose_abilities: true,
+                    base_pt: Some((3, 3)),
+                    set_colors: Some([false, false, false, false, true]),
+                    ..neutral_static()
+                });
+                on(d, When::Enters, vec![], vec![draw(1)]);
+            },
+        ),
+        "The Battle of Bywater" => s(
+            &["Destroy all creatures with power 3 or greater. Then create a Food token for each creature you control."],
+            |d, t| {
+                spell(d, vec![], vec![Effect::DestroyAllCreaturesPowerAtLeast(3), Effect::CreateTokensPerCreatureYouControl { def: t.food }]);
+            },
+        ),
+        "Dakkon Blackblade" => s(
+            &["Dakkon Blackblade's power and toughness are each equal to the number of lands you control."],
+            |d, _| d.pt_lands = true,
+        ),
+        "Scion of Oona" => s(
+            &["Other Faerie creatures you control get +1/+1.", "Other Faeries you control have shroud."],
+            |d, _| {
+                lord(d, "Faerie");
+                d.statics.push(Static {
+                    scope: Scope::OtherYourSubtype("Faerie"),
+                    keywords: Keywords::SHROUD,
+                    ..neutral_static()
+                });
+            },
+        ),
+        "Sword of Light and Shadow" => s(
+            &[
+                "Equipped creature gets +2/+2 and has protection from white and from black.",
+                "Whenever equipped creature deals combat damage to a player, you gain 3 life and you may return up to one target creature card from your graveyard to your hand.",
+                "Equip {2}",
+            ],
+            |d, _| {
+                attached(d, false, 2, 2, Keywords::NONE);
+                d.statics.last_mut().expect("just added").protection = [true, false, true, false, false];
+                let gain = Effect::GainLife { who: Who::You, n: 3 };
+                let ability = up_to(vec![graveyard_cards(true, Controller::You)], vec![gain, Effect::Bounce(0)]);
+                d.triggers.push(Trigger { when: When::EquippedDealsCombatDamageToPlayer, ability });
+                equip(d, "{2}");
+            },
+        ),
+        "Reckless Endeavor" => s(
+            &["Roll two d12 and choose one result. Reckless Endeavor deals damage equal to that result to each creature. Then create a number of Treasure tokens equal to the other result."],
+            |d, t| spell(d, vec![], vec![Effect::RollTwoDiceDamageEachCreatureAndTokens { sides: 12, def: t.treasure }]),
+        ),
+        "Garruk, Primal Hunter" => s(
+            &[
+                "+1: Create a 3/3 green Beast creature token.",
+                "−3: Draw cards equal to the greatest power among creatures you control.",
+                "−6: Create a 6/6 green Wurm creature token for each land you control.",
+            ],
+            |d, t| {
+                loyalty(d, 1, Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.beast_3, n: 1 }]));
+                loyalty(d, -3, Ability::new(vec![], vec![Effect::DrawGreatestPowerYouControl]));
+                loyalty(d, -6, Ability::new(vec![], vec![Effect::CreateTokensPerLand { def: t.wurm_6 }]));
+            },
+        ),
+        // Core theme d3, batch 43 (d2's idea-deck cards, on batch 42's pieces)
+        "Zur the Enchanter" => s(
+            &["Whenever Zur attacks, you may search your library for an enchantment card with mana value 3 or less, put it onto the battlefield, then shuffle."],
+            |d, _| {
+                let find = search(SearchFor::EnchantmentMvAtMost(3), SearchTo::Battlefield { tapped: false });
+                may(d, When::Attacks, vec![], vec![find]);
+            },
+        ),
+        "Nim Deathmantle" => s(
+            &[
+                "Equipped creature gets +2/+2, has intimidate, and is a black Zombie.",
+                "Whenever a nontoken creature is put into your graveyard from the battlefield, you may pay {4}. If you do, return that card to the battlefield and attach this Equipment to it.",
+                "Equip {4}",
+            ],
+            |d, _| {
+                attached(d, false, 2, 2, Keywords::INTIMIDATE);
+                d.attached_colors_become = Some([false, false, true, false, false]);
+                d.enchanted_creature_type_becomes = Some("Zombie");
+                // 1v1: "put into your graveyard" is a nontoken creature you control dying.
+                let that = Filter { triggering: true, ..graveyard_cards(true, Controller::You) };
+                let pay = Effect::MayPay(ManaCost::parse("{4}").expect("a mana cost"));
+                on(d, When::AnotherNontokenCreatureYouControlDies, vec![that], vec![pay, Effect::ReanimateAttachSource(0)]);
+                equip(d, "{4}");
+            },
+        ),
+        // Core theme d3, batch 43 (Vaevictis Asmadi's Dragons)
+        "Scourge of Valkas" => s(
+            &[
+                "Whenever this creature or another Dragon you control enters, it deals X damage to any target, where X is the number of Dragons you control.",
+                "{R}: This creature gets +1/+0 until end of turn.",
+            ],
+            |d, _| {
+                let me = Effect::DamagePerYouControlSubtype { subtype: "Dragon", slot: 0 };
+                on(d, When::Enters, vec![Filter::ANY], vec![me]);
+                let it = Filter { triggering: true, ..CREATURE };
+                let burn = Effect::SlotDealsDamagePerSubtypeYouControl { from: 0, to: 1, sub: "Dragon" };
+                on(d, When::AnotherYouControlEntersWithAnySubtype(&["Dragon"]), vec![it, Filter::ANY], vec![burn]);
+                activated(d, "{R}", false, vec![], vec![Effect::PumpSelf { power: 1, toughness: 0 }]);
+            },
+        ),
+        "Atarka, World Render" => s(&["Whenever a Dragon you control attacks, it gains double strike until end of turn."], |d, _| {
+            let it = Filter { triggering: true, ..CREATURE };
+            on(d, When::SubtypeYouControlAttacks("Dragon"), vec![it], vec![Effect::Grant { slot: 0, keywords: Keywords::DOUBLE_STRIKE }]);
+        }),
+        // ---- d3 batch 45: Najeela, Raggadragga ----
+        "Veil of Summer" => s(
+            &["Draw a card if an opponent has cast a blue or black spell this turn. Spells you control can't be countered this turn. You and permanents you control gain hexproof from blue and from black until end of turn."],
+            |d, _| {
+                let ub = [false, true, true, false, false];
+                let effects = vec![
+                    Effect::DrawIfOpponentCastColorThisTurn { colors: ub, n: 1 },
+                    Effect::YourSpellsUncounterableEot,
+                    Effect::YouAndYourPermanentsHexproofFromColorsEot(ub),
+                ];
+                spell(d, vec![], effects);
+            },
+        ),
+        "Allosaurus Shepherd" => s(
+            &[
+                "This spell can't be countered.",
+                "Green spells you control can't be countered.",
+                "{4}{G}{G}: Until end of turn, each Elf creature you control has base power and toughness 5/5 and becomes a Dinosaur in addition to its other creature types.",
+            ],
+            |d, _| {
+                d.uncounterable = true;
+                d.your_color_spells_uncounterable = Some(4);
+                let dino = Effect::YourSubtypeBecomeBaseEot { sub: "Elf", power: 5, toughness: 5, subtypes: &["Dinosaur"] };
+                activated(d, "{4}{G}{G}", false, vec![], vec![dino]);
+            },
+        ),
+        "Finale of Devastation" => s(
+            &["Search your library and/or graveyard for a creature card with mana value X or less and put it onto the battlefield. If you search your library this way, shuffle. If X is 10 or more, creatures you control get +X/+X and gain haste until end of turn."],
+            |d, _| {
+                let mut a = Ability::new(
+                    vec![],
+                    vec![
+                        Effect::CreatureFromLibraryOrGraveyardMvAtMostX,
+                        Effect::StopUnlessCondition,
+                        Effect::PumpAllX { who: Who::You },
+                        Effect::GrantAll { who: Who::You, keywords: Keywords::HASTE },
+                    ],
+                );
+                a.condition = Some(Condition::XAtLeast(10));
+                d.spell = Some(a);
+            },
+        ),
+        "Song of Totentanz" => s(
+            &["Create X 1/1 black Rat creature tokens with \"This token can't block.\" Creatures you control gain haste until end of turn."],
+            |d, t| {
+                let haste = Effect::GrantAll { who: Who::You, keywords: Keywords::HASTE };
+                spell(d, vec![], vec![Effect::CreateTokensX { def: t.rat_cant_block }, haste]);
+            },
+        ),
+        // ---- d3 batch 46: d2's handbacks ----
+        "Archon of Cruelty" => s(
+            &["Whenever this creature enters or attacks, target opponent sacrifices a creature or planeswalker of their choice, discards a card, and loses 3 life. You draw a card and gain 3 life."],
+            |d, _| {
+                for when in [When::Enters, When::Attacks] {
+                    let opp = Filter::PLAYER.controlled_by(Controller::Opponent);
+                    let effects = vec![
+                        Effect::TargetPlayerSacrificesCreatureOrPlaneswalker(0),
+                        Effect::Discard { who: Who::TargetPlayer(0), n: 1 },
+                        Effect::LoseLife { who: Who::TargetPlayer(0), n: 3 },
+                        Effect::Draw { who: Who::You, n: 1 },
+                        Effect::GainLife { who: Who::You, n: 3 },
+                    ];
+                    on(d, when, vec![opp], effects);
+                }
+            },
+        ),
+        "Papalymo Totolymo" => s(
+            &[
+                "Whenever you cast a noncreature spell, Papalymo Totolymo deals 1 damage to each opponent and you gain 1 life.",
+                "{4}, {T}, Sacrifice Papalymo Totolymo: Each opponent who lost life this turn sacrifices a creature with the greatest power among creatures they control.",
+            ],
+            |d, _| {
+                let ping = Effect::Damage { amount: 1, kicked: None, to: Recipient::EachOpponent };
+                on(d, When::YouCastNoncreature, vec![], vec![ping, Effect::GainLife { who: Who::You, n: 1 }]);
+                let n = activated(d, "{4}", true, vec![], vec![Effect::OpponentsWhoLostLifeSacrificeGreatestPower]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        // ---- d3 batch 47: Lonis ----
+        "Urza, Lord High Artificer" => s(
+            &[
+                "When Urza enters, create a 0/0 colorless Construct artifact creature token with \"This token gets +1/+1 for each artifact you control.\"",
+                "Tap an untapped artifact you control: Add {U}.",
+                "{5}: Shuffle your library, then exile the top card. Until end of turn, you may play that card without paying its mana cost.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.saga_construct, n: 1 }]);
+                let artifact = Filter { players: false, creatures: false, planeswalkers: false, artifacts: true, ..Filter::ANY };
+                let n = activated(d, "", false, vec![], vec![Effect::AddMana { color: Color::Blue, n: 1 }]);
+                d.activated[n].tap_named_permanent = Some(artifact.controlled_by(Controller::You));
+                activated(d, "{5}", false, vec![], vec![Effect::ShuffleExileTopPlayFreeThisTurn]);
+            },
+        ),
+        // ---- d3 batch 48: Toski ----
+        "Autumn's Veil" => s(
+            &["Spells you control can't be countered by blue or black spells this turn, and creatures you control can't be the targets of blue or black spells this turn."],
+            |d, _| {
+                let ub = [false, true, true, false, false];
+                spell(d, vec![], vec![Effect::YourSpellsUncounterableByColorsEot(ub), Effect::YourCreaturesUntargetableByColorSpellsEot(ub)]);
+            },
+        ),
+        "Regrowth" => s(&["Return target card from your graveyard to your hand."], |d, _| {
+            spell(d, vec![graveyard_cards(false, Controller::You)], vec![Effect::Bounce(0)])
+        }),
+        "Bala Ged Recovery // Bala Ged Sanctuary" => s(
+            &["Return target card from your graveyard to your hand.", "Back: This land enters tapped.", "Back: {T}: Add {G}."],
+            |d, _| {
+                spell(d, vec![graveyard_cards(false, Controller::You)], vec![Effect::Bounce(0)]);
+                d.modal_back = true;
+                let b = d.back.as_mut().expect("Bala Ged Sanctuary");
+                b.enters_tapped = true;
+                b.mana = Some(ManaSource::of(&[Color::Green]));
+            },
+        ),
+        // ---- d3 batch 49: Vaevictis ----
+        "Broodcaller Scourge" => s(
+            &["Whenever one or more Dragons you control deal combat damage to a player, you may put a permanent card with mana value less than or equal to that damage from your hand onto the battlefield."],
+            |d, _| {
+                // "That damage" is the trigger's amount (d2: the Dragons' combat damage to players).
+                on(d, When::YourSubtypeDealCombatDamageToPlayer("Dragon"), vec![], vec![Effect::MayPutPermanentFromHandMvAtMostAmount]);
+            },
+        ),
+        "Lathliss, Dragon Queen" => s(
+            &[
+                "Whenever another nontoken Dragon you control enters, create a 5/5 red Dragon creature token with flying.",
+                "{1}{R}: Dragons you control get +1/+0 until end of turn.",
+            ],
+            |d, t| {
+                // The entering creature fills slot 0; a non-Dragon makes it fizzle.
+                let it = Filter { triggering: true, subtype: Some("Dragon"), ..CREATURE };
+                on(d, When::AnotherNontokenCreatureYouControlEnters, vec![it], vec![Effect::CreateToken { who: Who::You, def: t.red_dragon_5, n: 1 }]);
+                activated(d, "{1}{R}", false, vec![], vec![Effect::PumpYourSubtypeEot { sub: "Dragon", power: 1, toughness: 0 }]);
+            },
+        ),
+        "Scourge of the Throne" => s(
+            &[
+                "Dethrone",
+                "Whenever this creature attacks for the first time each turn, if it's attacking the player with the most life or tied for most life, untap all attacking creatures. After this phase, there is an additional combat phase.",
+            ],
+            |d, _| {
+                // Dethrone (CR 702.105): "Whenever this creature attacks the player with the most life or
+                // tied for most life, put a +1/+1 counter on it."
+                on(d, When::Attacks, vec![], vec![Effect::StopUnlessOpponentHasMostLife, Effect::CountersSelf { n: 1 }]);
+                let extra = vec![
+                    Effect::StopUnlessOpponentHasMostLife,
+                    Effect::UntapAttackersAndGrant(Keywords::NONE),
+                    Effect::AdditionalCombatAfterThisPhase,
+                ];
+                on(d, When::AttacksFirstTimeEachTurn, vec![], extra);
+            },
+        ),
         _ => None,
     }
 }
@@ -2643,4 +2953,33 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Shadowspear",
     "Brain Freeze",
     "Blackblade Reforged",
+    // Core theme d3, batch 41
+    "Darksteel Mutation",
+    "Ashaya, Soul of the Wild",
+    "Loran's Escape",
+    "Kenrith's Transformation",
+    "The Battle of Bywater",
+    "Dakkon Blackblade",
+    "Scion of Oona",
+    "Sword of Light and Shadow",
+    "Reckless Endeavor",
+    "Garruk, Primal Hunter",
+    // Core theme d3, batch 43
+    "Zur the Enchanter",
+    "Nim Deathmantle",
+    "Scourge of Valkas",
+    "Atarka, World Render",
+    "Lathliss, Dragon Queen",
+    "Scourge of the Throne",
+    "Veil of Summer",
+    "Allosaurus Shepherd",
+    "Finale of Devastation",
+    "Song of Totentanz",
+    "Archon of Cruelty",
+    "Papalymo Totolymo",
+    "Urza, Lord High Artificer",
+    "Autumn's Veil",
+    "Regrowth",
+    "Bala Ged Recovery // Bala Ged Sanctuary",
+    "Broodcaller Scourge",
 ];

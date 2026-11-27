@@ -143,14 +143,17 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
                 return "Put no lands onto the battlefield"
             word = "land" if value == 1 else "lands"
             return f"Put {value} {word} from your hand onto the battlefield tapped"
+        if d == "ChooseNumber":
+            return f"{card}: choose {value}" if card else f"Choose {value}"
         if d == "ChooseKickCount":
             times = "once" if value == 1 else f"{value} times"
             return f"Kick {card} {times}" if card else f"Kick {times}"
         return None
-    if d == "ChooseCounterKind" and kind == "Mode":
+    if d in ("ChooseCounterKind", "MoveCounterKind") and kind == "Mode":
         kinds = ("+1/+1", "-1/-1", "stun", "incubation", "soul", "revival", "fellowship", "bait")
         kinds += ("quest", "its own kind of", "slime", "time", "shield", "loyalty", "lore")
-        return f"Another {kinds[value]} counter" if 0 <= value < len(kinds) else None
+        verb = "Another" if d == "ChooseCounterKind" else "Move a"
+        return f"{verb} {kinds[value]} counter" if 0 <= value < len(kinds) else None
     if d == "AdNauseamAgain" and kind in ("Yes", "No"):
         return "Reveal another card (Ad Nauseam)" if kind == "Yes" else "Stop (Ad Nauseam)"
     if d == "Proliferate":
@@ -167,6 +170,9 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
             return f"{src}: choose {dec['options'][value]}"
         if d == "KindredSummonsType" and 0 <= value < len(dec.get("options", [])):
             return f"Kindred Summons: choose {dec['options'][value]}"
+        if d == "ChooseDamageRoll" and value in (0, 1) and len(dec.get("rolls", [])) == 2:
+            r = dec["rolls"]
+            return f"{r[value]} damage to each creature, {r[1 - value]} tokens"
         if d == "ChooseLandFace" and value in (0, 1):
             faces = (src or "").split(" // ")
             face = faces[value] if len(faces) == 2 else ("its front", "its back")[value]
@@ -238,6 +244,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"DiscardThenIfInstantOrSorcery": "Discard"}.get(d)
         verb = verb or {"CreatureFromHandAttackingMaxMv": "Put onto the battlefield attacking:"}.get(d)
         verb = verb or {"PermanentFromHandMaxMv": "Put onto the battlefield:"}.get(d)
+        verb = verb or {"PermanentFromHandMvAtMost": "Put onto the battlefield:"}.get(d)
         verb = verb or {"ExileCardFromHand": "Exile from your hand:"}.get(d)
         verb = verb or {"SacrificeLands": "Sacrifice"}.get(d)
         verb = verb or {"SacrificeLandsDraw": "Sacrifice (draw a card)"}.get(d)
@@ -248,6 +255,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"MaySacrificeLand": "Sacrifice", "MaySacrificeArtifactOrCreature": "Sacrifice"}.get(d)  # fmt: skip
         verb = verb or {"NameCardInLibrary": "Name"}.get(d)
         verb = verb or {"ChooseExiledToPlay": "You may play until the end of your next turn:"}.get(d)
+        verb = verb or {"SacrificeNontokenCreatureOrLoseLife": "Sacrifice"}.get(d)
         if d == "DiscardMayCastFree":
             verb = "Discard (you may cast it free)" if dec.get("free") else "Discard"
         verb = verb or {"MoveAuraTo": "Attach the Aura to"}.get(d)
@@ -255,6 +263,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"PatronOfChaosSacrifice": "Sacrifice (one of two):"}.get(d)
         verb = verb or {"ExileFromHandUntilSourceLeaves": "Exile until it leaves:"}.get(d)
         verb = verb or {"BlightCreature": f"Blight {dec.get('n', 1)} (-1/-1 counters on):"}.get(d)
+        verb = verb or {"UpkeepGainLandsOrSacrifice": "Gain control of (cumulative upkeep):"}.get(d)
+        verb = verb or {"Devour": "Devour (sacrifice):"}.get(d)
         if d == "LoseUnless":
             verb = "Sacrifice" if dec.get("sacrifice") else "Discard"
         return f"{verb} {card_name}" if verb else None
@@ -298,11 +308,15 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
             f"Add {dec.get('n', 1)} mana (keep {subject or 'it'})",
             f"Sacrifice {subject or 'it'}",
         ),
+        "UpkeepGainLandsOrSacrifice": ("Gain control of a land", f"Sacrifice {src or 'it'}"),
+        "Devour": ("Devour", "Done devouring"),
         "DiscardLandOrGraveyard": ("Discard a land", f"Don't discard ({subject or 'it'} goes to the graveyard)"),
         "SylvanPayOrTop": (f"Pay 4 life to keep {subject or 'it'}", f"Put {subject or 'it'} on top of your library"),
         "ExpropriateVote": ("Vote time (an extra turn)", "Vote money (a permanent)"),
         "PayUpkeep": (f"Pay the upkeep {dec.get('cost', '')}", f"Don't pay (sacrifice {subject or src})"),
         "MayShuffle": ("Shuffle your library", "Don't shuffle"),
+        "MayTapElseOpponentToken": (f"Tap {subject}", f"Don't tap {subject} (they create a token)"),
+        "MayDrawCard": (f"Draw a card ({src})", "Don't draw"),
         "TaintedPact": ("Put it into your hand", "Exile the next card"),
         "MayPayLife": (
             f"Pay {dec.get('life', 0)} life ({src})" if src else f"Pay {dec.get('life', 0)} life",
@@ -345,6 +359,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
     if d in ("DiscardOrLoseLife", "LoseUnless") and not yes:
         life = f"lose {dec['life']} life" if "life" in dec else "lose the life"
         return f"Don't {'sacrifice' if dec.get('sacrifice') else 'discard'} ({life})"
+    if d == "SacrificeNontokenCreatureOrLoseLife" and not yes:
+        return f"Don't sacrifice (lose {dec.get('life', 0)} life)"
     if d == "SacrificeDiscardOrLoseLife" and not yes:
         return f"Don't sacrifice or discard (lose {dec.get('life', 3)} life)"
     if d in labels:

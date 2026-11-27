@@ -574,26 +574,63 @@ pub fn token_defs() -> Vec<CardDef> {
             t.colors = [true, false, false, false, false];
             t
         },
-        // 126: another lane's token, a placeholder until it lands on tarkir.
-        token("Placeholder 126", "Placeholder", 0, 0, Keywords::NONE),
-        // 127: another lane's token, a placeholder until it lands on tarkir.
-        token("Placeholder 127", "Placeholder", 0, 0, Keywords::NONE),
-        // 128: another lane's token, a placeholder until it lands on tarkir.
-        token("Placeholder 128", "Placeholder", 0, 0, Keywords::NONE),
-        // 129: another lane's token, a placeholder until it lands on tarkir.
-        token("Placeholder 129", "Placeholder", 0, 0, Keywords::NONE),
-        // 130: another lane's token, a placeholder until it lands on tarkir.
-        token("Placeholder 130", "Placeholder", 0, 0, Keywords::NONE),
+        {
+            // 126, lane d2: Soaring Lightbringer's "1/1 white Glimmer enchantment creature token".
+            let mut t = token("Glimmer", "Glimmer", 1, 1, Keywords::NONE);
+            t.colors = [true, false, false, false, false];
+            t.types.enchantment = true;
+            t
+        },
+        {
+            // 127, lane d1: Dragon Broodmother's "1/1 red and green Dragon creature token with
+            // flying and devour 2".
+            let mut t = token("Dragon", "Dragon", 1, 1, Keywords::FLYING);
+            t.colors = [false, false, false, true, true];
+            t.mana_ext.devour = 2;
+            t
+        },
+        {
+            // 128, lane d2: Charismatic Conqueror's "1/1 white Vampire creature token with lifelink".
+            let mut t = token("Vampire", "Vampire", 1, 1, Keywords::LIFELINK);
+            t.colors = [true, false, false, false, false];
+            t
+        },
+        // 129, lane d2: G'raha Tia's "1/1 colorless Hero creature token".
+        token("Hero", "Hero", 1, 1, Keywords::NONE),
+        {
+            // 130, lane d2: Hermes's "1/1 blue Bird creature token with flying and vigilance".
+            let mut t = token("Bird", "Bird", 1, 1, Keywords::FLYING.with(Keywords::VIGILANCE));
+            t.colors = [false, true, false, false, false];
+            t
+        },
         // 131: another lane's token, a placeholder until it lands on tarkir.
         token("Placeholder 131", "Placeholder", 0, 0, Keywords::NONE),
-        // 132: another lane's token, a placeholder until it lands on tarkir.
-        token("Placeholder 132", "Placeholder", 0, 0, Keywords::NONE),
+        // 132, lane d3: Lathliss, Dragon Queen's "5/5 red Dragon creature token with flying".
+        {
+            let mut t = token("Dragon", "Dragon", 5, 5, Keywords::FLYING);
+            t.colors = [false, false, false, true, false];
+            t
+        },
         // 133: another lane's token, a placeholder until it lands on tarkir.
         token("Placeholder 133", "Placeholder", 0, 0, Keywords::NONE),
         {
             // 134, lane d1: Wolfwillow Haven's "2/2 green Wolf creature token".
             let mut t = token("Wolf", "Wolf", 2, 2, Keywords::NONE);
             t.colors = [false, false, false, false, true];
+            t
+        },
+        // 135, lane d3: Garruk, Primal Hunter's "6/6 green Wurm creature token".
+        {
+            let mut t = token("Wurm", "Wurm", 6, 6, Keywords::NONE);
+            t.colors = [false, false, false, false, true];
+            t
+        },
+        // 136, lane d3: Song of Totentanz's "1/1 black Rat creature token with 'This token can't
+        // block.'"
+        {
+            let mut t = token("Rat", "Rat", 1, 1, Keywords::NONE);
+            t.colors = [false, false, true, false, false];
+            t.cant_block = true;
             t
         },
     ]
@@ -855,24 +892,28 @@ pub struct Tokens {
     pub dragon_2_firebreathing: usize,
     /// 125, lane d3: Skycat Sovereign's 1/1 white Cat Bird with flying.
     pub cat_bird: usize,
-    /// 126: another lane's token, a placeholder until it lands on tarkir.
-    pub placeholder_126: usize,
-    /// 127: another lane's token, a placeholder until it lands on tarkir.
-    pub placeholder_127: usize,
-    /// 128: another lane's token, a placeholder until it lands on tarkir.
-    pub placeholder_128: usize,
-    /// 129: another lane's token, a placeholder until it lands on tarkir.
-    pub placeholder_129: usize,
-    /// 130: another lane's token, a placeholder until it lands on tarkir.
-    pub placeholder_130: usize,
+    /// 126, lane d2: Soaring Lightbringer's 1/1 white Glimmer enchantment creature.
+    pub glimmer: usize,
+    /// 127: d1's Dragon Broodmother Dragon, a 1/1 red and green with flying and devour 2.
+    pub dragon_devour: usize,
+    /// 128, lane d2: Charismatic Conqueror's 1/1 white Vampire with lifelink.
+    pub vampire_lifelink: usize,
+    /// 129, lane d2: G'raha Tia's 1/1 colorless Hero.
+    pub hero: usize,
+    /// 130, lane d2: Hermes's 1/1 blue Bird with flying and vigilance.
+    pub bird_flying_vigilance: usize,
     /// 131: another lane's token, a placeholder until it lands on tarkir.
     pub placeholder_131: usize,
-    /// 132: another lane's token, a placeholder until it lands on tarkir.
-    pub placeholder_132: usize,
+    /// 132, lane d3: Lathliss, Dragon Queen's 5/5 red Dragon with flying.
+    pub red_dragon_5: usize,
     /// 133: another lane's token, a placeholder until it lands on tarkir.
     pub placeholder_133: usize,
     /// 134: d1's Wolfwillow Haven Wolf, a plain 2/2 green.
     pub wolf_green: usize,
+    /// 135, lane d3: Garruk, Primal Hunter's 6/6 green Wurm.
+    pub wurm_6: usize,
+    /// 136, lane d3: Song of Totentanz's 1/1 black Rat with "This token can't block."
+    pub rat_cant_block: usize,
 }
 
 impl Tokens {
@@ -1004,15 +1045,17 @@ impl Tokens {
             dragon_egg: base + 123,
             dragon_2_firebreathing: base + 124,
             cat_bird: base + 125,
-            placeholder_126: base + 126,
-            placeholder_127: base + 127,
-            placeholder_128: base + 128,
-            placeholder_129: base + 129,
-            placeholder_130: base + 130,
+            glimmer: base + 126,
+            dragon_devour: base + 127,
+            vampire_lifelink: base + 128,
+            hero: base + 129,
+            bird_flying_vigilance: base + 130,
             placeholder_131: base + 131,
-            placeholder_132: base + 132,
+            red_dragon_5: base + 132,
             placeholder_133: base + 133,
             wolf_green: base + 134,
+            wurm_6: base + 135,
+            rat_cant_block: base + 136,
         }
     }
 }

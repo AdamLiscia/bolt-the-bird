@@ -2230,10 +2230,17 @@ fn the_shire_enters_tapped_without_a_legend_and_taps_a_creature_for_food() {
         .permanents(0)
         .find(|&x| g.def_of(x).name == "Zirda, the Dawnwaker")
         .expect("Zirda");
-    act(&mut g, Action::Activate(s, 0));
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(s, 0)),
+        "a creature is named"
+    );
+    act(&mut g, Action::ActivateWith(s, 0, z));
     resolve_all(&mut g, &[]);
     assert_eq!(tokens(&g, 0, "Food").len(), 1);
-    assert!(g.obj(s).tapped && g.obj(z).tapped, "the Shire and a creature");
+    assert!(
+        g.obj(s).tapped && g.obj(z).tapped,
+        "the Shire and the named creature"
+    );
 }
 
 // ---- d1 core, batch 9: improvise, multikicker, forage, restricted and conditional mana ----
@@ -4467,4 +4474,537 @@ fn castle_garenbrig_makes_six_green_for_creature_spells_only() {
     resolve_all(&mut g, &[]);
     assert_eq!(g.obj(elves).zone, Zone::Battlefield);
     assert_eq!(g.creature_ability_color_mana[0].0[4], 5);
+}
+
+#[test]
+fn gravecrawler_casts_from_the_graveyard_only_while_you_control_a_zombie() {
+    let mut g = table();
+    let gc = g.add_card(0, cid("Gravecrawler"), Zone::Graveyard);
+    assert!(!g.legal_actions().contains(&Action::Cast(gc)), "no Zombie");
+    let other = put(&mut g, 0, "Gravecrawler");
+    assert!(g.legal_actions().contains(&Action::Cast(gc)), "a Zombie");
+    act(&mut g, Action::Cast(gc));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(gc).zone, Zone::Battlefield);
+    assert!(g.def_of(other).cant_block);
+}
+
+#[test]
+fn timeline_culler_warps_from_the_graveyard_for_b_and_two_life() {
+    let mut g = table();
+    let tc = g.add_card(0, cid("Timeline Culler"), Zone::Graveyard);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::CastAlternative(tc)), "its warp");
+    assert!(
+        !legal.contains(&Action::Cast(tc)),
+        "not its mana cost from the graveyard"
+    );
+    let life = g.players[0].life;
+    act(&mut g, Action::CastAlternative(tc));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(tc).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].life, life - 2);
+    assert!(g.obj(tc).warped, "exiled at the next end step");
+    while g.step != Step::End {
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(tc).zone, Zone::Exile);
+    // With 1 life, the warp can't be paid.
+    let mut g = table();
+    let tc = g.add_card(0, cid("Timeline Culler"), Zone::Graveyard);
+    g.players[0].life = 1;
+    assert!(!g.legal_actions().contains(&Action::CastAlternative(tc)));
+    // From the hand: either cost.
+    let h = hand(&mut g, 0, "Timeline Culler");
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::CastAlternative(h)), "1 life");
+    assert!(legal.contains(&Action::Cast(h)));
+}
+
+/// Through the opponent's turn to player 0's next upkeep decision.
+fn to_my_upkeep_decision(g: &mut Game) {
+    while !matches!(g.pending, Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ if !g.legal_actions().contains(&Action::PassPriority) => g.legal_actions()[0], // cleanup discard
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+    assert_eq!((g.active, g.step), (0, Step::Upkeep));
+}
+
+#[test]
+fn herald_of_leshrac_takes_a_land_per_age_counter_and_gives_them_back_when_it_leaves() {
+    let mut g = table();
+    let h = put(&mut g, 0, "Herald of Leshrac");
+    assert!(g.keywords(h).has(Keywords::FLYING));
+    assert_eq!((g.power(h), g.toughness(h)), (2, 4));
+    to_my_upkeep_decision(&mut g);
+    let theirs: Vec<ObjId> = g.permanents(1).filter(|&x| g.types_of(x).land).collect();
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(theirs[0])) && legal.contains(&Action::No));
+    let mine = g.permanents(0).find(|&x| g.types_of(x).land).expect("a land");
+    assert!(
+        !legal.contains(&Action::Pick(mine)),
+        "only a land you don't control"
+    );
+    act(&mut g, Action::Pick(theirs[0]));
+    assert_eq!(g.obj(theirs[0]).controller, 0, "for good");
+    assert_eq!(
+        (g.power(h), g.toughness(h)),
+        (3, 5),
+        "a land you control but don't own"
+    );
+    // It leaves: each land goes back to its owner.
+    g.move_card(h, Zone::Graveyard);
+    act(&mut g, Action::PassPriority); // the trigger goes on the stack
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(theirs[0]).controller, 1);
+}
+
+#[test]
+fn herald_of_leshrac_is_sacrificed_when_not_paid() {
+    let mut g = table();
+    let h = put(&mut g, 0, "Herald of Leshrac");
+    to_my_upkeep_decision(&mut g);
+    act(&mut g, Action::No);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(h).zone, Zone::Graveyard);
+}
+
+#[test]
+fn gemstone_caverns_taps_for_colorless_or_any_color_with_a_luck_counter() {
+    let mut g = table();
+    let gc = put(&mut g, 0, "Gemstone Caverns");
+    assert!(g.def_of(gc).begins_game_with_luck_counter);
+    assert_eq!(makes(&g, gc), ([false; 5], true), "{{C}}");
+    g.objects[gc.0 as usize].kind_counters = 1; // a luck counter
+    assert_eq!(makes(&g, gc), ([true; 5], false), "any color instead");
+}
+
+const RAL: &str = "Ral, Monsoon Mage // Ral, Leyline Prodigy";
+
+/// Taps every land of player 0's but `keep` Swamps.
+fn tap_all_but_swamps(g: &mut Game, keep: usize) {
+    let mut kept = 0;
+    for l in g.permanents(0).collect::<Vec<_>>() {
+        if g.types_of(l).land {
+            if g.def_of(l).name == "Swamp" && kept < keep {
+                kept += 1;
+            } else {
+                g.objects[l.0 as usize].tapped = true;
+            }
+        }
+    }
+}
+
+#[test]
+fn ral_monsoon_mage_discounts_and_flips_into_ral_leyline_prodigy() {
+    let mut g = table();
+    let ral = put(&mut g, 0, RAL);
+    tap_all_but_swamps(&mut g, 1);
+    let nw = hand(&mut g, 0, "Night's Whisper");
+    assert!(
+        g.legal_actions().contains(&Action::Cast(nw)),
+        "{{1}}{{B}} for {{B}}"
+    );
+    // Cast instants and sorceries until a flip is won (each lost flip deals Ral's 1 damage).
+    let mut transformed = false;
+    for _ in 0..30 {
+        for l in g.permanents(0).collect::<Vec<_>>() {
+            g.objects[l.0 as usize].tapped = false;
+        }
+        let nw = hand(&mut g, 0, "Night's Whisper");
+        let life = g.players[0].life;
+        act(&mut g, Action::Cast(nw));
+        let mut asked = false;
+        while !g.items.is_empty() || matches!(g.pending, Pending::Decide(_)) {
+            if matches!(g.pending, Pending::Decide(_)) {
+                asked = true;
+                act(&mut g, Action::Yes);
+            } else {
+                act(&mut g, Action::PassPriority);
+            }
+        }
+        if asked {
+            transformed = true;
+            break;
+        }
+        assert_eq!(
+            g.players[0].life,
+            life - 2 - 1,
+            "Night's Whisper's 2, the lost flip's 1"
+        );
+    }
+    assert!(transformed, "a won flip in 30");
+    let ral = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Ral, Leyline Prodigy")
+        .unwrap_or(ral);
+    assert_eq!(g.def_of(ral).name, "Ral, Leyline Prodigy");
+    assert!(
+        g.obj(ral).loyalty > 2,
+        "an additional loyalty counter per instant and sorcery"
+    );
+}
+
+#[test]
+fn ral_leyline_prodigy_minus_two_divides_damage_and_draws_with_a_blue_permanent() {
+    let mut g = table();
+    let ral = put(&mut g, 0, RAL);
+    g.objects[ral.0 as usize].transformed = true;
+    g.objects[ral.0 as usize].loyalty = 8;
+    assert_eq!(g.def_of(ral).name, "Ral, Leyline Prodigy");
+    let hand_before = g.players[0].hand.len();
+    let life = g.players[1].life;
+    act(&mut g, Action::Loyalty(ral, 1));
+    act(&mut g, Action::Target(Target::Player(1)));
+    act(&mut g, Action::No);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, life - 2, "both to one target");
+    assert_eq!(
+        g.players[0].hand.len(),
+        hand_before,
+        "Ral is his own blue permanent: no draw"
+    );
+}
+
+#[test]
+fn ral_leyline_prodigy_minus_eight_casts_exiled_instants_and_sorceries_free() {
+    let mut g = table();
+    let ral = put(&mut g, 0, RAL);
+    g.objects[ral.0 as usize].transformed = true;
+    g.objects[ral.0 as usize].loyalty = 8;
+    for _ in 0..8 {
+        g.add_card(0, cid("Night's Whisper"), Zone::Library);
+    }
+    act(&mut g, Action::Loyalty(ral, 2));
+    resolve_all(&mut g, &[]);
+    let exiled: Vec<ObjId> = g.exile.iter().copied().filter(|&c| g.obj(c).owner == 0).collect();
+    assert_eq!(exiled.len(), 8);
+    for l in g.permanents(0).collect::<Vec<_>>() {
+        if g.types_of(l).land {
+            g.objects[l.0 as usize].tapped = true;
+        }
+    }
+    assert!(
+        g.legal_actions().contains(&Action::Cast(exiled[0])),
+        "free, from exile, this turn"
+    );
+}
+
+/// Taps every land of player 0's except `keep`.
+fn tap_lands_except(g: &mut Game, keep: &[ObjId]) {
+    for l in g.permanents(0).collect::<Vec<_>>() {
+        if g.types_of(l).land && !keep.contains(&l) {
+            g.objects[l.0 as usize].tapped = true;
+        }
+    }
+}
+
+#[test]
+fn urza_s_incubator_discounts_creature_spells_of_the_chosen_type() {
+    let mut g = table();
+    let inc = put(&mut g, 0, "Urza's Incubator");
+    g.objects[inc.0 as usize].chosen_type = Some("Shaman".to_string());
+    let forests: Vec<ObjId> = g
+        .permanents(0)
+        .filter(|&x| g.def_of(x).name == "Forest")
+        .take(2)
+        .collect();
+    tap_lands_except(&mut g, &forests);
+    let witness = hand(&mut g, 0, "Eternal Witness");
+    assert!(
+        g.legal_actions().contains(&Action::Cast(witness)),
+        "{{1}}{{G}}{{G}} less {{2}}: {{G}}{{G}}"
+    );
+    g.objects[inc.0 as usize].chosen_type = Some("Elf".to_string());
+    assert!(!g.legal_actions().contains(&Action::Cast(witness)), "not an Elf");
+}
+
+#[test]
+fn haven_of_the_spirit_dragon_colors_only_dragon_creature_spells_and_returns_a_dragon() {
+    let mut g = table();
+    let haven = put(&mut g, 0, "Haven of the Spirit Dragon");
+    let plains: Vec<ObjId> = g
+        .permanents(0)
+        .filter(|&x| g.def_of(x).name == "Plains")
+        .take(2)
+        .collect();
+    tap_lands_except(&mut g, &[haven, plains[0], plains[1]]);
+    let gadrak = hand(&mut g, 0, "Gadrak, the Crown-Scourge");
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    let legal = g.legal_actions();
+    assert!(
+        legal.contains(&Action::Cast(gadrak)),
+        "{{R}} from the Haven for a Dragon creature"
+    );
+    assert!(!legal.contains(&Action::Cast(bolt)), "not for a non-Dragon spell");
+    // {2}, {T}, sacrifice: a Dragon card back to hand.
+    let mut g = table();
+    let haven = put(&mut g, 0, "Haven of the Spirit Dragon");
+    let dead = g.add_card(0, cid("Gadrak, the Crown-Scourge"), Zone::Graveyard);
+    let elf = g.add_card(0, cid("Llanowar Elves"), Zone::Graveyard);
+    act(&mut g, Action::Activate(haven, 0));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(elf))),
+        "not a Dragon"
+    );
+    act(&mut g, Action::Target(obj(dead)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(dead).zone, Zone::Hand);
+    assert_eq!(g.obj(haven).zone, Zone::Graveyard, "sacrificed");
+}
+
+#[test]
+fn crypt_of_agadeem_enters_tapped_and_adds_black_per_black_creature_card() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Crypt of Agadeem");
+    act(&mut g, Action::PlayLand(c));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(c).tapped);
+    let mut g = table();
+    let crypt = put(&mut g, 0, "Crypt of Agadeem");
+    g.add_card(0, cid("Blood Artist"), Zone::Graveyard);
+    g.add_card(0, cid("Viscera Seer"), Zone::Graveyard);
+    g.add_card(0, cid("Llanowar Elves"), Zone::Graveyard);
+    act(&mut g, Action::Activate(crypt, 0));
+    resolve_all(&mut g, &[]);
+    let black = g.players[0]
+        .pool
+        .iter()
+        .filter(|m| m.colors == [false, false, true, false, false])
+        .count();
+    assert_eq!(black, 2, "{:?}", g.players[0].pool);
+}
+
+#[test]
+fn nesting_grounds_moves_a_counter_and_asks_the_kind() {
+    let mut g = table();
+    let ng = put(&mut g, 0, "Nesting Grounds");
+    let a = put(&mut g, 0, "Llanowar Elves");
+    let b = put(&mut g, 1, "Llanowar Elves");
+    set_counters(&mut g, a, 2);
+    act(&mut g, Action::Activate(ng, 0));
+    act(&mut g, Action::Target(obj(a)));
+    act(&mut g, Action::Target(obj(b)));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.obj(a).counters, g.obj(b).counters), (1, 1));
+    // Two kinds: the player picks (here a stun counter).
+    let mut g = table();
+    let ng = put(&mut g, 0, "Nesting Grounds");
+    let a = put(&mut g, 0, "Llanowar Elves");
+    let b = put(&mut g, 1, "Llanowar Elves");
+    set_counters(&mut g, a, 1);
+    g.objects[a.0 as usize].stun = 1;
+    act(&mut g, Action::Activate(ng, 0));
+    act(&mut g, Action::Target(obj(a)));
+    act(&mut g, Action::Target(obj(b)));
+    resolve_all(&mut g, &[Action::Mode(2)]);
+    assert_eq!((g.obj(a).stun, g.obj(b).stun), (0, 1));
+    assert_eq!(g.obj(a).counters, 1);
+}
+
+#[test]
+fn inkmoth_nexus_becomes_a_flying_infect_artifact_creature() {
+    let mut g = table();
+    let ink = put(&mut g, 0, "Inkmoth Nexus");
+    act(&mut g, Action::Activate(ink, 0));
+    resolve_all(&mut g, &[]);
+    let t = g.types_of(ink);
+    assert!(t.creature && t.artifact && t.land);
+    assert_eq!((g.power(ink), g.toughness(ink)), (1, 1));
+    assert!(g.keywords(ink).has(Keywords::FLYING));
+    assert!(g.has_subtype(ink, "Blinkmoth") && g.has_subtype(ink, "Phyrexian"));
+    assert!(
+        g.infect_until_eot.iter().any(|e| e.0 == ink),
+        "infect until end of turn"
+    );
+}
+
+#[test]
+fn hushwood_verge_and_tainted_field_make_their_conditional_colors() {
+    let mut g = table();
+    let hv = put(&mut g, 0, "Hushwood Verge");
+    let tf = put(&mut g, 0, "Tainted Field");
+    let (c, _) = makes(&g, hv);
+    assert!(c[4] && c[0], "{{G}}, and {{W}} with a Forest or Plains");
+    let (c, colorless) = makes(&g, tf);
+    assert!(
+        colorless && c[0] && c[2],
+        "{{C}}, and {{W}} or {{B}} with a Swamp"
+    );
+}
+
+#[test]
+fn gaeas_cradle_adds_green_per_creature() {
+    let mut g = table();
+    let cradle = put(&mut g, 0, "Gaea's Cradle");
+    for _ in 0..3 {
+        put(&mut g, 0, "Llanowar Elves");
+    }
+    tap_lands_except(&mut g, &[cradle]);
+    for e in g
+        .permanents(0)
+        .filter(|&x| g.types_of(x).creature)
+        .collect::<Vec<_>>()
+    {
+        g.objects[e.0 as usize].tapped = true; // no Elf mana
+    }
+    let witness = hand(&mut g, 0, "Eternal Witness");
+    assert!(
+        g.legal_actions().contains(&Action::Cast(witness)),
+        "three creatures: {{G}}{{G}}{{G}}"
+    );
+}
+
+#[test]
+fn thalia_taxes_noncreature_spells_for_everyone() {
+    let mut g = table();
+    put(&mut g, 1, "Thalia, Guardian of Thraben");
+    tap_all_but_swamps(&mut g, 2);
+    let nw = hand(&mut g, 0, "Night's Whisper");
+    let seer = hand(&mut g, 0, "Viscera Seer");
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::Cast(nw)), "{{1}}{{B}} plus {{1}}");
+    assert!(
+        legal.contains(&Action::Cast(seer)),
+        "a creature spell isn't taxed"
+    );
+    let s = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Swamp" && g.obj(x).tapped)
+        .expect("a Swamp");
+    g.objects[s.0 as usize].tapped = false;
+    assert!(g.legal_actions().contains(&Action::Cast(nw)), "three mana");
+}
+
+#[test]
+fn oakhame_adversary_costs_two_less_against_a_green_permanent() {
+    let mut g = table();
+    let forests: Vec<ObjId> = g
+        .permanents(0)
+        .filter(|&x| g.def_of(x).name == "Forest")
+        .take(2)
+        .collect();
+    tap_lands_except(&mut g, &forests);
+    let oa = hand(&mut g, 0, "Oakhame Adversary");
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(oa)),
+        "{{3}}{{G}} with two lands"
+    );
+    put(&mut g, 1, "Llanowar Elves");
+    assert!(
+        g.legal_actions().contains(&Action::Cast(oa)),
+        "{{1}}{{G}}: an opponent's green permanent"
+    );
+}
+
+#[test]
+fn nogi_discounts_dragon_spells() {
+    let mut g = table();
+    put(&mut g, 0, "Nogi, Draco-Zealot");
+    let mountains: Vec<ObjId> = g
+        .permanents(0)
+        .filter(|&x| g.def_of(x).name == "Mountain")
+        .take(2)
+        .collect();
+    tap_lands_except(&mut g, &mountains);
+    let gadrak = hand(&mut g, 0, "Gadrak, the Crown-Scourge");
+    assert!(
+        g.legal_actions().contains(&Action::Cast(gadrak)),
+        "{{2}}{{R}} less {{1}}"
+    );
+}
+
+#[test]
+fn klauth_adds_spell_only_mana_that_lasts_the_turn() {
+    let mut g = table();
+    let k = put(&mut g, 0, "Klauth, Unrivaled Ancient");
+    g.objects[k.0 as usize].since_turn = 0;
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(k));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[]);
+    let x = g.power(k) as u32;
+    assert_eq!(g.spell_mana_eot[0], (x, g.turn), "X = the attackers' total power");
+    // Still there after combat, and it pays for a spell.
+    while g.step != Step::Main2 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.spell_mana_eot[0].0, x);
+    tap_lands_except(&mut g, &[]);
+    let nw = hand(&mut g, 0, "Night's Whisper");
+    assert!(g.legal_actions().contains(&Action::Cast(nw)));
+    act(&mut g, Action::Cast(nw));
+    assert_eq!(g.spell_mana_eot[0].0, x - 2);
+}
+
+#[test]
+fn dragon_broodmother_makes_a_dragon_that_devours_at_each_upkeep() {
+    let mut g = table();
+    put(&mut g, 0, "Dragon Broodmother");
+    let elf = put(&mut g, 0, "Llanowar Elves");
+    let seer = put(&mut g, 0, "Viscera Seer");
+    // Through the opponent's upkeep: its trigger makes player 0 a Dragon, and the devour asks.
+    while !matches!(g.pending, Pending::Decide(0)) {
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ if !g.legal_actions().contains(&Action::PassPriority) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    let dragon = tokens(&g, 0, "Dragon");
+    assert_eq!(dragon.len(), 1);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(elf)) && legal.contains(&Action::No));
+    act(&mut g, Action::Pick(elf));
+    act(&mut g, Action::Pick(seer));
+    assert_eq!(g.obj(elf).zone, Zone::Graveyard);
+    assert_eq!(g.obj(seer).zone, Zone::Graveyard);
+    assert_eq!(g.obj(dragon[0]).counters, 4, "devour 2: two creatures");
+    assert!(g.keywords(dragon[0]).has(Keywords::FLYING));
+}
+
+#[test]
+fn cradle_clearcutter_casts_as_a_prototype_and_taps_for_its_power() {
+    let mut g = table();
+    let forests: Vec<ObjId> = g
+        .permanents(0)
+        .filter(|&x| g.def_of(x).name == "Forest")
+        .take(3)
+        .collect();
+    tap_lands_except(&mut g, &forests);
+    let cc = hand(&mut g, 0, "Cradle Clearcutter");
+    let legal = g.legal_actions();
+    assert!(
+        legal.contains(&Action::CastAlternative(cc)),
+        "{{2}}{{G}} prototype"
+    );
+    assert!(!legal.contains(&Action::Cast(cc)), "{{6}}: three lands");
+    act(&mut g, Action::CastAlternative(cc));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(cc).zone, Zone::Battlefield);
+    assert_eq!((g.power(cc), g.toughness(cc)), (1, 3));
+    assert!(g.colors_of(cc)[4], "green");
+    // Full size: 3/6, colorless; it taps for {G} per power.
+    let mut g = table();
+    let cc = put(&mut g, 0, "Cradle Clearcutter");
+    g.objects[cc.0 as usize].since_turn = 0;
+    assert_eq!((g.power(cc), g.toughness(cc)), (3, 6));
+    assert!(!g.colors_of(cc).iter().any(|&k| k));
+    act(&mut g, Action::Activate(cc, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].pool.len(), 3);
 }

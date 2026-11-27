@@ -1036,7 +1036,7 @@ pub fn script(name: &str) -> Option<Script> {
                 d.mana_ext.enters_tapped_unless_legendary_creature = true;
                 d.mana = Some(ManaSource::of(&[Color::Green]));
                 let n = activated(d, "{1}{G}", true, vec![], vec![Effect::CreateToken { who: Who::You, def: t.food, n: 1 }]);
-                d.activated[n].tap_untapped_creature = true;
+                d.activated[n].tap_named_permanent = Some(YOUR_CREATURE);
             },
         ),
         // ---- d1 core, batch 9: improvise, multikicker, forage, restricted and conditional mana ----
@@ -1909,7 +1909,7 @@ pub fn script(name: &str) -> Option<Script> {
         "Lion's Eye Diamond" => s(
             &["Discard your hand, Sacrifice this artifact: Add three mana of any one color. Activate only as an instant."],
             |d, _| {
-                // On the stack, like Phyrexian Altar.
+                // A mana ability (CR 605.1a): no stack, the color asked as it resolves.
                 let n = activated(d, "", false, vec![], vec![Effect::AddManaOneColor(3)]);
                 d.activated[n].sacrifice_self = true;
                 d.activated[n].discard_hand = true;
@@ -2176,8 +2176,205 @@ pub fn script(name: &str) -> Option<Script> {
                 ..Filter::ANY
             };
             let n = activated(d, "", false, vec![basic], vec![Effect::UntapTarget(0)]);
-            d.activated[n].tap_named_creature = true;
+            d.activated[n].tap_named_permanent = Some(YOUR_CREATURE);
         }),
+        "Gravecrawler" => s(
+            &[
+                "This creature can't block.",
+                "You may cast this card from your graveyard as long as you control a Zombie.",
+            ],
+            |d, _| {
+                d.cant_block = true;
+                d.mana_ext.cast_from_graveyard_if_control = Some("Zombie");
+            },
+        ),
+        "Timeline Culler" => s(
+            &[
+                "You may cast this card from your graveyard using its warp ability.",
+                "Warp—{B}, Pay 2 life.",
+            ],
+            |d, _| {
+                d.warp = ManaCost::parse("{B}");
+                d.mana_ext.warp_from_graveyard = true;
+                d.mana_ext.warp_life = 2;
+            },
+        ),
+        "Herald of Leshrac" => s(
+            &[
+                "Cumulative upkeep—Gain control of a land you don't control.",
+                "This creature gets +1/+1 for each land you control but don't own.",
+                "When this creature leaves the battlefield, each player gains control of each land they own that you control.",
+            ],
+            |d, _| {
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::CumulativeUpkeepGainLand]);
+                d.mana_ext.pt_per_land_controlled_not_owned = true;
+                on(d, When::LeavesBattlefield, vec![], vec![Effect::OwnersRegainLandsYouControl]);
+            },
+        ),
+        "Gemstone Caverns" => s(
+            &[
+                "If this card is in your opening hand and you're not the starting player, you may begin the game with Gemstone Caverns on the battlefield with a luck counter on it. If you do, exile a card from your hand.",
+                "{T}: Add {C}. If Gemstone Caverns has a luck counter on it, instead add one mana of any color.",
+            ],
+            |d, _| {
+                d.begins_game_with_luck_counter = true; // lane B's pregame action
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                d.mana_ext.any_color_with_kind_counter = true;
+            },
+        ),
+        "Ral, Monsoon Mage // Ral, Leyline Prodigy" => s(
+            &[
+                "Instant and sorcery spells you cast cost {1} less to cast.",
+                "Whenever you cast an instant or sorcery spell during your turn, flip a coin. If you lose the flip, Ral deals 1 damage to you. If you win the flip, you may exile Ral. If you do, return him to the battlefield transformed under his owner's control.",
+                "Back: Ral enters with an additional loyalty counter on him for each instant and sorcery spell you've cast this turn.",
+                "Back: +1: Until your next turn, instant and sorcery spells you cast cost {1} less to cast.",
+                "Back: −2: Ral deals 2 damage divided as you choose among one or two targets. Draw a card if you control a blue permanent other than Ral.",
+                "Back: −8: Exile the top eight cards of your library. You may cast instant and sorcery spells from among them this turn without paying their mana costs.",
+            ],
+            |d, _| {
+                d.mana_ext.instant_sorcery_discount = 1;
+                let mut flip = Ability::new(
+                    vec![],
+                    vec![
+                        Effect::Subsystem(bolt_core::SubsystemEffect::FlipCoinLoseDamageYouElseContinue(1)),
+                        Effect::MayContinue,
+                        Effect::ExileSelfReturn { transformed: true },
+                    ],
+                );
+                flip.condition = Some(Condition::YourTurn);
+                d.triggers.push(Trigger { when: When::YouCastInstantOrSorcery, ability: flip });
+                let b = d.back.as_mut().expect("Ral, Leyline Prodigy");
+                b.loyalty_plus_instants_sorceries_cast = true; // lane B's 99c53b6
+                loyalty(b, 1, Ability::new(vec![], vec![Effect::InstantSorceryDiscountUntilYourNextTurn(1)]));
+                let mut fire = Ability::new(
+                    vec![Filter::ANY, Filter::ANY],
+                    vec![Effect::DividedDamage, Effect::DrawIfControlAnotherOfColor(Color::Blue)],
+                );
+                fire.min_targets = Some(1);
+                fire.divide = 2;
+                loyalty(b, -2, fire);
+                loyalty(b, -8, Ability::new(vec![], vec![Effect::ExileTopCastInstantsSorceriesFreeThisTurn(8)]));
+            },
+        ),
+        "Urza's Incubator" => s(
+            &["As this artifact enters, choose a creature type.", "Creature spells of the chosen type cost {2} less to cast."],
+            |d, _| {
+                d.choose_creature_type = true;
+                d.mana_ext.chosen_type_creature_discount = 2;
+            },
+        ),
+        "Haven of the Spirit Dragon" => s(
+            &[
+                "{T}: Add {C}.",
+                "{T}: Add one mana of any color. Spend this mana only to cast a Dragon creature spell.",
+                "{2}, {T}, Sacrifice this land: Return target Dragon creature card or Ugin planeswalker card from your graveyard to your hand.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                d.mana_ext.any_color_for_subtype_creature = Some("Dragon");
+                // A Dragon or Ugin card (a Dragon creature card or an Ugin planeswalker card in print).
+                let card = Filter { subtypes_any: &["Dragon", "Ugin"], ..graveyard_cards(false, Controller::You) };
+                let n = activated(d, "{2}", true, vec![card], vec![Effect::Bounce(0)]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Crypt of Agadeem" => s(
+            &["This land enters tapped.", "{T}: Add {B}.", "{2}, {T}: Add {B} for each black creature card in your graveyard."],
+            |d, _| {
+                d.enters_tapped = true;
+                d.mana = Some(ManaSource::of(&[Color::Black]));
+                let count = ManaCount::CreatureCardsOfColorInYourGraveyard(Color::Black as u8);
+                activated(d, "{2}", true, vec![], vec![Effect::AddManaPerCount { color: Color::Black, count }]);
+            },
+        ),
+        "Nesting Grounds" => s(
+            &[
+                "{T}: Add {C}.",
+                "{1}, {T}: Move a counter from target permanent you control onto a second target permanent. Activate only as a sorcery.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                let permanent = Filter { players: false, creatures: false, planeswalkers: false, any_permanent: true, ..Filter::ANY };
+                let yours = Filter { controller: Controller::You, ..permanent };
+                let n = activated(d, "{1}", true, vec![yours, permanent], vec![Effect::MoveCounterBetweenTargets { from: 0, to: 1 }]);
+                d.activated[n].sorcery = true;
+            },
+        ),
+        "Inkmoth Nexus" => s(
+            &[
+                "{T}: Add {C}.",
+                "{1}: This land becomes a 1/1 Phyrexian Blinkmoth artifact creature with flying and infect until end of turn. It's still a land.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                let animate = Effect::BecomeCreatureUntilEotWith {
+                    power: 1,
+                    toughness: 1,
+                    subtypes: &["Phyrexian", "Blinkmoth"],
+                    keywords: Keywords::FLYING,
+                    colors: None,
+                    artifact: true,
+                    all_creature_types: false,
+                };
+                activated(d, "{1}", false, vec![], vec![animate, Effect::SourceGainsInfectUntilEot]);
+            },
+        ),
+        "Hushwood Verge" => s(&["{T}: Add {G}.", "{T}: Add {W}. Activate only if you control a Forest or a Plains."], |d, _| {
+            d.mana = Some(ManaSource::of(&[Color::Green]));
+            d.extra_color_if_you_control = Some((Color::White, ["Forest", "Plains"]));
+        }),
+        "Tainted Field" => s(&["{T}: Add {C}.", "{T}: Add {W} or {B}. Activate only if you control a Swamp."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::of(&[Color::White, Color::Black]) });
+            d.colored_mana_only_if_you_control = Some("Swamp");
+        }),
+        "Gaea's Cradle" => s(&["{T}: Add {G} for each creature you control."], |d, _| {
+            d.mana = Some(ManaSource::of(&[Color::Green]));
+            d.mana_per_creature = true;
+        }),
+        "Thalia, Guardian of Thraben" => s(&["Noncreature spells cost {1} more to cast."], |d, _| {
+            d.mana_ext.noncreature_spell_tax = 1;
+        }),
+        "Oakhame Adversary" => s(
+            &[
+                "This spell costs {2} less to cast if an opponent controls a green permanent.",
+                "Whenever this creature deals combat damage to a player, draw a card.",
+            ],
+            |d, _| {
+                d.reduction = Some(Reduction::IfOpponentControlsColor(Color::Green as u8, 2));
+                on(d, When::DealsCombatDamageToPlayer, vec![], vec![draw(1)]);
+            },
+        ),
+        "Nogi, Draco-Zealot" => s(
+            &[
+                "Dragon spells you cast cost {1} less to cast.",
+                "Whenever Nogi attacks, if you control three or more Dragons, until end of turn, Nogi becomes a Dragon with base power and toughness 5/5 and gains flying.",
+            ],
+            |d, _| {
+                d.mana_ext.subtype_spell_discount = Some(("Dragon", 1));
+                let become_ = Effect::BecomeCreatureUntilEot { power: 5, toughness: 5, subtype: "Dragon", keywords: Keywords::FLYING };
+                conditional(d, When::Attacks, Condition::ControlSubtypeAtLeast("Dragon", 3), vec![], vec![become_]);
+            },
+        ),
+        "Klauth, Unrivaled Ancient" => s(
+            &["Whenever Klauth attacks, add X mana in any combination of colors, where X is the total power of attacking creatures. Spend this mana only to cast spells. Until end of turn, you don't lose this mana as steps and phases end."],
+            |d, _| {
+                on(d, When::Attacks, vec![], vec![Effect::AddSpellManaUntilEotPerAttackingPower]);
+            },
+        ),
+        "Dragon Broodmother" => s(
+            &["At the beginning of each upkeep, create a 1/1 red and green Dragon creature token with flying and devour 2."],
+            |d, t| {
+                on(d, When::Upkeep { your_turn_only: false }, vec![], vec![Effect::CreateToken { who: Who::You, def: t.dragon_devour, n: 1 }]);
+            },
+        ),
+        "Cradle Clearcutter" => s(
+            &["Prototype {2}{G} — 1/3", "{T}: Add an amount of {G} equal to this creature's power."],
+            |d, _| {
+                let cost = ManaCost::parse("{2}{G}").expect("cost");
+                d.mana_ext.prototype = Some((cost, 1, 3, [false, false, false, false, true]));
+                activated(d, "", true, vec![], vec![Effect::AddManaSourcePower(Color::Green)]);
+            },
+        ),
         "Castle Garenbrig" => s(
             &[
                 "This land enters tapped unless you control a Forest.",
@@ -2467,4 +2664,23 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Flitterwing Nuisance",
     "Forbidden Orchard",
     "Three Tree City",
+    "Gravecrawler",
+    "Timeline Culler",
+    "Herald of Leshrac",
+    "Gemstone Caverns",
+    "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+    "Urza's Incubator",
+    "Haven of the Spirit Dragon",
+    "Crypt of Agadeem",
+    "Nesting Grounds",
+    "Inkmoth Nexus",
+    "Hushwood Verge",
+    "Tainted Field",
+    "Gaea's Cradle",
+    "Thalia, Guardian of Thraben",
+    "Oakhame Adversary",
+    "Nogi, Draco-Zealot",
+    "Klauth, Unrivaled Ancient",
+    "Dragon Broodmother",
+    "Cradle Clearcutter",
 ];

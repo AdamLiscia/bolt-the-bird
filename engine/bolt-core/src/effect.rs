@@ -3040,6 +3040,11 @@ pub enum Effect {
     SacrificeTargetsRevealTopPermanent(u8),
     /// Put the source onto the battlefield from the command zone (Derevi); it isn't cast.
     PutSourceOntoBattlefieldFromCommand,
+    /// Gluttonous Hellkite's cast trigger: "each player sacrifices X creatures" (X of the spell
+    /// that is the source, from its cast snapshot), starting with the active player, as
+    /// `Decision::EachSacrificesXCreatures`; the spell then "enters with `n` +1/+1 counters on it
+    /// for each creature sacrificed this way" (`Game::sacrifice_enter_counters`).
+    EachPlayerSacrificesXCreaturesCountersPer(i32),
     /// "Until your next turn, instant and sorcery spells you cast cost {N} less to cast." (Ral,
     /// Leyline Prodigy's +1: 1), kept in `Game::instant_sorcery_discount_until`.
     InstantSorceryDiscountUntilYourNextTurn(u8),
@@ -3091,13 +3096,149 @@ pub enum Effect {
     SacrificeXLandsDrawEach,
     /// "You may play X additional lands this turn." (Nahiri's Lithoforming; X the spell's X)
     ExtraLandsThisTurnX,
-    /// Gluttonous Hellkite's cast trigger: "each player sacrifices X creatures" (X of the spell
-    /// that is the source, from its cast snapshot), starting with the active player, as
-    /// `Decision::EachSacrificesXCreatures`; the spell then "enters with `n` +1/+1 counters on it
-    /// for each creature sacrificed this way" (`Game::sacrifice_enter_counters`).
-    EachPlayerSacrificesXCreaturesCountersPer(i32),
     /// "Exile all nonland permanents that aren't legendary." (Urza's Ruinous Blast)
     ExileAllNonlandNonlegendary,
+    /// "For each token you control, create a `def` token" (Cadira, Caller of the Small), counted
+    /// as it resolves.
+    CreateTokensPerTokenYouControl {
+        def: usize,
+    },
+    /// Create a tapped `def` token for each artifact the opponent controls (Smaug, Wicked Worm's
+    /// Treasures; one opponent).
+    CreateTappedTokensPerOpponentArtifact {
+        def: usize,
+    },
+    /// The controller of the permanent in the item's `extra` may tap it
+    /// (`Decision::MayTapElseOpponentToken`); if they don't, you create a `def` token
+    /// (Charismatic Conqueror).
+    ExtrasControllerMayTapElseToken {
+        def: usize,
+    },
+    /// "You may pay X life" with X the trigger's amount (`Decision::MayPayLife`); the rest only if
+    /// paid (G'raha Tia).
+    MayPayLifeAmount,
+    /// "Do this only once each turn": stop if the source's ability has done it this turn
+    /// (`Game::done_once_turn`), checked before the choice.
+    StopIfDoneThisTurn,
+    /// Records that the source's ability did it this turn (after the payment).
+    MarkDoneThisTurn,
+    /// The controller of the creature in the item's `extra` (one that died, a token included) may
+    /// draw a card (`Decision::MayDrawCard`; Fecundity).
+    ExtrasControllerMayDraw,
+    /// Discover N (CR 701.57): exile from the top until a nonland card with mana value N or less; you
+    /// may cast it without paying its mana cost (the free-cast window), or else it goes to your hand;
+    /// the rest go to the bottom in a random order.
+    Discover(u32),
+    /// Discover X, X the source's toughness (last known information if it left: Dinosaur Egg's
+    /// "When this creature dies, you may discover X, where X is its toughness").
+    DiscoverSourceToughness,
+    /// "Each opponent may sacrifice a nontoken creature of their choice. Each opponent who doesn't
+    /// loses `per` life for each instant and sorcery card in your graveyard." (Fandaniel), as
+    /// `Decision::SacrificeNontokenCreatureOrLoseLife`; with no nontoken creature, they just lose it.
+    OpponentMaySacrificeNontokenCreatureElseLose {
+        per: i32,
+    },
+    /// The source deals damage equal to the mana value of the spell in the item's `extra` (X
+    /// included while it's on the stack) to the target in `slot` (Passionate Archaeologist).
+    DamageEqualExtrasManaValue(u8),
+    /// "Create a [token] for each creature you control." (The Battle of Bywater: Food)
+    CreateTokensPerCreatureYouControl {
+        def: usize,
+    },
+    /// Reckless Endeavor: "Roll two d`sides` and choose one result. [This] deals damage equal to
+    /// that result to each creature. Then create a number of [tokens] equal to the other result."
+    /// The choice is `Decision::ChooseDamageRoll` (not asked when the two results are equal).
+    RollTwoDiceDamageEachCreatureAndTokens {
+        sides: u32,
+        def: usize,
+    },
+    /// "[Subtype]s you control get +P/+T until end of turn." (Lathliss, Dragon Queen: Dragons +1/+0)
+    PumpYourSubtypeEot {
+        sub: &'static str,
+        power: i32,
+        toughness: i32,
+    },
+    /// Stop here unless an opponent has the most life or is tied for it (dethrone, CR 702.105; one
+    /// opponent: their life is at least yours).
+    StopUnlessOpponentHasMostLife,
+    /// "You may put a permanent card with mana value less than or equal to that damage from your
+    /// hand onto the battlefield" (Broodcaller Scourge): the limit is the item's `amount`, and
+    /// nothing happens when it's 0 or less. As `Decision::PermanentFromHandMvAtMost`.
+    MayPutPermanentFromHandMvAtMostAmount,
+    /// Draw `n` cards if an opponent has cast a spell of one of `colors` this turn (Veil of Summer:
+    /// blue or black), from `Game::color_cast_turn`.
+    DrawIfOpponentCastColorThisTurn {
+        colors: [bool; 5],
+        n: u8,
+    },
+    /// "Spells you control can't be countered this turn." (Veil of Summer): spells already on the
+    /// stack too (`Game::spells_uncounterable_turn`).
+    YourSpellsUncounterableEot,
+    /// "You and permanents you control gain hexproof from [colors] until end of turn." (Veil of
+    /// Summer): the permanents are the ones you control as it resolves (CR 611.2c).
+    YouAndYourPermanentsHexproofFromColorsEot([bool; 5]),
+    /// "Until end of turn, each [sub] creature you control has base power and toughness P/T and
+    /// becomes [subtypes] in addition to its other creature types." (Allosaurus Shepherd: Elves,
+    /// 5/5 Dinosaurs)
+    YourSubtypeBecomeBaseEot {
+        sub: &'static str,
+        power: i32,
+        toughness: i32,
+        subtypes: &'static [&'static str],
+    },
+    /// "Search your library and/or graveyard for a creature card with mana value X or less and put
+    /// it onto the battlefield. If you search your library this way, shuffle." (Finale of
+    /// Devastation): one `Decision::LookPick` over both zones, after the library is shuffled.
+    CreatureFromLibraryOrGraveyardMvAtMostX,
+    /// Creatures `who` controls get +X/+X until end of turn, X the spell's X (Finale of Devastation).
+    PumpAllX {
+        who: Who,
+    },
+    /// "Shuffle your library, then exile the top card. Until end of turn, you may play that card
+    /// without paying its mana cost." (Urza, Lord High Artificer)
+    ShuffleExileTopPlayFreeThisTurn,
+    /// The player in target slot `n` sacrifices a creature or planeswalker of their choice (Archon
+    /// of Cruelty), as `Decision::EachSacrificesCreatureOrPlaneswalker` with no next player.
+    TargetPlayerSacrificesCreatureOrPlaneswalker(u8),
+    /// "Each opponent who lost life this turn sacrifices a creature with the greatest power among
+    /// creatures they control." (Papalymo Totolymo): `SacrificeGreatestPower` for those opponents
+    /// (a tie is the sacrificing player's `Decision::SacrificeOneOf`).
+    OpponentsWhoLostLifeSacrificeGreatestPower,
+    /// "Spells you control can't be countered by [colors] spells this turn." (Autumn's Veil: blue
+    /// and black), as `Game::spells_uncounterable_by_colors`: checked against the spell resolving
+    /// the counter.
+    YourSpellsUncounterableByColorsEot([bool; 5]),
+    /// "Creatures you control can't be the targets of [colors] spells this turn." (Autumn's Veil),
+    /// as `Game::creatures_untargetable_by_color_spells`: any creature you control this turn, and
+    /// any player's spells.
+    YourCreaturesUntargetableByColorSpellsEot([bool; 5]),
+    /// "Cumulative upkeep—Gain control of a land you don't control." (Herald of Leshrac): an age
+    /// counter, then `Decision::UpkeepGainLandsOrSacrifice` picks one land you don't control per age
+    /// counter (for good), or `No` sacrifices the source.
+    CumulativeUpkeepGainLand,
+    /// "Each player gains control of each land they own that you control." (Herald of Leshrac,
+    /// leaving the battlefield): "you" is the item's controller.
+    OwnersRegainLandsYouControl,
+    /// "Exile the top `n` cards of your library. You may cast instant and sorcery spells from among
+    /// them this turn without paying their mana costs." (Ral, Leyline Prodigy's -8: 8)
+    ExileTopCastInstantsSorceriesFreeThisTurn(u8),
+    /// "Draw a card if you control a [color] permanent other than [the source]." (Ral, Leyline
+    /// Prodigy's -2: blue)
+    DrawIfControlAnotherOfColor(crate::Color),
+    /// The source gains infect until end of turn (Inkmoth Nexus, as it becomes a creature).
+    SourceGainsInfectUntilEot,
+    /// "Move a counter from target permanent you control onto a second target permanent." (Nesting
+    /// Grounds): one counter from the permanent in `from` onto the one in `to`; with more than one
+    /// kind on it, `Decision::MoveCounterKind` picks which.
+    MoveCounterBetweenTargets {
+        from: u8,
+        to: u8,
+    },
+    /// "Add X mana in any combination of colors, where X is the total power of attacking creatures.
+    /// Spend this mana only to cast spells. Until end of turn, you don't lose this mana as steps
+    /// and phases end." (Klauth, Unrivaled Ancient): held in `Game::spell_mana_eot` as any-color
+    /// mana, its colors fixed as it's spent.
+    AddSpellManaUntilEotPerAttackingPower,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -3109,6 +3250,8 @@ pub enum ManaCount {
     YouControlBasicSubtype(&'static str),
     /// Permanents on the battlefield with this subtype, anyone's ("for each Elf on the battlefield").
     OnBattlefieldSubtype(&'static str),
+    /// Creature cards of this color (WUBRG index) in your graveyard (Crypt of Agadeem: black).
+    CreatureCardsOfColorInYourGraveyard(u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -3173,6 +3316,8 @@ pub enum SearchFor {
     Artifact,
     /// A creature or land card (Archdruid's Charm).
     CreatureOrLand,
+    /// An enchantment card with mana value at most this (Zur the Enchanter: 3).
+    EnchantmentMvAtMost(u32),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -3615,6 +3760,13 @@ pub enum Condition {
     /// A creature is on the battlefield (Lifeline: "if another creature is on the battlefield",
     /// checked after the dying creature has left).
     CreatureOnBattlefield,
+    /// A creature its controller controlled dealt combat damage to a player this turn
+    /// (`Game::combat_damaged_player`; 1v1: the opponent was dealt combat damage; Tymna's X is 1).
+    OpponentDealtCombatDamageThisTurn,
+    /// A player (either) lost at least this much life this turn (Y'shtola, Night's Blessed: four).
+    PlayerLostLifeThisTurnAtLeast(i32),
+    /// You control no permanent with this subtype other than the source (Thopter Assembly).
+    ControlNoOtherSubtype(&'static str),
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -4205,6 +4357,56 @@ pub enum When {
     /// "Whenever a creature dies" (Lifeline): any creature other than the source, with the card that
     /// died in slot 0 when the first target filter is `triggering`.
     AnotherCreatureDiesIt,
+    /// "Whenever an opponent casts a spell, if no mana was spent to cast it" (Boromir, Warden of
+    /// the Tower): checked as it's cast (`Object::mana_spent`), with that spell as the trigger's
+    /// `extra` (`Effect::CounterExtra`).
+    OpponentCastsWithNoManaSpent,
+    /// "Whenever an opponent draws their second card each turn" (Gleaming Splendor).
+    OpponentDrawsSecond,
+    /// "Whenever ... a planeswalker you control dies" (Cruel Celebrant): a noncreature planeswalker
+    /// put into a graveyard from the battlefield (a creature one is `CreatureYouControlDies`'s).
+    PlaneswalkerYouControlDies,
+    /// "At the beginning of each of your postcombat main phases" (Tymna the Weaver).
+    PostcombatMainYourTurn,
+    /// "Whenever one or more tokens you control enter": once per batch of tokens entering before
+    /// the trigger goes on the stack (`Game::fire_token_batch`), with the count as the amount and
+    /// the tokens in `Game::token_enter_batches` (read with `Game::token_batch`).
+    OneOrMoreTokensYouControlEnter,
+    /// "Whenever one or more tokens your opponents control enter" (Kambal, Profiteering Mayor), as
+    /// `OneOrMoreTokensYouControlEnter`; with `once_each_turn`, "This ability triggers only once
+    /// each turn" (`Game::triggered_once_turn`).
+    OneOrMoreTokensOpponentsControlEnter { once_each_turn: bool },
+    /// "Whenever a creature token leaves the battlefield" (Twilight Drover): anyone's.
+    CreatureTokenLeavesBattlefield,
+    /// "Whenever you cast a noncreature spell", with the mana spent to cast it as the amount
+    /// (Uncover the Moon-Letters: "draw X cards, where X is the amount of mana spent").
+    YouCastNoncreatureManaSpent,
+    /// "Whenever you attack with one or more [subtype]" (Hermes, Overseer of Elpis: Birds): once
+    /// as attackers are declared, if any attacker has the subtype.
+    YouAttackWithSubtype(&'static str),
+    /// "Whenever an artifact or creature an opponent controls enters untapped" (Charismatic
+    /// Conqueror), with that permanent as the trigger's `extra`.
+    ArtifactOrCreatureOpponentControlsEntersUntapped,
+    /// "Whenever one or more cards are put into exile from your library and/or your graveyard"
+    /// (Laelia, the Blade Reforged): batched (`Game::fire_batched`), the count as the amount.
+    CardsExiledFromYourLibraryOrGraveyard,
+    /// "Whenever this creature becomes the target of a spell" (Goldspan Dragon): a spell's
+    /// targets (not an ability's), anyone's, as they're chosen.
+    BecomesTargetOfSpell,
+    /// "Whenever you cast a noncreature spell", with that spell's mana value (X included) as the
+    /// amount (G'raha Tia, Scion Reborn: "pay X life, where X is that spell's mana value").
+    YouCastNoncreatureMv,
+    /// "Whenever a creature is put into your graveyard from the battlefield" (Angelic Renewal): a
+    /// creature you own, with the card in slot 0 when the first target filter is `triggering`.
+    CreatureToYourGraveyardFromBattlefieldIt,
+    /// "Whenever a creature deals combat damage to you": that creature in slot 0, the damage as the
+    /// amount (The Cabbage Merchant). Combat damage only; `CreatureDealsDamageToYou` is any damage.
+    CreatureDealsCombatDamageToYou,
+    /// "Whenever an opponent casts a spell with mana value, power, or toughness equal to the chosen
+    /// number" (Talion, the Kindly Lord: `Object::chosen_number`), the spell in `extra`.
+    OpponentCastsChosenNumber,
+    /// "Whenever you cast a spell from exile", the spell in `extra` (Passionate Archaeologist).
+    YouCastSpellFromExile,
 }
 
 #[derive(Clone, Debug, PartialEq)]
