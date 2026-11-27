@@ -2928,6 +2928,9 @@ pub enum Effect {
     /// "Triple the power and toughness of" the creature in `slot` until end of turn (Tifa's Limit
     /// Break): +2X/+2Y.
     TriplePowerToughness(u8),
+    /// The source Case becomes solved (CR 719.3): its "To solve" trigger. Stored as level 2 of
+    /// `Object::class_level` (a Case is never a Class), read by `Condition::CaseSolved`.
+    SolveCase,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -3083,6 +3086,8 @@ pub enum Scope {
     OtherYourColorlessCreatures,
     /// Other tapped creatures you control (Adept Watershaper).
     OtherYourTappedCreatures,
+    /// Creatures you control with a mana ability, as printed (Raggadragga, Goreguts Boss).
+    YourCreaturesWithManaAbility,
 }
 
 /// What a scaled static ability counts.
@@ -3414,6 +3419,19 @@ pub enum Condition {
     /// The source has at least this many kind counters (`Object::kind_counters`; Simic Ascendancy:
     /// twenty growth counters).
     SourceKindCountersAtLeast(i32),
+    /// Its controller has cast at least this many instant and sorcery spells this turn
+    /// (`Game::instants_sorceries_cast`; Case of the Ransacked Lab: four).
+    InstantsSorceriesCastThisTurnAtLeast(u8),
+    /// The source Case is solved (`Effect::SolveCase`): its "Solved" abilities.
+    CaseSolved,
+    /// The source Case isn't solved yet: its "To solve" end-step trigger (CR 719.3).
+    CaseUnsolved,
+    /// Its controller has sacrificed at least this many Clues this turn (`Game::clues_sacrificed`;
+    /// Briarbridge Patrol: three).
+    SacrificedCluesThisTurnAtLeast(u32),
+    /// With `When::YouCast`: at least this much mana was spent to cast that spell
+    /// (`Object::mana_spent`; Raggadragga: seven), checked as it triggers.
+    ManaSpentToCastAtLeast(u32),
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -3970,6 +3988,13 @@ pub enum When {
     /// `Object::chosen_type`, chosen as it entered (`CardDef::choose_creature_type`); the spell in
     /// `extra`.
     YouCastCreatureOfChosenType,
+    /// "Whenever this creature deals damage to one or more creatures" (Briarbridge Patrol): once for
+    /// each combat damage step it deals damage to creatures in, and once for each other damage
+    /// event.
+    DealsDamageToOneOrMoreCreatures,
+    /// "Whenever a creature you control with a mana ability attacks" (Raggadragga): once for each
+    /// such attacker, which is the trigger's `extra` (`Effect::UntapExtra`: "untap it").
+    CreatureYouControlWithManaAbilityAttacks,
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -1760,6 +1760,64 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::YouCastCreatureOfChosenType, vec![], vec![draw(1)]);
             },
         ),
+        // ---- Core: triggers, batch 38 ----
+        "Case of the Ransacked Lab" => s(
+            &[
+                "Instant and sorcery spells you cast cost {1} less to cast.",
+                "To solve \u{2014} You've cast four or more instant and sorcery spells this turn.",
+                "Solved \u{2014} Whenever you cast an instant or sorcery spell, draw a card.",
+            ],
+            |d, _| {
+                d.mana_ext.instant_sorcery_discount = 1;
+                let to_solve = Condition::Both(
+                    Box::new(Condition::CaseUnsolved),
+                    Box::new(Condition::InstantsSorceriesCastThisTurnAtLeast(4)),
+                );
+                conditional(d, When::EndStep { your_turn_only: true }, to_solve, vec![], vec![Effect::SolveCase]);
+                conditional(d, When::YouCastInstantOrSorcery, Condition::CaseSolved, vec![], vec![draw(1)]);
+            },
+        ),
+        "Briarbridge Patrol" => s(
+            &[
+                "Whenever this creature deals damage to one or more creatures, investigate.",
+                "At the beginning of each end step, if you sacrificed three or more Clues this turn, you may put a creature card from your hand onto the battlefield.",
+            ],
+            |d, t| {
+                on(d, When::DealsDamageToOneOrMoreCreatures, vec![], vec![Effect::Investigate { def: t.clue, n: 1 }]);
+                conditional(
+                    d,
+                    When::EndStep { your_turn_only: false },
+                    Condition::SacrificedCluesThisTurnAtLeast(3),
+                    vec![],
+                    vec![Effect::MayPutCreatureFromHand],
+                );
+            },
+        ),
+        "Raggadragga, Goreguts Boss" => s(
+            &[
+                "Each creature you control with a mana ability gets +2/+2.",
+                "Whenever a creature you control with a mana ability attacks, untap it.",
+                "Whenever you cast a spell, if at least seven mana was spent to cast it, untap target creature. It gets +7/+7 and gains trample until end of turn.",
+            ],
+            |d, _| {
+                static_on(d, Scope::YourCreaturesWithManaAbility, false, Keywords::NONE);
+                let n = d.statics.len() - 1;
+                d.statics[n].power = 2;
+                d.statics[n].toughness = 2;
+                on(d, When::CreatureYouControlWithManaAbilityAttacks, vec![], vec![Effect::UntapExtra]);
+                conditional(
+                    d,
+                    When::YouCast,
+                    Condition::ManaSpentToCastAtLeast(7),
+                    vec![CREATURE],
+                    vec![
+                        Effect::UntapTarget(0),
+                        Effect::Pump { slot: 0, power: 7, toughness: 7 },
+                        Effect::Grant { slot: 0, keywords: Keywords::TRAMPLE },
+                    ],
+                );
+            },
+        ),
         _ => None,
     }
 }
@@ -2041,4 +2099,8 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Horizon Explorer",
     // Core: triggers, batch 37
     "Vanquisher's Banner",
+    // Core: triggers, batch 38
+    "Case of the Ransacked Lab",
+    "Briarbridge Patrol",
+    "Raggadragga, Goreguts Boss",
 ];

@@ -3905,3 +3905,90 @@ fn vanquishers_banner_pumps_and_draws_for_the_chosen_type() {
     assert_eq!(g.players[0].hand.len(), before - 1, "a Cat: no draw");
     assert_eq!(g.power(lions), 2, "no pump");
 }
+
+// ---- Core: triggers, batch 38 (Ghyrson, Lonis) ----
+
+/// Passes (no attackers, no blockers) until this turn's end step begins; its triggers are left
+/// for the caller to resolve.
+fn into_end_step(g: &mut Game) {
+    while g.step != Step::End {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) | Pending::Decide(_) => g.legal_actions()[0],
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn case_of_the_ransacked_lab_solves_after_four_instants_then_draws() {
+    let mut g = table();
+    let case = put(&mut g, 0, "Case of the Ransacked Lab");
+    for _ in 0..4 {
+        let bolt = hand(&mut g, 0, "Lightning Bolt");
+        let before = g.players[0].hand.len();
+        play(&mut g, bolt, false, &[Target::Player(1)], &[]);
+        assert_eq!(g.players[0].hand.len(), before - 1, "unsolved: no card");
+    }
+    assert!(g.obj(case).class_level < 2, "solved only at the end step");
+    into_end_step(&mut g);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(case).class_level, 2, "solved");
+    to_step(&mut g, 5, 0, Step::Main1);
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    let before = g.players[0].hand.len();
+    play(&mut g, bolt, false, &[Target::Player(1)], &[]);
+    assert_eq!(g.players[0].hand.len(), before - 1 + 1, "solved: draw a card");
+}
+
+#[test]
+fn briarbridge_patrol_investigates_and_puts_a_creature_in_after_three_clues() {
+    let mut g = table();
+    let patrol = put(&mut g, 0, "Briarbridge Patrol");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let bite = hand(&mut g, 0, "Bite Down");
+    play(&mut g, bite, false, &[obj(patrol), obj(lions)], &[]);
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard);
+    assert_eq!(tokens(&g, 0, "Clue").len(), 1, "investigated");
+    let clue_def = set("CMD")
+        .unwrap()
+        .defs
+        .iter()
+        .position(|d| d.token && d.name == "Clue")
+        .expect("the Clue token");
+    g.add_card(0, clue_def, Zone::Battlefield);
+    g.add_card(0, clue_def, Zone::Battlefield);
+    for clue in tokens(&g, 0, "Clue") {
+        act(&mut g, Action::Activate(clue, 0));
+        resolve_all(&mut g, &[]);
+    }
+    assert!(tokens(&g, 0, "Clue").is_empty());
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    into_end_step(&mut g);
+    resolve_all(&mut g, &[Action::Pick(elves)]);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield, "three Clues: put it in");
+}
+
+#[test]
+fn raggadragga_pumps_and_untaps_mana_creatures_and_rewards_seven_mana_spells() {
+    let mut g = table();
+    put(&mut g, 0, "Raggadragga, Goreguts Boss");
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    assert_eq!((g.power(elves), g.toughness(elves)), (3, 3), "+2/+2");
+    assert_eq!(g.power(lions), 2, "no mana ability");
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[Target::Player(1)], &[]);
+    assert!(!g.obj(lions).tapped);
+    g.objects[lions.0 as usize].tapped = true;
+    let akroma = hand(&mut g, 0, "Akroma, Angel of Wrath");
+    play(&mut g, akroma, false, &[], &[Action::Target(obj(lions))]);
+    assert!(!g.obj(lions).tapped, "untapped");
+    assert_eq!((g.power(lions), g.toughness(lions)), (9, 8), "+7/+7");
+    assert!(g.keywords(lions).has(Keywords::TRAMPLE));
+    attack(&mut g, &[elves]);
+    resolve_all(&mut g, &[]);
+    assert!(!g.obj(elves).tapped, "untap it");
+}

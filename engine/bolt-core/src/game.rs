@@ -2035,6 +2035,9 @@ pub struct Game {
     /// Creatures that entered the battlefield under each player's control: (turn, count)
     /// (Kinbinding, `Scale::PerCreatureEnteredUnderYourControlThisTurn`).
     pub creatures_entered: [(u32, u32); 2],
+    /// Clues each player has sacrificed: (turn, count) (Briarbridge Patrol,
+    /// `Condition::SacrificedCluesThisTurnAtLeast`).
+    pub clues_sacrificed: [(u32, u32); 2],
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2352,6 +2355,7 @@ impl Game {
             firing_spell: None,
             copy_next_instant_sorcery: Vec::new(),
             creatures_entered: [(0, 0); 2],
+            clues_sacrificed: [(0, 0); 2],
         }
     }
 
@@ -3279,6 +3283,9 @@ impl Game {
                                 mine && creature && src != id && self.colors_of(id) == [false; 5]
                             }
                             Scope::OtherYourTappedCreatures => mine && creature && src != id && o.tapped,
+                            Scope::YourCreaturesWithManaAbility => {
+                                mine && creature && Game::has_mana_ability(self.def_of(id))
+                            }
                         };
                         let condition_ok = match s.condition {
                             None => true,
@@ -4874,6 +4881,12 @@ impl Game {
     /// `id` was just sacrificed by `p` (it's already moved): "whenever you sacrifice" and "whenever
     /// a player sacrifices" triggers.
     fn sacrificed(&mut self, id: ObjId, p: PlayerId) {
+        if self.has_subtype(id, "Clue") {
+            // Briarbridge Patrol: "if you sacrificed three or more Clues this turn".
+            let turn = self.turn;
+            let (t, n) = self.clues_sacrificed[p];
+            self.clues_sacrificed[p] = (turn, if t == turn { n } else { 0 } + 1);
+        }
         self.fire(p, When::YouSacrifice, None);
         if self.types_of(id).artifact {
             self.fire(p, When::YouSacrificeArtifact, None);
@@ -11793,6 +11806,17 @@ impl Game {
                     for _ in 0..n {
                         self.fire(self.active, When::CreatureYouControlAttacks, None);
                     }
+                    // Raggadragga: "Whenever a creature you control with a mana ability attacks".
+                    let attackers = self.combat.as_ref().map_or(Vec::new(), |c| c.attackers.clone());
+                    for a in attackers {
+                        if Game::has_mana_ability(self.def_of(a)) {
+                            let from = self.triggered.len();
+                            self.fire(self.active, When::CreatureYouControlWithManaAbilityAttacks, None);
+                            for t in &mut self.triggered[from..] {
+                                t.extra = Some(a);
+                            }
+                        }
+                    }
                     let (active, turn) = (self.active, self.turn);
                     for (source, n, controller, t) in self.delayed_on_attack.clone() {
                         if controller == active && t == turn {
@@ -12655,6 +12679,21 @@ impl Game {
         self.firing_spell = Some(card);
         self.fire(p, When::YouCast, None);
         self.firing_spell = None;
+        // Raggadragga: "if at least seven mana was spent to cast it" (an intervening if, CR 603.4).
+        let spent = self.obj(card).mana_spent;
+        let mut i = before;
+        while i < self.triggered.len() {
+            let cond = match self.triggered[i].kind {
+                StackKind::Trigger(n) => self.def_of(self.triggered[i].source).triggers[n].ability.condition.clone(),
+                _ => None,
+            };
+            match cond {
+                Some(Condition::ManaSpentToCastAtLeast(k)) if spent < k => {
+                    self.triggered.remove(i);
+                }
+                _ => i += 1,
+            }
+        }
         for t in &mut self.triggered[before..] {
             t.extra = t.extra.or(Some(card)); // "that spell" (Teval)
         }
@@ -25737,6 +25776,11 @@ impl Game {
                     }
                 }
             }
+            Effect::SolveCase => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    self.obj_mut(src).class_level = 2;
+                }
+            }
             Effect::TriplePowerToughness(n) => {
                 if let Some(id) = Game::slot_object(item, legal, n) {
                     let (power, toughness, zcc) = (self.power(id), self.toughness(id), self.obj(id).zcc);
@@ -26185,6 +26229,16 @@ impl Game {
                 !self.permanents(controller).any(|x| self.has_subtype(x, sub))
             }
             Some(Condition::SourceKindCountersAtLeast(n)) => self.obj(source).kind_counters >= *n,
+            Some(Condition::InstantsSorceriesCastThisTurnAtLeast(n)) => {
+                self.instants_sorceries_cast[controller] >= *n as u32
+            }
+            Some(Condition::CaseSolved) => self.obj(source).class_level >= 2,
+            Some(Condition::CaseUnsolved) => self.obj(source).class_level < 2,
+            Some(Condition::SacrificedCluesThisTurnAtLeast(n)) => {
+                let (t, k) = self.clues_sacrificed[controller];
+                t == self.turn && k >= *n
+            }
+            Some(Condition::ManaSpentToCastAtLeast(_)) => true, // checked as it triggered
             Some(Condition::ControlNoCreatureWithDecayed) => !self
                 .creatures(controller)
                 .any(|c| self.def_of(c).decayed || self.obj(c).decayed),
@@ -27558,6 +27612,26 @@ impl Game {
             }
         }
         self.in_combat_damage = false;
+        // Briarbridge Patrol: "Whenever this creature deals damage to one or more creatures", once
+        // for the step.
+        let mut hit_creatures: Vec<ObjId> = Vec::new();
+        for e in &self.events[events_before..] {
+            if let Event::Damage {
+                source,
+                target: Target::Object(id),
+                amount,
+            } = *e
+            {
+                if amount > 0 && self.types_of(id).creature && !hit_creatures.contains(&source) {
+                    hit_creatures.push(source);
+                }
+            }
+        }
+        for source in hit_creatures {
+            if self.obj(source).zone == Zone::Battlefield {
+                self.fire_source(source, When::DealsDamageToOneOrMoreCreatures);
+            }
+        }
         // "Whenever a creature you control deals combat damage during your turn": once per creature
         // per step, with the total it dealt (CR 510.3a).
         let active = self.active;
@@ -28178,6 +28252,16 @@ impl Game {
                         t.extra = t.extra.or(Some(source)); // borrowed from d2: the damage source (Rona)
                     }
                 }
+            }
+        }
+        if let Target::Object(id) = target {
+            // Briarbridge Patrol, outside combat (combat damage is batched in `combat_damage`).
+            if amount > 0
+                && !self.in_combat_damage
+                && self.types_of(id).creature
+                && self.obj(source).zone == Zone::Battlefield
+            {
+                self.fire_source(source, When::DealsDamageToOneOrMoreCreatures);
             }
         }
         self.events.push(Event::Damage {
