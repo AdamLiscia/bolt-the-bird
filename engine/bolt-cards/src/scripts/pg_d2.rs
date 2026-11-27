@@ -1744,6 +1744,22 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::YouAttack, vec![], vec![Effect::CreateToken { who: Who::You, def: t.lander, n: 1 }]);
             },
         ),
+        // ---- Core: triggers, batch 37 ----
+        "Vanquisher's Banner" => s(
+            &[
+                "As this artifact enters, choose a creature type.",
+                "Creatures you control of the chosen type get +1/+1.",
+                "Whenever you cast a creature spell of the chosen type, draw a card.",
+            ],
+            |d, _| {
+                d.choose_creature_type = true;
+                static_on(d, Scope::YourCreaturesOfChosenType, false, Keywords::NONE);
+                let n = d.statics.len() - 1;
+                d.statics[n].power = 1;
+                d.statics[n].toughness = 1;
+                on(d, When::YouCastCreatureOfChosenType, vec![], vec![draw(1)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -2023,4 +2039,6 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Ravenous Squirrel",
     "Delney, Streetwise Lookout",
     "Horizon Explorer",
+    // Core: triggers, batch 37
+    "Vanquisher's Banner",
 ];

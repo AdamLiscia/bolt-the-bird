@@ -3966,6 +3966,10 @@ pub enum When {
     /// combat damage to a player or planeswalker this turn" (Flitterwing Nuisance), once for each
     /// creature and each player or planeswalker it deals combat damage to.
     YourCreatureDealsCombatDamageToPlayerOrPlaneswalkerThisTurn,
+    /// "Whenever you cast a creature spell of the chosen type" (Vanquisher's Banner): the source's
+    /// `Object::chosen_type`, chosen as it entered (`CardDef::choose_creature_type`); the spell in
+    /// `extra`.
+    YouCastCreatureOfChosenType,
 }
 
 #[derive(Clone, Debug, PartialEq)]

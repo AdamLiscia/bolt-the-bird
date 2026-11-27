@@ -12535,6 +12535,30 @@ impl Game {
             self.obj_mut(card).cast_uncounterable = true;
         }
         if self.types_of(card).creature {
+            // Vanquisher's Banner: "a creature spell of the chosen type".
+            for x in self.permanents(p).collect::<Vec<_>>() {
+                if self.lost_abilities(x) {
+                    continue;
+                }
+                let Some(chosen) = self.obj(x).chosen_type.clone() else {
+                    continue;
+                };
+                if !self.has_subtype(card, &chosen) {
+                    continue;
+                }
+                let whens: Vec<When> = self.def_of(x).triggers.iter().map(|tr| tr.when).collect();
+                for (n, w) in whens.into_iter().enumerate() {
+                    if w == When::YouCastCreatureOfChosenType {
+                        self.triggered.push(StackItem {
+                            kind: StackKind::Trigger(n),
+                            extra: Some(card),
+                            ..Game::casting(x, p)
+                        });
+                    }
+                }
+            }
+        }
+        if self.types_of(card).creature {
             let before = self.triggered.len();
             self.fire(p, When::YouCastCreature, None);
             let power = self.def_of(card).power;

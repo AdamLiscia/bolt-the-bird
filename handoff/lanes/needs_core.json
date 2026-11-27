@@ -6275,7 +6275,8 @@
    "missing": "lane C's routing (2026-11-26)",
    "lane": "mac-c",
    "theme": "effects",
-   "owner": "d3"
+   "owner": "d3",
+   "status": "done: d2 batch 37 (When::YouCastCreatureOfChosenType)"
   },
   {
    "card": "Three Tree City",

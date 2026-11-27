@@ -3888,3 +3888,20 @@ fn horizon_explorer_makes_a_lander_when_you_attack_and_lands_enter_untapped() {
     assert_eq!(landers.len(), 1);
     assert!(g.def_of(landers[0]).types.artifact);
 }
+
+#[test]
+fn vanquishers_banner_pumps_and_draws_for_the_chosen_type() {
+    let mut g = table();
+    let banner = put(&mut g, 0, "Vanquisher's Banner");
+    g.objects[banner.0 as usize].chosen_type = Some("Elf".to_string()); // chosen as it entered
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    let before = g.players[0].hand.len();
+    play(&mut g, elves, false, &[], &[]);
+    assert_eq!(g.players[0].hand.len(), before - 1 + 1, "an Elf spell: draw");
+    assert_eq!((g.power(elves), g.toughness(elves)), (2, 2), "+1/+1");
+    let lions = hand(&mut g, 0, "Savannah Lions");
+    let before = g.players[0].hand.len();
+    play(&mut g, lions, false, &[], &[]);
+    assert_eq!(g.players[0].hand.len(), before - 1, "a Cat: no draw");
+    assert_eq!(g.power(lions), 2, "no pump");
+}
