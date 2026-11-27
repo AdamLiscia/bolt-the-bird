@@ -1097,3 +1097,9 @@ One Ring's check in `deal_damage`). Claims recorded in needs_core.json.
   `DiscardRandomIfArtifactDamageEachOpponent(2)`. The reveal isn't modelled (no hidden-info
   tracking).
 - Demon's Disciple: enters trigger with d3's `EachPlayerSacrificesCreatureOrPlaneswalker`.
+- Build fix (abe5b84 merge): d1's `CopySourceSpellPerReplicate` and `CopySourceSpellIfCasualty`
+  share `CopySourceSpell`'s arm, and their copies keep the spell's targets as d1 documented and
+  tested. Only plain `CopySourceSpell` copies (storm, Sage of the Skies) go through
+  `pending_copies`. The rules give replicate and casualty copies new targets too (CR 702.56a,
+  702.153a); that switch is d1's call. I also removed a duplicate
+  `test_tekuthal_picks_each_counter_to_remove` that arrived from tarkir.

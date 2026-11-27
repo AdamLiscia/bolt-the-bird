@@ -19223,6 +19223,11 @@ impl Game {
                     }
                     _ => 1,
                 };
+                // Replicate and casualty copies keep the spell's targets (lane D1's demo rule).
+                let keep = matches!(
+                    e,
+                    Effect::CopySourceSpellPerReplicate | Effect::CopySourceSpellIfCasualty
+                );
                 if let Some(snap) = snap {
                     for _ in 0..n {
                         let copy = StackItem {
@@ -19230,8 +19235,12 @@ impl Game {
                             controller: item.controller,
                             ..snap.clone()
                         };
-                        // Onto the stack with new targets chosen, as other copies (CR 707.10c).
-                        self.pending_copies.push(copy);
+                        if keep {
+                            self.items.push(copy);
+                        } else {
+                            // Onto the stack with new targets chosen, as other copies (CR 707.10c).
+                            self.pending_copies.push(copy);
+                        }
                         self.copied_or_cast_instant_sorcery(item.controller, snap.source);
                     }
                 }
