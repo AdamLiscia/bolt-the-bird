@@ -1074,3 +1074,35 @@ fn an_x_ability_targeting_mana_value_x_is_offered_only_for_that_x() {
     resolve_all(&mut g, &[Action::Target(Target::Object(stone))]);
     assert_eq!(g.obj(stone).zone, Zone::Graveyard);
 }
+
+#[test]
+fn the_mycosynth_gardens_filters_one_mana_and_copies_at_the_mana_value_of_your_artifact() {
+    // "{1}, {T}: Add one mana of any color": Plains and the Gardens make {G}.
+    let mut g = game(&["Plains"]);
+    put(&mut g, 0, "The Mycosynth Gardens");
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    assert!(g.legal_actions().contains(&Action::Cast(elves)));
+    play(&mut g, elves, false, &[], &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+
+    let mut g = game(&["Plains", "Plains", "Plains", "Plains"]);
+    let gardens = put(&mut g, 0, "The Mycosynth Gardens");
+    let stone = put(&mut g, 0, "Mind Stone"); // mana value 2
+    let copy = |a: &Action| match *a {
+        Action::ActivateX { id, n: 0, x, .. } if id == gardens => Some(x),
+        _ => None,
+    };
+    let offered: Vec<u8> = g.legal_actions().iter().filter_map(copy).collect();
+    assert_eq!(offered, vec![2]);
+    act(
+        &mut g,
+        Action::ActivateX {
+            id: gardens,
+            n: 0,
+            victim: None,
+            x: 2,
+        },
+    );
+    resolve_all(&mut g, &[Action::Target(Target::Object(stone))]);
+    assert_eq!(g.def_of(gardens).name, "Mind Stone", "a copy of it");
+}

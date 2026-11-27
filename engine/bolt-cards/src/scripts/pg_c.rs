@@ -2169,10 +2169,14 @@ pub fn script(name: &str) -> Option<Script> {
         "The Mycosynth Gardens" => s(
             &[
                 "{T}: Add {C}.",
+                "{1}, {T}: Add one mana of any color.",
                 "{X}, {T}: This land becomes a copy of target nontoken artifact you control with mana value X.",
             ],
             |d, _| {
                 d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                // Lane B: a paid mana ability making one mana (the second output is empty).
+                let any = ManaSource::of(&Color::ALL);
+                d.paid_mana = Some((ManaCost::parse("{1}").expect("a mana cost"), [any, ManaSource::default()]));
                 let artifact = Filter { nontoken: true, mana_value_is_x: true, controller: Controller::You, ..ARTIFACT };
                 let become_copy = Effect::SourceBecomesCopyOfSlot { slot: 0, keep_own: false };
                 activated(d, "{X}", true, vec![artifact], vec![become_copy]);
@@ -2430,4 +2434,5 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Mystic Forge",
     "Lithoform Engine",
     "Thespian's Stage",
+    "The Mycosynth Gardens",
 ];

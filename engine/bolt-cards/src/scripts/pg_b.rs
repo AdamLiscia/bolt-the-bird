@@ -1975,6 +1975,32 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::EndStep { your_turn_only: true }, vec![], vec![treasures]);
             },
         ),
+        "Goblin Engineer" => s(
+            &[
+                "When this creature enters, you may search your library for an artifact card, put it into your graveyard, then shuffle.",
+                "{R}, {T}, Sacrifice an artifact: Return target artifact card with mana value 3 or less from your graveyard to the battlefield.",
+            ],
+            |d, _| {
+                // Searching may find nothing, which covers "you may".
+                on(d, When::Enters, vec![], vec![search(SearchFor::Artifact, SearchTo::Graveyard)]);
+                let card = Filter { artifact_cards: true, max_mana_value: Some(3), ..graveyard_cards(false, Controller::You) };
+                let n = activated(d, "{R}", true, vec![card], vec![Effect::Reanimate(0)]);
+                d.activated[n].sacrifice_artifact = true;
+            },
+        ),
+        "Cavern of Souls" => s(
+            &[
+                "As this land enters, choose a creature type.",
+                "{T}: Add {C}.",
+                "{T}: Add one mana of any color. Spend this mana only to cast a creature spell of the chosen type, and that spell can't be countered.",
+            ],
+            |d, _| {
+                d.choose_creature_type = true;
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                d.any_color_for_chosen_type = true;
+                d.chosen_type_mana_uncounterable = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -2205,6 +2231,8 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Inventors' Fair",
     "Smaug the Magnificent",
     "Mahadi, Emporium Master",
+    "Goblin Engineer",
+    "Cavern of Souls",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",
