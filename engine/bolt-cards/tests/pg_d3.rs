@@ -5739,3 +5739,56 @@ fn urza_makes_a_construct_taps_artifacts_for_blue_and_plays_the_top_free() {
     assert_eq!(g.obj(elves).playable, Some((0, g.turn)));
     assert!(g.obj(elves).cast_free);
 }
+
+// ---- d3 batch 48: Toski ----
+
+#[test]
+fn autumns_veil_stops_blue_and_black_counters_and_targets() {
+    for veil in [false, true] {
+        let mut g = table();
+        let lions = put(&mut g, 0, "Savannah Lions");
+        if veil {
+            let v = hand(&mut g, 0, "Autumn's Veil");
+            play(&mut g, v, false, &[], &[]);
+        }
+        let nw = hand(&mut g, 0, "Night's Whisper");
+        act(&mut g, Action::Cast(nw));
+        while g.pending != Pending::Priority(1) {
+            act(&mut g, Action::PassPriority);
+        }
+        let db = hand(&mut g, 1, "Doom Blade");
+        assert_eq!(
+            g.legal_actions().contains(&Action::Cast(db)),
+            !veil,
+            "Doom Blade (veil: {veil})"
+        );
+        let bolt = hand(&mut g, 1, "Lightning Bolt");
+        act(&mut g, Action::Cast(bolt));
+        assert!(can_target(&g, lions), "a red spell can");
+        act(&mut g, Action::Target(Target::Player(0)));
+        while g.pending != Pending::Priority(1) {
+            act(&mut g, Action::PassPriority);
+        }
+        let cs = hand(&mut g, 1, "Counterspell");
+        act(&mut g, Action::Cast(cs));
+        let before = g.players[0].hand.len();
+        act(&mut g, Action::Target(obj(nw)));
+        resolve_all(&mut g, &[]);
+        assert_eq!(
+            g.players[0].hand.len() - before,
+            if veil { 2 } else { 0 },
+            "veil: {veil}"
+        );
+    }
+}
+
+#[test]
+fn regrowth_and_bala_ged_recovery_return_a_card() {
+    for name in ["Regrowth", "Bala Ged Recovery // Bala Ged Sanctuary"] {
+        let mut g = table();
+        let dead = g.add_card(0, cid("Savannah Lions"), Zone::Graveyard);
+        let r = hand(&mut g, 0, name);
+        play(&mut g, r, false, &[obj(dead)], &[]);
+        assert_eq!(g.obj(dead).zone, Zone::Hand, "{name}");
+    }
+}

@@ -2209,6 +2209,12 @@ pub struct Game {
     pub player_hexproof_from_colors: [(u32, [bool; 5]); 2],
     /// Permanents with hexproof from colors until end of turn: (object, zcc, turn, colors).
     pub hexproof_from_colors_eot: Vec<(ObjId, u32, u32, [bool; 5])>,
+    /// Each player's spells can't be countered by spells of these colors: (turn, colors)
+    /// (Autumn's Veil).
+    pub spells_uncounterable_by_colors: [(u32, [bool; 5]); 2],
+    /// Each player's creatures can't be the targets of spells of these colors: (turn, colors)
+    /// (Autumn's Veil).
+    pub creatures_untargetable_by_color_spells: [(u32, [bool; 5]); 2],
     /// Klauth's mana per player: (any-color mana only for spells, the turn it was made in); it stays
     /// until end of turn.
     pub spell_mana_eot: [(u32, u32); 2],
@@ -2553,6 +2559,8 @@ impl Game {
             spells_uncounterable_turn: [0; 2],
             player_hexproof_from_colors: [(0, [false; 5]); 2],
             hexproof_from_colors_eot: Vec::new(),
+            spells_uncounterable_by_colors: [(0, [false; 5]); 2],
+            creatures_untargetable_by_color_spells: [(0, [false; 5]); 2],
             spell_mana_eot: [(0, 0); 2],
             devour_pending: Vec::new(),
             devour_then: 0,
@@ -4785,7 +4793,36 @@ impl Game {
     /// Veil of Summer: "Spells you control can't be countered this turn."
     fn uncounterable_this_turn(&self, id: ObjId) -> bool {
         let o = self.obj(id);
-        o.zone == Zone::Stack && self.turn > 0 && self.spells_uncounterable_turn[o.controller] == self.turn
+        if o.zone != Zone::Stack || self.turn == 0 {
+            return false;
+        }
+        if self.spells_uncounterable_turn[o.controller] == self.turn {
+            return true;
+        }
+        // Autumn's Veil: "by blue or black spells", the spell resolving the counter.
+        let (t, h) = self.spells_uncounterable_by_colors[o.controller];
+        t == self.turn
+            && self.resolving.as_ref().is_some_and(|r| {
+                matches!(r.item.kind, StackKind::Spell | StackKind::SpellCopy) && {
+                    let c = self.colors_of(r.item.source);
+                    (0..5).any(|k| h[k] && c[k])
+                }
+            })
+    }
+
+    /// Autumn's Veil: creature `x` can't be the target of `item`, a spell of one of the colors.
+    fn creature_untargetable_by_color_spell(&self, x: ObjId, item: &StackItem) -> bool {
+        let o = self.obj(x);
+        if o.zone != Zone::Battlefield
+            || self.turn == 0
+            || !matches!(item.kind, StackKind::Spell | StackKind::SpellCopy)
+            || !self.types_of(x).creature
+        {
+            return false;
+        }
+        let (t, h) = self.creatures_untargetable_by_color_spells[o.controller];
+        let c = self.colors_of(item.source);
+        t == self.turn && (0..5).any(|k| h[k] && c[k])
     }
 
     /// Veil of Summer: player `q` has hexproof from a color of `item`'s source this turn, against an
@@ -7836,6 +7873,9 @@ impl Game {
         }
         if self.hexproof_from_colors_blocks(x, item) {
             return false; // Veil of Summer
+        }
+        if self.creature_untargetable_by_color_spell(x, item) {
+            return false; // Autumn's Veil
         }
         let from_instant = matches!(item.kind, StackKind::Spell | StackKind::SpellCopy)
             && self.types_of(item.source).instant;
@@ -26541,6 +26581,24 @@ impl Game {
                 if self.turn > 0 && turn == self.turn && lost > 0 {
                     self.run_effect(item, legal, Effect::SacrificeGreatestPower(Who::EachOpponent));
                 }
+            }
+            Effect::YourSpellsUncounterableByColorsEot(colors) => {
+                let p = item.controller;
+                let (t, had) = self.spells_uncounterable_by_colors[p];
+                let mut h = if t == self.turn { had } else { [false; 5] };
+                for (a, b) in h.iter_mut().zip(colors) {
+                    *a |= b;
+                }
+                self.spells_uncounterable_by_colors[p] = (self.turn, h);
+            }
+            Effect::YourCreaturesUntargetableByColorSpellsEot(colors) => {
+                let p = item.controller;
+                let (t, had) = self.creatures_untargetable_by_color_spells[p];
+                let mut h = if t == self.turn { had } else { [false; 5] };
+                for (a, b) in h.iter_mut().zip(colors) {
+                    *a |= b;
+                }
+                self.creatures_untargetable_by_color_spells[p] = (self.turn, h);
             }
             Effect::BounceThenOwnerExilesFromHand(slot) => {
                 if let Some(id) = Game::slot_object(item, legal, slot) {

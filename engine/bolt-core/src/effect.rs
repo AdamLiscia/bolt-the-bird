@@ -3159,6 +3159,14 @@ pub enum Effect {
     /// creatures they control." (Papalymo Totolymo): `SacrificeGreatestPower` for those opponents
     /// (a tie is the sacrificing player's `Decision::SacrificeOneOf`).
     OpponentsWhoLostLifeSacrificeGreatestPower,
+    /// "Spells you control can't be countered by [colors] spells this turn." (Autumn's Veil: blue
+    /// and black), as `Game::spells_uncounterable_by_colors`: checked against the spell resolving
+    /// the counter.
+    YourSpellsUncounterableByColorsEot([bool; 5]),
+    /// "Creatures you control can't be the targets of [colors] spells this turn." (Autumn's Veil),
+    /// as `Game::creatures_untargetable_by_color_spells`: any creature you control this turn, and
+    /// any player's spells.
+    YourCreaturesUntargetableByColorSpellsEot([bool; 5]),
     /// "Cumulative upkeep—Gain control of a land you don't control." (Herald of Leshrac): an age
     /// counter, then `Decision::UpkeepGainLandsOrSacrifice` picks one land you don't control per age
     /// counter (for good), or `No` sacrifices the source.

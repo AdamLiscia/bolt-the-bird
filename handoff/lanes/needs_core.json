@@ -8297,6 +8297,30 @@
    "lane": "d1",
    "theme": "mana",
    "owner": "d3"
+  },
+  {
+   "card": "Autumn's Veil",
+   "deck": "Toski, Bearer of Secrets",
+   "missing": "d3 batch 48 (Toski, 2026-11-27): Effect::YourSpellsUncounterableByColorsEot, YourCreaturesUntargetableByColorSpellsEot, scripted (pg_d3)",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Regrowth",
+   "deck": "Toski, Bearer of Secrets",
+   "missing": "d3 batch 48 (Toski, 2026-11-27): scripted (pg_d3)",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Bala Ged Recovery // Bala Ged Sanctuary",
+   "deck": "Toski, Bearer of Secrets",
+   "missing": "d3 batch 48 (Toski, 2026-11-27): scripted (pg_d3), with its land back face",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
   }
  ]
 }

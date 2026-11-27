@@ -2584,6 +2584,27 @@ pub fn script(name: &str) -> Option<Script> {
                 activated(d, "{5}", false, vec![], vec![Effect::ShuffleExileTopPlayFreeThisTurn]);
             },
         ),
+        // ---- d3 batch 48: Toski ----
+        "Autumn's Veil" => s(
+            &["Spells you control can't be countered by blue or black spells this turn, and creatures you control can't be the targets of blue or black spells this turn."],
+            |d, _| {
+                let ub = [false, true, true, false, false];
+                spell(d, vec![], vec![Effect::YourSpellsUncounterableByColorsEot(ub), Effect::YourCreaturesUntargetableByColorSpellsEot(ub)]);
+            },
+        ),
+        "Regrowth" => s(&["Return target card from your graveyard to your hand."], |d, _| {
+            spell(d, vec![graveyard_cards(false, Controller::You)], vec![Effect::Bounce(0)])
+        }),
+        "Bala Ged Recovery // Bala Ged Sanctuary" => s(
+            &["Return target card from your graveyard to your hand.", "Back: This land enters tapped.", "Back: {T}: Add {G}."],
+            |d, _| {
+                spell(d, vec![graveyard_cards(false, Controller::You)], vec![Effect::Bounce(0)]);
+                d.modal_back = true;
+                let b = d.back.as_mut().expect("Bala Ged Sanctuary");
+                b.enters_tapped = true;
+                b.mana = Some(ManaSource::of(&[Color::Green]));
+            },
+        ),
         "Lathliss, Dragon Queen" => s(
             &[
                 "Whenever another nontoken Dragon you control enters, create a 5/5 red Dragon creature token with flying.",
@@ -2949,4 +2970,7 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Archon of Cruelty",
     "Papalymo Totolymo",
     "Urza, Lord High Artificer",
+    "Autumn's Veil",
+    "Regrowth",
+    "Bala Ged Recovery // Bala Ged Sanctuary",
 ];
