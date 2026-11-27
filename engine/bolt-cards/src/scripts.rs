@@ -41,7 +41,12 @@ pub fn token_defs() -> Vec<CardDef> {
             scion.types.legendary = true;
             scion
         },
-        token("Raccoon", "Raccoon", 3, 3, Keywords::NONE),
+        {
+            // Sylvan Scavenging, Gourmand's Talent: "a 3/3 green Raccoon creature token".
+            let mut t = token("Raccoon", "Raccoon", 3, 3, Keywords::NONE);
+            t.colors = [false, false, false, false, true];
+            t
+        },
         token("Koma's Coil", "Serpent", 3, 3, Keywords::NONE),
         token("Drake", "Drake", 2, 2, Keywords::FLYING),
         token("Spirit", "Spirit", 1, 1, Keywords::FLYING),
@@ -52,7 +57,7 @@ pub fn token_defs() -> Vec<CardDef> {
             t
         },
         token("Rat", "Rat", 1, 1, Keywords::NONE),
-        token("Zombie", "Zombie", 2, 2, Keywords::NONE),
+        black(token("Zombie", "Zombie", 2, 2, Keywords::NONE)), // "2/2 black Zombie" (every maker)
         token("Ninja", "Ninja", 2, 1, Keywords::NONE),
         token("Cat", "Cat", 2, 2, Keywords::NONE),
         token("Warrior", "Warrior", 1, 1, Keywords::NONE), // Tarkir's mobilize tokens (red)
@@ -152,9 +157,14 @@ pub fn token_defs() -> Vec<CardDef> {
         },
         token("Elemental", "Elemental", 4, 4, Keywords::FLYING), // Hoofprints of the Stag: white 4/4
         token("Dinosaur Beast", "Dinosaur Beast", 0, 0, Keywords::TRAMPLE), // Quartzwood Crasher's X/X
-        token("Plant", "Plant", 0, 1, Keywords::NONE),           // Avenger of Zendikar
-        token("Insect", "Insect", 1, 1, Keywords::NONE),         // Scute Swarm's green 1/1
-        token("Badger", "Badger", 3, 3, Keywords::NONE),         // Greensleeves
+        {
+            // "a 0/1 green Plant creature token" (Avenger of Zendikar, Nissa, The Necrobloom).
+            let mut t = token("Plant", "Plant", 0, 1, Keywords::NONE);
+            t.colors = [false, false, false, false, true];
+            t
+        },
+        token("Insect", "Insect", 1, 1, Keywords::NONE), // Scute Swarm's green 1/1
+        token("Badger", "Badger", 3, 3, Keywords::NONE), // Greensleeves
         {
             // Wrenn and Seven: "a green Treefolk creature token with reach and 'This token's power and
             // toughness are each equal to the number of lands you control.'"
@@ -335,9 +345,8 @@ pub fn token_defs() -> Vec<CardDef> {
             t.types.artifact = true;
             t
         },
-        // 94-96: placeholders until their lanes' tokens land (d2: Walker, Utvara's 6/6 Dragon; d4:
-        // Smaug). Each lane replaces its own line.
-        token("Placeholder 94", "", 0, 0, Keywords::NONE),
+        // 94, lane d2: Gisa's Favorite Shovel's Walker, "a 2/2 black Zombie creature token named Walker".
+        black(token("Walker", "Zombie", 2, 2, Keywords::NONE)),
         {
             // 95, lane d4: There and Back Again's "Smaug, a legendary 6/6 red Dragon creature token
             // with flying, haste, and 'When Smaug dies, create fourteen Treasure tokens.'"
@@ -363,7 +372,8 @@ pub fn token_defs() -> Vec<CardDef> {
             });
             t
         },
-        token("Placeholder 96", "", 0, 0, Keywords::NONE),
+        // 96, lane d2: Utvara Hellkite's "6/6 red Dragon creature token with flying".
+        red(token("Dragon", "Dragon", 6, 6, Keywords::FLYING)),
         wicked_role(), // 97, lane C
         // 98, lane B: Ugin, the Ineffable's colorless 2/2 Spirit.
         token("Spirit", "Spirit", 2, 2, Keywords::NONE),
@@ -371,6 +381,74 @@ pub fn token_defs() -> Vec<CardDef> {
             // 99, lane B: Fisher's Talent's "3/3 blue Shark creature token".
             let mut t = token("Shark", "Shark", 3, 3, Keywords::NONE);
             t.colors = [false, true, false, false, false];
+            t
+        },
+        {
+            // 100, lane d1: Pride of the Clouds' "1/1 white and blue Bird creature token with flying".
+            let mut t = token("Bird", "Bird", 1, 1, Keywords::FLYING);
+            t.colors = [true, true, false, false, false];
+            t
+        },
+        {
+            // 101, lane C: Hornet Queen's "1/1 green Insect creature tokens with flying and deathtouch".
+            let mut t = token(
+                "Insect",
+                "Insect",
+                1,
+                1,
+                Keywords::FLYING.with(Keywords::DEATHTOUCH),
+            );
+            t.colors = [false, false, false, false, true];
+            t
+        },
+        {
+            // 102, lane C: Wurmcoil Engine's "3/3 colorless Phyrexian Wurm artifact creature token
+            // with deathtouch".
+            let mut t = token("Phyrexian Wurm", "Phyrexian Wurm", 3, 3, Keywords::DEATHTOUCH);
+            t.types.artifact = true;
+            t
+        },
+        {
+            // 103, lane C: Wurmcoil Engine's "3/3 colorless Phyrexian Wurm artifact creature token
+            // with lifelink".
+            let mut t = token("Phyrexian Wurm", "Phyrexian Wurm", 3, 3, Keywords::LIFELINK);
+            t.types.artifact = true;
+            t
+        },
+        // 104: a placeholder for lane C's token, swapped in at the merge.
+        token("Placeholder 104", "", 0, 0, Keywords::NONE),
+        {
+            // 105, lane B: Inkshield's "2/1 white and black Inkling creature token with flying".
+            let mut t = token("Inkling", "Inkling", 2, 1, Keywords::FLYING);
+            t.colors = [true, false, true, false, false];
+            t
+        },
+        {
+            // 106, lane B: Najeela's "1/1 white Warrior creature token".
+            let mut t = token("Warrior", "Warrior", 1, 1, Keywords::NONE);
+            t.colors = [true, false, false, false, false];
+            t
+        },
+        {
+            // 107, lane d2: Hallowed Haunting's "white Spirit Cleric creature token with 'This
+            // token's power and toughness are each equal to the number of Spirits you control.'"
+            let mut t = token("Spirit Cleric", "Spirit Cleric", 0, 0, Keywords::NONE);
+            t.colors = [true, false, false, false, false];
+            t.statics.push(Static {
+                scope: Scope::This,
+                your_turn_only: false,
+                condition: None,
+                subtype: None,
+                lose_abilities: false,
+                base_pt: None,
+                protection: [false; 5],
+                scale: Some(Scale::PerYouControlSubtype("Spirit")),
+                power: 1,
+                toughness: 1,
+                keywords: Keywords::NONE,
+                set_colors: None,
+                becomes_land: false,
+            });
             t
         },
     ]
@@ -573,14 +651,28 @@ pub struct Tokens {
     pub angel_4: usize,
     pub pincher: usize,
     pub servo: usize,
-    /// 94-96: placeholders for d2's Walker and Utvara Dragon and d4's Smaug (each lane renames its own).
-    pub placeholder_94: usize,
+    /// 94: d2's Walker (a 2/2 black Zombie named Walker).
+    pub walker: usize,
     /// 95: Smaug, a legendary 6/6 red Dragon with flying and haste (There and Back Again).
     pub smaug: usize,
-    pub placeholder_96: usize,
+    /// 96: d2's Utvara Hellkite Dragon, a 6/6 red flier.
+    pub dragon_6_6: usize,
     pub wicked_role: usize,
     pub spirit_2: usize,
     pub shark: usize,
+    /// 100: Pride of the Clouds' 1/1 white and blue Bird with flying.
+    pub bird_flying_wu: usize,
+    /// 101: a 1/1 green Insect with flying and deathtouch (Hornet Queen).
+    pub insect_deathtouch: usize,
+    /// 102: a 3/3 colorless Phyrexian Wurm artifact creature with deathtouch (Wurmcoil Engine).
+    pub wurm_deathtouch: usize,
+    /// 103: a 3/3 colorless Phyrexian Wurm artifact creature with lifelink (Wurmcoil Engine).
+    pub wurm_lifelink: usize,
+    pub placeholder_104: usize,
+    pub inkling: usize,
+    pub warrior_white: usize,
+    /// 107: d2's Hallowed Haunting Spirit Cleric, white, */* the Spirits you control.
+    pub spirit_cleric: usize,
 }
 
 impl Tokens {
@@ -680,12 +772,20 @@ impl Tokens {
             angel_4: base + 91,
             pincher: base + 92,
             servo: base + 93,
-            placeholder_94: base + 94,
+            walker: base + 94,
             smaug: base + 95,
-            placeholder_96: base + 96,
+            dragon_6_6: base + 96,
             wicked_role: base + 97,
             spirit_2: base + 98,
             shark: base + 99,
+            bird_flying_wu: base + 100,
+            insect_deathtouch: base + 101,
+            wurm_deathtouch: base + 102,
+            wurm_lifelink: base + 103,
+            placeholder_104: base + 104,
+            inkling: base + 105,
+            warrior_white: base + 106,
+            spirit_cleric: base + 107,
         }
     }
 }

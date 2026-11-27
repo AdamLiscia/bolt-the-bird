@@ -2519,6 +2519,154 @@ pub enum Effect {
         slot: u8,
         keep_own: bool,
     },
+    /// The source deals damage equal to the trigger's amount to the controller of the object in
+    /// `extra` (Deflecting Palm, after `PreventNextFromChosenSource`).
+    DamageExtrasControllerAmount,
+    /// Sylvan Library: you may draw two additional cards (`Decision::SylvanDraw`); if you do,
+    /// choose two cards in your hand drawn this turn (`Decision::SylvanPick`), and for each pay 4
+    /// life or put it on top of your library (`Decision::SylvanPayOrTop`).
+    SylvanLibrary,
+    /// Destroy all creatures; you create a tapped `def` token for each nontoken creature destroyed
+    /// this way (Blood Money: Treasure).
+    DestroyAllCreaturesTappedTokenPerNontoken {
+        def: usize,
+    },
+    /// The player in `slot` draws half the cards in their library and loses half their life, each
+    /// rounded up (Peer into the Abyss).
+    TargetPlayerDrawsHalfLibraryLosesHalfLife(u8),
+    /// Each player draws a card for each of the source's own kind of counter (Otherworld Atlas's
+    /// charge counters, `Object::kind_counters`).
+    EachPlayerDrawsPerKindCounter,
+    /// Search for a creature card with mana value exactly `plus` more than the sacrificed creature's
+    /// (the stack entry's `extra`) and put it onto the battlefield with an additional +1/+1 counter,
+    /// then shuffle (Neoform).
+    SearchCreatureBySacrificedMvPlusCounter {
+        plus: u8,
+    },
+    /// Exchange control of the source and the creature in `slot`; if you don't or can't (no target,
+    /// or either has left), sacrifice the source (Gilded Drake).
+    ExchangeControlWithSlotOrSacrifice(u8),
+    /// Put `n` +1/+1 counters on the creature the source (an Equipment or Aura) is attached to (Bone
+    /// Sabres).
+    CountersOnAttached(i32),
+    /// Create a token that's a copy of the artifact the source (an Aura) enchants; then, if you
+    /// control eight or more artifacts with the same name as one another, you win the game
+    /// (Mechanized Production).
+    CopyAttachedThenEightSameNameWins,
+    /// "You may pay {X}, where X is less than or equal to the amount of life you gained. If you do,
+    /// draw X cards." (Well of Lost Dreams): the trigger's amount caps X, as `Decision::PayXDrawX`.
+    MayPayXUpToAmountDrawX,
+    /// Destroy all planeswalkers (Final Act).
+    DestroyAllPlaneswalkers,
+    /// Each opponent loses all counters (CR 122.1: a player's poison and energy counters) (Final
+    /// Act).
+    EachOpponentLosesAllCounters,
+    /// Exile the creature in `slot` if its power is at most the power of the card in the item's
+    /// `extra` (Titan's Presence: the revealed card).
+    ExileIfPowerAtMostExtra(u8),
+    /// "You may put a land card from your hand onto the battlefield tapped. If you control
+    /// `enchantments` or more enchantments, instead you may put a creature or land card ..."
+    /// (Composer of Spring: 6), as `Decision::LandOrCreatureFromHandTapped`.
+    MayPutLandOrCreatureFromHandTapped {
+        enchantments: u8,
+    },
+    /// "That player gains that much life": the opponent gains the trigger's amount (Angel of
+    /// Destiny, 1v1: the damaged player).
+    OpponentGainsLifeAmount,
+    /// "Each player this creature attacked this turn loses the game" (Angel of Destiny), 1v1: the
+    /// opponent, if the source attacked this turn.
+    OpponentLosesIfSourceAttackedThisTurn,
+    /// Fabricate `n` (CR 702.123): `n` +1/+1 counters on the source, or `n` 1/1 Servo tokens (token
+    /// definition `servo`), as `Decision::Fabricate`. Only Servos if the source has left the
+    /// battlefield.
+    Fabricate {
+        n: u8,
+        servo: usize,
+    },
+    /// Food Chain: "Add X mana of any one color, where X is 1 plus the exiled creature's mana value.
+    /// Spend this mana only to cast creature spells." The card in `extra` (the activation's victim)
+    /// is the exiled creature; the mana is held for creature spells (`Game::creature_spell_mana`).
+    AddCreatureSpellManaExtraMvPlusOne,
+    /// "if mana from a Treasure was spent to cast it" (Alchemist's Talent, level 3): stop unless
+    /// the spell in `extra` (a cast trigger's spell) was paid for with Treasure mana
+    /// (`Game::treasure_mana_spent`).
+    StopUnlessTreasureManaSpentOnExtra,
+    /// Prevent all combat damage that would be dealt to you this turn; for each 1 damage prevented
+    /// this way, create a `def` token (Inkshield: a 2/1 Inkling), see `Game::combat_shield_tokens`.
+    PreventCombatDamageToYouMakingTokens {
+        def: usize,
+    },
+    /// You gain protection from everything until your next turn (The One Ring): damage to you is
+    /// prevented, and nothing can target you (`Game::player_protected_until`).
+    YouGainProtectionUntilYourNextTurn,
+    /// The controller of the creature in the item's `extra` creates a `def` token that's tapped and
+    /// attacking (Najeela's Warriors).
+    ExtrasControllerCreatesAttackingToken {
+        def: usize,
+    },
+    /// Put the creature card in `slot` from a graveyard onto the battlefield under your control
+    /// with a corpse counter (`Object::corpse_counter`: exiled if it would leave) (From the
+    /// Catacombs).
+    ReanimateWithCorpseCounter(u8),
+    /// "If a source would deal damage to a player or battle this turn, it deals that much damage
+    /// plus 2 instead." (Rankle and Torbran), see `Game::plus_two_to_players`.
+    DamageToPlayersPlusTwoThisTurn,
+    /// The player in `slot` may sacrifice two nonland, nontoken permanents of their choice; if they
+    /// don't, you draw two cards (Rakdos, Patron of Chaos; `Decision::PatronOfChaosSacrifice`).
+    TargetOpponentMaySacrificeTwoOrYouDrawTwo(u8),
+    /// "Whenever this creature attacks a player, exile all cards from that player's hand, then they
+    /// draw that many cards. You may play lands and cast spells from among the exiled cards for as
+    /// long as they remain exiled. If you cast a spell this way, you may spend mana as though it
+    /// were mana of any color to cast it." (Elder Brain), 1v1: the defending player; nothing if the
+    /// source is attacking a planeswalker. See `Game::exile_defending_hand_draw_that_many`.
+    ExileDefendingHandDrawThatManyPlayable,
+    /// "You lose 1 life for each [kind] counter on [the source]" (The One Ring's burden counters,
+    /// `Object::kind_counters`).
+    YouLoseLifePerKindCounter,
+    /// "Draw a card for each [kind] counter on [the source]" (The One Ring).
+    YouDrawPerKindCounter,
+    /// "Look at target opponent's hand. You may exile a nonland card from it until this creature
+    /// leaves the battlefield." (Deep-Cavern Bat): the player in `slot`, as
+    /// `Decision::ExileFromHandUntilSourceLeaves`; the card returns to its owner's hand
+    /// (`Game::hand_links`).
+    ExileFromHandUntilSourceLeaves(u8),
+    /// Sunbird's Invocation: reveal the top X cards of your library, X the mana value of the spell
+    /// in `extra` (its {X} included); you may cast one with mana value X or less from among them
+    /// free (`free_casts_one`); the rest go to the bottom in a random order. The revealed cards
+    /// wait in exile, as cascade's do.
+    RevealTopMvMayCastOneFree,
+    /// Saddle's effect: the source becomes saddled until end of turn by the creature in `extra`
+    /// (`Game::saddled`).
+    BecomeSaddled,
+    /// The Gitrog, Ravenous Ride: sacrifice a creature that saddled the source this turn (the
+    /// engine picks the most powerful); if you do, draw X cards, then put up to X land cards from
+    /// your hand onto the battlefield tapped (the engine puts as many as it can), X its power.
+    SacrificeSaddlerDrawXLandsX,
+    /// The defending player's life total becomes 1 (Master of Cruelties): they lose (or gain) the
+    /// difference (CR 119.5).
+    OpponentLifeBecomesOne,
+    /// The source assigns no combat damage this combat (Master of Cruelties), see
+    /// `Game::no_combat_damage_from`.
+    SourceAssignsNoCombatDamage,
+    /// Palantír of Orthanc: the player in `slot` may have you draw a card
+    /// (`Decision::LetDrawOrMill`); if they don't, you mill X cards, X the source's own kind of
+    /// counters (influence), and they lose life equal to the total mana value of those cards.
+    TargetMayLetYouDrawElseMillKindCounters(u8),
+    /// Create a `fewer` token, or a `seven` token instead if you control seven or more lands with
+    /// different names (The Necrobloom's landfall).
+    CreateTokenBySevenLandNames {
+        fewer: usize,
+        seven: usize,
+    },
+    /// "Whenever a source deals damage to [this], that source's controller exiles a card from their
+    /// hand at random. If it's a land card, you may put it onto the battlefield under your control.
+    /// Otherwise, you may cast it without paying its mana cost." (Rona, Tolarian Obliterator): the
+    /// source is the trigger's `extra`; a land asks `Decision::MayPutExiledLandOntoBattlefield`, a
+    /// nonland card opens a free cast (`Game::free_casts`).
+    DamageSourceControllerExilesRandomFromHand,
+    /// "Each opponent sacrifices a nontoken creature or planeswalker of their choice." (Sheoldred //
+    /// The True Scriptures), as `Decision::SacrificeNontokenCreatureOrPlaneswalker`.
+    OpponentSacrificesNontokenCreatureOrPlaneswalker,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -2613,6 +2761,8 @@ pub enum SearchTo {
     ExileCastFreeThisTurn,
     /// Onto the battlefield tapped under this player's control (Yavimaya Dryad).
     BattlefieldTappedUnder(u8),
+    /// Onto the battlefield with an additional +1/+1 counter (Neoform).
+    BattlefieldPlusCounter,
 }
 
 /// What a static ability affects.
@@ -2742,6 +2892,9 @@ pub enum StaticCondition {
     /// This color (WUBRG index) isn't in the source's controller's commander's color identity
     /// (with a partner, either's); with no commander, no color is (Commander's Plate).
     OutsideCommanderIdentity(u8),
+    /// Its controller controls at least this many enchantments (Hallowed Haunting: seven), printed
+    /// card types counted, as `ControlArtifactsAtLeast` does.
+    ControlEnchantmentsAtLeast(u8),
 }
 
 /// A static ability that changes characteristics (CR 604, 613 layers 6 and 7c).
@@ -2814,6 +2967,8 @@ pub enum Pick {
     CreatureManaValueAtMost(u32),
     /// A creature or planeswalker card (Takenuma, Abandoned Mire).
     CreatureOrPlaneswalker,
+    /// A noncreature, nonland card (Narset, Parter of Veils).
+    NoncreatureNonland,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -2962,6 +3117,12 @@ pub enum Condition {
     ColorlessSpentAtLeast(u32),
     /// Its controller created a token this turn (Bennie Bracks), from `Game::token_created_turn`.
     YouCreatedTokenThisTurn,
+    /// Its controller controls at least this many lands with different names (The Necrobloom, Field
+    /// of the Dead: seven).
+    ControlLandsWithDifferentNamesAtLeast(u8),
+    /// Its controller has at least this much life more than their starting life total (Angel of
+    /// Destiny: 15).
+    LifeAtLeastStartingPlus(i32),
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -3442,6 +3603,39 @@ pub enum When {
     /// "Whenever you play a card from exile" (Prosper, Tome-Bound): a land played or a spell cast
     /// from exile, fired by `Game::played_from_exile` (game/zones.rs).
     YouPlayCardFromExile,
+    /// "Whenever a [subtype] you control attacks" (Utvara Hellkite: Dragon), this one included; slot
+    /// 0 (if `triggering`) is the attacker.
+    SubtypeYouControlAttacks(&'static str),
+    /// "Whenever a [subtype] is put into a graveyard from the battlefield" (Ygra, Eater of All: a
+    /// Food), anyone's, tokens included; slot 0 (if `triggering`) is that card. The subtype is
+    /// checked as it last existed on the battlefield, statics included (Ygra's own Foods).
+    SubtypeToGraveyardFromBattlefield(&'static str),
+    /// "When this [permanent] enters untapped" (Witch's Cottage): checked with the "enters tapped"
+    /// triggers, once its enter replacements have applied.
+    EntersUntapped,
+    /// "Whenever the Ring tempts you" (CR 701.54), fired once the Ring-bearer is chosen or asked
+    /// for.
+    RingTemptsYou,
+    /// "Whenever you choose a creature as your Ring-bearer" (Call of the Ring), the same one again
+    /// included (CR 701.54c); slot 0 (if `triggering`) is that creature.
+    YouChooseRingBearer,
+    /// "At the beginning of your upkeep, if [this] is in the command zone" (Oloro, Ageless
+    /// Ascetic): fired for the active player's cards in the command zone, not their permanents.
+    YourUpkeepInCommandZone,
+    /// "Whenever a [subtype] attacks", any player's (Najeela: Warrior); the attacker is the item's
+    /// `extra`.
+    CreatureOfSubtypeAttacks(&'static str),
+    /// "Whenever you cast a spell from your hand" (Sunbird's Invocation), with the spell in `extra`.
+    YouCastSpellFromHand,
+    /// With `Effect::DelayedThisTurn`: "until end of turn, whenever a player casts an instant or
+    /// sorcery spell" (Bonus Round), controlled by that player, with the spell in `extra`.
+    PlayerCastsInstantOrSorceryThisTurn,
+    /// "Whenever a permanent becomes untapped" (Mesmeric Orb), anyone's, this one included; slot 0
+    /// (if `triggering`) is that permanent.
+    PermanentBecomesUntapped,
+    /// "Whenever [this] attacks a player and isn't blocked" (Master of Cruelties), once blockers are
+    /// declared (`Game::fire_unblocked_at_player`).
+    AttacksAndIsntBlocked,
 }
 
 #[derive(Clone, Debug, PartialEq)]

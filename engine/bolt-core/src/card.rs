@@ -139,6 +139,10 @@ pub enum ExtraCost {
     /// with `Action::Cast` paying the mana, or `Action::CastWith` naming a Food to sacrifice or a
     /// card in your graveyard (it and two more, the engine's picks, are exiled).
     ForageOrPay(ManaCost),
+    /// "As an additional cost to cast this spell, reveal a colorless creature card from your hand."
+    /// (Titan's Presence): cast with `Action::CastWith` naming it; it stays in your hand, and is the
+    /// spell's `extra`.
+    RevealColorlessCreature,
 }
 
 /// "This spell costs {N} less to cast if ..." (CR 601.2f).
@@ -255,8 +259,9 @@ pub struct Activated {
     pub sacrifice_another: bool,
     /// "Activate only if you control N or more permanents." (Temple of Cultivation)
     pub min_permanents: u8,
-    /// Crew N (CR 702.122): tap an untapped creature you control with power N or more (activated
-    /// with `Action::ActivateWith`, that creature as the victim).
+    /// Crew N (CR 702.122): tap any number of other untapped creatures you control with total power
+    /// N or more (`Action::ActivateWith` names the first; `Decision::CrewTap` picks the rest when it
+    /// isn't enough alone).
     pub crew: u8,
     /// Only while it's a copy that keeps its own abilities (Sakashima the Impostor's "{2}{U}{U}:
     /// Return ..."): the printed card itself doesn't have it.
@@ -351,6 +356,27 @@ pub struct Activated {
     /// "Sacrifice an artifact" in the cost: any artifact you control, kept out of the mana payment
     /// (Goblin Engineer). Activated with `Action::ActivateWith`.
     pub sacrifice_artifact: bool,
+    /// "Exile a creature you control" in the cost (Food Chain): one `Action::ActivateWith` per
+    /// creature you control; with `victim_in_extra` the effect sees the exiled card.
+    pub exile_creature_you_control: bool,
+    /// "Activate only during combat." (Najeela, the Blade-Blossom)
+    pub only_during_combat: bool,
+    /// "Sacrifice a [first] and a [second]" in the cost: two different permanents you control,
+    /// one with each subtype (Jarad, Golgari Lich Lord: a Swamp and a Forest); the engine picks,
+    /// keeping permanents that have both subtypes when it can.
+    pub sacrifice_two_subtypes: Option<[&'static str; 2]>,
+    /// Saddle N (CR 702.171): tap another untapped creature you control with power N or more (one
+    /// creature, as crew here; `Action::ActivateWith`, that creature as the victim). Scripted with
+    /// `sorcery` and `victim_in_extra`, its `Effect::BecomeSaddled` records the rider.
+    /// Saddle currently uses crew's one-creature shortcut; lane B is replacing both with a
+    /// total-power cost.
+    pub saddle: u8,
+    /// "Activate only if you've cast N or more instant and/or sorcery spells this turn." (Urabrask:
+    /// 3), from `Game::instants_sorceries_cast`.
+    pub min_instants_sorceries_this_turn: u8,
+    /// "Activate only if an opponent has N or more cards in their graveyard." (Sheoldred // The
+    /// True Scriptures: 8)
+    pub opponent_min_graveyard: u8,
 }
 
 /// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,
@@ -1000,6 +1026,53 @@ pub struct CardDef {
     /// Cavern of Souls, with `any_color_for_chosen_type`: its any-color mana is only for creature
     /// spells of the chosen type (not abilities), and a spell it pays for can't be countered.
     pub chosen_type_mana_uncounterable: bool,
+    /// Nyxbloom Ancient: "If you tap a permanent for mana, it produces three times as much of that
+    /// mana instead." (in `untapped_sources`; abilities that add mana without tapping aren't).
+    pub triples_mana_tapped: bool,
+    /// Gourmand's Talent: "During your turn, artifacts you control are Foods in addition to their
+    /// other types" (see `Game::has_subtype`; the Food ability is its `subtype_you_control_has`).
+    pub your_artifacts_are_food_your_turn: bool,
+    /// Ygra, Eater of All: "Other creatures are Food artifacts in addition to their other types"
+    /// (`Game::with_kormus_bell` and `Game::has_subtype`). Give the card a static too, so it's among
+    /// the static sources.
+    pub other_creatures_are_food_artifacts: bool,
+    /// Sigarda, Host of Herons: "Spells and abilities your opponents control can't cause you to
+    /// sacrifice permanents." (`Game::forced_sacrifice_blocked`, in `cant_be_sacrificed`).
+    pub opponents_cant_make_you_sacrifice: bool,
+    /// Valgavoth, Terror Eater: "If a card you didn't control would be put into an opponent's
+    /// graveyard from anywhere, exile it instead. During your turn, you may play cards exiled with
+    /// Valgavoth. If you cast a spell this way, pay life equal to its mana value rather than pay its
+    /// mana cost." (`move_to`, `Game::exiled_with`, `Game::valgavoth_exiled`).
+    pub exiles_opponents_cards_to_play: bool,
+    /// "You may activate loyalty abilities of [this] on any player's turn any time you could cast an
+    /// instant." (Teferi, Master of Time), in `Game::loyalty_actions`.
+    pub loyalty_at_instant_speed: bool,
+    /// Activated abilities every other creature has, whoever controls it (Ygra, Eater of All: "{2},
+    /// {T}, Sacrifice this permanent: You gain 3 life."), in `Game::borrowed_activated`.
+    pub other_creatures_have: Vec<Activated>,
+    /// "Creature spells you control can't be countered." (Rhythm of the Wild, Surrak Dragonclaw), in
+    /// `Game::uncounterable`.
+    pub your_creature_spells_uncounterable: bool,
+    /// "[Color] spells you control can't be countered." (Allosaurus Shepherd: green, WUBRG index 4).
+    pub your_color_spells_uncounterable: Option<u8>,
+    /// "Nontoken creatures you control have riot." (Rhythm of the Wild): a nontoken creature spell
+    /// you control resolving onto the battlefield asks `Decision::Riot`.
+    pub your_nontoken_creatures_have_riot: bool,
+    /// Plague Drone: "If an opponent would gain life, that player loses that much life instead."
+    pub opponents_life_gain_becomes_loss: bool,
+    /// Narset, Parter of Veils: "Each opponent can't draw more than one card each turn." (in `draw`)
+    pub opponents_draw_at_most_one: bool,
+    /// Overload (CR 702.96): the spell cast for its `alt_cost` (with no creature requirement) does
+    /// this instead ("each" for "target"; Damn).
+    pub overload_spell: Option<crate::effect::Ability>,
+    /// Metallic Mimic: "Each other creature you control of the chosen type enters with an
+    /// additional +1/+1 counter on it." (its `chosen_type`, in the enter path)
+    pub others_of_chosen_type_enter_with_counter: bool,
+    /// Ojer Taq: "If one or more creature tokens would be created under your control, three times
+    /// that many of those tokens are created instead." (`Game::creature_token_tripling`)
+    pub triples_creature_tokens: bool,
+    /// The Necrobloom: "Land cards in your graveyard have dredge N." (2), see `Game::dredge_options`.
+    pub lands_in_graveyard_have_dredge: Option<u8>,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1162,6 +1235,36 @@ pub struct ManaExt {
     /// "Colorless spells you cast with mana value N or greater cost {M} less to cast." as (N, M)
     /// (It That Heralds the End: (7, 1)).
     pub colorless_big_spell_discount: Option<(u8, u8)>,
+    /// "Treasures you control have '{T}, Sacrifice this artifact: Add two mana of any one color.'"
+    /// (Alchemist's Talent, level 2): while this permanent is at this Class level or higher (1:
+    /// always), each Treasure you control makes two mana instead of one. 0: none.
+    pub treasures_add_two_at_level: u8,
+    /// "Spells you cast from anywhere other than your hand cost {N} less to cast." (Fortune
+    /// Teller's Talent, level 3): (Class level needed, 1 for always; N).
+    pub not_from_hand_discount: Option<(u8, u8)>,
+    /// "Once each turn, you may pay {0} rather than pay the mana cost for a colorless spell you
+    /// cast from your hand." (Darksteel Monolith): cast with `Action::CastAlternative`.
+    pub colorless_free_once_each_turn: bool,
+    /// Retrace (CR 702.81): cast this card from your graveyard by discarding a land card in
+    /// addition to its other costs (`Action::CastWith` naming the land; it goes back to the
+    /// graveyard as it resolves, not to exile).
+    pub retrace: bool,
+    /// `CardDef::ward_sacrifice` counts only permanents with this subtype (Ygra, Eater of All:
+    /// "Ward—Sacrifice a Food.", with `ward_sacrifice: 1`).
+    pub ward_sacrifice_subtype: Option<&'static str>,
+    /// "This land enters tapped unless you control N or more other [subtype]." (Witch's Cottage:
+    /// ("Swamp", 3)).
+    pub enters_tapped_unless_other_subtype: Option<(&'static str, u8)>,
+    /// Freerunning (CR 702.173): "You may cast this spell for its freerunning cost if you dealt
+    /// combat damage to a player this turn with an Assassin or commander." Cast with
+    /// `Action::CastAlternative` (Overpowering Attack: {2}{R}).
+    pub freerunning: Option<ManaCost>,
+    /// "{T}, Remove a charge counter from this land: Add one mana of any color." (Tendo Ice
+    /// Bridge): its colored mana (its `mana` has `colorless` and the colors) needs one of its own
+    /// kind of counter (`Object::kind_counters`), removed when the payment needs a color.
+    pub colored_removes_kind_counter: bool,
+    /// "This creature can only attack alone." (Master of Cruelties)
+    pub attacks_only_alone: bool,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana
@@ -1506,6 +1609,22 @@ impl CardDef {
             prevents_half_damage_to_you_and_yours: false,
             damage_to_a_player_other_loses: None,
             chosen_type_mana_uncounterable: false,
+            triples_mana_tapped: false,
+            your_artifacts_are_food_your_turn: false,
+            other_creatures_are_food_artifacts: false,
+            opponents_cant_make_you_sacrifice: false,
+            exiles_opponents_cards_to_play: false,
+            loyalty_at_instant_speed: false,
+            other_creatures_have: Vec::new(),
+            your_creature_spells_uncounterable: false,
+            your_color_spells_uncounterable: None,
+            your_nontoken_creatures_have_riot: false,
+            opponents_life_gain_becomes_loss: false,
+            opponents_draw_at_most_one: false,
+            overload_spell: None,
+            others_of_chosen_type_enter_with_counter: false,
+            triples_creature_tokens: false,
+            lands_in_graveyard_have_dredge: None,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1783,6 +1902,22 @@ impl CardDef {
             prevents_half_damage_to_you_and_yours: false,
             damage_to_a_player_other_loses: None,
             chosen_type_mana_uncounterable: false,
+            triples_mana_tapped: false,
+            your_artifacts_are_food_your_turn: false,
+            other_creatures_are_food_artifacts: false,
+            opponents_cant_make_you_sacrifice: false,
+            exiles_opponents_cards_to_play: false,
+            loyalty_at_instant_speed: false,
+            other_creatures_have: Vec::new(),
+            your_creature_spells_uncounterable: false,
+            your_color_spells_uncounterable: None,
+            your_nontoken_creatures_have_riot: false,
+            opponents_life_gain_becomes_loss: false,
+            opponents_draw_at_most_one: false,
+            overload_spell: None,
+            others_of_chosen_type_enter_with_counter: false,
+            triples_creature_tokens: false,
+            lands_in_graveyard_have_dredge: None,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2060,6 +2195,22 @@ impl CardDef {
             prevents_half_damage_to_you_and_yours: false,
             damage_to_a_player_other_loses: None,
             chosen_type_mana_uncounterable: false,
+            triples_mana_tapped: false,
+            your_artifacts_are_food_your_turn: false,
+            other_creatures_are_food_artifacts: false,
+            opponents_cant_make_you_sacrifice: false,
+            exiles_opponents_cards_to_play: false,
+            loyalty_at_instant_speed: false,
+            other_creatures_have: Vec::new(),
+            your_creature_spells_uncounterable: false,
+            your_color_spells_uncounterable: None,
+            your_nontoken_creatures_have_riot: false,
+            opponents_life_gain_becomes_loss: false,
+            opponents_draw_at_most_one: false,
+            overload_spell: None,
+            others_of_chosen_type_enter_with_counter: false,
+            triples_creature_tokens: false,
+            lands_in_graveyard_have_dredge: None,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2100,6 +2251,12 @@ pub struct ZonesExt {
     /// "You may cast artifact spells and colorless spells from the top of your library." (Mystic
     /// Forge)
     pub top_spells_artifact_or_colorless: bool,
+    /// "You may cast this card from your graveyard or from exile." (Squee, the Immortal): its owner
+    /// may cast it from either zone, with its normal timing and cost.
+    pub cast_from_graveyard_or_exile: bool,
+    /// "You may cast spells with flash or flying from the top of your library." (Errant and Giada):
+    /// printed flash or flying.
+    pub top_spells_flash_or_flying: bool,
 }
 
 #[cfg(test)]

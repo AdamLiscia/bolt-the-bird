@@ -1696,6 +1696,8 @@ fn token_slots_line_up_with_their_fields() {
         (t.angel_4, "Angel"),
         (t.pincher, "Pincher"),
         (t.servo, "Servo"),
+        (t.walker, "Walker"),
+        (t.dragon_6_6, "Dragon"),
     ] {
         assert_eq!(defs[slot].name, name, "slot {slot}");
     }
@@ -1704,6 +1706,12 @@ fn token_slots_line_up_with_their_fields() {
     assert_eq!(defs[t.angel_4].colors, [true, false, false, false, false]);
     assert!(defs[t.servo].types.artifact && defs[t.servo].types.creature);
     assert_eq!((defs[t.pincher].power, defs[t.pincher].toughness), (2, 2));
+    assert_eq!((t.walker, t.dragon_6_6), (94, 96));
+    assert_eq!(defs[t.walker].subtypes, vec!["Zombie".to_string()]);
+    assert_eq!(defs[t.walker].colors, [false, false, true, false, false]);
+    assert_eq!((defs[t.dragon_6_6].power, defs[t.dragon_6_6].toughness), (6, 6));
+    assert!(defs[t.dragon_6_6].keywords.has(bolt_core::Keywords::FLYING));
+    assert_eq!(defs[t.dragon_6_6].colors, [false, false, false, true, false]);
 }
 
 #[test]
@@ -1774,4 +1782,227 @@ fn a_delayed_trigger_at_your_next_upkeep_pays_or_loses_the_game() {
         g.players[0].lost || g.result.is_some(),
         "didn't pay: loses the game"
     );
+}
+
+// ---- Batch 16 ----
+
+fn token_def(name: &str) -> usize {
+    set("CMD")
+        .unwrap()
+        .defs
+        .iter()
+        .position(|d| d.token && d.name == name)
+        .unwrap_or_else(|| panic!("the {name} token"))
+}
+
+fn attack_with(g: &mut Game, attackers: &[ObjId]) {
+    g.start_turn(5, 0);
+    while g.pending != bolt_core::Pending::DeclareAttackers(0) {
+        act(g, Action::PassPriority);
+    }
+    for &a in attackers {
+        act(g, Action::Attack(a));
+    }
+    act(g, Action::FinishAttacks);
+}
+
+#[test]
+fn a_subtype_you_control_attacks_counts_only_that_subtype() {
+    let t = trigger(When::SubtypeYouControlAttacks("Cat"), None, gain_one());
+    let mut g = game_with(ring_with(t));
+    g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let other = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    attack_with(&mut g, &[lions, other]);
+    resolve_all(&mut g, &[]);
+    assert_eq!(life(&g, 0), 41, "once, for the Cat only");
+}
+
+#[test]
+fn a_subtype_put_into_a_graveyard_from_the_battlefield_is_anyones() {
+    let t = trigger(When::SubtypeToGraveyardFromBattlefield("Food"), None, gain_one());
+    let mut g = game_with(ring_with(t));
+    g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    g.add_card(1, cid("Sol Ring"), Zone::Battlefield);
+    let food = g.add_card(0, token_def("Food"), Zone::Battlefield);
+    act(&mut g, Action::Activate(food, 0)); // {2}, {T}, sacrifice: gain 3
+    resolve_all(&mut g, &[]);
+    assert_eq!(life(&g, 0), 44, "3 from the Food, 1 from its trigger");
+    assert_eq!(life(&g, 1), 41, "the opponent's trigger sees your Food too");
+    let clue = g.add_card(0, token_def("Clue"), Zone::Battlefield);
+    act(&mut g, Action::Activate(clue, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!((life(&g, 0), life(&g, 1)), (44, 41), "not a Clue");
+}
+
+#[test]
+fn a_subtype_to_a_graveyard_looks_back_at_static_subtypes() {
+    // Exquisite Blood, standing in for Ygra: "creatures you control are Foods" and the Food trigger.
+    let mut g = game_with(|defs| {
+        blood_with(vec![trigger(
+            When::SubtypeToGraveyardFromBattlefield("Food"),
+            None,
+            gain(1),
+        )])(defs);
+        defs[cid("Exquisite Blood")]
+            .statics
+            .push(bolt_core::effect::Static {
+                scope: bolt_core::effect::Scope::YourCreatures,
+                your_turn_only: false,
+                condition: None,
+                subtype: Some("Food"),
+                lose_abilities: false,
+                base_pt: None,
+                protection: [false; 5],
+                scale: None,
+                power: 0,
+                toughness: 0,
+                keywords: bolt_core::Keywords::NONE,
+                set_colors: None,
+                becomes_land: false,
+            });
+    });
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let angel = g.add_card(0, cid("Serra Angel"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Serra Angel"), Zone::Battlefield);
+    assert!(g.has_subtype(angel, "Food"));
+    kill(&mut g, angel);
+    resolve_all(&mut g, &[]);
+    assert_eq!(life(&g, 0), 41, "a Food on the battlefield, not in the graveyard");
+    kill(&mut g, theirs);
+    resolve_all(&mut g, &[]);
+    assert_eq!(life(&g, 0), 41, "the opponent's creature wasn't a Food");
+}
+
+#[test]
+fn ygras_food_artifacts_trigger_food_and_artifact_graveyard_triggers() {
+    // Exquisite Blood with Ygra's "other creatures are Food artifacts", the Food trigger (10) and
+    // Marionette Master's "an artifact you control is put into a graveyard" (1).
+    let mut g = game_with(|defs| {
+        blood_with(vec![
+            trigger(When::SubtypeToGraveyardFromBattlefield("Food"), None, gain(10)),
+            trigger(When::ArtifactYouControlToGraveyardFromBattlefield, None, gain(1)),
+        ])(defs);
+        let d = &mut defs[cid("Exquisite Blood")];
+        d.other_creatures_are_food_artifacts = true;
+        d.statics.push(bolt_core::effect::Static {
+            scope: bolt_core::effect::Scope::This,
+            your_turn_only: false,
+            condition: None,
+            subtype: None,
+            lose_abilities: false,
+            base_pt: None,
+            protection: [false; 5],
+            scale: None,
+            power: 0,
+            toughness: 0,
+            keywords: bolt_core::Keywords::NONE,
+            set_colors: None,
+            becomes_land: false,
+        });
+    });
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let angel = g.add_card(0, cid("Serra Angel"), Zone::Battlefield);
+    assert!(g.types_of(angel).artifact && g.has_subtype(angel, "Food"));
+    kill(&mut g, angel);
+    resolve_all(&mut g, &[]);
+    assert_eq!(life(&g, 0), 51, "a Food and an artifact as it last existed");
+    assert!(
+        !g.types_of(angel).artifact,
+        "a plain creature card in the graveyard"
+    );
+}
+
+#[test]
+fn enters_untapped_triggers_only_untapped() {
+    for tapped in [false, true] {
+        let mut g = game_with(|defs: &mut Vec<CardDef>| {
+            let d = &mut defs[cid("Command Tower")];
+            d.enters_tapped = tapped;
+            d.triggers.push(trigger(When::EntersUntapped, None, gain_one()));
+        });
+        let tower = g.add_card(0, cid("Command Tower"), Zone::Hand);
+        act(&mut g, Action::PlayLand(tower));
+        resolve_all(&mut g, &[]);
+        assert_eq!(g.obj(tower).tapped, tapped);
+        assert_eq!(life(&g, 0), if tapped { 40 } else { 41 }, "tapped: {tapped}");
+    }
+}
+
+#[test]
+fn pay_x_up_to_the_life_gained_draws_x() {
+    let mut g = game_with(|defs: &mut Vec<CardDef>| {
+        let d = &mut defs[cid("Sol Ring")];
+        d.triggers.push(trigger(
+            When::YouGainLife,
+            None,
+            vec![Effect::MayPayXUpToAmountDrawX],
+        ));
+    });
+    g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    let food = g.add_card(0, token_def("Food"), Zone::Battlefield);
+    act(&mut g, Action::Activate(food, 0)); // gain 3
+    while !matches!(g.pending, bolt_core::Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let options = g.legal_actions();
+    assert_eq!(
+        options,
+        vec![
+            Action::Amount(0),
+            Action::Amount(1),
+            Action::Amount(2),
+            Action::Amount(3)
+        ],
+        "X up to the 3 gained"
+    );
+    let before = g.players[0].hand.len();
+    resolve_all(&mut g, &[Action::Amount(3)]);
+    assert_eq!(g.players[0].hand.len(), before + 3);
+    // Declining draws nothing.
+    let food = g.add_card(0, token_def("Food"), Zone::Battlefield);
+    act(&mut g, Action::Activate(food, 0));
+    let before = g.players[0].hand.len();
+    resolve_all(&mut g, &[Action::Amount(0)]);
+    assert_eq!(g.players[0].hand.len(), before);
+}
+
+#[test]
+fn ring_tempts_and_ring_bearer_choice_triggers() {
+    let mut g = game_with(|defs: &mut Vec<CardDef>| {
+        let d = &mut defs[cid("Sol Ring")];
+        d.triggers.push(trigger(When::RingTemptsYou, None, gain_one()));
+        d.triggers.push(trigger(When::YouChooseRingBearer, None, gain(2)));
+    });
+    g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    // Fiery Inscription: "When this enchantment enters, the Ring tempts you."
+    let fiery = g.add_card(0, cid("Fiery Inscription"), Zone::Hand);
+    play(&mut g, fiery, false, &[], &[]); // no creature: tempted, nobody chosen
+    assert_eq!(life(&g, 0), 41);
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let fiery = g.add_card(0, cid("Fiery Inscription"), Zone::Hand);
+    play(&mut g, fiery, false, &[], &[]); // the only creature is chosen
+    assert_eq!(g.ring_bearer(0), Some(lions));
+    assert_eq!(life(&g, 0), 44, "tempted and chose");
+}
+
+#[test]
+fn ring_bearer_combat_damage_drains_three_at_the_fourth_level() {
+    let mut g = game_with(|_| {});
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    for _ in 0..4 {
+        g.ring_tempts(0);
+    }
+    attack_with(&mut g, &[lions]);
+    // Through the loot (draw, then discard) and the rest of combat, taking the first answer.
+    let mut steps = 0;
+    while g.step != Step::Main2 && steps < 200 {
+        let a = match g.pending {
+            bolt_core::Pending::Decide(_) | bolt_core::Pending::ChooseTarget(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+        steps += 1;
+    }
+    assert_eq!(life(&g, 1), 40 - 2 - 3, "2 combat damage, then the Ring's 3");
 }

@@ -133,6 +133,24 @@ def test_bruna_and_light_paws_attach_auras():
     assert sv._decision_label(kaalia, "Pick", 0, "Shivan Dragon") == "Put onto the battlefield attacking: Shivan Dragon"
 
 
+def test_rakdos_patron_of_chaos_sacrifice_two_or_they_draw():
+    dec = {"kind": "PatronOfChaosSacrifice"}
+    assert sv._decision_label(dec, "Pick", 0, "Sol Ring") == "Sacrifice (one of two): Sol Ring"
+    assert label(dec, "No", 0) == "Don't sacrifice (they draw two cards)"
+
+
+def test_deep_cavern_bat_exile_from_hand_until_it_leaves():
+    dec = {"kind": "ExileFromHandUntilSourceLeaves"}
+    assert sv._decision_label(dec, "Pick", 0, "Sol Ring") == "Exile until it leaves: Sol Ring"
+    assert label(dec, "No", 0) == "Exile nothing"
+
+
+def test_rona_may_put_the_exiled_land_onto_the_battlefield():
+    dec = {"kind": "MayPutExiledLandOntoBattlefield"}
+    assert label(dec, "Yes", 0) == "Put the land onto the battlefield"
+    assert label(dec, "No", 0) == "Leave it in exile"
+
+
 def test_venturing_names_the_dungeon_or_room():
     dec = {"kind": "ChooseDungeon", "options": ["Lost Mine of Phandelver", "Dungeon of the Mad Mage"]}
     assert label(dec, "Mode", 1) == "Venture into Dungeon of the Mad Mage"
@@ -176,3 +194,70 @@ def test_rootcast_and_frugivore_decisions_read_as_their_moves():
     frugivore = {"kind": "ExileThreeForFood", "food": 0, "chosen": []}
     assert sv._decision_label(frugivore, "Pick", 0, "Plains") == "Exile (three for a Food): Plains"
     assert label(frugivore, "No", 0) == "Don't exile (no more Food)"
+
+
+def test_sylvan_library_decisions_read_as_their_moves():
+    assert label({"kind": "SylvanDraw"}, "Yes", 0) == "Draw two additional cards"
+    assert label({"kind": "SylvanDraw"}, "No", 0) == "Don't draw"
+    pick = {"kind": "SylvanPick", "left": 2, "chosen": []}
+    assert sv._decision_label(pick, "Pick", 0, "Sol Ring") == "Choose (pay 4 life or put it back): Sol Ring"
+    pay = {"kind": "SylvanPayOrTop", "left": 2, "chosen": []}
+    assert label(pay, "Yes", 0) == "Pay 4 life to keep it"
+    assert label(pay, "No", 0) == "Put it on top of your library"
+
+
+def test_well_of_lost_dreams_pays_x_to_draw_x():
+    dec = {"kind": "PayXDrawX", "max": 3}
+    assert label(dec, "Amount", 0) == "Don't pay"
+    assert label(dec, "Amount", 1) == "Pay {1}: draw 1 card"
+    assert label(dec, "Amount", 3) == "Pay {3}: draw 3 cards"
+    sourced = {**dec, "source": [5, 1]}
+    assert label(sourced, "Amount", 2) == "Pay {2}: draw 2 cards (Thriving Heath)"
+
+
+def test_riot_names_the_creature_and_the_choice():
+    dec = {"kind": "Riot", "card": [7, 1]}
+    assert label(dec, "Mode", 0) == "Thriving Heath: riot, a +1/+1 counter"
+    assert label(dec, "Mode", 1) == "Thriving Heath: riot, haste"
+
+
+def test_composer_of_spring_puts_a_land_or_creature_tapped():
+    dec = {"kind": "LandOrCreatureFromHandTapped", "creature": True}
+    assert sv._decision_label(dec, "Pick", 0, "Forest") == "Put onto the battlefield tapped: Forest"
+
+
+def test_a_kick_count_names_the_spell_and_the_kicks():
+    dec = {"kind": "ChooseKickCount", "card": [7, 1], "max": 3}
+    assert label(dec, "Amount", 2) == "Kick Thriving Heath 2 times"
+    assert label(dec, "Amount", 1) == "Kick Thriving Heath once"
+    assert label({"kind": "ChooseKickCount"}, "Amount", 0) == "Kick 0 times"
+
+
+def test_fabricate_offers_counters_or_servos():
+    dec = {"kind": "Fabricate", "x": 3, "source": [5, 2]}
+    assert label(dec, "Yes", 0) == "Secluded Courtyard: put 3 +1/+1 counters on it"
+    assert label(dec, "No", 0) == "Secluded Courtyard: create 3 1/1 Servo tokens"
+
+
+def test_crewing_with_several_creatures_reads_as_its_moves():
+    dec = {"kind": "CrewTap"}
+    assert sv._decision_label(dec, "Pick", 0, "Savannah Lions") == "Also tap (to crew or saddle): Savannah Lions"
+    assert label(dec, "Yes", 0) == "Tap the chosen creatures"
+    assert label(dec, "No", 0) == "Don't tap them"
+
+
+def test_palantir_asks_the_opponent_to_let_you_draw_or_mill():
+    dec = {"kind": "LetDrawOrMill", "x": 2}
+    assert label(dec, "Yes", 0) == "Let them draw a card"
+    assert label(dec, "No", 0) == "Make them mill 2 (you lose life equal to the total mana value)"
+
+
+def test_dredge_reads_as_returning_a_card_or_drawing():
+    dec = {"kind": "Dredge"}
+    assert sv._decision_label(dec, "Pick", 0, "Forest") == "Dredge instead of drawing: Forest"
+    assert label(dec, "No", 0) == "Draw a card"
+
+
+def test_sheoldred_each_opponent_sacrifices_a_nontoken_creature_or_planeswalker():
+    dec = {"kind": "SacrificeNontokenCreatureOrPlaneswalker"}
+    assert sv._decision_label(dec, "Pick", 0, "Hungry Ghoul") == "Sacrifice Hungry Ghoul"

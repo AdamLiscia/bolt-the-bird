@@ -988,3 +988,555 @@ fn playing_a_card_from_exile_triggers_and_from_hand_does_not() {
     resolve_all(&mut g, &[]);
     assert_eq!(tokens(&g, 0, "Treasure").len(), 1, "played from exile");
 }
+
+// ---- needs_core (mac-c), batch 12: Sheoldred and Animar ----
+
+#[test]
+fn hornet_queen_makes_deathtouch_insects_and_blood_money_pays_only_for_nontokens() {
+    let mut g = table();
+    let queen = hand(&mut g, 0, "Hornet Queen");
+    act(&mut g, Action::Cast(queen));
+    resolve_all(&mut g, &[]);
+    let insects = tokens(&g, 0, "Insect");
+    assert_eq!(insects.len(), 4);
+    assert!(g.keywords(insects[0]).has(Keywords::FLYING) && g.keywords(insects[0]).has(Keywords::DEATHTOUCH));
+    assert_eq!(
+        g.colors_of(insects[0]),
+        [false, false, false, false, true],
+        "green"
+    );
+    let ghoul = put(&mut g, 1, "Hungry Ghoul");
+    let money = hand(&mut g, 0, "Blood Money");
+    act(&mut g, Action::Cast(money));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(queen).zone, Zone::Graveyard);
+    assert_eq!(g.obj(ghoul).zone, Zone::Graveyard);
+    assert!(tokens(&g, 0, "Insect").is_empty());
+    let treasures = tokens(&g, 0, "Treasure");
+    assert_eq!(treasures.len(), 2, "Hornet Queen and the Ghoul, not the Insects");
+    assert!(treasures.iter().all(|&t| g.obj(t).tapped));
+}
+
+#[test]
+fn peer_into_the_abyss_draws_half_the_library_and_halves_life_rounding_up() {
+    let mut g = table();
+    let lib = g.players[1].library.len();
+    let hand_before = g.players[1].hand.len();
+    g.players[1].life = 39;
+    let peer = hand(&mut g, 0, "Peer into the Abyss");
+    act(&mut g, Action::Cast(peer));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].hand.len(), hand_before + lib.div_ceil(2));
+    assert_eq!(g.players[1].life, 19, "loses 20 of 39");
+}
+
+#[test]
+fn otherworld_atlas_charges_then_each_player_draws_per_counter() {
+    let mut g = table();
+    let atlas = put(&mut g, 0, "Otherworld Atlas");
+    act(&mut g, Action::Activate(atlas, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(atlas).kind_counters, 1);
+    to_main1(&mut g, 5, 0);
+    let (mine, theirs) = (g.players[0].hand.len(), g.players[1].hand.len());
+    act(&mut g, Action::Activate(atlas, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), mine + 1);
+    assert_eq!(g.players[1].hand.len(), theirs + 1);
+}
+
+#[test]
+fn neoform_finds_one_more_mana_value_with_an_extra_counter() {
+    let mut g = table();
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let sage = top(&mut g, "Somberwald Sage");
+    let neoform = hand(&mut g, 0, "Neoform");
+    act(&mut g, Action::CastWith(neoform, ghoul));
+    resolve_all(&mut g, &[Action::Pick(sage)]);
+    assert_eq!(g.obj(ghoul).zone, Zone::Graveyard, "sacrificed");
+    assert_eq!(g.obj(sage).zone, Zone::Battlefield, "mana value 3");
+    assert_eq!(g.obj(sage).counters, 1);
+}
+
+#[test]
+fn gilded_drake_exchanges_control_with_an_opponents_creature() {
+    let mut g = table();
+    let theirs = put(&mut g, 1, "Hungry Ghoul");
+    let drake = hand(&mut g, 0, "Gilded Drake");
+    act(&mut g, Action::Cast(drake));
+    resolve_all(&mut g, &[Action::Target(obj(theirs))]);
+    assert_eq!(g.obj(drake).controller, 1);
+    assert_eq!(g.obj(theirs).controller, 0);
+}
+
+// ---- Batch 13: counters on the attached creature, cast from graveyard or exile, copy the enchanted artifact ----
+
+#[test]
+fn wurmcoil_engine_dies_into_a_deathtouch_wurm_and_a_lifelink_wurm() {
+    let mut g = table();
+    let engine = put(&mut g, 0, "Wurmcoil Engine");
+    let dam = hand(&mut g, 0, "Damnation");
+    play(&mut g, dam, false, &[], &[]);
+    assert_eq!(g.obj(engine).zone, Zone::Graveyard);
+    let wurms = tokens(&g, 0, "Phyrexian Wurm");
+    assert_eq!(wurms.len(), 2);
+    assert!(wurms
+        .iter()
+        .all(|&w| g.types_of(w).artifact && g.power(w) == 3 && g.toughness(w) == 3));
+    assert!(wurms.iter().all(|&w| g.colors_of(w) == [false; 5]), "colorless");
+    let dt = wurms
+        .iter()
+        .filter(|&&w| g.keywords(w).has(Keywords::DEATHTOUCH))
+        .count();
+    let ll = wurms
+        .iter()
+        .filter(|&&w| g.keywords(w).has(Keywords::LIFELINK))
+        .count();
+    assert_eq!((dt, ll), (1, 1), "one with deathtouch, the other with lifelink");
+}
+
+#[test]
+fn counters_on_attached_bone_sabres_puts_four_counters_on_the_attacker() {
+    let mut lands = vec!["Hungry Ghoul"];
+    for land in ["Plains", "Island", "Swamp", "Mountain", "Forest"] {
+        lands.extend([land; 5]);
+    }
+    let mut g = game(&lands);
+    let ghoul = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Hungry Ghoul")
+        .unwrap();
+    let sabres = put(&mut g, 0, "Bone Sabres");
+    act(&mut g, Action::Activate(sabres, 0));
+    resolve_all(&mut g, &[Action::Target(obj(ghoul))]);
+    assert_eq!(g.obj(sabres).attached_to.map(|(c, _)| c), Some(ghoul));
+    let base = g.power(ghoul);
+    while g.step != Step::DeclareAttackers {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(ghoul));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ghoul).counters, 4);
+    assert_eq!(g.power(ghoul), base + 4);
+}
+
+#[test]
+fn cast_from_graveyard_or_exile_squee_comes_back_from_either_zone() {
+    let mut g = table();
+    let dead = g.add_card(0, cid("Squee, the Immortal"), Zone::Graveyard);
+    let gone = g.add_card(0, cid("Squee, the Immortal"), Zone::Exile);
+    let theirs = g.add_card(1, cid("Squee, the Immortal"), Zone::Exile);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Cast(dead)), "from your graveyard");
+    assert!(legal.contains(&Action::Cast(gone)), "from exile");
+    assert!(
+        !legal.contains(&Action::Cast(theirs)),
+        "only its owner's permission"
+    );
+    play(&mut g, dead, false, &[], &[]);
+    assert_eq!(g.obj(dead).zone, Zone::Battlefield);
+    play(&mut g, gone, false, &[], &[]);
+    assert_eq!(g.obj(gone).zone, Zone::Battlefield);
+}
+
+/// Passes from the start of player 0's turn `turn` until main phase 1 or the game ends.
+fn upkeep_through(g: &mut Game, turn: u32) {
+    g.start_turn(turn, 0);
+    while g.step != Step::Main1 && g.result.is_none() {
+        act(g, Action::PassPriority);
+    }
+}
+
+#[test]
+fn copy_attached_mechanized_production_copies_each_upkeep_and_wins_at_eight() {
+    let mut g = table();
+    let ring = put(&mut g, 0, "Sol Ring");
+    let mp = hand(&mut g, 0, "Mechanized Production");
+    play(&mut g, mp, false, &[obj(ring)], &[]);
+    assert_eq!(g.obj(mp).attached_to.map(|(c, _)| c), Some(ring));
+    upkeep_through(&mut g, 5);
+    assert_eq!(
+        tokens(&g, 0, "Sol Ring").len(),
+        1,
+        "a token copy of the enchanted artifact"
+    );
+    assert!(g.result.is_none(), "two Sol Rings");
+    for _ in 0..5 {
+        put(&mut g, 0, "Sol Ring");
+    }
+    upkeep_through(&mut g, 7);
+    assert_eq!(g.result, Some(bolt_core::Outcome::Winner(0)), "eight Sol Rings");
+}
+
+#[test]
+fn final_act_does_each_chosen_mode_and_only_those() {
+    let mut g = table();
+    let w = hand(&mut g, 0, "Wrenn and Seven");
+    play(&mut g, w, false, &[], &[]);
+    let ghoul = put(&mut g, 1, "Hungry Ghoul");
+    let first = hand(&mut g, 0, "Final Act");
+    // Mode 0b00010: planeswalkers only.
+    act(&mut g, Action::CastModal(first, 0b00010 - 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(w).zone, Zone::Graveyard);
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield, "creatures weren't chosen");
+    g.players[1].poison = 3;
+    g.players[1].energy = 2;
+    g.players[0].poison = 1;
+    let second = hand(&mut g, 0, "Final Act");
+    // All five: creatures, planeswalkers, battles, graveyards, counters.
+    act(&mut g, Action::CastModal(second, 0b11111 - 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.obj(ghoul).zone,
+        Zone::Exile,
+        "destroyed, then its graveyard exiled"
+    );
+    assert_eq!((g.obj(w).zone, g.obj(first).zone), (Zone::Exile, Zone::Exile));
+    assert_eq!(
+        g.obj(second).zone,
+        Zone::Graveyard,
+        "on the stack as graveyards are exiled"
+    );
+    assert_eq!((g.players[1].poison, g.players[1].energy), (0, 0));
+    assert_eq!(g.players[0].poison, 1, "only opponents lose their counters");
+}
+
+/// Passes until player 0's end-step trigger asks for its target.
+fn to_end_step_target(g: &mut Game) {
+    while !(g.step == Step::End && matches!(g.pending, Pending::ChooseTarget(_))) {
+        let legal = g.legal_actions();
+        let a = [Action::PassPriority, Action::FinishAttacks, Action::FinishBlocks]
+            .into_iter()
+            .find(|a| legal.contains(a))
+            .expect("a pass");
+        act(g, a);
+    }
+}
+
+#[test]
+fn rakdos_patron_of_chaos_opponent_sacrifices_two_or_you_draw_two() {
+    let mut g = table();
+    put(&mut g, 0, "Rakdos, Patron of Chaos");
+    let a = put(&mut g, 1, "Sol Ring");
+    let b = put(&mut g, 1, "Mind Stone");
+    let ghoul = put(&mut g, 1, "Hungry Ghoul");
+    let hand0 = g.players[0].hand.len();
+    to_end_step_target(&mut g);
+    act(&mut g, Action::Target(Target::Player(1)));
+    // Lands aren't offered; the opponent picks two of the rest.
+    resolve_all(&mut g, &[Action::Pick(a), Action::Pick(b)]);
+    assert_eq!((g.obj(a).zone, g.obj(b).zone), (Zone::Graveyard, Zone::Graveyard));
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].hand.len(), hand0, "they sacrificed, so no cards");
+    to_main1(&mut g, 5, 0);
+    let ring = put(&mut g, 1, "Sol Ring");
+    let hand0 = g.players[0].hand.len();
+    to_end_step_target(&mut g);
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[Action::No]);
+    assert_eq!(g.obj(ring).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].hand.len(), hand0 + 2, "they didn't, so you draw two");
+}
+
+#[test]
+fn hanweir_battlements_grants_haste_and_its_meld_finds_no_garrison() {
+    let mut g = table();
+    let b = put(&mut g, 0, "Hanweir Battlements");
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    act(&mut g, Action::Activate(b, 0));
+    resolve_all(&mut g, &[Action::Target(obj(ghoul))]);
+    assert!(g.keywords(ghoul).has(Keywords::HASTE));
+    assert!(g.obj(b).tapped);
+    // No Hanweir Garrison in the pool: the meld ability resolves and nothing is exiled.
+    let b2 = put(&mut g, 0, "Hanweir Battlements");
+    act(&mut g, Action::Activate(b2, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(b2).zone, Zone::Battlefield);
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield);
+}
+
+#[test]
+fn errant_and_giada_casts_fliers_and_flash_from_the_top_only() {
+    let mut g = table();
+    put(&mut g, 0, "Errant and Giada");
+    let drake = top(&mut g, "Gilded Drake");
+    assert!(
+        g.legal_actions().contains(&Action::Cast(drake)),
+        "a flier from the top"
+    );
+    let ghoul = top(&mut g, "Hungry Ghoul");
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(ghoul)),
+        "no flash or flying"
+    );
+}
+
+// ---- Elder Brain, Inkshield, The One Ring, Deep-Cavern Bat ----
+
+/// Passes (finishing attacks and blocks) until `step`.
+fn pass_to(g: &mut Game, step: Step) {
+    for _ in 0..200 {
+        if g.step == step && matches!(g.pending, Pending::Priority(_)) {
+            return;
+        }
+        let legal = g.legal_actions();
+        let a = [Action::PassPriority, Action::FinishAttacks, Action::FinishBlocks]
+            .into_iter()
+            .find(|a| legal.contains(a))
+            .expect("a pass");
+        act(g, a);
+    }
+    panic!("never reached {step:?}");
+}
+
+#[test]
+fn elder_brain_exiles_the_hand_they_draw_that_many_and_you_play_them_with_any_mana() {
+    let mut g = game(&["Plains", "Plains", "Plains"]);
+    let brain = put(&mut g, 0, "Elder Brain");
+    let elves = hand(&mut g, 1, "Llanowar Elves");
+    let mountain = hand(&mut g, 1, "Mountain");
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    let before: Vec<ObjId> = g.players[1].hand.clone();
+    act(&mut g, Action::Attack(brain));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[]);
+    for &c in &before {
+        assert_eq!(g.obj(c).zone, Zone::Exile, "the whole hand is exiled");
+    }
+    assert_eq!(g.players[1].hand.len(), before.len(), "they draw that many");
+    assert!(g.players[1].hand.iter().all(|c| !before.contains(c)));
+    pass_to(&mut g, Step::Main2);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::PlayLand(mountain)), "lands too");
+    assert!(legal.contains(&Action::Cast(elves)), "{{G}} paid with Plains");
+    act(&mut g, Action::Cast(elves));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+    assert_eq!(g.obj(elves).controller, 0);
+}
+
+#[test]
+fn inkshield_prevents_combat_damage_and_makes_an_inkling_per_point() {
+    let mut g = table();
+    let ghoul = put(&mut g, 1, "Hungry Ghoul");
+    let shield = hand(&mut g, 0, "Inkshield");
+    g.start_turn(4, 1);
+    while g.pending != Pending::DeclareAttackers(1) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(ghoul));
+    act(&mut g, Action::FinishAttacks);
+    while g.pending != Pending::Priority(0) {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    act(&mut g, Action::Cast(shield));
+    while g.step != Step::Main2 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[0].life, 40, "prevented");
+    let inklings = tokens(&g, 0, "Inkling");
+    assert_eq!(inklings.len(), g.power(ghoul) as usize, "one per point prevented");
+    assert!(g.keywords(inklings[0]).has(Keywords::FLYING));
+}
+
+#[test]
+fn the_one_ring_protects_if_cast_then_burdens_draw_and_drain() {
+    let mut g = table();
+    let ring = hand(&mut g, 0, "The One Ring");
+    play(&mut g, ring, false, &[], &[]);
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    act(&mut g, Action::Cast(bolt));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(Target::Player(0))),
+        "protection from everything"
+    );
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    let hand0 = g.players[0].hand.len();
+    act(&mut g, Action::Activate(ring, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ring).kind_counters, 1);
+    assert_eq!(g.players[0].hand.len(), hand0 + 1, "one burden, one card");
+    to_main1(&mut g, 5, 0);
+    assert_eq!(g.players[0].life, 39, "1 life per burden counter at upkeep");
+    let hand0 = g.players[0].hand.len();
+    act(&mut g, Action::Activate(ring, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), hand0 + 2, "two burdens, two cards");
+    // Not cast: no protection.
+    let mut g = table();
+    put(&mut g, 0, "The One Ring");
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    act(&mut g, Action::Cast(bolt));
+    assert!(g.legal_actions().contains(&Action::Target(Target::Player(0))));
+}
+
+#[test]
+fn deep_cavern_bat_exiles_a_nonland_card_until_it_leaves() {
+    let mut g = table();
+    let ring = hand(&mut g, 1, "Sol Ring");
+    let land = hand(&mut g, 1, "Mountain");
+    let bat = hand(&mut g, 0, "Deep-Cavern Bat");
+    act(&mut g, Action::Cast(bat));
+    let legal_first = {
+        resolve_until_decision(&mut g);
+        g.legal_actions()
+    };
+    assert!(legal_first.contains(&Action::Pick(ring)));
+    assert!(!legal_first.contains(&Action::Pick(land)), "nonland only");
+    resolve_all(&mut g, &[Action::Pick(ring)]);
+    assert_eq!(g.obj(ring).zone, Zone::Exile);
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[obj(bat)], &[]);
+    assert_eq!(g.obj(bat).zone, Zone::Graveyard);
+    assert!(g.players[1].hand.contains(&ring), "back to its owner's hand");
+}
+
+/// Passes and targets player 1 until a resolution decision comes up.
+fn resolve_until_decision(g: &mut Game) {
+    while !matches!(g.pending, Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) => Action::Target(Target::Player(1)),
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+// ---- Sefris, Urabrask, The True Scriptures: transforms and Rona's back face ----
+
+/// `game(&[])` with every basic five times for each player, after `edit` changes the CMD defs.
+fn table_with(edit: impl Fn(&mut Vec<bolt_core::CardDef>)) -> Game {
+    let mut defs = (*set("CMD").unwrap().defs).clone();
+    edit(&mut defs);
+    let plains = vec![cid("Plains"); 99];
+    let mut g = Game::new_commander(
+        std::sync::Arc::new(defs),
+        [&plains, &plains],
+        [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+        7,
+        0,
+    );
+    g.auto_pass = false;
+    for land in ["Plains", "Island", "Swamp", "Mountain", "Forest"] {
+        for p in 0..2 {
+            for _ in 0..5 {
+                put(&mut g, p, land);
+            }
+        }
+    }
+    g.start_turn(3, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    g
+}
+
+#[test]
+fn activate_only_after_three_instants_or_sorceries_or_with_eight_in_an_opponents_graveyard() {
+    let mut g = table_with(|defs| {
+        let atlas = &mut defs[cid("Otherworld Atlas")];
+        atlas.activated[0].min_instants_sorceries_this_turn = 1;
+        atlas.activated[1].opponent_min_graveyard = 2;
+    });
+    let atlas = put(&mut g, 0, "Otherworld Atlas");
+    let legal = g.legal_actions();
+    assert!(
+        !legal.contains(&Action::Activate(atlas, 0)),
+        "no instant cast yet"
+    );
+    assert!(
+        !legal.contains(&Action::Activate(atlas, 1)),
+        "their graveyard is empty"
+    );
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[Target::Player(1)], &[]);
+    g.add_card(1, cid("Plains"), Zone::Graveyard);
+    assert!(
+        g.legal_actions().contains(&Action::Activate(atlas, 0)),
+        "one cast"
+    );
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(atlas, 1)),
+        "one card"
+    );
+    g.add_card(1, cid("Plains"), Zone::Graveyard);
+    assert!(
+        g.legal_actions().contains(&Action::Activate(atlas, 1)),
+        "two cards"
+    );
+}
+
+#[test]
+fn rona_untaps_on_legendary_casts_transforms_and_takes_a_land_from_the_damagers_hand() {
+    let mut g = table();
+    let rona = put(
+        &mut g,
+        0,
+        "Rona, Herald of Invasion // Rona, Tolarian Obliterator",
+    );
+    g.objects[rona.0 as usize].tapped = true;
+    let squee = hand(&mut g, 0, "Squee, the Immortal");
+    play(&mut g, squee, false, &[], &[]);
+    assert!(!g.obj(rona).tapped, "a legendary spell untaps Rona");
+    act(&mut g, Action::Activate(rona, 1));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(rona).transformed);
+    assert_eq!(g.def_of(rona).name, "Rona, Tolarian Obliterator");
+    // Player 0's own Lightning Bolt: its controller (player 0) exiles a card at random, and the
+    // rest of player 0's hand is Plains.
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    let lands = g.permanents(0).filter(|&x| g.types_of(x).land).count();
+    let hand0 = g.players[0].hand.len();
+    play(&mut g, bolt, false, &[obj(rona)], &[Action::Yes]);
+    assert_eq!(g.obj(rona).zone, Zone::Battlefield, "5 toughness");
+    assert_eq!(
+        g.players[0].hand.len(),
+        hand0 - 2,
+        "the Bolt, and the exiled card"
+    );
+    assert_eq!(
+        g.permanents(0).filter(|&x| g.types_of(x).land).count(),
+        lands + 1,
+        "the land onto the battlefield"
+    );
+}
+
+#[test]
+fn each_opponent_sacrifices_a_nontoken_creature_or_planeswalker() {
+    let mut g = table_with(|defs| {
+        defs[cid("Inkshield")].spell = Some(bolt_core::Ability::new(
+            vec![],
+            vec![bolt_core::Effect::OpponentSacrificesNontokenCreatureOrPlaneswalker],
+        ));
+    });
+    let ghoul = put(&mut g, 1, "Hungry Ghoul");
+    let edict = hand(&mut g, 0, "Inkshield"); // standing in for Sheoldred's enters trigger
+    act(&mut g, Action::Cast(edict));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(ghoul)));
+    assert!(
+        legal
+            .iter()
+            .all(|a| matches!(a, Action::Pick(x) if !g.types_of(*x).land)),
+        "no lands"
+    );
+    resolve_all(&mut g, &[Action::Pick(ghoul)]);
+    assert_eq!(g.obj(ghoul).zone, Zone::Graveyard);
+    // Nothing to sacrifice: no question.
+    let edict = hand(&mut g, 0, "Inkshield");
+    play(&mut g, edict, false, &[], &[]);
+}
