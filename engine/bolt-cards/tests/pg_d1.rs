@@ -2661,3 +2661,155 @@ fn war_room_draws_for_life_equal_to_commander_colors() {
     assert_eq!(g.players[0].life, life - n);
     assert_eq!(g.players[0].hand.len(), hand + 1);
 }
+
+// ---- d1 core, batch 14 ----
+
+#[test]
+fn pride_of_the_clouds_grows_per_other_flier_and_forecasts_a_bird() {
+    let mut g = game(&["Plains", "Plains", "Island", "Island"]);
+    let pride = put(&mut g, 0, "Pride of the Clouds");
+    assert_eq!(g.power(pride), 1);
+    put(&mut g, 0, "Meloku the Clouded Mirror");
+    put(&mut g, 1, "Watcher of the Spheres");
+    assert_eq!(
+        (g.power(pride), g.toughness(pride)),
+        (3, 3),
+        "two other fliers, anyone's"
+    );
+    // Forecast from hand, during your upkeep.
+    let card = hand(&mut g, 0, "Pride of the Clouds");
+    assert!(!legal(&g, Action::Activate(card, 0)), "main phase");
+    g.start_turn(5, 0);
+    while g.step != Step::Upkeep {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Activate(card, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(card).zone, Zone::Hand, "revealed");
+    let birds = tokens(&g, 0, "Bird");
+    assert_eq!(birds.len(), 1);
+    let b = birds[0];
+    assert!(g.keywords(b).has(Keywords::FLYING));
+    assert_eq!(g.def_of(b).colors, [true, true, false, false, false]);
+    assert_eq!((g.power(pride), g.toughness(pride)), (4, 4), "the Bird flies too");
+}
+
+#[test]
+fn marionette_apprentice_fabricates_and_drains_when_another_creature_dies() {
+    let mut g = game(&["Swamp", "Swamp"]);
+    let m = hand(&mut g, 0, "Marionette Apprentice");
+    play(&mut g, m, false, &[], &[Action::Yes]);
+    assert_eq!(g.obj(m).counters, 1, "fabricate 1: a +1/+1 counter");
+    let altar = put(&mut g, 0, "Ashnod's Altar");
+    let elf = put(&mut g, 0, "Fyndhorn Elves");
+    let life = g.players[1].life;
+    act(&mut g, Action::ActivateWith(altar, 0, elf));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, life - 1);
+}
+
+#[test]
+fn marionette_master_makes_servos_and_drains_its_power_when_an_artifact_dies() {
+    let mut g = table();
+    let m = hand(&mut g, 0, "Marionette Master");
+    play(&mut g, m, false, &[], &[Action::No]);
+    let servos = tokens(&g, 0, "Servo");
+    assert_eq!(servos.len(), 3, "fabricate 3: three Servos");
+    assert_eq!(g.power(m), 1);
+    let altar = put(&mut g, 0, "Ashnod's Altar");
+    let life = g.players[1].life;
+    act(&mut g, Action::ActivateWith(altar, 0, servos[0]));
+    resolve_all(&mut g, &[Action::Target(Target::Player(1))]);
+    assert_eq!(g.players[1].life, life - 1, "the Master's power");
+}
+
+#[test]
+fn food_chain_exiles_a_creature_for_mana_only_creature_spells_spend() {
+    let mut g = game(&[]);
+    let chain = put(&mut g, 0, "Food Chain");
+    let elf = put(&mut g, 0, "Fyndhorn Elves");
+    g.objects[elf.0 as usize].tapped = true; // not its own mana
+    act(&mut g, Action::ActivateWith(chain, 0, elf));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elf).zone, Zone::Exile);
+    let sign = hand(&mut g, 0, "Sign in Blood");
+    assert!(!legal(&g, Action::Cast(sign)), "not a creature spell");
+    let seer = hand(&mut g, 0, "Viscera Seer");
+    act(&mut g, Action::Cast(seer));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.obj(seer).zone,
+        Zone::Battlefield,
+        "two mana: 1 plus the Elves' mana value"
+    );
+}
+
+#[test]
+fn waves_of_aggression_retraces_from_the_graveyard_by_discarding_a_land() {
+    let mut g = table();
+    let w = g.add_card(0, cid("Waves of Aggression"), Zone::Graveyard);
+    let land = hand(&mut g, 0, "Mountain");
+    act(&mut g, Action::CastWith(w, land));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(land).zone, Zone::Graveyard, "discarded");
+    assert_eq!(g.obj(w).zone, Zone::Graveyard, "retraced: back to the graveyard");
+}
+
+#[test]
+fn darksteel_monolith_casts_a_colorless_spell_from_hand_for_zero_once_each_turn() {
+    let mut g = game(&[]);
+    put(&mut g, 0, "Darksteel Monolith");
+    let a = hand(&mut g, 0, "Ashnod's Altar");
+    let b = hand(&mut g, 0, "Phyrexian Altar");
+    act(&mut g, Action::CastAlternative(a));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(a).zone, Zone::Battlefield, "{{3}} paid as {{0}}");
+    assert!(!legal(&g, Action::CastAlternative(b)), "once each turn");
+}
+
+// ---- The Gitrog, Ravenous Ride (RuricMo) ----
+
+#[test]
+fn witchs_cottage_enters_tapped_unless_three_other_swamps_then_tops_a_creature_card() {
+    let mut g = game(&["Swamp", "Swamp"]);
+    let c = hand(&mut g, 0, "Witch's Cottage");
+    act(&mut g, Action::PlayLand(c));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(c).tapped, "two other Swamps");
+    let mut g = game(&["Swamp", "Swamp", "Swamp"]);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Graveyard);
+    let c = hand(&mut g, 0, "Witch's Cottage");
+    act(&mut g, Action::PlayLand(c));
+    resolve_all(&mut g, &[Action::Target(Target::Object(elves)), Action::Yes]);
+    assert!(!g.obj(c).tapped, "three other Swamps");
+    assert_eq!(g.obj(elves).zone, Zone::Library);
+    assert_eq!(*g.players[0].library.last().unwrap(), elves, "on top");
+}
+
+#[test]
+fn jarad_drains_the_sacrificed_power_and_returns_for_a_swamp_and_a_forest() {
+    let mut g = table();
+    let jarad = put(&mut g, 0, "Jarad, Golgari Lich Lord");
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    g.add_card(0, cid("Llanowar Elves"), Zone::Graveyard);
+    assert_eq!(g.power(jarad), 3, "one creature card in the graveyard");
+    let life = g.players[1].life;
+    act(&mut g, Action::ActivateWith(jarad, 0, elves));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, life - 1, "the Elves' power");
+    // From the graveyard: a Swamp and a Forest.
+    let mut g2 = table();
+    let jarad = g2.add_card(0, cid("Jarad, Golgari Lich Lord"), Zone::Graveyard);
+    let swamps = |g: &Game| g.permanents(0).filter(|&x| g.def_of(x).name == "Swamp").count();
+    let forests = |g: &Game| g.permanents(0).filter(|&x| g.def_of(x).name == "Forest").count();
+    let (s, f) = (swamps(&g2), forests(&g2));
+    let ret = g2
+        .legal_actions()
+        .into_iter()
+        .find(|a| matches!(a, Action::Activate(c, _) if *c == jarad))
+        .expect("its graveyard ability");
+    act(&mut g2, ret);
+    resolve_all(&mut g2, &[]);
+    assert_eq!(g2.obj(jarad).zone, Zone::Hand);
+    assert_eq!((swamps(&g2), forests(&g2)), (s - 1, f - 1));
+}

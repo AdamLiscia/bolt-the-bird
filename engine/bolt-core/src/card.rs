@@ -139,6 +139,10 @@ pub enum ExtraCost {
     /// with `Action::Cast` paying the mana, or `Action::CastWith` naming a Food to sacrifice or a
     /// card in your graveyard (it and two more, the engine's picks, are exiled).
     ForageOrPay(ManaCost),
+    /// "As an additional cost to cast this spell, reveal a colorless creature card from your hand."
+    /// (Titan's Presence): cast with `Action::CastWith` naming it; it stays in your hand, and is the
+    /// spell's `extra`.
+    RevealColorlessCreature,
 }
 
 /// "This spell costs {N} less to cast if ..." (CR 601.2f).
@@ -351,6 +355,15 @@ pub struct Activated {
     /// "Sacrifice an artifact" in the cost: any artifact you control, kept out of the mana payment
     /// (Goblin Engineer). Activated with `Action::ActivateWith`.
     pub sacrifice_artifact: bool,
+    /// "Exile a creature you control" in the cost (Food Chain): one `Action::ActivateWith` per
+    /// creature you control; with `victim_in_extra` the effect sees the exiled card.
+    pub exile_creature_you_control: bool,
+    /// "Activate only during combat." (Najeela, the Blade-Blossom)
+    pub only_during_combat: bool,
+    /// "Sacrifice a [first] and a [second]" in the cost: two different permanents you control,
+    /// one with each subtype (Jarad, Golgari Lich Lord: a Swamp and a Forest); the engine picks,
+    /// keeping permanents that have both subtypes when it can.
+    pub sacrifice_two_subtypes: Option<[&'static str; 2]>,
 }
 
 /// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,
@@ -1024,6 +1037,27 @@ pub struct CardDef {
     /// Activated abilities every other creature has, whoever controls it (Ygra, Eater of All: "{2},
     /// {T}, Sacrifice this permanent: You gain 3 life."), in `Game::borrowed_activated`.
     pub other_creatures_have: Vec<Activated>,
+    /// "Creature spells you control can't be countered." (Rhythm of the Wild, Surrak Dragonclaw), in
+    /// `Game::uncounterable`.
+    pub your_creature_spells_uncounterable: bool,
+    /// "[Color] spells you control can't be countered." (Allosaurus Shepherd: green, WUBRG index 4).
+    pub your_color_spells_uncounterable: Option<u8>,
+    /// "Nontoken creatures you control have riot." (Rhythm of the Wild): a nontoken creature spell
+    /// you control resolving onto the battlefield asks `Decision::Riot`.
+    pub your_nontoken_creatures_have_riot: bool,
+    /// Plague Drone: "If an opponent would gain life, that player loses that much life instead."
+    pub opponents_life_gain_becomes_loss: bool,
+    /// Narset, Parter of Veils: "Each opponent can't draw more than one card each turn." (in `draw`)
+    pub opponents_draw_at_most_one: bool,
+    /// Overload (CR 702.96): the spell cast for its `alt_cost` (with no creature requirement) does
+    /// this instead ("each" for "target"; Damn).
+    pub overload_spell: Option<crate::effect::Ability>,
+    /// Metallic Mimic: "Each other creature you control of the chosen type enters with an
+    /// additional +1/+1 counter on it." (its `chosen_type`, in the enter path)
+    pub others_of_chosen_type_enter_with_counter: bool,
+    /// Ojer Taq: "If one or more creature tokens would be created under your control, three times
+    /// that many of those tokens are created instead." (`Game::creature_token_tripling`)
+    pub triples_creature_tokens: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1182,6 +1216,26 @@ pub struct ManaExt {
     /// "Colorless spells you cast with mana value N or greater cost {M} less to cast." as (N, M)
     /// (It That Heralds the End: (7, 1)).
     pub colorless_big_spell_discount: Option<(u8, u8)>,
+    /// "Treasures you control have '{T}, Sacrifice this artifact: Add two mana of any one color.'"
+    /// (Alchemist's Talent, level 2): while this permanent is at this Class level or higher (1:
+    /// always), each Treasure you control makes two mana instead of one. 0: none.
+    pub treasures_add_two_at_level: u8,
+    /// "Spells you cast from anywhere other than your hand cost {N} less to cast." (Fortune
+    /// Teller's Talent, level 3): (Class level needed, 1 for always; N).
+    pub not_from_hand_discount: Option<(u8, u8)>,
+    /// "Once each turn, you may pay {0} rather than pay the mana cost for a colorless spell you
+    /// cast from your hand." (Darksteel Monolith): cast with `Action::CastAlternative`.
+    pub colorless_free_once_each_turn: bool,
+    /// Retrace (CR 702.81): cast this card from your graveyard by discarding a land card in
+    /// addition to its other costs (`Action::CastWith` naming the land; it goes back to the
+    /// graveyard as it resolves, not to exile).
+    pub retrace: bool,
+    /// `CardDef::ward_sacrifice` counts only permanents with this subtype (Ygra, Eater of All:
+    /// "Ward—Sacrifice a Food.", with `ward_sacrifice: 1`).
+    pub ward_sacrifice_subtype: Option<&'static str>,
+    /// "This land enters tapped unless you control N or more other [subtype]." (Witch's Cottage:
+    /// ("Swamp", 3)).
+    pub enters_tapped_unless_other_subtype: Option<(&'static str, u8)>,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana
@@ -1533,6 +1587,14 @@ impl CardDef {
             exiles_opponents_cards_to_play: false,
             loyalty_at_instant_speed: false,
             other_creatures_have: Vec::new(),
+            your_creature_spells_uncounterable: false,
+            your_color_spells_uncounterable: None,
+            your_nontoken_creatures_have_riot: false,
+            opponents_life_gain_becomes_loss: false,
+            opponents_draw_at_most_one: false,
+            overload_spell: None,
+            others_of_chosen_type_enter_with_counter: false,
+            triples_creature_tokens: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1817,6 +1879,14 @@ impl CardDef {
             exiles_opponents_cards_to_play: false,
             loyalty_at_instant_speed: false,
             other_creatures_have: Vec::new(),
+            your_creature_spells_uncounterable: false,
+            your_color_spells_uncounterable: None,
+            your_nontoken_creatures_have_riot: false,
+            opponents_life_gain_becomes_loss: false,
+            opponents_draw_at_most_one: false,
+            overload_spell: None,
+            others_of_chosen_type_enter_with_counter: false,
+            triples_creature_tokens: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2101,6 +2171,14 @@ impl CardDef {
             exiles_opponents_cards_to_play: false,
             loyalty_at_instant_speed: false,
             other_creatures_have: Vec::new(),
+            your_creature_spells_uncounterable: false,
+            your_color_spells_uncounterable: None,
+            your_nontoken_creatures_have_riot: false,
+            opponents_life_gain_becomes_loss: false,
+            opponents_draw_at_most_one: false,
+            overload_spell: None,
+            others_of_chosen_type_enter_with_counter: false,
+            triples_creature_tokens: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

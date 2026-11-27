@@ -2507,3 +2507,335 @@ fn colorless_eldrazi_and_big_colorless_spell_discounts() {
         "{{7}} less {{1}} from six Swamps"
     );
 }
+
+// ---- batch 14: a kick count with {X}, fabricate, Treasure mana, spells not from hand, Darksteel
+// Monolith, retrace, creature-only mana ----
+
+#[test]
+fn x_and_multikicker_asks_for_the_kick_count_after_x() {
+    use batch9::*;
+    let mut storm = draw_spell("Storm", "{X}{B}");
+    storm.mana_ext.multikicker = ManaCost::parse("{1}");
+    let mut g = batch6_board(vec![storm], 5);
+    let c = g.add_card(0, 25, Zone::Hand);
+    act(&mut g, Action::CastX(c, 1));
+    assert!(
+        matches!(
+            g.decision,
+            Some(bolt_core::Decision::ChooseKickCount { max: 3, .. })
+        ),
+        "{{1}}{{B}} paid, three more Swamps: up to three kicks; {:?}",
+        g.decision
+    );
+    act(&mut g, Action::Amount(2));
+    settle(&mut g);
+    assert_eq!(g.obj(c).zone, Zone::Graveyard);
+    assert_eq!(g.times_kicked(c), 2);
+    let untapped = g.permanents(0).filter(|&x| !g.obj(x).tapped).count();
+    assert_eq!(untapped, 1, "X 1, {{B}} and two kicks: four Swamps");
+}
+
+#[test]
+fn fabricate_puts_counters_or_makes_servos() {
+    use batch9::*;
+    let mut servo = artifact("Servo");
+    servo.types.creature = true;
+    servo.token = true;
+    (servo.power, servo.toughness) = (1, 1);
+    let mut maker = CardDef::creature("Maker", "{1}", 1, 1, Keywords::NONE);
+    maker.triggers.push(Trigger {
+        when: When::Enters,
+        ability: Ability::new(vec![], vec![Effect::Fabricate { n: 2, servo: 25 }]),
+    });
+    for (answer, counters, servos) in [(Action::Yes, 2, 0), (Action::No, 0, 2)] {
+        let mut g = batch6_board(vec![servo.clone(), maker.clone()], 2);
+        let m = g.add_card(0, 26, Zone::Hand);
+        act(&mut g, Action::Cast(m));
+        while g.decision.is_none() {
+            act(&mut g, Action::PassPriority);
+        }
+        assert_eq!(g.legal_actions(), vec![Action::Yes, Action::No]);
+        act(&mut g, answer);
+        settle(&mut g);
+        assert_eq!(g.obj(m).counters, counters);
+        let made = g.permanents(0).filter(|&x| g.def_of(x).name == "Servo").count();
+        assert_eq!(made, servos);
+    }
+}
+
+#[test]
+fn treasures_make_two_mana_and_treasure_mana_is_noted() {
+    use batch9::*;
+    use bolt_core::ManaSource;
+    let mut treasure = artifact("Treasure");
+    treasure.subtypes = vec!["Treasure".into()];
+    treasure.token = true;
+    treasure.mana = Some(ManaSource::of(&Color::ALL));
+    treasure.sac_for_mana = true;
+    let mut talent = artifact("Talent");
+    talent.mana_ext.treasures_add_two_at_level = 1;
+    let spell = draw_spell("Two", "{1}{B}");
+    // Without the Talent, one Treasure is one mana.
+    let mut g = batch6_board(vec![treasure.clone(), talent.clone(), spell.clone()], 0);
+    put(&mut g, 0, 25);
+    let c = g.add_card(0, 27, Zone::Hand);
+    assert!(!g.legal_actions().contains(&Action::Cast(c)));
+    // With it, two.
+    let mut g = batch6_board(vec![treasure, talent, spell], 0);
+    let t = put(&mut g, 0, 25);
+    put(&mut g, 0, 26);
+    let c = g.add_card(0, 27, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    settle(&mut g);
+    assert_eq!(g.obj(c).zone, Zone::Graveyard, "cast from one Treasure");
+    assert_eq!(g.obj(t).zone, Zone::Gone, "sacrificed (a token ceases to exist)");
+    assert!(g.treasure_mana_spent(c));
+}
+
+#[test]
+fn spells_not_cast_from_hand_cost_less_at_the_class_level() {
+    use batch9::*;
+    let mut talent = artifact("Teller");
+    talent.mana_ext.not_from_hand_discount = Some((1, 2));
+    let mut back = draw_spell("Back", "{3}");
+    back.flashback = ManaCost::parse("{3}");
+    let mut g = batch6_board(vec![talent, back], 1);
+    let c = g.add_card(0, 26, Zone::Graveyard);
+    let h = g.add_card(0, 26, Zone::Hand);
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(h)),
+        "from hand: full price"
+    );
+    assert!(!g.legal_actions().contains(&Action::CastFlashback(c)));
+    put(&mut g, 0, 25);
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(h)),
+        "from hand: full price"
+    );
+    act(&mut g, Action::CastFlashback(c));
+    settle(&mut g);
+    assert_eq!(g.obj(c).zone, Zone::Exile, "{{3}} less {{2}} from one Swamp");
+}
+
+#[test]
+fn darksteel_monolith_casts_one_colorless_spell_from_hand_free_each_turn() {
+    use batch9::*;
+    let mut monolith = artifact("Monolith");
+    monolith.mana_ext.colorless_free_once_each_turn = true;
+    let big = draw_spell("Big", "{6}");
+    let mut black = draw_spell("Black", "{5}{B}");
+    black.colors[2] = true;
+    let mut g = batch6_board(vec![monolith, big, black], 0);
+    put(&mut g, 0, 25);
+    let b = g.add_card(0, 27, Zone::Hand);
+    assert!(
+        !g.legal_actions().contains(&Action::CastAlternative(b)),
+        "not colorless"
+    );
+    let one = g.add_card(0, 26, Zone::Hand);
+    let two = g.add_card(0, 26, Zone::Hand);
+    act(&mut g, Action::CastAlternative(one));
+    settle(&mut g);
+    assert_eq!(g.obj(one).zone, Zone::Graveyard, "cast for {{0}}");
+    assert!(
+        !g.legal_actions().contains(&Action::CastAlternative(two)),
+        "once each turn"
+    );
+}
+
+#[test]
+fn retrace_casts_from_the_graveyard_by_discarding_a_land_and_returns_there() {
+    use batch3::SWAMP;
+    use batch9::*;
+    let mut again = draw_spell("Again", "{B}");
+    again.types.instant = false;
+    again.types.sorcery = true;
+    again.mana_ext.retrace = true;
+    let mut g = batch6_board(vec![again], 1);
+    let c = g.add_card(0, 25, Zone::Graveyard);
+    assert!(
+        !g.legal_actions()
+            .iter()
+            .any(|a| matches!(a, Action::CastWith(x, _) if *x == c)),
+        "no land card to discard"
+    );
+    let land = g.add_card(0, SWAMP, Zone::Hand);
+    let spare = g.add_card(0, 25, Zone::Hand); // another copy, not a land
+    assert!(!g.legal_actions().contains(&Action::CastWith(c, spare)));
+    act(&mut g, Action::CastWith(c, land));
+    settle(&mut g);
+    assert_eq!(g.obj(land).zone, Zone::Graveyard, "discarded");
+    assert_eq!(
+        g.obj(c).zone,
+        Zone::Graveyard,
+        "back to the graveyard, not exiled"
+    );
+}
+
+#[test]
+fn creature_only_mana_from_exiling_a_creature_pays_only_for_creature_spells() {
+    use batch3::GREEN_BEAR;
+    use batch9::*;
+    let mut chain = artifact("Chain");
+    chain.activated.push(Activated {
+        exile_creature_you_control: true,
+        victim_in_extra: true,
+        ability: Ability::new(vec![], vec![Effect::AddCreatureSpellManaExtraMvPlusOne]),
+        ..Activated::default()
+    });
+    let golem = CardDef::creature("Big Golem", "{3}", 3, 3, Keywords::NONE);
+    let spell = draw_spell("Three", "{3}");
+    let mut g = batch6_board(vec![chain, golem, spell], 0);
+    let ch = put(&mut g, 0, 25);
+    let bear = put(&mut g, 0, GREEN_BEAR);
+    act(&mut g, Action::ActivateWith(ch, 0, bear));
+    settle(&mut g);
+    assert_eq!(g.obj(bear).zone, Zone::Exile);
+    let s = g.add_card(0, 27, Zone::Hand);
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(s)),
+        "not a creature spell"
+    );
+    let k = g.add_card(0, 26, Zone::Hand);
+    act(&mut g, Action::Cast(k));
+    settle(&mut g);
+    assert_eq!(g.obj(k).zone, Zone::Battlefield, "1 plus the Bear's mana value 2");
+}
+
+/// "Ward—Sacrifice a Food." (Ygra, Eater of All): `ManaExt::ward_sacrifice_subtype`.
+mod ward_sacrifice_food {
+    use bolt_cards::set;
+    use bolt_core::{Action, Game, ObjId, Pending, Step, Target, Zone};
+
+    fn cid(name: &str) -> usize {
+        set("CMD").unwrap().index_of(name).unwrap()
+    }
+
+    fn act(g: &mut Game, a: Action) {
+        g.apply(a)
+            .unwrap_or_else(|e| panic!("{e}; legal: {:?}", g.legal_actions()));
+    }
+
+    fn bolt_at(g: &mut Game, target: ObjId) -> ObjId {
+        let bolt = g.add_card(0, cid("Burst Lightning"), Zone::Hand);
+        act(g, Action::Cast(bolt));
+        act(g, Action::Target(Target::Object(target)));
+        for _ in 0..20 {
+            if matches!(g.pending, Pending::Decide(0)) || g.obj(bolt).zone != Zone::Stack {
+                break;
+            }
+            let a = match g.pending {
+                Pending::Decide(_) | Pending::ChooseTarget(_) => *g.legal_actions().last().unwrap(),
+                _ => Action::PassPriority,
+            };
+            g.apply(a).unwrap();
+        }
+        bolt
+    }
+
+    #[test]
+    fn ward_sacrifice_a_food_takes_only_foods() {
+        let mut defs = (*set("CMD").unwrap().defs).clone();
+        let lions = cid("Savannah Lions");
+        defs[lions].ward_sacrifice = 1;
+        defs[lions].mana_ext.ward_sacrifice_subtype = Some("Food");
+        let food = defs
+            .iter()
+            .position(|d| d.token && d.name == "Food")
+            .expect("Food");
+        let plains = vec![cid("Plains"); 99];
+        let mut g = Game::new_commander(
+            std::sync::Arc::new(defs),
+            [&plains, &plains],
+            [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+            7,
+            0,
+        );
+        g.auto_pass = false;
+        for land in ["Plains", "Island", "Swamp", "Mountain", "Forest"] {
+            for _ in 0..5 {
+                g.add_card(0, cid(land), Zone::Battlefield);
+                g.add_card(1, cid(land), Zone::Battlefield);
+            }
+        }
+        g.start_turn(3, 0);
+        while g.step != Step::Main1 {
+            g.apply(Action::PassPriority).unwrap();
+        }
+        let warded = g.add_card(1, lions, Zone::Battlefield);
+        let ring = g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+        // No Food: the ward can't be paid, so the spell is countered.
+        let bolt = bolt_at(&mut g, warded);
+        assert_eq!(g.obj(bolt).zone, Zone::Graveyard);
+        assert_eq!(g.obj(warded).zone, Zone::Battlefield);
+        // With a Food, only the Food is offered.
+        let f = g.add_card(0, food, Zone::Battlefield);
+        let bolt = bolt_at(&mut g, warded);
+        assert!(matches!(g.pending, Pending::Decide(0)));
+        let legal = g.legal_actions();
+        assert!(legal.contains(&Action::Pick(f)));
+        assert!(!legal.contains(&Action::Pick(ring)), "not a Food");
+        act(&mut g, Action::Pick(f));
+        assert_ne!(g.obj(f).zone, Zone::Battlefield, "the Food sacrificed");
+        for _ in 0..20 {
+            if g.obj(bolt).zone != Zone::Stack {
+                break;
+            }
+            g.apply(Action::PassPriority).unwrap();
+        }
+        assert_eq!(g.obj(bolt).zone, Zone::Graveyard);
+        assert_ne!(
+            g.obj(warded).zone,
+            Zone::Battlefield,
+            "the ward was paid: Burst Lightning resolved"
+        );
+    }
+}
+
+/// "You may spend mana as though it were mana of any color to cast those spells." (Elder Brain):
+/// `Object::any_color_mana` on a card playable from exile.
+mod any_color_mana {
+    use bolt_cards::set;
+    use bolt_core::{Action, Game, Step, Target, Zone};
+
+    fn cid(name: &str) -> usize {
+        set("CMD").unwrap().index_of(name).unwrap()
+    }
+
+    #[test]
+    fn a_card_playable_from_exile_is_paid_with_mana_of_any_color() {
+        let plains = vec![cid("Plains"); 99];
+        let mut g = Game::new_commander(
+            set("CMD").unwrap().defs.clone(),
+            [&plains, &plains],
+            [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+            7,
+            0,
+        );
+        g.auto_pass = false;
+        g.add_card(0, cid("Plains"), Zone::Battlefield);
+        g.start_turn(3, 0);
+        while g.step != Step::Main1 {
+            g.apply(Action::PassPriority).unwrap();
+        }
+        let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Exile);
+        g.objects[bolt.0 as usize].playable = Some((0, 99));
+        assert!(
+            !g.legal_actions().contains(&Action::Cast(bolt)),
+            "{{R}} with only a Plains"
+        );
+        g.objects[bolt.0 as usize].any_color_mana = true;
+        assert!(
+            g.legal_actions().contains(&Action::Cast(bolt)),
+            "Plains mana spent as red"
+        );
+        g.apply(Action::Cast(bolt)).unwrap();
+        g.apply(Action::Target(Target::Player(1))).unwrap();
+        while !g.items.is_empty() {
+            g.apply(Action::PassPriority).unwrap();
+        }
+        assert_eq!(g.players[1].life, 37);
+        assert_eq!(g.obj(bolt).zone, Zone::Graveyard);
+        assert!(!g.obj(bolt).any_color_mana, "gone with the zone change");
+    }
+}

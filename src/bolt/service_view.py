@@ -134,6 +134,9 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         if d == "ChooseDelve":
             word = "card" if value == 1 else "cards"
             return f"Delve: exile {value} {word} from your graveyard" + (f" ({card})" if card else "")
+        if d == "ChooseKickCount":
+            times = "once" if value == 1 else f"{value} times"
+            return f"Kick {card} {times}" if card else f"Kick {times}"
         return None
     if kind == "Mode":
         if d == "ChooseColor" and 0 <= value < 5:
@@ -149,6 +152,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         if d == "ChooseCardType" and 0 <= value < 7:
             kinds = ("artifacts", "creatures", "enchantments", "instants", "lands", "planeswalkers", "sorceries")
             return f"{src or 'It'}: protection from {kinds[value]}"
+        if d == "Riot" and value in (0, 1):
+            return f"{card or 'It'}: riot, " + ("a +1/+1 counter" if value == 0 else "haste")
         if d == "TargetToSource":
             return f"Change target {value + 1} to {src or 'this creature'}"
         if d == "ChooseDungeon" and 0 <= value < len(dec.get("options", [])):
@@ -171,6 +176,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"CreaturesFromHandUpTo": "Put onto the battlefield:", "PermanentsFromHandUpTo": "Put onto the battlefield:", "ReturnOwnPermanent": "Return", "SearchToGraveyardCounter": "Put into your graveyard:"}.get(d)  # fmt: skip
         verb = verb or {"KeepNonlandOfType": "Keep", "HandToBottom": "Put on the bottom:", "SacrificeAnyNumber": "Sacrifice", "SacrificeCreatureOrPlaneswalkerEach": "Sacrifice", "ReturnAnotherPermanentCard": "Return to your hand:", "BasicsTappedUpTo": "Put onto the battlefield tapped:", "SignalTheClans": "Reveal", "BraidsSacrifice": "Sacrifice", "BraidsOpponent": "Sacrifice"}.get(d)  # fmt: skip
         verb = verb or {"ConniveDiscard": "Discard (connive):"}.get(d)
+        verb = verb or {"LandOrCreatureFromHandTapped": "Put onto the battlefield tapped:"}.get(d)
         verb = verb or {"VowCreature": "Put a vow counter on (sacrifice the rest):", "DiscardOrLoseLife": "Discard"}.get(d)  # fmt: skip
         verb = verb or {"SacrificeOfType": "Sacrifice", "RevealedCreatureOnto": "Put onto the battlefield:"}.get(d)  # fmt: skip
         verb = verb or {"SacrificeAnotherPermanent": "Sacrifice", "TakeMilledCard": "Put into your hand:"}.get(d)
@@ -232,6 +238,10 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
             "Don't pay",
         ),
         "MayPayManaAndLife": (f"Pay {dec.get('cost', '')} and {dec.get('life', 0)} life", "Don't pay"),
+        "Fabricate": (
+            f"{src or 'Fabricate'}: put {dec.get('x', 0)} +1/+1 counters on it",
+            f"{src or 'Fabricate'}: create {dec.get('x', 0)} 1/1 Servo tokens",
+        ),
     }
     if d in ("CreaturesFromHandUpTo", "PermanentsFromHandUpTo", "SearchToGraveyardCounter") and not yes:
         return "Find nothing" if d == "SearchToGraveyardCounter" else "Done choosing"
