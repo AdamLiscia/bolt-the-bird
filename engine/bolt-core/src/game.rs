@@ -3464,6 +3464,9 @@ impl Game {
         if self.obj(of).zone != Zone::Battlefield {
             return None;
         }
+        if self.mirrormind_crown_creature(p).is_some() {
+            self.mirrormind_used[p] = self.turn; // a token copy is a token creation too
+        }
         let def = self.obj(of).def;
         let id = self.add_card(p, def, Zone::Hand);
         self.obj_mut(id).copy_token = true;
@@ -24333,6 +24336,10 @@ impl Game {
     }
 
     fn create_token(&mut self, p: PlayerId, def: usize) {
+        // Mirrormind Crown: any token creation uses up "the first time ... each turn", asked or not.
+        if self.mirrormind_crown_creature(p).is_some() {
+            self.mirrormind_used[p] = self.turn;
+        }
         // Fisher's Talent: "If you would create a Fish token, create a ... Shark ... instead."
         let def = self.class_token_replacement(p, def);
         self.last_created.clear();

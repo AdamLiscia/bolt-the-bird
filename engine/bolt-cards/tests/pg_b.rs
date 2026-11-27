@@ -4259,3 +4259,31 @@ fn glen_elendras_answer_counters_their_spells_and_makes_faeries() {
     assert_eq!(g.colors_of(faeries[0]), [false, true, true, false, false]);
     assert!(g.keywords(faeries[0]).has(Keywords::FLYING));
 }
+
+#[test]
+fn mirrormind_crowns_first_time_is_used_up_by_a_token_that_didnt_ask() {
+    let mut g = table();
+    let lancer = put(&mut g, 0, "Dragonback Lancer"); // Mobilize 1
+    let crown = put(&mut g, 0, "Mirrormind Crown");
+    let z = g.obj(lancer).zcc;
+    g.objects[crown.0 as usize].attached_to = Some((lancer, z));
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(lancer));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[]); // Mobilize's Warrior: a real token, no question
+    assert_eq!(tokens(&g, 0, "Warrior").len(), 1);
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    let port = put(&mut g, 0, "Fountainport");
+    act(&mut g, Action::Activate(port, 1)); // a Fish later that turn: no question
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Fish").len(), 1);
+}

@@ -1054,7 +1054,8 @@ One Ring's check in `deal_damage`). Claims recorded in needs_core.json.
   When an `Effect::CreateToken` is about to make the Crown controller's first tokens this turn,
   `Decision::MirrormindCopies` asks (Yes: that many token copies of the equipped creature, doubled
   and tripled by Parallel Lives, Ojer Taq and the rest; No: the tokens). Either answer uses up the
-  turn's first time. Only `Effect::CreateToken` asks; every other token maker makes its real tokens
+  turn's first time. Any token creation by the Crown's controller while it's attached (in
+  `create_token` and `token_copy_of`) uses up the first time too. Only `Effect::CreateToken` asks; every other token maker makes its real tokens
   and doesn't use the Crown: token copies (`CopyToken` and the copy effects), Mobilize,
   `CreateTokensAmount`/`Tapped`, per-count token effects (`CreateTokensPerLand`,
   `CreateTokenPerCreatureDiedThisTurn` and the like), tokens from replacements (Peregrin, Xorn,
