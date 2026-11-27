@@ -7576,7 +7576,7 @@
   {
    "card": "Haven of the Spirit Dragon",
    "deck": "Vaevictis Asmadi, the Dire",
-   "missing": "any color only for Dragon creature spells; sacrifice to return a Dragon or Ugin card (moved from d3) [d1 batch 44: scripted]",
+   "missing": "any color only for Dragon creature spells; sacrifice to return a Dragon or Ugin card (moved from d3) [d1 batch 44: scripted] [known limit: the return accepts any card with subtype Dragon or Ugin, so a future noncreature Dragon card would also be accepted; exact in print]",
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"
@@ -7601,6 +7601,70 @@
    "card": "Inkmoth Nexus",
    "deck": "Raggadragga, Goreguts Boss",
    "missing": "manland with flying and infect until end of turn [d1 batch 44: scripted]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Hushwood Verge",
+   "deck": "Sythis, Harvest's Hand",
+   "missing": "conditional second color [d1 batch 45: scripted]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Tainted Field",
+   "deck": "Ratadrabik of Urborg",
+   "missing": "colored mana only if you control a Swamp [d1 batch 45: scripted]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Gaea's Cradle",
+   "deck": "Tymna the Weaver + Tana, the Bloodsower",
+   "missing": "{G} for each creature you control [d1 batch 45: scripted]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Thalia, Guardian of Thraben",
+   "deck": "Tymna the Weaver + Tana, the Bloodsower",
+   "missing": "noncreature spells cost {1} more (everyone's) [d1 batch 45: scripted]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Oakhame Adversary",
+   "deck": "Tymna the Weaver + Tana, the Bloodsower",
+   "missing": "costs {2} less if an opponent controls a green permanent [d1 batch 45: scripted]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Nogi, Draco-Zealot",
+   "deck": "Vaevictis Asmadi, the Dire",
+   "missing": "Dragon spells cost {1} less; attack becomes a 5/5 flying Dragon with three Dragons (handback from d3)",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Klauth, Unrivaled Ancient",
+   "deck": "Vaevictis Asmadi, the Dire",
+   "missing": "attack: X spell-only mana that lasts the turn, X the attackers' total power (handback from d3)",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Dragon Broodmother",
+   "deck": "Vaevictis Asmadi, the Dire",
+   "missing": "devour; an upkeep 1/1 red and green flying Dragon token with devour 2 (token 127) (handback from d3)",
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"

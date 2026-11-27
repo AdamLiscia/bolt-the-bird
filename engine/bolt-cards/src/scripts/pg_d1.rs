@@ -2319,6 +2319,48 @@ pub fn script(name: &str) -> Option<Script> {
                 activated(d, "{1}", false, vec![], vec![animate, Effect::SourceGainsInfectUntilEot]);
             },
         ),
+        "Hushwood Verge" => s(&["{T}: Add {G}.", "{T}: Add {W}. Activate only if you control a Forest or a Plains."], |d, _| {
+            d.mana = Some(ManaSource::of(&[Color::Green]));
+            d.extra_color_if_you_control = Some((Color::White, ["Forest", "Plains"]));
+        }),
+        "Tainted Field" => s(&["{T}: Add {C}.", "{T}: Add {W} or {B}. Activate only if you control a Swamp."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::of(&[Color::White, Color::Black]) });
+            d.colored_mana_only_if_you_control = Some("Swamp");
+        }),
+        "Gaea's Cradle" => s(&["{T}: Add {G} for each creature you control."], |d, _| {
+            d.mana = Some(ManaSource::of(&[Color::Green]));
+            d.mana_per_creature = true;
+        }),
+        "Thalia, Guardian of Thraben" => s(&["Noncreature spells cost {1} more to cast."], |d, _| {
+            d.mana_ext.noncreature_spell_tax = 1;
+        }),
+        "Oakhame Adversary" => s(
+            &[
+                "This spell costs {2} less to cast if an opponent controls a green permanent.",
+                "Whenever this creature deals combat damage to a player, draw a card.",
+            ],
+            |d, _| {
+                d.reduction = Some(Reduction::IfOpponentControlsColor(Color::Green as u8, 2));
+                on(d, When::DealsCombatDamageToPlayer, vec![], vec![draw(1)]);
+            },
+        ),
+        "Nogi, Draco-Zealot" => s(
+            &[
+                "Dragon spells you cast cost {1} less to cast.",
+                "Whenever Nogi attacks, if you control three or more Dragons, until end of turn, Nogi becomes a Dragon with base power and toughness 5/5 and gains flying.",
+            ],
+            |d, _| {
+                d.mana_ext.subtype_spell_discount = Some(("Dragon", 1));
+                let become_ = Effect::BecomeCreatureUntilEot { power: 5, toughness: 5, subtype: "Dragon", keywords: Keywords::FLYING };
+                conditional(d, When::Attacks, Condition::ControlSubtypeAtLeast("Dragon", 3), vec![], vec![become_]);
+            },
+        ),
+        "Klauth, Unrivaled Ancient" => s(
+            &["Whenever Klauth attacks, add X mana in any combination of colors, where X is the total power of attacking creatures. Spend this mana only to cast spells. Until end of turn, you don't lose this mana as steps and phases end."],
+            |d, _| {
+                on(d, When::Attacks, vec![], vec![Effect::AddSpellManaUntilEotPerAttackingPower]);
+            },
+        ),
         "Castle Garenbrig" => s(
             &[
                 "This land enters tapped unless you control a Forest.",
@@ -2618,4 +2660,11 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Crypt of Agadeem",
     "Nesting Grounds",
     "Inkmoth Nexus",
+    "Hushwood Verge",
+    "Tainted Field",
+    "Gaea's Cradle",
+    "Thalia, Guardian of Thraben",
+    "Oakhame Adversary",
+    "Nogi, Draco-Zealot",
+    "Klauth, Unrivaled Ancient",
 ];

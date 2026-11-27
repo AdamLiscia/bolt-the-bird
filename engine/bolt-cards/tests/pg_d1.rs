@@ -4828,3 +4828,123 @@ fn inkmoth_nexus_becomes_a_flying_infect_artifact_creature() {
         "infect until end of turn"
     );
 }
+
+#[test]
+fn hushwood_verge_and_tainted_field_make_their_conditional_colors() {
+    let mut g = table();
+    let hv = put(&mut g, 0, "Hushwood Verge");
+    let tf = put(&mut g, 0, "Tainted Field");
+    let (c, _) = makes(&g, hv);
+    assert!(c[4] && c[0], "{{G}}, and {{W}} with a Forest or Plains");
+    let (c, colorless) = makes(&g, tf);
+    assert!(
+        colorless && c[0] && c[2],
+        "{{C}}, and {{W}} or {{B}} with a Swamp"
+    );
+}
+
+#[test]
+fn gaeas_cradle_adds_green_per_creature() {
+    let mut g = table();
+    let cradle = put(&mut g, 0, "Gaea's Cradle");
+    for _ in 0..3 {
+        put(&mut g, 0, "Llanowar Elves");
+    }
+    tap_lands_except(&mut g, &[cradle]);
+    for e in g
+        .permanents(0)
+        .filter(|&x| g.types_of(x).creature)
+        .collect::<Vec<_>>()
+    {
+        g.objects[e.0 as usize].tapped = true; // no Elf mana
+    }
+    let witness = hand(&mut g, 0, "Eternal Witness");
+    assert!(
+        g.legal_actions().contains(&Action::Cast(witness)),
+        "three creatures: {{G}}{{G}}{{G}}"
+    );
+}
+
+#[test]
+fn thalia_taxes_noncreature_spells_for_everyone() {
+    let mut g = table();
+    put(&mut g, 1, "Thalia, Guardian of Thraben");
+    tap_all_but_swamps(&mut g, 2);
+    let nw = hand(&mut g, 0, "Night's Whisper");
+    let seer = hand(&mut g, 0, "Viscera Seer");
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::Cast(nw)), "{{1}}{{B}} plus {{1}}");
+    assert!(
+        legal.contains(&Action::Cast(seer)),
+        "a creature spell isn't taxed"
+    );
+    let s = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Swamp" && g.obj(x).tapped)
+        .expect("a Swamp");
+    g.objects[s.0 as usize].tapped = false;
+    assert!(g.legal_actions().contains(&Action::Cast(nw)), "three mana");
+}
+
+#[test]
+fn oakhame_adversary_costs_two_less_against_a_green_permanent() {
+    let mut g = table();
+    let forests: Vec<ObjId> = g
+        .permanents(0)
+        .filter(|&x| g.def_of(x).name == "Forest")
+        .take(2)
+        .collect();
+    tap_lands_except(&mut g, &forests);
+    let oa = hand(&mut g, 0, "Oakhame Adversary");
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(oa)),
+        "{{3}}{{G}} with two lands"
+    );
+    put(&mut g, 1, "Llanowar Elves");
+    assert!(
+        g.legal_actions().contains(&Action::Cast(oa)),
+        "{{1}}{{G}}: an opponent's green permanent"
+    );
+}
+
+#[test]
+fn nogi_discounts_dragon_spells() {
+    let mut g = table();
+    put(&mut g, 0, "Nogi, Draco-Zealot");
+    let mountains: Vec<ObjId> = g
+        .permanents(0)
+        .filter(|&x| g.def_of(x).name == "Mountain")
+        .take(2)
+        .collect();
+    tap_lands_except(&mut g, &mountains);
+    let gadrak = hand(&mut g, 0, "Gadrak, the Crown-Scourge");
+    assert!(
+        g.legal_actions().contains(&Action::Cast(gadrak)),
+        "{{2}}{{R}} less {{1}}"
+    );
+}
+
+#[test]
+fn klauth_adds_spell_only_mana_that_lasts_the_turn() {
+    let mut g = table();
+    let k = put(&mut g, 0, "Klauth, Unrivaled Ancient");
+    g.objects[k.0 as usize].since_turn = 0;
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(k));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[]);
+    let x = g.power(k) as u32;
+    assert_eq!(g.spell_mana_eot[0], (x, g.turn), "X = the attackers' total power");
+    // Still there after combat, and it pays for a spell.
+    while g.step != Step::Main2 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.spell_mana_eot[0].0, x);
+    tap_lands_except(&mut g, &[]);
+    let nw = hand(&mut g, 0, "Night's Whisper");
+    assert!(g.legal_actions().contains(&Action::Cast(nw)));
+    act(&mut g, Action::Cast(nw));
+    assert_eq!(g.spell_mana_eot[0].0, x - 2);
+}

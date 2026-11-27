@@ -2134,6 +2134,9 @@ pub struct Game {
     /// Castle Garenbrig's mana for creature spells and creatures' abilities, per player: per color,
     /// with the turn and step it was made in (it empties as the step ends).
     pub creature_ability_color_mana: [([u32; 5], u32, Step); 2],
+    /// Klauth's mana per player: (any-color mana only for spells, the turn it was made in); it stays
+    /// until end of turn.
+    pub spell_mana_eot: [(u32, u32); 2],
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2463,6 +2466,7 @@ impl Game {
             trigger_snapshots: Vec::new(),
             instant_sorcery_discount_until: Vec::new(),
             creature_ability_color_mana: [([0; 5], 0, Step::PreGame); 2],
+            spell_mana_eot: [(0, 0); 2],
         }
     }
 
@@ -8588,6 +8592,16 @@ impl Game {
                     0
                 }
             }
+            Some(Reduction::IfOpponentControlsColor(k, n)) => {
+                let yes = self
+                    .permanents(opponent(p))
+                    .any(|x| self.colors_of(x)[*k as usize]);
+                if yes {
+                    *n
+                } else {
+                    0
+                }
+            }
             Some(Reduction::PerArtifactYouControl) => self
                 .permanents(p)
                 .filter(|&x| self.types_of(x).artifact)
@@ -8826,6 +8840,16 @@ impl Game {
             cost.twobrid = [0; 5];
             cost.colorless = 0;
         }
+        if !def.types.creature || mode.mode == Some(OMEN_MODE) {
+            // Thalia, Guardian of Thraben: "Noncreature spells cost {1} more to cast." (anyone's)
+            let tax: u32 = self
+                .battlefield
+                .iter()
+                .filter(|&&x| !self.lost_abilities(x))
+                .map(|&x| self.def_of(x).mana_ext.noncreature_spell_tax as u32)
+                .sum();
+            cost.generic = cost.generic.saturating_add(tax.min(255) as u8);
+        }
         cost
     }
 
@@ -8844,6 +8868,11 @@ impl Game {
             n += e.spell_discount_all as usize;
             if t.instant || t.sorcery || mode.mode == Some(OMEN_MODE) {
                 n += e.instant_sorcery_discount as usize; // Case of the Ransacked Lab
+            }
+            if let Some((sub, less)) = e.subtype_spell_discount {
+                if mode.mode != Some(OMEN_MODE) && def.subtypes.iter().any(|s| s == sub) {
+                    n += less as usize; // Nogi: Dragon spells
+                }
             }
             if creature
                 && e.chosen_type_creature_discount > 0
@@ -9033,9 +9062,12 @@ impl Game {
     /// Pays `cost`, for casting `spell` if given (restricted mana can then help).
     fn pay_mana_for(&mut self, p: PlayerId, cost: &ManaCost, exclude: Option<ObjId>, spell: PayFor) {
         // Food Chain: its mana pays for a creature spell first.
-        let (after_chain, used, used_colors) = self.after_creature_mana(p, cost, spell);
+        let (after_chain, used, used_colors, klauth) = self.after_creature_mana(p, cost, spell);
         if used > 0 {
             self.creature_spell_mana[p].0 -= used;
+        }
+        if klauth > 0 {
+            self.spell_mana_eot[p].0 -= klauth; // Klauth
         }
         // Somberwald Sage's mana first (a creature spell only), then Castle Garenbrig's.
         let creature_spell = matches!(spell, PayFor::Spell(c) if self.def_of(c).types.creature);
@@ -9667,7 +9699,7 @@ impl Game {
 
     fn can_pay_for(&self, p: PlayerId, cost: &ManaCost, exclude: Option<ObjId>, spell: PayFor) -> bool {
         // Food Chain: its mana pays for a creature spell first.
-        let (after_chain, _, _) = self.after_creature_mana(p, cost, spell);
+        let (after_chain, _, _, _) = self.after_creature_mana(p, cost, spell);
         let cost = &after_chain;
         self.can_pay_mana(p, cost, exclude, spell)
             || self.black_pips_as_life(p, cost, exclude, spell).is_some()
@@ -11692,7 +11724,12 @@ impl Game {
 
     /// `cost` less what Food Chain's any-color mana pays of it, for a creature spell, and how much
     /// of that mana it uses: colored pips first, then hybrid and two-brid pips, then generic.
-    fn after_creature_mana(&self, p: PlayerId, cost: &ManaCost, spell: PayFor) -> (ManaCost, u32, [u32; 5]) {
+    fn after_creature_mana(
+        &self,
+        p: PlayerId,
+        cost: &ManaCost,
+        spell: PayFor,
+    ) -> (ManaCost, u32, [u32; 5], u32) {
         let creature = matches!(spell, PayFor::Spell(c) if self.def_of(c).types.creature);
         let mut cost = *cost;
         // Somberwald Sage: each color's mana pays that color's pips, hybrid pips with it, its
@@ -11748,7 +11785,37 @@ impl Game {
             take(pips);
         }
         take(&mut cost.generic);
-        (cost, have - left, used_colors)
+        let chain_used = have - left;
+        // Klauth: any-color mana for any spell, kept until end of turn (after Food Chain's).
+        let spell_cast = matches!(spell, PayFor::Spell(_) | PayFor::OmenSpell(_));
+        let mut kleft = if spell_cast { self.spell_mana_eot_now(p) } else { 0 };
+        let khave = kleft;
+        let mut ktake = |pips: &mut u8| {
+            let n = (*pips as u32).min(kleft);
+            *pips -= n as u8;
+            kleft -= n;
+        };
+        for pips in cost.colored.iter_mut() {
+            ktake(pips);
+        }
+        for pips in cost.hybrid.iter_mut() {
+            ktake(pips);
+        }
+        for pips in cost.twobrid.iter_mut() {
+            ktake(pips);
+        }
+        ktake(&mut cost.generic);
+        (cost, chain_used, used_colors, khave - kleft)
+    }
+
+    /// Klauth's spell-only mana `p` has now (it lasts until end of turn).
+    fn spell_mana_eot_now(&self, p: PlayerId) -> u32 {
+        let (n, turn) = self.spell_mana_eot[p];
+        if turn == self.turn {
+            n
+        } else {
+            0
+        }
     }
 
     /// Castle Garenbrig's mana for creature spells and creatures' abilities `p` has now, per color.
@@ -18950,6 +19017,15 @@ impl Game {
                 } else {
                     self.fabricate_servos(item.controller, n, servo); // CR 702.123b
                 }
+            }
+            Effect::AddSpellManaUntilEotPerAttackingPower => {
+                let p = item.controller;
+                let x: i32 = self
+                    .combat
+                    .as_ref()
+                    .map_or(0, |c| c.attackers.iter().map(|&a| self.power(a).max(0)).sum());
+                let now = self.spell_mana_eot_now(p);
+                self.spell_mana_eot[p] = (now + x as u32, self.turn);
             }
             Effect::AddCreatureSpellOrAbilityMana(n, color) => {
                 let p = item.controller;

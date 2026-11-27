@@ -200,6 +200,9 @@ pub enum Reduction {
     /// Affinity for artifacts (CR 702.41): {1} less for each artifact you control (Emry, Lurker of
     /// the Loch).
     PerArtifactYouControl,
+    /// "This spell costs {N} less to cast if an opponent controls a [color] permanent." (Oakhame
+    /// Adversary: green (WUBRG 4), 2)
+    IfOpponentControlsColor(u8, u8),
 }
 
 /// An activated ability: "[cost]: [effect]" (CR 602).
@@ -1444,6 +1447,10 @@ pub struct ManaExt {
     /// "{T}: Add one mana of any color. Spend this mana only to cast a [subtype] creature spell."
     /// (Haven of the Spirit Dragon: Dragon); its plain mana is in `mana`.
     pub any_color_for_subtype_creature: Option<&'static str>,
+    /// "Noncreature spells cost {N} more to cast." (Thalia, Guardian of Thraben: 1), every player's.
+    pub noncreature_spell_tax: u8,
+    /// "[Subtype] spells you cast cost {N} less to cast." (Nogi, Draco-Zealot: Dragon, 1)
+    pub subtype_spell_discount: Option<(&'static str, u8)>,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana

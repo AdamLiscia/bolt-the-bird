@@ -3082,6 +3082,11 @@ pub enum Effect {
         from: u8,
         to: u8,
     },
+    /// "Add X mana in any combination of colors, where X is the total power of attacking creatures.
+    /// Spend this mana only to cast spells. Until end of turn, you don't lose this mana as steps
+    /// and phases end." (Klauth, Unrivaled Ancient): held in `Game::spell_mana_eot` as any-color
+    /// mana, its colors fixed as it's spent.
+    AddSpellManaUntilEotPerAttackingPower,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
