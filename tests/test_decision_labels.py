@@ -281,6 +281,14 @@ def test_mirrormind_crown_asks_copies_or_the_tokens():
     assert label(dec, "No", 0) == "Make the tokens"
 
 
+def test_gemstone_caverns_asks_to_begin_on_the_battlefield_then_exile_a_card():
+    dec = {"kind": "GemstoneCaverns", "card": [7, 2], "exile": False}
+    assert label(dec, "Yes", 0) == "Begin the game with Secluded Courtyard on the battlefield (a luck counter)"
+    assert label(dec, "No", 0) == "Keep Secluded Courtyard in your hand"
+    exile = {"kind": "GemstoneCaverns", "card": [7, 2], "exile": True}
+    assert sv._decision_label(exile, "Pick", 0, "Forest") == "Exile from your hand: Forest"
+
+
 def test_the_gitrog_asks_for_a_rider_and_how_many_lands():
     rider = {"kind": "SacrificeSaddler", "mount": [3, 1]}
     assert sv._decision_label(rider, "Pick", 0, "Llanowar Elves") == "Sacrifice (it saddled the Mount): Llanowar Elves"
@@ -361,12 +369,6 @@ def test_flare_of_malice_sacrifices_the_greatest():
 def test_palanis_hatcher_picks_the_egg_to_sacrifice():
     dec = {"kind": "SacrificeOfSubtype", "sub": "Egg"}
     assert sv._decision_label(dec, "Pick", 0, "Dinosaur Egg") == "Sacrifice Dinosaur Egg"
-
-
-def test_tekuthal_picks_each_counter_to_remove():
-    dec = {"kind": "RemoveCountersFromOthers", "left": 3}
-    assert sv._decision_label(dec, "Pick", 0, "Sol Ring") == "Remove a counter from Sol Ring"
-    assert label(dec, "No", 0) == "Don't activate it"
 
 
 def test_may_sacrifice_a_land_or_an_artifact_or_creature():

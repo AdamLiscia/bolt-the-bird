@@ -1508,6 +1508,10 @@ pub enum Decision {
     /// Choose a card name (Demonic Consultation): `Pick(c)` names the card `c` in your library (one
     /// option per name), `No` names a card that isn't in your library.
     NameCardInLibrary { source: ObjId },
+    /// Gemstone Caverns, asked of the non-starting player before the first turn: with `exile`
+    /// false, `Yes` begins the game with `card` on the battlefield with a luck counter, `No` keeps
+    /// it in hand; with `exile` true, `Pick` the card in hand to exile.
+    GemstoneCaverns { card: ObjId, exile: bool },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -2056,6 +2060,14 @@ pub struct Game {
     /// Ral, Storm Conduit's "when you next cast an instant or sorcery spell this turn": (source, its
     /// trigger number, controller, the turn).
     pub copy_next_instant_sorcery: Vec<(ObjId, usize, PlayerId, u32)>,
+    /// Granted loyalty abilities as they were activated: (planeswalker, ability number, the
+    /// ability), so one still resolves if its granter leaves (Ichormoon Gauntlet).
+    pub loyalty_snapshots: Vec<(ObjId, usize, Ability)>,
+    /// While one effect creates its tokens: whether Stridehangar Automaton's Thopter has been made
+    /// for it ("one or more artifact tokens": once per event), as `xorn_batch`.
+    artifact_plus_batch: Option<bool>,
+    /// The Gemstone Caverns already asked about before the first turn (`Game::pregame_actions`).
+    pregame_asked: Vec<ObjId>,
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2360,6 +2372,9 @@ impl Game {
             delayed_returns_tapped: Vec::new(),
             damage_to_you_prevented_until: [None; 2],
             mirrormind_used: [0; 2],
+            loyalty_snapshots: Vec::new(),
+            artifact_plus_batch: None,
+            pregame_asked: Vec::new(),
             hand_links: Vec::new(),
             hand_at_end_combat: Vec::new(),
             dream_marked: Vec::new(),
@@ -6907,6 +6922,19 @@ impl Game {
             // again; its ability still resolves from the back face it was activated on.
             StackKind::Loyalty(n) => match def.loyalty_abilities.get(n) {
                 Some(a) => &a.1,
+                // A granted one (Ichormoon Gauntlet), as it was activated.
+                None if self
+                    .loyalty_snapshots
+                    .iter()
+                    .any(|e| e.0 == item.source && e.1 == n) =>
+                {
+                    let e = self
+                        .loyalty_snapshots
+                        .iter()
+                        .rev()
+                        .find(|e| e.0 == item.source && e.1 == n);
+                    &e.expect("a snapshot").2
+                }
                 None => {
                     let printed = &self.defs[self.obj(item.source).def];
                     &printed.back.as_ref().expect("a back face").loyalty_abilities[n].1
@@ -9530,7 +9558,8 @@ impl Game {
             if !sorcery_timing && !any_time {
                 continue;
             }
-            for (n, (cost, ability)) in self.def_of(id).loyalty_abilities.iter().enumerate() {
+            for (n, (cost, ability)) in self.loyalty_list(id).into_iter().enumerate() {
+                let (cost, ability) = (&cost, &ability);
                 let item = StackItem {
                     kind: StackKind::Loyalty(n),
                     ..Game::casting(id, p)
@@ -9538,6 +9567,21 @@ impl Game {
                 let affordable = *cost == crate::card::LOYALTY_MINUS_X || o.loyalty + cost >= 0;
                 if affordable && self.trigger_can_target(&item, ability) {
                     v.push(Action::Loyalty(id, n));
+                }
+            }
+        }
+        v
+    }
+
+    /// A planeswalker's loyalty abilities: its own, then those granted by permanents its controller
+    /// controls (Ichormoon Gauntlet).
+    fn loyalty_list(&self, id: ObjId) -> Vec<(i32, Ability)> {
+        let mut v = self.def_of(id).loyalty_abilities.clone();
+        if self.obj(id).zone == Zone::Battlefield && self.types_of(id).planeswalker {
+            let p = self.obj(id).controller;
+            for x in self.permanents(p).collect::<Vec<_>>() {
+                if !self.lost_abilities(x) {
+                    v.extend(self.def_of(x).your_planeswalkers_have_loyalty.iter().cloned());
                 }
             }
         }
@@ -9560,7 +9604,7 @@ impl Game {
     }
 
     fn activate_loyalty(&mut self, p: PlayerId, id: ObjId, n: usize) {
-        if self.def_of(id).loyalty_abilities[n].0 == crate::card::LOYALTY_MINUS_X {
+        if self.loyalty_list(id)[n].0 == crate::card::LOYALTY_MINUS_X {
             self.ask(p, Decision::ChooseLoyaltyX { source: id, n });
             return;
         }
@@ -9569,7 +9613,11 @@ impl Game {
 
     /// Activates loyalty ability `n` of `id`, with X (a −X cost removes that much).
     fn activate_loyalty_x(&mut self, p: PlayerId, id: ObjId, n: usize, x: u8) {
-        let (cost, ability) = self.def_of(id).loyalty_abilities[n].clone();
+        let (cost, ability) = self.loyalty_list(id)[n].clone();
+        if n >= self.def_of(id).loyalty_abilities.len() {
+            self.loyalty_snapshots.retain(|e| !(e.0 == id && e.1 == n));
+            self.loyalty_snapshots.push((id, n, ability.clone()));
+        }
         let cost = if cost == crate::card::LOYALTY_MINUS_X {
             -(x as i32)
         } else {
@@ -9675,9 +9723,17 @@ impl Game {
         let ability_discount = self.ability_discount(p);
         let graveyard = self.players[p].graveyard.iter().copied();
         let hand = self.players[p].hand.iter().copied();
-        for id in self.permanents(p).chain(graveyard).chain(hand) {
+        // Derevi: a commander's "from the command zone" ability, for its owner.
+        let command: Vec<ObjId> = self
+            .command
+            .iter()
+            .copied()
+            .filter(|&c| self.obj(c).owner == p)
+            .collect();
+        for id in self.permanents(p).chain(graveyard).chain(hand).chain(command) {
             let in_graveyard = self.obj(id).zone == Zone::Graveyard;
             let in_hand = self.obj(id).zone == Zone::Hand;
+            let in_command = self.obj(id).zone == Zone::Command;
             for (n, a) in self
                 .def_of(id)
                 .activated
@@ -9712,6 +9768,7 @@ impl Game {
                 }
                 if (a.from_hand_discard || a.plot || a.foretell || a.forecast) != in_hand
                     || (!in_hand && a.from_graveyard != in_graveyard)
+                    || a.from_command_zone != in_command
                     || (!in_graveyard && self.lost_abilities(id))
                     || self.activation_stopped(id)
                     || a.granted_to_attached
@@ -12070,12 +12127,28 @@ impl Game {
                     self.move_to(c, Zone::Battlefield);
                 }
             }
-            self.triggered.clear();
-            self.triggered_scanned = 0;
-            self.turn = 0;
-            self.active = opponent(self.first);
-            self.begin_next_turn();
+            self.pregame_actions();
         }
+    }
+
+    /// The pregame actions that are choices (CR 103.6): Gemstone Caverns, for the non-starting
+    /// player, one copy at a time (`Decision::GemstoneCaverns`); then the first turn begins.
+    fn pregame_actions(&mut self) {
+        let q = opponent(self.first);
+        let next = self.players[q]
+            .hand
+            .iter()
+            .copied()
+            .find(|&c| self.def_of(c).begins_game_with_luck_counter && !self.pregame_asked.contains(&c));
+        if let Some(card) = next {
+            self.pregame_asked.push(card);
+            return self.ask(q, Decision::GemstoneCaverns { card, exile: false });
+        }
+        self.triggered.clear();
+        self.triggered_scanned = 0;
+        self.turn = 0;
+        self.active = opponent(self.first);
+        self.begin_next_turn();
     }
 
     /// CR 601.2: move to the stack, choose targets, pay, then the caster gets priority again
@@ -14170,6 +14243,8 @@ impl Game {
             Decision::ChooseEnterMode { .. } => vec![Action::Mode(0), Action::Mode(1)],
             Decision::Riot { .. } => vec![Action::Mode(0), Action::Mode(1)],
             Decision::MirrormindCopies { .. } => vec![Action::Yes, Action::No],
+            Decision::GemstoneCaverns { exile: false, .. } => vec![Action::Yes, Action::No],
+            Decision::GemstoneCaverns { exile: true, .. } => hand.iter().copied().map(Action::Pick).collect(),
             Decision::Dredge { player, .. } => {
                 let mut v: Vec<Action> = self
                     .dredge_options(*player)
@@ -15404,6 +15479,20 @@ impl Game {
                 self.open_free_casts();
             }
             return;
+        }
+        if let Decision::GemstoneCaverns { card, exile } = d {
+            match (exile, a) {
+                (false, Action::Yes) => {
+                    self.move_to(card, Zone::Battlefield);
+                    self.obj_mut(card).kind_counters = 1;
+                    if !self.players[p].hand.is_empty() {
+                        return self.ask(p, Decision::GemstoneCaverns { card, exile: true });
+                    }
+                }
+                (true, Action::Pick(c)) => self.move_to(c, Zone::Exile),
+                _ => {}
+            }
+            return self.pregame_actions();
         }
         if let Decision::MirrormindCopies { player, def, n } = d {
             self.mirrormind_used[player] = self.turn; // the first time this turn, either way
@@ -18107,11 +18196,13 @@ impl Game {
                         continue;
                     }
                     self.xorn_batch = Some(false);
+                    self.artifact_plus_batch = Some(false);
                     for _ in 0..n {
                         self.create_token(p, def);
                         made.extend(self.last_created.iter().copied());
                     }
                     self.xorn_batch = None;
+                    self.artifact_plus_batch = None;
                 }
                 self.last_created = made;
                 if let Some(p) = crown_player {
@@ -19132,6 +19223,11 @@ impl Game {
                     }
                     _ => 1,
                 };
+                // Replicate and casualty copies keep the spell's targets (lane D1's demo rule).
+                let keep = matches!(
+                    e,
+                    Effect::CopySourceSpellPerReplicate | Effect::CopySourceSpellIfCasualty
+                );
                 if let Some(snap) = snap {
                     for _ in 0..n {
                         let copy = StackItem {
@@ -19139,7 +19235,12 @@ impl Game {
                             controller: item.controller,
                             ..snap.clone()
                         };
-                        self.items.push(copy);
+                        if keep {
+                            self.items.push(copy);
+                        } else {
+                            // Onto the stack with new targets chosen, as other copies (CR 707.10c).
+                            self.pending_copies.push(copy);
+                        }
                         self.copied_or_cast_instant_sorcery(item.controller, snap.source);
                     }
                 }
@@ -21781,6 +21882,11 @@ impl Game {
                 }
                 for _ in 0..n {
                     self.create_token(item.controller, def);
+                }
+            }
+            Effect::PutSourceOntoBattlefieldFromCommand => {
+                if self.obj(src).zone == Zone::Command {
+                    self.move_to(src, Zone::Battlefield);
                 }
             }
             Effect::ExileSlotReturnTappedAtEnd(slot) => {
@@ -26781,6 +26887,13 @@ impl Game {
                                 .map(|t| (t, 1)),
                         )
                         .chain(d.tokens_plus_each.map(|t| (t, made.len())))
+                        .chain(
+                            d.artifact_tokens_plus_one
+                                .filter(|_| {
+                                    self.defs[def].types.artifact && self.artifact_plus_batch != Some(true)
+                                })
+                                .map(|t| (t, 1)),
+                        )
                         .collect::<Vec<_>>()
                 })
                 .collect();
@@ -26790,6 +26903,14 @@ impl Game {
                 .any(|x| !self.lost_abilities(x) && self.def_of(x).treasures_plus_one == Some(def));
             if xorn && self.xorn_batch == Some(false) {
                 self.xorn_batch = Some(true);
+            }
+            // Stridehangar Automaton: once for the whole event, too.
+            let stride = self.defs[def].types.artifact
+                && self
+                    .permanents(p)
+                    .any(|x| !self.lost_abilities(x) && self.def_of(x).artifact_tokens_plus_one.is_some());
+            if stride && self.artifact_plus_batch == Some(false) {
+                self.artifact_plus_batch = Some(true);
             }
             self.token_replacing = true;
             for (t, n) in extras {

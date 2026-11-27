@@ -3024,6 +3024,8 @@ pub enum Effect {
     /// it; each player who sacrificed a permanent this way reveals the top card of their library and
     /// puts it onto the battlefield if it's a permanent card.
     SacrificeTargetsRevealTopPermanent(u8),
+    /// Put the source onto the battlefield from the command zone (Derevi); it isn't cast.
+    PutSourceOntoBattlefieldFromCommand,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
