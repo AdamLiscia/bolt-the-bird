@@ -2985,3 +2985,41 @@ fn subtype_combat_damage_carries_the_damage_those_creatures_dealt() {
     assert_eq!(life(&g, 1), 35);
     assert_eq!(life(&g, 0), 40 + 5 + 4, "Exquisite Blood, then the two Cats' 4");
 }
+
+// ---- batch 46: mana value on noncreature casts, your creatures to your graveyard, once each turn ----
+
+#[test]
+fn you_cast_noncreature_mv_carries_the_mana_value() {
+    let mut g = game_with(blood_with(vec![trigger(
+        When::YouCastNoncreatureMv,
+        None,
+        vec![Effect::GainLifeAmount],
+    )]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Hand);
+    play(&mut g, ring, false, &[], &[]);
+    assert_eq!(life(&g, 0), 41);
+}
+
+#[test]
+fn creature_to_your_graveyard_is_by_owner_and_once_each_turn_effects() {
+    let mut g = game_with(blood_with(vec![trigger(
+        When::CreatureToYourGraveyardFromBattlefieldIt,
+        None,
+        vec![
+            Effect::StopIfDoneThisTurn,
+            Effect::MarkDoneThisTurn,
+            Effect::GainLife { who: Who::You, n: 1 },
+        ],
+    )]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let mine = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Savannah Lions"), Zone::Battlefield);
+    let more = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    kill(&mut g, theirs);
+    assert_eq!(life(&g, 0), 40, "the opponent's card");
+    kill(&mut g, mine);
+    assert_eq!(life(&g, 0), 41);
+    kill(&mut g, more);
+    assert_eq!(life(&g, 0), 41, "done once this turn");
+}

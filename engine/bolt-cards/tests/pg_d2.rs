@@ -4670,3 +4670,67 @@ fn goldspan_dragon_makes_a_treasure_when_it_attacks_or_a_spell_targets_it() {
     drain(&mut g);
     assert_eq!(tokens(&g, 0, "Treasure").len(), 2, "it attacked");
 }
+
+// ---- Core: triggers, batch 46 ----
+
+#[test]
+fn graha_tia_pays_the_spells_mana_value_for_a_hero_once_each_turn() {
+    let mut g = table();
+    put(&mut g, 0, "G'raha Tia, Scion Reborn");
+    let signet = hand(&mut g, 0, "Arcane Signet"); // mana value 2
+    act(&mut g, Action::Cast(signet));
+    resolve_all(&mut g, &[Action::Yes]);
+    assert_eq!(g.players[0].life, 38);
+    let heroes = tokens(&g, 0, "Hero");
+    assert_eq!(heroes.len(), 1);
+    assert_eq!(g.obj(heroes[0]).counters, 2);
+    let ring = hand(&mut g, 0, "Sol Ring");
+    play(&mut g, ring, false, &[], &[]);
+    assert_eq!(tokens(&g, 0, "Hero").len(), 1, "only once each turn: no question");
+}
+
+#[test]
+fn graha_tia_can_still_pay_later_in_the_turn_after_declining() {
+    let mut g = table();
+    put(&mut g, 0, "G'raha Tia, Scion Reborn");
+    let ring = hand(&mut g, 0, "Sol Ring");
+    act(&mut g, Action::Cast(ring));
+    resolve_all(&mut g, &[Action::No]);
+    assert!(tokens(&g, 0, "Hero").is_empty());
+    let signet = hand(&mut g, 0, "Arcane Signet");
+    act(&mut g, Action::Cast(signet));
+    resolve_all(&mut g, &[Action::Yes]);
+    assert_eq!(tokens(&g, 0, "Hero").len(), 1);
+}
+
+#[test]
+fn fecundity_lets_the_dead_creatures_controller_draw() {
+    let mut g = table();
+    put(&mut g, 0, "Fecundity");
+    let theirs = put(&mut g, 1, "Savannah Lions");
+    let hand1 = g.players[1].hand.len();
+    for _ in 0..3 {
+        put(&mut g, 0, "Swamp");
+    }
+    let d = hand(&mut g, 0, "Hero's Downfall");
+    act(&mut g, Action::Cast(d));
+    act(&mut g, Action::Target(obj(theirs)));
+    resolve_all(&mut g, &[Action::Yes]);
+    assert_eq!(g.players[1].hand.len(), hand1 + 1, "the opponent chose to draw");
+}
+
+#[test]
+fn angelic_renewal_trades_itself_for_your_dead_creature() {
+    let mut g = table();
+    let renewal = put(&mut g, 0, "Angelic Renewal");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    for _ in 0..3 {
+        put(&mut g, 0, "Swamp");
+    }
+    let d = hand(&mut g, 0, "Hero's Downfall");
+    act(&mut g, Action::Cast(d));
+    act(&mut g, Action::Target(obj(lions)));
+    resolve_all(&mut g, &[Action::Yes]);
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield, "returned");
+    assert!(in_graveyard(&g, 0, renewal), "sacrificed");
+}

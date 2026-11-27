@@ -2184,6 +2184,30 @@ pub fn script(name: &str) -> Option<Script> {
                 d.mana_ext.treasures_add_two_at_level = 1; // d1's two-mana Treasures, always
             },
         ),
+        // ---- Core: triggers, batch 46 (idea decks: Y'shtola, Rocco) ----
+        "G'raha Tia, Scion Reborn" => s(
+            &["Throw Wide the Gates — Whenever you cast a noncreature spell, you may pay X life, where X is that spell's mana value. If you do, create a 1/1 colorless Hero creature token and put X +1/+1 counters on it. Do this only once each turn."],
+            |d, t| {
+                let effects = vec![
+                    Effect::StopIfDoneThisTurn,
+                    Effect::MayPayLifeAmount,
+                    Effect::MarkDoneThisTurn,
+                    Effect::CreateTokenWithCountersAmount { def: t.hero },
+                ];
+                on(d, When::YouCastNoncreatureMv, vec![], effects);
+            },
+        ),
+        "Fecundity" => s(
+            &["Whenever a creature dies, that creature's controller may draw a card."],
+            |d, _| on(d, When::AnotherCreatureDiesIt, vec![], vec![Effect::ExtrasControllerMayDraw]),
+        ),
+        "Angelic Renewal" => s(
+            &["Whenever a creature is put into your graveyard from the battlefield, you may sacrifice this enchantment. If you do, return that card to the battlefield."],
+            |d, _| {
+                let it = Filter { triggering: true, ..graveyard_cards(true, Controller::Any) };
+                may(d, When::CreatureToYourGraveyardFromBattlefieldIt, vec![it], vec![Effect::SacrificeSource, Effect::Reanimate(0)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -2519,4 +2543,8 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Laelia, the Blade Reforged",
     // Core: triggers, batch 45
     "Goldspan Dragon",
+    // Core: triggers, batch 46
+    "G'raha Tia, Scion Reborn",
+    "Fecundity",
+    "Angelic Renewal",
 ];

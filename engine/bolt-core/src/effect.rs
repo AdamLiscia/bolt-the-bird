@@ -3065,6 +3065,17 @@ pub enum Effect {
     ExtrasControllerMayTapElseToken {
         def: usize,
     },
+    /// "You may pay X life" with X the trigger's amount (`Decision::MayPayLife`); the rest only if
+    /// paid (G'raha Tia).
+    MayPayLifeAmount,
+    /// "Do this only once each turn": stop if the source's ability has done it this turn
+    /// (`Game::done_once_turn`), checked before the choice.
+    StopIfDoneThisTurn,
+    /// Records that the source's ability did it this turn (after the payment).
+    MarkDoneThisTurn,
+    /// The controller of the creature in the item's `extra` (one that died, a token included) may
+    /// draw a card (`Decision::MayDrawCard`; Fecundity).
+    ExtrasControllerMayDraw,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -4209,6 +4220,12 @@ pub enum When {
     /// "Whenever this creature becomes the target of a spell" (Goldspan Dragon): a spell's
     /// targets (not an ability's), anyone's, as they're chosen.
     BecomesTargetOfSpell,
+    /// "Whenever you cast a noncreature spell", with that spell's mana value (X included) as the
+    /// amount (G'raha Tia, Scion Reborn: "pay X life, where X is that spell's mana value").
+    YouCastNoncreatureMv,
+    /// "Whenever a creature is put into your graveyard from the battlefield" (Angelic Renewal): a
+    /// creature you own, with the card in slot 0 when the first target filter is `triggering`.
+    CreatureToYourGraveyardFromBattlefieldIt,
 }
 
 #[derive(Clone, Debug, PartialEq)]

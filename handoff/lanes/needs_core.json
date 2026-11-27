@@ -7529,7 +7529,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "done: d2 batch 44 (token 126 Glimmer; Effect::CreateTokensTappedAndAttacking)"
+   "status": "done: d2 batch 44. Known limit (OK for the demo): 'other enchantment creatures' is Scope::OtherYourEnchantments; 'whenever you attack a player' is YouAttack (1v1)"
   },
   {
    "card": "Ayara, First of Locthwain",
@@ -7538,7 +7538,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "handed back by d2, routed to d1: '{T}, Sacrifice another black creature' cost (the enters drain is existing pieces)"
   },
   {
    "card": "Cruel Celebrant",
@@ -7601,7 +7601,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "handed back by d2, routed to lane C: copy each token that entered this turn (city's blessing)"
   },
   {
    "card": "Rosie Cotton of South Lane",
@@ -7619,7 +7619,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "handed back by d2, routed to d1: 'Tap two untapped Foods you control: Add one mana'"
   },
   {
    "card": "Fandaniel, Telophoroi Ascian",
@@ -7637,7 +7637,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 46 (token 129 Hero; When::YouCastNoncreatureMv, Effect::MayPayLifeAmount, StopIfDoneThisTurn, MarkDoneThisTurn)"
   },
   {
    "card": "Helm of the Ghastlord",
@@ -7682,7 +7682,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "handed back by d2, routed to d3: each opponent who lost life this turn sacrifices a greatest-power creature"
   },
   {
    "card": "Starscape Cleric",
@@ -7709,7 +7709,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "handed back by d2, routed to d1: noncreature spells cost {1} less (the first-noncreature draw is a trigger d2 can add once the discount exists)"
   },
   {
    "card": "Wizard's Staff",
@@ -7736,7 +7736,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 46 (When::CreatureToYourGraveyardFromBattlefieldIt)"
   },
   {
    "card": "Fecundity",
@@ -7745,7 +7745,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 46 (When::AnotherCreatureDiesIt's extra; Effect::ExtrasControllerMayDraw, Decision::MayDrawCard)"
   },
   {
    "card": "Juniper Order Ranger",
@@ -7763,7 +7763,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "handed back by d2, routed to d1: each player may pay any amount of mana"
   },
   {
    "card": "Lifecrafter's Bestiary",
@@ -7862,7 +7862,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "handed back by d2, routed to d3: target opponent sacrifices a creature or planeswalker (no discard fallback)"
   },
   {
    "card": "Black Market",
@@ -7880,7 +7880,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "handed back by d2, routed to lane B: can't attack during extra turns (the extra-turn trigger is existing pieces)"
   },
   {
    "card": "Reconnaissance Mission",
@@ -7952,7 +7952,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "handed back by d2, routed to lane C: the Omen half (the attack Treasure is existing pieces)"
   },
   {
    "card": "Laelia, the Blade Reforged",
@@ -7988,7 +7988,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "handed back by d2, routed to d1: warp (the enters trigger is existing pieces)"
   },
   {
    "card": "Talion, the Kindly Lord",

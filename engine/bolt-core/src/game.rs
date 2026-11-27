@@ -1523,6 +1523,8 @@ pub enum Decision {
     /// `Yes` taps `card` (yours, which just entered untapped); `No` leaves it untapped and the
     /// opponent creates a `def` token (Charismatic Conqueror).
     MayTapElseOpponentToken { card: ObjId, def: usize },
+    /// `Yes` draws a card, `No` doesn't (Fecundity: the dead creature's controller decides).
+    MayDrawCard { source: ObjId },
 }
 
 /// One batch of a "one or more tokens ... enter" trigger (`Game::token_enter_batches`): (source,
@@ -2101,6 +2103,9 @@ pub struct Game {
     /// `When::OneOrMoreTokensOpponentsControlEnter`): (source, trigger number, controller, the
     /// tokens that entered with their zcc), one entry per batch, newest last.
     pub token_enter_batches: Vec<TokenBatch>,
+    /// "Do this only once each turn" (`Effect::StopIfDoneThisTurn`, `Effect::MarkDoneThisTurn`):
+    /// (source, its zcc, the turn).
+    pub done_once_turn: Vec<(ObjId, u32, u32)>,
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2430,6 +2435,7 @@ impl Game {
             clues_sacrificed: [(0, 0); 2],
             delayed_slot_dies: Vec::new(),
             token_enter_batches: Vec::new(),
+            done_once_turn: Vec::new(),
         }
     }
 
@@ -5928,11 +5934,19 @@ impl Game {
             }
             self.fire(0, When::AnotherCreatureDies, Some(id));
             self.fire(1, When::AnotherCreatureDies, Some(id));
+            // Angelic Renewal: "a creature is put into your graveyard from the battlefield" (its owner's).
+            let owner = self.obj(id).owner;
+            let before = self.triggered.len();
+            self.fire(owner, When::CreatureToYourGraveyardFromBattlefieldIt, Some(id));
+            self.fill_triggering(before, id);
             // Lifeline: "whenever a creature dies, ... return the first card".
             for q in 0..2 {
                 let before = self.triggered.len();
                 self.fire(q, When::AnotherCreatureDiesIt, Some(id));
                 self.fill_triggering(before, id);
+                for t in &mut self.triggered[before..] {
+                    t.extra = Some(id); // Fecundity: "that creature's controller"
+                }
             }
             let before = self.triggered.len();
             self.fire(0, When::OtherCreaturesDieOnceEachTurn, Some(id));
@@ -13011,6 +13025,15 @@ impl Game {
                 t.amount = spent;
                 t.extra = Some(card);
             }
+            // G'raha Tia: X is that spell's mana value.
+            let cost = self.cast_mana_cost(&item);
+            let mv = (cost.mana_value() + cost.x as u32 * item.x as u32) as i32;
+            let before = self.triggered.len();
+            self.fire(p, When::YouCastNoncreatureMv, None);
+            for t in &mut self.triggered[before..] {
+                t.amount = mv;
+                t.extra = Some(card);
+            }
         }
         if self.obj(card).mana_spent == 0 {
             // Boromir: "if no mana was spent to cast it", and "that spell".
@@ -15204,6 +15227,7 @@ impl Game {
             }
             Decision::ChooseExiledToPlay { cards } => cards.iter().copied().map(Action::Pick).collect(),
             Decision::MayTapElseOpponentToken { .. } => vec![Action::Yes, Action::No],
+            Decision::MayDrawCard { .. } => vec![Action::Yes, Action::No],
             Decision::NameCardInLibrary { .. } => {
                 let mut seen: Vec<&str> = Vec::new();
                 let mut v = Vec::new();
@@ -16050,6 +16074,10 @@ impl Game {
             (Decision::MaySacrificeLand { .. }, _) | (Decision::MaySacrificeArtifactOrCreature { .. }, _) => {
                 self.resolving.as_mut().expect("resolving").remaining.clear();
             }
+            (Decision::MayDrawCard { .. }, Action::Yes) => {
+                self.draws_with_dredge(vec![(p, 1)], false);
+            }
+            (Decision::MayDrawCard { .. }, _) => {}
             (Decision::MayTapElseOpponentToken { card, .. }, Action::Yes) => {
                 if self.obj(card).zone == Zone::Battlefield {
                     self.obj_mut(card).tapped = true;
@@ -26493,6 +26521,31 @@ impl Game {
                     if matches!(o.zone, Zone::Graveyard | Zone::Exile) && !self.is_token(c) {
                         self.delayed_returns.push((c, o.zcc, 0));
                     }
+                }
+            }
+            Effect::MayPayLifeAmount => {
+                let (p, life) = (item.controller, item.amount.max(0));
+                if self.players[p].life >= life {
+                    self.ask(p, Decision::MayPayLife { life });
+                } else {
+                    self.resolving.as_mut().expect("resolving").remaining.clear();
+                }
+            }
+            Effect::StopIfDoneThisTurn => {
+                let (zcc, turn) = (self.obj(src).zcc, self.turn);
+                self.done_once_turn.retain(|e| e.2 == turn);
+                if self.done_once_turn.iter().any(|e| e.0 == src && e.1 == zcc) {
+                    self.resolving.as_mut().expect("resolving").remaining.clear();
+                }
+            }
+            Effect::MarkDoneThisTurn => {
+                let (zcc, turn) = (self.obj(src).zcc, self.turn);
+                self.done_once_turn.push((src, zcc, turn));
+            }
+            Effect::ExtrasControllerMayDraw => {
+                if let Some(c) = item.extra {
+                    let q = self.obj(c).controller;
+                    self.ask(q, Decision::MayDrawCard { source: src });
                 }
             }
             Effect::ExtrasControllerMayTapElseToken { def } => {

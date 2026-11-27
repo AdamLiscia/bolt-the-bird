@@ -393,3 +393,9 @@ def test_charismatic_conqueror_asks_to_tap_the_permanent_or_give_a_token():
     dec = {"kind": "MayTapElseOpponentToken", "card": [7, 2], "def": 300}
     assert label(dec, "Yes", 0) == "Tap Secluded Courtyard"
     assert label(dec, "No", 0) == "Don't tap Secluded Courtyard (they create a token)"
+
+
+def test_fecundity_asks_the_dead_creatures_controller_to_draw():
+    dec = {"kind": "MayDrawCard", "source": [7, 1]}
+    assert label(dec, "Yes", 0) == "Draw a card (Thriving Heath)"
+    assert label(dec, "No", 0) == "Don't draw"
