@@ -8954,9 +8954,17 @@ impl Game {
         let ability_discount = self.ability_discount(p);
         let graveyard = self.players[p].graveyard.iter().copied();
         let hand = self.players[p].hand.iter().copied();
-        for id in self.permanents(p).chain(graveyard).chain(hand) {
+        // Derevi: a commander's "from the command zone" ability, for its owner.
+        let command: Vec<ObjId> = self
+            .command
+            .iter()
+            .copied()
+            .filter(|&c| self.obj(c).owner == p)
+            .collect();
+        for id in self.permanents(p).chain(graveyard).chain(hand).chain(command) {
             let in_graveyard = self.obj(id).zone == Zone::Graveyard;
             let in_hand = self.obj(id).zone == Zone::Hand;
+            let in_command = self.obj(id).zone == Zone::Command;
             for (n, a) in self
                 .def_of(id)
                 .activated
@@ -8991,6 +8999,7 @@ impl Game {
                 }
                 if (a.from_hand_discard || a.plot || a.foretell || a.forecast) != in_hand
                     || (!in_hand && a.from_graveyard != in_graveyard)
+                    || a.from_command_zone != in_command
                     || (!in_graveyard && self.lost_abilities(id))
                     || self.activation_stopped(id)
                     || a.granted_to_attached
@@ -17508,7 +17517,8 @@ impl Game {
                             controller: item.controller,
                             ..snap.clone()
                         };
-                        self.items.push(copy);
+                        // Onto the stack with new targets chosen, as other copies (CR 707.10c).
+                        self.pending_copies.push(copy);
                         self.copied_or_cast_instant_sorcery(item.controller, snap.source);
                     }
                 }
@@ -20150,6 +20160,11 @@ impl Game {
                 }
                 for _ in 0..n {
                     self.create_token(item.controller, def);
+                }
+            }
+            Effect::PutSourceOntoBattlefieldFromCommand => {
+                if self.obj(src).zone == Zone::Command {
+                    self.move_to(src, Zone::Battlefield);
                 }
             }
             Effect::ExileSlotReturnTappedAtEnd(slot) => {

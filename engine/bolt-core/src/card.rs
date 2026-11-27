@@ -378,6 +378,9 @@ pub struct Activated {
     /// "Activate only if an opponent has N or more cards in their graveyard." (Sheoldred // The
     /// True Scriptures: 8)
     pub opponent_min_graveyard: u8,
+    /// Activated only while the card is in the command zone, by its owner (Derevi: "{1}{G}{W}{U}:
+    /// Put Derevi onto the battlefield from the command zone.").
+    pub from_command_zone: bool,
 }
 
 /// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,

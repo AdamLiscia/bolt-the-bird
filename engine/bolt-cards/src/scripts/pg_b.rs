@@ -2344,6 +2344,42 @@ pub fn script(name: &str) -> Option<Script> {
                 spell(d, vec![], vec![Effect::CounterOpponentsSpellsAndAbilitiesTokenEach { def: t.faerie_ub }]);
             },
         ),
+        "Derevi, Empyrial Tactician" => s(
+            &[
+                "When Derevi enters and whenever a creature you control deals combat damage to a player, you may tap or untap target permanent.",
+                "{1}{G}{W}{U}: Put Derevi onto the battlefield from the command zone.",
+            ],
+            |d, _| {
+                let permanent = Filter {
+                    players: false,
+                    creatures: false,
+                    planeswalkers: false,
+                    any_permanent: true,
+                    ..Filter::ANY
+                };
+                for when in [When::Enters, When::YourCreatureDealsCombatDamageToPlayer] {
+                    may(d, when, vec![permanent], vec![Effect::TapOrUntap(0)]);
+                }
+                let n = activated(d, "{1}{G}{W}{U}", false, vec![], vec![Effect::PutSourceOntoBattlefieldFromCommand]);
+                d.activated[n].from_command_zone = true;
+            },
+        ),
+        "There and Back Again" => s(
+            &[
+                "I \u{2014} Up to one target creature can't block for as long as you control this Saga. The Ring tempts you.",
+                "II \u{2014} Search your library for a Mountain card, put it onto the battlefield, then shuffle.",
+                "III \u{2014} Create Smaug, a legendary 6/6 red Dragon creature token with flying, haste, and \"When Smaug dies, create fourteen Treasure tokens.\"",
+            ],
+            |d, t| {
+                let tempts = Effect::Subsystem(bolt_core::SubsystemEffect::RingTempts);
+                let one = up_to(vec![CREATURE], vec![Effect::TargetCantBlockWhileYouControlSource(0), tempts]);
+                chapter(d, 1, one);
+                let mountain = search(SearchFor::Subtype("Mountain"), SearchTo::Battlefield { tapped: false });
+                chapter(d, 2, Ability::new(vec![], vec![mountain]));
+                let smaug = Effect::CreateToken { who: Who::You, def: t.smaug, n: 1 };
+                chapter(d, 3, Ability::new(vec![], vec![smaug]));
+            },
+        ),
         _ => None,
     }
 }
@@ -2615,6 +2651,8 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Morningtide's Light",
     "Mirrormind Crown",
     "Glen Elendra's Answer",
+    "Derevi, Empyrial Tactician",
+    "There and Back Again",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",

@@ -1063,3 +1063,15 @@ One Ring's check in `deal_damage`). Claims recorded in needs_core.json.
   and the opponent's tokens.
 - Glen Elendra's Answer (Niv-Mizzet idea): `Effect::CounterOpponentsSpellsAndAbilitiesTokenEach`,
   token 104 (`faerie_ub`, a 1/1 blue and black Faerie with flying).
+
+### Derevi, There and Back Again, copies with new targets (2026-11-27)
+
+- Derevi (Najeela): `Activated::from_command_zone`; the activation list also looks at its owner's
+  cards in the command zone, offering only those abilities there (and never them elsewhere);
+  `Effect::PutSourceOntoBattlefieldFromCommand` (not cast: no commander tax). Its enters and combat
+  damage triggers are a may tap or untap.
+- There and Back Again (d4's handback): chapter I is my can't-block-while-you-control plus d4's
+  Ring tempting; II searches for a Mountain card; III makes d4's Smaug token.
+- `Effect::CopySourceSpell` (storm, Sage of the Skies, Flusterstorm) now puts its copies through
+  `pending_copies`, so each copy with targets chooses new ones (CR 707.10c), as
+  `CopySpellNewTargets` does. Grapeshot's storm copies no longer keep the original's target.

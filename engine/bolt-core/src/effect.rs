@@ -2690,6 +2690,8 @@ pub enum Effect {
     CounterOpponentsSpellsAndAbilitiesTokenEach {
         def: usize,
     },
+    /// Put the source onto the battlefield from the command zone (Derevi); it isn't cast.
+    PutSourceOntoBattlefieldFromCommand,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

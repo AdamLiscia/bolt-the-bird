@@ -2569,7 +2569,12 @@ fn ghyrson_burn_and_cantrips() {
     let bolt = hand(&mut g, 0, "Burst Lightning");
     play(&mut g, bolt, false, &[Target::Player(1)], &[]);
     let shot = hand(&mut g, 0, "Grapeshot");
-    play(&mut g, shot, false, &[Target::Player(1)], &[]);
+    // The two storm copies choose their own targets (the opponent again).
+    let again = [
+        Action::Target(Target::Player(1)),
+        Action::Target(Target::Player(1)),
+    ];
+    play(&mut g, shot, false, &[Target::Player(1)], &again);
     assert_eq!(
         g.players[1].life, 35,
         "2, then 1 and two storm copies (two spells before it)"
@@ -4286,4 +4291,104 @@ fn mirrormind_crowns_first_time_is_used_up_by_a_token_that_didnt_ask() {
     act(&mut g, Action::Activate(port, 1)); // a Fish later that turn: no question
     resolve_all(&mut g, &[]);
     assert_eq!(tokens(&g, 0, "Fish").len(), 1);
+}
+
+#[test]
+fn derevi_comes_from_the_command_zone_and_taps_or_untaps() {
+    let plains = vec![cid("Plains"); 99];
+    let mut g = Game::new_commander(
+        set("CMD").unwrap().defs.clone(),
+        [&plains, &plains],
+        [cid("Derevi, Empyrial Tactician"), cid("Ms. Bumbleflower")],
+        7,
+        0,
+    );
+    g.auto_pass = false;
+    for land in ["Plains", "Island", "Forest", "Forest"] {
+        put(&mut g, 0, land);
+    }
+    let theirs = put(&mut g, 1, "Savannah Lions");
+    g.start_turn(3, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let derevi = g
+        .command
+        .iter()
+        .copied()
+        .find(|&c| g.obj(c).owner == 0)
+        .expect("in the command zone");
+    assert!(g.legal_actions().contains(&Action::Activate(derevi, 0)));
+    act(&mut g, Action::Activate(derevi, 0));
+    while !g.items.is_empty() || matches!(g.pending, Pending::Decide(_) | Pending::ChooseTarget(_)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) => Action::Target(Target::Object(theirs)),
+            Pending::Decide(_) => Action::Yes,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(
+        g.obj(derevi).zone,
+        Zone::Battlefield,
+        "put onto the battlefield, not cast"
+    );
+    assert!(g.obj(theirs).tapped, "tapped by its enters trigger");
+}
+
+#[test]
+fn there_and_back_again_locks_a_blocker_tempts_finds_a_mountain_and_makes_smaug() {
+    let mut g = table();
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let saga = hand(&mut g, 0, "There and Back Again");
+    act(&mut g, Action::Cast(saga));
+    while !g.items.is_empty() || matches!(g.pending, Pending::Decide(_) | Pending::ChooseTarget(_)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) => Action::Target(Target::Object(lions)),
+            Pending::Decide(_) => g.legal_actions()[0], // the Ring-bearer
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert!(
+        g.cant_block_while_controlled.iter().any(|e| e.0 == lions),
+        "can't block"
+    );
+    assert_eq!(g.ring_tempted[0], 1, "the Ring tempts you");
+    let mountain = g.add_card(0, cid("Mountain"), Zone::Library);
+    g.players[0].library.rotate_right(1); // not the draw
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 || !g.items.is_empty() || matches!(g.pending, Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::Decide(_) => Action::Pick(mountain),
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(mountain).zone, Zone::Battlefield, "chapter II");
+    g.start_turn(7, 0);
+    while g.step != Step::Main1 || !g.items.is_empty() {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(tokens(&g, 0, "Smaug").len(), 1, "chapter III");
+    assert_eq!(g.obj(saga).zone, Zone::Graveyard, "sacrificed after III");
+}
+
+#[test]
+fn storm_copies_choose_new_targets() {
+    let mut g = table();
+    let elves = put(&mut g, 1, "Llanowar Elves");
+    let bolt = hand(&mut g, 0, "Burst Lightning");
+    play(&mut g, bolt, false, &[Target::Player(1)], &[]);
+    let shot = hand(&mut g, 0, "Grapeshot");
+    // One storm copy (one spell before it): the original at the opponent, the copy at the Elves.
+    play(
+        &mut g,
+        shot,
+        false,
+        &[Target::Player(1)],
+        &[Action::Target(Target::Object(elves))],
+    );
+    assert_eq!(g.obj(elves).zone, Zone::Graveyard, "the copy retargeted");
+    assert_eq!(g.players[1].life, 40 - 2 - 1);
 }
