@@ -912,3 +912,39 @@ Waiting on others:
   counters); moving the counters at the beginning of combat is lane C's once that exists.
 - Karador, Ghost Chieftain: d1 (costs {1} less per creature card in your graveyard); "once during each of your
   turns, cast a creature spell from your graveyard" is lane C's (cast-from-zone) and next.
+
+## Handoff (2026-11-26, power outage): for the next lane C
+
+State: tarkir-c at the commit after 6265d77 (notes only). Built and verified: everything through a6fb683
+(on tarkir; 2,133 passing there). **Unbuilt WIP on top: 75620ee (batch 12 cards) and 6265d77 (needs_core owners).**
+
+When the merger sends the go:
+1. Merge tarkir (it should include lane B's 25c40ea). Take tarkir's `token_defs` and `Tokens` exactly; lane C's
+   slots are after 100: `placeholder_100` (d1's, it renames it) and 101 `insect_deathtouch` (Hornet Queen).
+   102-104 are lane C's and unused. Check the ends of CardDef, Game, Object, Effect, When, Decision, SearchTo,
+   ManaExt, ManaCount, SubsystemExt, ZonesExt: each the union of both sides, no duplicates. `cargo build` before
+   committing the merge.
+2. Full check: `PATH=/opt/homebrew/opt/rustup/bin:$PATH CARGO_INCREMENTAL=0
+   CARGO_TARGET_DIR=/Users/adamliscia/bolt-target-lanes`, touch bolt-core/src/*.rs, bolt-core/src/game/*.rs and
+   bolt-cards sources first; `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`,
+   `cargo test --no-fail-fast` (per-binary counts equal the `#[test]` counts: core_objects 47, pg_c 212 from lane
+   C's side; play.rs is ignored), then `.venv/bin/ruff check .`, `ruff format --check .`,
+   `.venv/bin/python -m pytest -q tests`.
+3. Batch 12 untested so far, so the likely spots if something fails: `Game::exchange_control_or_sacrifice`
+   (Gilded Drake, an "up to one" trigger pushed as a raw `Trigger` with `up_to`), Neoform's `CastWith` sacrifice
+   plus the `Decision::Search` answer `SearchTo::BattlefieldPlusCounter`, and Peer into the Abyss's test (it sets
+   player 1's life to 39 and expects 19).
+4. Commit, send the merger the hash and totals. Never push; never commit to tarkir.
+
+Open lane C work, waiting on other owners (needs_core.json names each blocker and lane C's part):
+- Elder Brain (d1: spend mana as any color), then lane C's exile-hand, draw-that-many, play-while-exiled.
+- Karador (d1: cost per graveyard creature), then lane C's once-each-turn creature cast from the graveyard.
+- The Ozolith (d2: leaves-with-counters trigger), then lane C's counter keeping and moving.
+- Wandering Archaic // Explore the Vastlands: d3's look-at-five effect, then lane C extends `back_face_castable`
+  (game/zones.rs) to instant and sorcery backs. The front is one line (see "Borrowed d2 pieces, batch 3").
+- Lithoform Engine's targeting shortcuts wait on d3's `Filter` (permanent spells; a controller check for
+  `abilities`).
+- Earlier lists in this file: "Held back (lane C)", the Olivia/Bruna script-only pass ("Still waiting, by owner"),
+  and lane B's decks' Mac C pieces.
+Rules that bit this lane: Effect is `Copy` (no `.clone()`, clippy fails); test bindings must be used or `_`-named;
+`obj_mut` isn't public to tests (drive state through actions, `start_turn`, `to_main1`).
