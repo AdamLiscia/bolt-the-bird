@@ -1,6 +1,6 @@
 """The desktop farm's runner (docs/desktop-farm.md): starts every job in jobs/*.json that isn't done.
 
-    python scripts/farm.py [--budget 12] [--once]
+    python scripts/farm.py [--budget 12] [--job-threads 12] [--once]
 
 A job file:
 
@@ -13,6 +13,10 @@ is done when its S3 pointer (`farm/<name>/latest.json`) says `"done": true`. The
 `bolt.jobs.Job.save(..., done=True)`. A job that exits without finishing is started again on the next pass,
 and resumes from its last checkpoint. SIGTERM to farm.py stops every job gracefully (each gets `grace` seconds, default
 180, to save a checkpoint) and exits without relaunching: send it to farm.py alone, not its process group.
+
+`--job-threads N` runs every job at N threads instead of its file's `threads`, and passes `BOLT_THREADS=N`,
+which train_ppo_play.py uses for --workers and --threads. Nights at 12: stop farm.py gracefully (SIGTERM), then
+restart it with `--budget 12 --job-threads 12`; the job resumes from its last checkpoint. Days: restart without it.
 """
 
 import argparse
@@ -42,7 +46,7 @@ def load_jobs() -> list[dict]:
 
 
 def start(j: dict) -> subprocess.Popen:
-    env = {**os.environ, **j.get("env", {}), "GUARD_ACTIVE_TIME": "1", "OMP_NUM_THREADS": str(j["threads"]),
+    env = {**os.environ, **j.get("env", {}), **({"BOLT_THREADS": str(j["threads"])} if j.get("threads_override") else {}), "GUARD_ACTIVE_TIME": "1", "OMP_NUM_THREADS": str(j["threads"]),
            "BOLT_JOB": j["name"], "GUARD_GRACE": str(j.get("grace", 180))}  # fmt: skip
     log = open(ROOT / "logs" / f"farm_{j['name']}.log", "a")  # noqa: SIM115 - kept open for the child
     cmd = [str(ROOT / "scripts" / "guard.sh"), str(j["seconds"]), str(j["mb"]), "--", *j["cmd"]]
@@ -53,9 +57,12 @@ def start(j: dict) -> subprocess.Popen:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--budget", type=int, default=12, help="threads for all running jobs together")
+    ap.add_argument("--job-threads", type=int, default=0, help="run every job at this many threads (0: its file's)")
     ap.add_argument("--once", action="store_true", help="one pass: start what fits, wait for it, exit")
     ap.add_argument("--every", type=int, default=300, help="seconds between passes")
     a = ap.parse_args()
+    if a.job_threads > a.budget:
+        ap.error("--job-threads can't exceed --budget")
     (ROOT / "logs").mkdir(exist_ok=True)
     running: dict[str, tuple[subprocess.Popen, int]] = {}
     stopping = {"now": False}
@@ -80,6 +87,8 @@ def main():
                 del running[name]
         used = sum(t for _, t in running.values())
         for j in load_jobs():
+            if a.job_threads:
+                j["threads"], j["threads_override"] = a.job_threads, True
             if j["name"] in running or used + j["threads"] > a.budget:
                 continue
             try:

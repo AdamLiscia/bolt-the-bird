@@ -87,6 +87,8 @@ def main():
         help="train only against itself and its past checkpoints (no rules or smart opponents)",
     )
     a = ap.parse_args()
+    if os.environ.get("BOLT_THREADS"):  # farm.py --job-threads (the 12-thread nights)
+        a.workers = a.threads = int(os.environ["BOLT_THREADS"])
     torch.set_num_threads(a.threads)
     ck = ROOT / "checkpoints" / "play" / a.name
     ck.mkdir(parents=True, exist_ok=True)
