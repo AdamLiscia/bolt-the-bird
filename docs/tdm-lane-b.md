@@ -1079,3 +1079,7 @@ One Ring's check in `deal_damage`). Claims recorded in needs_core.json.
   Proliferate" and "[−12]: Take an extra turn"), listed after a planeswalker's own in
   `Game::loyalty_list` (offering, activation, X), recorded as activated in `Game::loyalty_snapshots`
   so a granted one resolves without its granter. The card waits for d3's counter trigger.
+- Stridehangar Automaton (Sephiroth idea): `CardDef::artifact_tokens_plus_one` (Thopter), in
+  `create_token`'s extras, once per event (`Game::artifact_plus_batch`, as Xorn's); token doublers
+  then double the Thopter too (the order its controller would pick). Mirrormind Crown's copies
+  aren't given the extra Thopter.

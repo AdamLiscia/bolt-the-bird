@@ -1084,6 +1084,9 @@ pub struct CardDef {
     /// Loyalty abilities planeswalkers you control have (Ichormoon Gauntlet: "[0]: Proliferate" and
     /// "[−12]: Take an extra turn after this one."), after their own (`Game::loyalty_ability`).
     pub your_planeswalkers_have_loyalty: Vec<(i32, crate::effect::Ability)>,
+    /// Stridehangar Automaton: "If one or more artifact tokens would be created under your control,
+    /// those tokens plus an additional [Thopter] are created instead." (the token, once per event)
+    pub artifact_tokens_plus_one: Option<usize>,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1643,6 +1646,7 @@ impl CardDef {
             lands_in_graveyard_have_dredge: None,
             first_tokens_copy_equipped: false,
             your_planeswalkers_have_loyalty: Vec::new(),
+            artifact_tokens_plus_one: None,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1938,6 +1942,7 @@ impl CardDef {
             lands_in_graveyard_have_dredge: None,
             first_tokens_copy_equipped: false,
             your_planeswalkers_have_loyalty: Vec::new(),
+            artifact_tokens_plus_one: None,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2233,6 +2238,7 @@ impl CardDef {
             lands_in_graveyard_have_dredge: None,
             first_tokens_copy_equipped: false,
             your_planeswalkers_have_loyalty: Vec::new(),
+            artifact_tokens_plus_one: None,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

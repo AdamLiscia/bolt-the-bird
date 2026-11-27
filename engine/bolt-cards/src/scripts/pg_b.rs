@@ -2380,6 +2380,16 @@ pub fn script(name: &str) -> Option<Script> {
                 chapter(d, 3, Ability::new(vec![], vec![smaug]));
             },
         ),
+        "Stridehangar Automaton" => s(
+            &[
+                "Thopters you control get +1/+1.",
+                "If one or more artifact tokens would be created under your control, those tokens plus an additional 1/1 colorless Thopter artifact creature token with flying are created instead.",
+            ],
+            |d, t| {
+                lord(d, "Thopter");
+                d.artifact_tokens_plus_one = Some(t.thopter);
+            },
+        ),
         _ => None,
     }
 }
@@ -2653,6 +2663,7 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Glen Elendra's Answer",
     "Derevi, Empyrial Tactician",
     "There and Back Again",
+    "Stridehangar Automaton",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",

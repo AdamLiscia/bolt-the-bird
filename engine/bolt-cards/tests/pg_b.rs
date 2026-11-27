@@ -4392,3 +4392,36 @@ fn storm_copies_choose_new_targets() {
     assert_eq!(g.obj(elves).zone, Zone::Graveyard, "the copy retargeted");
     assert_eq!(g.players[1].life, 40 - 2 - 1);
 }
+
+#[test]
+fn stridehangar_automaton_adds_a_thopter_to_artifact_tokens() {
+    let mut g = table();
+    put(&mut g, 0, "Stridehangar Automaton");
+    let port = put(&mut g, 0, "Fountainport");
+    act(&mut g, Action::Activate(port, 2)); // {4}, {T}: a Treasure
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 1);
+    let thopters = tokens(&g, 0, "Thopter");
+    assert_eq!(thopters.len(), 1, "plus an additional Thopter");
+    assert_eq!(
+        (g.power(thopters[0]), g.toughness(thopters[0])),
+        (2, 2),
+        "Thopters get +1/+1"
+    );
+    // A creature token that isn't an artifact: no Thopter.
+    let port2 = put(&mut g, 0, "Fountainport");
+    act(&mut g, Action::Activate(port2, 1)); // a Fish
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Thopter").len(), 1);
+    // With Parallel Lives the controller orders it best: both doubled (two Treasures, two Thopters).
+    let mut g = table();
+    put(&mut g, 0, "Stridehangar Automaton");
+    put(&mut g, 0, "Parallel Lives");
+    let port = put(&mut g, 0, "Fountainport");
+    act(&mut g, Action::Activate(port, 2));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        (tokens(&g, 0, "Treasure").len(), tokens(&g, 0, "Thopter").len()),
+        (2, 2)
+    );
+}

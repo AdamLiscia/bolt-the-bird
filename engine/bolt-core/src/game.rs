@@ -1929,6 +1929,9 @@ pub struct Game {
     /// Granted loyalty abilities as they were activated: (planeswalker, ability number, the
     /// ability), so one still resolves if its granter leaves (Ichormoon Gauntlet).
     pub loyalty_snapshots: Vec<(ObjId, usize, Ability)>,
+    /// While one effect creates its tokens: whether Stridehangar Automaton's Thopter has been made
+    /// for it ("one or more artifact tokens": once per event), as `xorn_batch`.
+    artifact_plus_batch: Option<bool>,
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2229,6 +2232,7 @@ impl Game {
             damage_to_you_prevented_until: [None; 2],
             mirrormind_used: [0; 2],
             loyalty_snapshots: Vec::new(),
+            artifact_plus_batch: None,
             hand_links: Vec::new(),
             saddled: Vec::new(),
             karador_turn: [0; 2],
@@ -16624,11 +16628,13 @@ impl Game {
                         continue;
                     }
                     self.xorn_batch = Some(false);
+                    self.artifact_plus_batch = Some(false);
                     for _ in 0..n {
                         self.create_token(p, def);
                         made.extend(self.last_created.iter().copied());
                     }
                     self.xorn_batch = None;
+                    self.artifact_plus_batch = None;
                 }
                 self.last_created = made;
                 if let Some(p) = crown_player {
@@ -24485,6 +24491,13 @@ impl Game {
                                 .map(|t| (t, 1)),
                         )
                         .chain(d.tokens_plus_each.map(|t| (t, made.len())))
+                        .chain(
+                            d.artifact_tokens_plus_one
+                                .filter(|_| {
+                                    self.defs[def].types.artifact && self.artifact_plus_batch != Some(true)
+                                })
+                                .map(|t| (t, 1)),
+                        )
                         .collect::<Vec<_>>()
                 })
                 .collect();
@@ -24494,6 +24507,14 @@ impl Game {
                 .any(|x| !self.lost_abilities(x) && self.def_of(x).treasures_plus_one == Some(def));
             if xorn && self.xorn_batch == Some(false) {
                 self.xorn_batch = Some(true);
+            }
+            // Stridehangar Automaton: once for the whole event, too.
+            let stride = self.defs[def].types.artifact
+                && self
+                    .permanents(p)
+                    .any(|x| !self.lost_abilities(x) && self.def_of(x).artifact_tokens_plus_one.is_some());
+            if stride && self.artifact_plus_batch == Some(false) {
+                self.artifact_plus_batch = Some(true);
             }
             self.token_replacing = true;
             for (t, n) in extras {
