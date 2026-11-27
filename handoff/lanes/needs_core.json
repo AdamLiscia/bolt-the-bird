@@ -688,7 +688,8 @@
    "missing": "discover X",
    "lane": "d1",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "mac-c",
+   "status": "done: d2 batch 47, routed to d2 by the coordinator (Effect::DiscoverSourceToughness on Game::discover; Effect::Discover(n) for discover N)"
   },
   {
    "card": "Drumbellower",
@@ -2073,7 +2074,8 @@
    "missing": "needs core: a 1/1 black Faerie Rogue creature token with flying",
    "lane": "d2",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "mac-c",
+   "status": "done: d2 batch 30 (token 115)"
   },
   {
    "card": "Bloodchief Ascension",
@@ -3939,7 +3941,8 @@
    "missing": "needs core: a Clue artifact token (investigate), and a 'sacrificed three or more Clues this turn' condition",
    "lane": "d3",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "mac-c",
+   "status": "done: d2 batch 38 (claimed by d2 from mac-c: both lines are trigger pieces)"
   },
   {
    "card": "Confirm Suspicions",
@@ -5442,7 +5445,8 @@
    "missing": "BLC (lane B's routing, 2026-11-26) [lane C 2026-11-27: scripted in pg_c, batch 18 (unbuilt)]",
    "lane": "mac-b",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "mac-c",
+   "status": "done: lane C batch 18 (389f90e)"
   },
   {
    "card": "Coveted Jewel",
@@ -6274,7 +6278,8 @@
    "missing": "lane C's routing (2026-11-26)",
    "lane": "mac-c",
    "theme": "effects",
-   "owner": "d3"
+   "owner": "d3",
+   "status": "done: d2 batch 37 (When::YouCastCreatureOfChosenType)"
   },
   {
    "card": "Three Tree City",
@@ -6335,7 +6340,7 @@
   {
    "card": "Broodcaller Scourge",
    "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
-   "missing": "lane C's routing (2026-11-26) [d3 handback: needs d2 (triggers): the damage amount on When::YourSubtypeDealCombatDamageToPlayer; then a put-from-hand with mana value at most that (d3)] [d3 owns the script: Effect::MayPutPermanentFromHandMvAtMostAmount (d3 b44, reads item.amount as 'that damage'); waiting on d2 b45 + d3 b44 on tarkir]",
+   "missing": "lane C's routing (2026-11-26) [d3 handback: needs d2 (triggers): the damage amount on When::YourSubtypeDealCombatDamageToPlayer; then a put-from-hand with mana value at most that (d3)] [d3 owns the script: Effect::MayPutPermanentFromHandMvAtMostAmount (d3 b44, reads item.amount as 'that damage'); waiting on d2 b45 + d3 b44 on tarkir] [d3 batch 49: scripted (pg_d3) on d2's item.amount (lane-d2 049822c) and d3 b44's effect]",
    "lane": "mac-c",
    "theme": "triggers",
    "owner": "d3"
@@ -7012,7 +7017,8 @@
    "missing": "idea quick win: claimed by lane C 2026-11-27, scripted in pg_c, batch 18 (unbuilt)",
    "lane": "mac-c",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "mac-c",
+   "status": "done: lane C batch 18 (389f90e)"
   },
   {
    "card": "Forsaken Miner",

@@ -2605,6 +2605,14 @@ pub fn script(name: &str) -> Option<Script> {
                 b.mana = Some(ManaSource::of(&[Color::Green]));
             },
         ),
+        // ---- d3 batch 49: Vaevictis ----
+        "Broodcaller Scourge" => s(
+            &["Whenever one or more Dragons you control deal combat damage to a player, you may put a permanent card with mana value less than or equal to that damage from your hand onto the battlefield."],
+            |d, _| {
+                // "That damage" is the trigger's amount (d2: the Dragons' combat damage to players).
+                on(d, When::YourSubtypeDealCombatDamageToPlayer("Dragon"), vec![], vec![Effect::MayPutPermanentFromHandMvAtMostAmount]);
+            },
+        ),
         "Lathliss, Dragon Queen" => s(
             &[
                 "Whenever another nontoken Dragon you control enters, create a 5/5 red Dragon creature token with flying.",
@@ -2973,4 +2981,5 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Autumn's Veil",
     "Regrowth",
     "Bala Ged Recovery // Bala Ged Sanctuary",
+    "Broodcaller Scourge",
 ];

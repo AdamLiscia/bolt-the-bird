@@ -5792,3 +5792,40 @@ fn regrowth_and_bala_ged_recovery_return_a_card() {
         assert_eq!(g.obj(dead).zone, Zone::Hand, "{name}");
     }
 }
+
+// ---- d3 batch 49: Broodcaller Scourge ----
+
+#[test]
+fn broodcaller_scourge_puts_a_permanent_up_to_its_combat_damage() {
+    let mut g = table();
+    let brood = put(&mut g, 0, "Broodcaller Scourge");
+    g.objects[brood.0 as usize].since_turn = 0;
+    let pippin = hand(&mut g, 0, "Pippin, Guard of the Citadel"); // mana value 2
+    let kodama = hand(&mut g, 0, "Kodama of the East Tree"); // 6
+    let big = hand(&mut g, 0, "Broodcaller Scourge"); // 7
+    while !g.legal_actions().contains(&Action::Attack(brood)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(brood));
+    act(&mut g, Action::FinishAttacks);
+    for _ in 0..60 {
+        if g.pending == Pending::Decide(0) {
+            break;
+        }
+        let legal = g.legal_actions();
+        let a = if legal.contains(&Action::PassPriority) {
+            Action::PassPriority
+        } else {
+            legal[0]
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.players[1].life, 35, "5 combat damage");
+    assert_eq!(g.pending, Pending::Decide(0));
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(pippin)), "mana value 2 <= 5 damage");
+    assert!(!legal.contains(&Action::Pick(kodama)), "6 is over 5");
+    assert!(!legal.contains(&Action::Pick(big)), "7 is over 5");
+    act(&mut g, Action::Pick(pippin));
+    assert_eq!(g.obj(pippin).zone, Zone::Battlefield);
+}
