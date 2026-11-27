@@ -9009,6 +9009,20 @@ impl Game {
         self.mode_affordable_now(p, c, mode)
     }
 
+    /// A copy of the game with card `c` taken out of its zone and onto the stack, as it is when its
+    /// cost is paid (CR 601.2a), for pricing a spell whose cost reads the board: one with a cost
+    /// reduction. `None` when it's on the stack already or its cost can't depend on where it is.
+    fn lifted_for_pricing(&self, c: ObjId) -> Option<Game> {
+        if self.obj(c).zone == Zone::Stack || self.def_of(c).reduction.is_none() {
+            return None;
+        }
+        let mut h = self.clone();
+        let (owner, zone) = (h.obj(c).owner, h.obj(c).zone);
+        h.zone_list(owner, zone).retain(|&x| x != c);
+        h.obj_mut(c).zone = Zone::Stack;
+        Some(h)
+    }
+
     /// Harmonize: the creature tapped to reduce the cost, which payment excludes as a mana source
     /// (even a Devotee's untapped "{1}: Add" ability), so affordability excludes it too.
     fn harmonize_creature(&self, c: ObjId, mode: CastMode) -> Option<ObjId> {
@@ -9041,6 +9055,12 @@ impl Game {
     }
 
     fn mode_affordable_now(&self, p: PlayerId, c: ObjId, mode: CastMode) -> bool {
+        // CR 601.2a, 601.2f: the card is on the stack before its cost is locked in, so a cost that
+        // reads the board is priced without the card where it is now (The Great Henge with Psychosis
+        // Crawler, whose power is the hand Henge is leaving).
+        if let Some(h) = self.lifted_for_pricing(c) {
+            return h.mode_affordable_now(p, c, mode);
+        }
         let mut cost = self.spell_cost(p, c, mode, &[]);
         cost.generic = cost.generic.saturating_sub(self.delve_available(p, c));
         let exclude = self.harmonize_creature(c, mode);

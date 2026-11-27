@@ -505,3 +505,60 @@ fn an_unpayable_activation_rolls_back_instead_of_panicking() {
     assert_eq!(g.pending, Pending::Priority(0));
     assert!(!g.legal_actions().contains(&draw), "not offered again this step");
 }
+
+/// Farm, 2026-11-27, the "payable" panic (Aesi vs Damia, seed 20301042, move 129): The Great Henge
+/// costs {X} less, X the greatest power among your creatures, and Psychosis Crawler's power is your
+/// hand size. Henge leaves the hand as it's cast (CR 601.2a) before its cost is locked in (601.2f),
+/// so the Crawler is one smaller then. The check priced it from the hand. Three lands (Ghost Town,
+/// Tectonic Edge, a Snow-Covered Island, each a Forest too with Dryad of the Ilysian Grove) pay
+/// {1}{G}{G}: Henge is castable with seven cards in hand (Crawler 6 as it's paid), not with six.
+fn henge_table(other_cards: usize) -> (Game, ObjId) {
+    let plains = vec![cid("Plains"); 99];
+    let mut g = Game::new_commander(
+        set("CMD").unwrap().defs.clone(),
+        [&plains, &plains],
+        [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+        7,
+        0,
+    );
+    g.auto_pass = false;
+    for c in [
+        "Dryad of the Ilysian Grove",
+        "Psychosis Crawler",
+        "Ghost Town",
+        "Tectonic Edge",
+        "Snow-Covered Island",
+    ] {
+        g.add_card(0, cid(c), Zone::Battlefield);
+    }
+    g.start_turn(3, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    for c in g.players[0].hand.clone() {
+        g.move_card(c, Zone::Library); // exactly the hand the test sets
+    }
+    let henge = g.add_card(0, cid("The Great Henge"), Zone::Hand);
+    for _ in 0..other_cards {
+        g.add_card(0, cid("Plains"), Zone::Hand);
+    }
+    (g, henge)
+}
+
+#[test]
+fn the_great_henge_is_priced_without_itself_in_hand() {
+    let (g, henge) = henge_table(5); // six in hand: the Crawler is 5 once Henge is cast
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(henge)),
+        "{{2}}{{G}}{{G}} with three lands: not castable"
+    );
+    let (mut g, henge) = henge_table(6); // seven: the Crawler is 6 as it's paid, {1}{G}{G}
+    assert!(
+        g.legal_actions().contains(&Action::Cast(henge)),
+        "{:?}",
+        g.legal_actions()
+    );
+    act(&mut g, Action::Cast(henge));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(henge).zone, Zone::Battlefield);
+}
