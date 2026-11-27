@@ -4655,3 +4655,18 @@ fn laelia_exiles_the_top_card_to_play_and_grows_once_per_exile() {
     fight(&mut g);
     assert_eq!(g.players[1].life, 37, "a 3/3 by damage");
 }
+
+// ---- Core: triggers, batch 45 ----
+
+#[test]
+fn goldspan_dragon_makes_a_treasure_when_it_attacks_or_a_spell_targets_it() {
+    let mut g = table();
+    let dragon = put(&mut g, 0, "Goldspan Dragon");
+    assert_eq!(g.def_of(dragon).mana_ext.treasures_add_two_at_level, 1);
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[obj(dragon)], &[]);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 1, "targeted by a spell");
+    attack(&mut g, &[dragon]);
+    drain(&mut g);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 2, "it attacked");
+}

@@ -4206,6 +4206,9 @@ pub enum When {
     /// "Whenever one or more cards are put into exile from your library and/or your graveyard"
     /// (Laelia, the Blade Reforged): batched (`Game::fire_batched`), the count as the amount.
     CardsExiledFromYourLibraryOrGraveyard,
+    /// "Whenever this creature becomes the target of a spell" (Goldspan Dragon): a spell's
+    /// targets (not an ability's), anyone's, as they're chosen.
+    BecomesTargetOfSpell,
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -2952,3 +2952,36 @@ fn cards_exiled_from_your_library_or_graveyard_batch() {
         "one trigger: three Bolts and the sacrificed Spellbomb"
     );
 }
+
+// ---- batch 45: becoming the target of a spell; the damage on a subtype's combat damage ----
+
+#[test]
+fn becomes_target_of_a_spell_but_not_of_an_ability() {
+    let mut g = game_with(|defs: &mut Vec<CardDef>| {
+        defs[cid("Ornithopter")]
+            .triggers
+            .push(trigger(When::BecomesTargetOfSpell, None, gain(1)));
+    });
+    let thopter = g.add_card(0, cid("Ornithopter"), Zone::Battlefield);
+    let bolt = g.add_card(1, cid("Lightning Bolt"), Zone::Hand);
+    g.start_turn(4, 1);
+    to_main(&mut g);
+    play(&mut g, bolt, false, &[obj(thopter)], &[]);
+    assert_eq!(life(&g, 0), 41, "the opponent's spell targeted it");
+}
+
+#[test]
+fn subtype_combat_damage_carries_the_damage_those_creatures_dealt() {
+    let mut g = game_with(blood_with(vec![trigger(
+        When::YourSubtypeDealCombatDamageToPlayer("Cat"),
+        None,
+        vec![Effect::GainLifeAmount],
+    )]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let a = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let b = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    attack_through(&mut g, &[a, b, elves]);
+    assert_eq!(life(&g, 1), 35);
+    assert_eq!(life(&g, 0), 40 + 5 + 4, "Exquisite Blood, then the two Cats' 4");
+}

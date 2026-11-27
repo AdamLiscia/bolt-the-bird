@@ -2171,6 +2171,19 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::CardsExiledFromYourLibraryOrGraveyard, vec![], vec![Effect::CountersSelf { n: 1 }]);
             },
         ),
+        // ---- Core: triggers, batch 45 (Vaevictis handbacks from d3) ----
+        "Goldspan Dragon" => s(
+            &[
+                "Whenever this creature attacks or becomes the target of a spell, create a Treasure token.",
+                "Treasures you control have \"{T}, Sacrifice this artifact: Add two mana of any one color.\"",
+            ],
+            |d, t| {
+                for when in [When::Attacks, When::BecomesTargetOfSpell] {
+                    on(d, when, vec![], vec![Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }]);
+                }
+                d.mana_ext.treasures_add_two_at_level = 1; // d1's two-mana Treasures, always
+            },
+        ),
         _ => None,
     }
 }
@@ -2504,4 +2517,6 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Hermes, Overseer of Elpis",
     "Charismatic Conqueror",
     "Laelia, the Blade Reforged",
+    // Core: triggers, batch 45
+    "Goldspan Dragon",
 ];

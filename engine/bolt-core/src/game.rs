@@ -13666,6 +13666,18 @@ impl Game {
     /// CR 702.21a: whenever a permanent with ward becomes the target of a spell or ability an
     /// opponent controls, its ward triggers.
     fn ward_check(&mut self, item: &StackItem) {
+        // Goldspan Dragon: "Whenever this creature becomes the target of a spell".
+        if matches!(item.kind, StackKind::Spell | StackKind::SpellCopy) {
+            let mut seen = Vec::new();
+            for &t in &item.targets {
+                if let Chosen::Object(id, _) = t {
+                    if self.obj(id).zone == Zone::Battlefield && !seen.contains(&id) {
+                        seen.push(id); // once per spell, however many of its targets it is
+                        self.fire_source(id, When::BecomesTargetOfSpell);
+                    }
+                }
+            }
+        }
         // Phantasmal Image: "When this creature becomes the target of a spell or ability, sacrifice
         // it."
         for &t in &item.targets {
@@ -28715,7 +28727,25 @@ impl Game {
                 .collect();
             if !theirs.is_empty() {
                 self.subtype_dealt_damage_to_player(p, &theirs);
+                let before = self.triggered.len();
                 self.subtype_dealt_combat_damage_to_player(p, &theirs);
+                // The amount: the combat damage those creatures of the subtype dealt to players
+                // this step (Broodcaller Scourge's "that damage").
+                for i in before..self.triggered.len() {
+                    let t = &self.triggered[i];
+                    let StackKind::Trigger(n) = t.kind else { continue };
+                    let When::YourSubtypeDealCombatDamageToPlayer(sub) =
+                        self.def_of(t.source).triggers[n].when
+                    else {
+                        continue;
+                    };
+                    let total: i32 = hit_player
+                        .iter()
+                        .filter(|&&(a, _)| self.obj(a).controller == p && self.has_subtype(a, sub))
+                        .map(|&(_, amount)| amount)
+                        .sum();
+                    self.triggered[i].amount = total;
+                }
             }
         }
         for &(a, _) in &hit_player {

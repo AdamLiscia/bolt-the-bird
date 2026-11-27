@@ -8025,6 +8025,15 @@
    "theme": "triggers",
    "owner": "d2",
    "status": "done: d2 batch 41 (When::OpponentCastsWithNoManaSpent + Effect::CounterExtra)"
+  },
+  {
+   "card": "Goldspan Dragon",
+   "deck": "Vaevictis (d3 handback)",
+   "missing": "attacks or becomes the target of a spell: a Treasure; two-mana Treasures",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "done: d2 batch 45 (When::BecomesTargetOfSpell; d1's treasures_add_two_at_level)"
   }
  ]
 }
