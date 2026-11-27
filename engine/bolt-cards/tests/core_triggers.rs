@@ -2204,3 +2204,29 @@ fn tapped_for_mana_triggers_after_the_mana_by_hand_or_by_the_payer() {
     assert_eq!(g.obj(s).zone, Zone::Battlefield);
     assert_eq!(g.players[0].life, 42, "tapped by the payer");
 }
+
+#[test]
+fn may_sacrifice_an_artifact_or_creature_lets_you_pick_or_decline() {
+    // Sol Ring: "Whenever you cast a spell, you may sacrifice an artifact or creature. If you do,
+    // draw two cards."
+    let t = trigger(
+        When::YouCast,
+        None,
+        vec![
+            Effect::MaySacrificeArtifactOrCreature,
+            Effect::Draw { who: Who::You, n: 2 },
+        ],
+    );
+    let mut g = game_with(ring_with(t));
+    g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let c = g.add_card(0, cid("Llanowar Elves"), Zone::Hand);
+    let before = g.players[0].hand.len();
+    play(&mut g, c, false, &[], &[Action::No]);
+    assert_eq!(g.players[0].hand.len(), before - 1, "declined: no cards");
+    let c = g.add_card(0, cid("Llanowar Elves"), Zone::Hand);
+    let before = g.players[0].hand.len();
+    play(&mut g, c, false, &[], &[Action::Pick(lions)]);
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].hand.len(), before - 1 + 2);
+}

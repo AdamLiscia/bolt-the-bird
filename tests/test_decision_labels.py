@@ -343,3 +343,16 @@ def test_tekuthal_picks_each_counter_to_remove():
     dec = {"kind": "RemoveCountersFromOthers", "left": 3}
     assert sv._decision_label(dec, "Pick", 0, "Sol Ring") == "Remove a counter from Sol Ring"
     assert label(dec, "No", 0) == "Don't activate it"
+
+
+def test_may_sacrifice_a_land_or_an_artifact_or_creature():
+    for kind in ("MaySacrificeLand", "MaySacrificeArtifactOrCreature"):
+        dec = {"kind": kind}
+        assert sv._decision_label(dec, "Pick", 0, "Forest") == "Sacrifice Forest"
+        assert label(dec, "No", 0) == "Don't sacrifice"
+
+
+def test_demonic_consultation_names_a_card():
+    dec = {"kind": "NameCardInLibrary"}
+    assert sv._decision_label(dec, "Pick", 0, "Thassa's Oracle") == "Name Thassa's Oracle"
+    assert label(dec, "No", 0) == "Name a card that isn't in your library"

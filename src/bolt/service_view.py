@@ -231,6 +231,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"PermanentFromHandMaxMv": "Put onto the battlefield:"}.get(d)
         verb = verb or {"ExileCardFromHand": "Exile from your hand:"}.get(d)
         verb = verb or {"SacrificeOfSubtype": "Sacrifice"}.get(d)
+        verb = verb or {"MaySacrificeLand": "Sacrifice", "MaySacrificeArtifactOrCreature": "Sacrifice"}.get(d)  # fmt: skip
+        verb = verb or {"NameCardInLibrary": "Name"}.get(d)
         if d == "DiscardMayCastFree":
             verb = "Discard (you may cast it free)" if dec.get("free") else "Discard"
         verb = verb or {"MoveAuraTo": "Attach the Aura to"}.get(d)
@@ -321,7 +323,9 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
     if not yes:
         return {"Discard": "Don't discard", "PayWardDiscard": "Don't discard (it's countered)", "LoseOrDiscard": f"Lose {dec.get('life', 0)} life instead",
                 "SacrificeAnother": "Don't sacrifice", "Search": "Find nothing", "LookPick": "Take nothing",
-                "GenesisPick": "Done choosing", "EnterAsCopy": "Don't copy anything"}.get(d)  # fmt: skip
+                "GenesisPick": "Done choosing", "EnterAsCopy": "Don't copy anything",
+                "MaySacrificeLand": "Don't sacrifice", "MaySacrificeArtifactOrCreature": "Don't sacrifice",
+                "NameCardInLibrary": "Name a card that isn't in your library"}.get(d)  # fmt: skip
     return None
 
 

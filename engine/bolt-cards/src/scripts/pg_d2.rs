@@ -1700,6 +1700,50 @@ pub fn script(name: &str) -> Option<Script> {
                 spell(d, vec![YOUR_CREATURE], vec![Effect::PumpXXAndGrant { slot: 0, keywords: k }]);
             },
         ),
+        // ---- Batch 35 (idea decks: Kenrith, Tifa, Sephiroth) ----
+        "Thassa's Oracle" => s(
+            &["When this creature enters, look at the top X cards of your library, where X is your devotion to blue. Put up to one of them on top of your library and the rest on the bottom of your library in a random order. If X is greater than or equal to the number of cards in your library, you win the game."],
+            |d, _| on(d, When::Enters, vec![], vec![Effect::LookTopDevotionToBlueWinIfAtLeastLibrary]),
+        ),
+        "Springbloom Druid" => s(
+            &["When this creature enters, you may sacrifice a land. If you do, search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle."],
+            |d, _| {
+                let two = Effect::Search { what: SearchFor::BasicLand, to: SearchTo::Battlefield { tapped: true }, n: 2, kicked_n: None };
+                on(d, When::Enters, vec![], vec![Effect::MaySacrificeLand, two]);
+            },
+        ),
+        "Demonic Consultation" => s(
+            &["Choose a card name. Exile the top six cards of your library, then reveal cards from the top of your library until you reveal a card with the chosen name. Put that card into your hand and exile all other cards revealed this way."],
+            |d, _| spell(d, vec![], vec![Effect::DemonicConsultation]),
+        ),
+        "Ravenous Squirrel" => s(
+            &[
+                "Whenever you sacrifice an artifact or creature, put a +1/+1 counter on this creature.",
+                "{1}{B}{G}, Sacrifice an artifact or creature: You gain 1 life and draw a card.",
+            ],
+            |d, _| {
+                on(d, When::YouSacrificeArtifactOrCreature, vec![], vec![Effect::CountersSelf { n: 1 }]);
+                let n = activated(d, "{1}{B}{G}", false, vec![], vec![Effect::GainLife { who: Who::You, n: 1 }, draw(1)]);
+                d.activated[n].sacrifice_artifact_or_creature = true;
+            },
+        ),
+        "Delney, Streetwise Lookout" => s(
+            &[
+                "Creatures you control with power 2 or less can't be blocked by creatures with power 3 or greater.",
+                "If a triggered ability of a creature you control with power 2 or less triggers, that ability triggers an additional time.",
+            ],
+            |d, _| {
+                d.mana_ext.small_creatures_evade_big = true;
+                d.doubles_triggers_of = Some(TriggerDoubler::CreaturePowerAtMost(2));
+            },
+        ),
+        "Horizon Explorer" => s(
+            &["Lands you control enter untapped.", "Whenever you attack a player, create a Lander token."],
+            |d, t| {
+                d.mana_ext.your_lands_enter_untapped = true;
+                on(d, When::YouAttack, vec![], vec![Effect::CreateToken { who: Who::You, def: t.lander, n: 1 }]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1972,4 +2016,11 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Overprotect",
     "Tamiyo's Safekeeping",
     "Tyvar's Stand",
+    // Batch 35
+    "Thassa's Oracle",
+    "Springbloom Druid",
+    "Demonic Consultation",
+    "Ravenous Squirrel",
+    "Delney, Streetwise Lookout",
+    "Horizon Explorer",
 ];

@@ -679,7 +679,7 @@
    "lane": "d1",
    "theme": "triggers",
    "owner": "d2",
-   "status": "waiting: 'creatures you control with power 2 or less can't be blocked by power 3 or greater' (d1, block legality); d2 adds the trigger doubling with the card"
+   "status": "done: d2 batch 35 (d1's block piece)"
   },
   {
    "card": "Dinosaur Egg",
@@ -5199,7 +5199,7 @@
    "lane": "mac-b",
    "theme": "triggers",
    "owner": "d2",
-   "status": "waiting: 'Sacrifice an artifact or creature' as one activation cost (d1); its trigger needs a d2 'you sacrifice an artifact or creature' arm, added with the card"
+   "status": "done: d2 batch 35 (d1's cost)"
   },
   {
    "card": "Simic Ascendancy",
@@ -6996,7 +6996,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "waiting: 'lands you control enter untapped' (d1, land entry); Lander token 111 is in"
+   "status": "done: d2 batch 35 (token 111, d1's your_lands_enter_untapped)"
   },
   {
    "card": "Kinscaer Sentry",
@@ -7351,7 +7351,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 2026-11-27"
+   "status": "done: d2 batch 35"
   },
   {
    "card": "Springbloom Druid",
@@ -7360,7 +7360,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 2026-11-27"
+   "status": "done: d2 batch 35"
   },
   {
    "card": "Demonic Consultation",
@@ -7369,7 +7369,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 2026-11-27"
+   "status": "done: d2 batch 35"
   },
   {
    "card": "Midgar, City of Mako // Reactor Raid",
@@ -7378,7 +7378,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 2026-11-27"
+   "status": "waiting (mac-c): a land with an Adventure; the cast-action list skips lands before the omen half (`if def.types.land { continue; }`), then the land played from exile. d2's Effect::MaySacrificeArtifactOrCreature (Decision::MaySacrificeArtifactOrCreature) is in for Reactor Raid's text."
   },
   {
    "card": "Wishclaw Talisman",
@@ -7387,7 +7387,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 2026-11-27"
+   "status": "waiting: 'enters with three wish counters' (a CardDef field for kind counters on entering; merger) and 'an opponent gains control of this artifact' (an effect)"
   }
  ]
 }

@@ -1486,6 +1486,15 @@ pub enum Decision {
     /// `Pick` a permanent you control with subtype `sub` to sacrifice ("sacrifice an Egg":
     /// Palani's Hatcher); the rest of the ability follows.
     SacrificeOfSubtype { source: ObjId, sub: &'static str },
+    /// `Pick` a land you control to sacrifice, or `No` (the rest of the ability then doesn't
+    /// happen; Springbloom Druid).
+    MaySacrificeLand { source: ObjId },
+    /// `Pick` an artifact or creature you control to sacrifice, or `No` (the rest then doesn't
+    /// happen; Midgar's Reactor Raid).
+    MaySacrificeArtifactOrCreature { source: ObjId },
+    /// Choose a card name (Demonic Consultation): `Pick(c)` names the card `c` in your library (one
+    /// option per name), `No` names a card that isn't in your library.
+    NameCardInLibrary { source: ObjId },
     /// Tekuthal: `Pick` another artifact, creature or planeswalker you control to remove a counter
     /// from (`left` including this one) for the cost of `source`'s ability `n`, or `No` to cancel.
     RemoveCountersFromOthers { source: ObjId, n: usize, left: u8 },
@@ -4868,6 +4877,9 @@ impl Game {
         self.fire(p, When::YouSacrifice, None);
         if self.types_of(id).artifact {
             self.fire(p, When::YouSacrificeArtifact, None);
+        }
+        if self.types_of(id).artifact || self.types_of(id).creature {
+            self.fire(p, When::YouSacrificeArtifactOrCreature, None);
         }
         for q in 0..2 {
             self.fire(q, When::PlayerSacrificesAnother, Some(id));
@@ -12954,6 +12966,25 @@ impl Game {
         }
     }
 
+    /// Demonic Consultation, after the name is chosen (`None`: a card not in the library): exile the
+    /// top six, then reveal until a card with that name, which goes to the hand; the other revealed
+    /// cards are exiled.
+    fn demonic_consultation(&mut self, p: PlayerId, name: Option<String>) {
+        for _ in 0..6 {
+            match self.players[p].library.last() {
+                Some(&c) => self.move_to(c, Zone::Exile),
+                None => break,
+            }
+        }
+        while let Some(&c) = self.players[p].library.last() {
+            if name.as_deref() == Some(self.def_of(c).name.as_str()) {
+                self.move_to(c, Zone::Hand);
+                break;
+            }
+            self.move_to(c, Zone::Exile);
+        }
+    }
+
     /// "Whenever one or more +1/+1 counters are put on a creature you control" (Simic Ascendancy):
     /// `n` were just put on `id`, by an effect or as it entered (CR 122.6).
     fn plus_counters_on_your_creature(&mut self, id: ObjId, n: i32) {
@@ -14524,6 +14555,40 @@ impl Game {
                 v.push(Action::No);
                 v
             }
+            Decision::MaySacrificeLand { .. } => {
+                let mut v: Vec<Action> = self
+                    .permanents(p)
+                    .filter(|&x| self.types_of(x).land && !self.cant_be_sacrificed(x))
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::MaySacrificeArtifactOrCreature { .. } => {
+                let mut v: Vec<Action> = self
+                    .permanents(p)
+                    .filter(|&x| {
+                        let ty = self.types_of(x);
+                        (ty.artifact || ty.creature) && !self.cant_be_sacrificed(x)
+                    })
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::NameCardInLibrary { .. } => {
+                let mut seen: Vec<&str> = Vec::new();
+                let mut v = Vec::new();
+                for &c in &self.players[p].library {
+                    let n = self.def_of(c).name.as_str();
+                    if !seen.contains(&n) {
+                        seen.push(n);
+                        v.push(Action::Pick(c));
+                    }
+                }
+                v.push(Action::No);
+                v
+            }
             Decision::SacrificeOfSubtype { sub, .. } => self
                 .permanents(p)
                 .filter(|&x| self.has_subtype(x, sub) && !self.cant_be_sacrificed(x))
@@ -15318,6 +15383,21 @@ impl Game {
             (Decision::SacrificeOfSubtype { .. }, Action::Pick(c)) => {
                 self.move_to(c, Zone::Graveyard);
                 self.sacrificed(c, p);
+            }
+            (Decision::MaySacrificeLand { .. }, Action::Pick(c))
+            | (Decision::MaySacrificeArtifactOrCreature { .. }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Graveyard);
+                self.sacrificed(c, p);
+            }
+            (Decision::MaySacrificeLand { .. }, _) | (Decision::MaySacrificeArtifactOrCreature { .. }, _) => {
+                self.resolving.as_mut().expect("resolving").remaining.clear();
+            }
+            (Decision::NameCardInLibrary { .. }, a) => {
+                let name = match a {
+                    Action::Pick(c) => Some(self.def_of(c).name.clone()),
+                    _ => None,
+                };
+                self.demonic_consultation(p, name);
             }
             (Decision::MayPay { cost }, Action::Yes) => self.pay_mana(p, &cost, None),
             (Decision::PayXDamage { source, target, .. }, Action::Amount(x)) => {
@@ -22104,6 +22184,52 @@ impl Game {
                 for c in revealed {
                     self.players[p].library.insert(0, c);
                 }
+            }
+            Effect::LookTopDevotionToBlueWinIfAtLeastLibrary => {
+                let p = item.controller;
+                let x = self.devotion(p, [false, true, false, false, false]) as usize;
+                let size = self.players[p].library.len();
+                let cards: Vec<ObjId> = self.players[p].library.iter().rev().take(x).copied().collect();
+                if x >= size {
+                    self.run_effect(item, legal, Effect::WinTheGame);
+                }
+                if !cards.is_empty() && !self.is_over() {
+                    self.ask(
+                        p,
+                        Decision::LookPick {
+                            cards,
+                            pick: Pick::Any,
+                            to: LookTo::Top,
+                            rest: Some(LookRest::BottomRandom),
+                        },
+                    );
+                }
+            }
+            Effect::MaySacrificeLand => {
+                let p = item.controller;
+                if self
+                    .permanents(p)
+                    .any(|x| self.types_of(x).land && !self.cant_be_sacrificed(x))
+                {
+                    self.ask(p, Decision::MaySacrificeLand { source: src });
+                } else {
+                    self.resolving.as_mut().expect("resolving").remaining.clear();
+                }
+            }
+            Effect::MaySacrificeArtifactOrCreature => {
+                let p = item.controller;
+                let any = self.permanents(p).any(|x| {
+                    let ty = self.types_of(x);
+                    (ty.artifact || ty.creature) && !self.cant_be_sacrificed(x)
+                });
+                if any {
+                    self.ask(p, Decision::MaySacrificeArtifactOrCreature { source: src });
+                } else {
+                    self.resolving.as_mut().expect("resolving").remaining.clear();
+                }
+            }
+            Effect::DemonicConsultation => {
+                self.ask(item.controller, Decision::NameCardInLibrary { source: src });
             }
             Effect::ReanimateUnderOwner(slot) => {
                 if let Some(id) = Game::slot_object(item, legal, slot) {

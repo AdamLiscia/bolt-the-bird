@@ -3763,3 +3763,128 @@ fn overprotect_tyvars_stand_and_tamiyos_safekeeping_protect() {
     );
     assert_eq!(g.players[0].life, 42);
 }
+
+// ---- Batch 35 (idea decks: Kenrith, Tifa, Sephiroth) ----
+
+#[test]
+fn thassas_oracle_keeps_one_on_top_and_wins_with_a_small_library() {
+    let mut g = table();
+    put(&mut g, 0, "Thassa's Oracle"); // devotion to blue 2 with the new one
+    let keep = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    let oracle = hand(&mut g, 0, "Thassa's Oracle");
+    play(&mut g, oracle, false, &[], &[Action::Pick(keep)]);
+    assert_eq!(g.players[0].library.last(), Some(&keep), "up to one on top");
+    assert!(!g.is_over(), "a big library");
+    // Down to three cards with devotion four: you win.
+    let lib = g.players[0].library.clone();
+    for &c in &lib[..lib.len() - 3] {
+        g.objects[c.0 as usize].zone = Zone::Exile;
+        g.exile.push(c);
+    }
+    g.players[0].library.drain(..lib.len() - 3);
+    let third = hand(&mut g, 0, "Thassa's Oracle");
+    act(&mut g, Action::Cast(third));
+    while !g.is_over() {
+        let a = match g.pending {
+            Pending::Decide(_) | Pending::ChooseTarget(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert!(g.players[1].lost, "X (6) >= three cards");
+}
+
+#[test]
+fn springbloom_druid_may_trade_a_land_for_two_tapped_basics() {
+    let mut g = table();
+    let forest = put(&mut g, 0, "Forest");
+    let druid = hand(&mut g, 0, "Springbloom Druid");
+    let lands = g.permanents(0).filter(|&x| g.types_of(x).land).count();
+    act(&mut g, Action::Cast(druid));
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let legal = g.legal_actions();
+        let a = match g.pending {
+            Pending::Decide(_) if legal.contains(&Action::Pick(forest)) => Action::Pick(forest),
+            Pending::Decide(_) | Pending::ChooseTarget(_) => legal[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert!(in_graveyard(&g, 0, forest));
+    assert_eq!(
+        g.permanents(0).filter(|&x| g.types_of(x).land).count(),
+        lands - 1 + 2
+    );
+}
+
+#[test]
+fn demonic_consultation_exiles_six_then_digs_to_the_named_card() {
+    let mut g = table();
+    let target = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    {
+        // Tenth from the top: nine cards above it.
+        let lib = &mut g.players[0].library;
+        let c = lib.pop().expect("the card");
+        let n = lib.len();
+        lib.insert(n - 9, c);
+    }
+    let dc = hand(&mut g, 0, "Demonic Consultation");
+    let before = g.players[0].library.len();
+    play(&mut g, dc, false, &[], &[Action::Pick(target)]);
+    assert_eq!(g.obj(target).zone, Zone::Hand);
+    assert_eq!(
+        g.players[0].library.len(),
+        before - 10,
+        "six, then the three revealed before it, then it"
+    );
+    // Naming a card that isn't there exiles the whole library.
+    let dc = hand(&mut g, 0, "Demonic Consultation");
+    play(&mut g, dc, false, &[], &[Action::No]);
+    assert!(g.players[0].library.is_empty());
+}
+
+#[test]
+fn ravenous_squirrel_grows_on_artifact_or_creature_sacrifices() {
+    let mut g = table();
+    let sq = put(&mut g, 0, "Ravenous Squirrel");
+    let ring = put(&mut g, 0, "Sol Ring");
+    let hand_before = g.players[0].hand.len();
+    act(&mut g, Action::ActivateWith(sq, 0, ring));
+    drain(&mut g);
+    assert!(in_graveyard(&g, 0, ring));
+    assert_eq!(g.obj(sq).counters, 1, "an artifact sacrificed");
+    assert_eq!(g.players[0].life, 41);
+    assert_eq!(g.players[0].hand.len(), hand_before + 1);
+}
+
+#[test]
+fn delney_doubles_small_creatures_triggers() {
+    let mut g = table();
+    put(&mut g, 0, "Delney, Streetwise Lookout");
+    put(&mut g, 0, "Greedy Freebooter"); // a 1/1 with a dies trigger
+    let f = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Greedy Freebooter")
+        .expect("it");
+    let kill = hand(&mut g, 0, "Hero's Downfall");
+    act(&mut g, Action::Cast(kill));
+    act(&mut g, Action::Target(Target::Object(f)));
+    drain(&mut g);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 2, "its dies trigger twice");
+}
+
+#[test]
+fn horizon_explorer_makes_a_lander_when_you_attack_and_lands_enter_untapped() {
+    let mut g = table();
+    put(&mut g, 0, "Horizon Explorer");
+    let tapland = hand(&mut g, 0, "Savage Lands"); // "This land enters tapped."
+    act(&mut g, Action::PlayLand(tapland));
+    drain(&mut g);
+    assert!(!g.obj(tapland).tapped, "lands you control enter untapped");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    attack(&mut g, &[lions]);
+    drain(&mut g);
+    let landers = tokens(&g, 0, "Lander");
+    assert_eq!(landers.len(), 1);
+    assert!(g.def_of(landers[0]).types.artifact);
+}

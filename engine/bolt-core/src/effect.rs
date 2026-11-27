@@ -2815,6 +2815,21 @@ pub enum Effect {
         slot: u8,
         keywords: crate::Keywords,
     },
+    /// Thassa's Oracle: look at the top X cards of your library, X your devotion to blue; put up to
+    /// one of them on top and the rest on the bottom in a random order (`Decision::LookPick`). If X
+    /// is at least the number of cards in your library (counted as it resolves), you win the game.
+    LookTopDevotionToBlueWinIfAtLeastLibrary,
+    /// "You may sacrifice a land. If you do, ...": `Decision::MaySacrificeLand`; the rest only if
+    /// one is sacrificed (Springbloom Druid).
+    MaySacrificeLand,
+    /// "You may sacrifice an artifact or creature. If you do, ...":
+    /// `Decision::MaySacrificeArtifactOrCreature`; the rest only if one is sacrificed (Midgar's
+    /// Reactor Raid).
+    MaySacrificeArtifactOrCreature,
+    /// Demonic Consultation: choose a card name (`Decision::NameCardInLibrary`), exile the top six
+    /// cards of your library, then reveal cards until one with that name; put it into your hand and
+    /// exile the other revealed cards.
+    DemonicConsultation,
     /// Discard a card (`Decision::DiscardMayCastFree`); if the source has `n` or more of its own
     /// kind of counter (`Object::kind_counters`), you may cast the discarded card without paying
     /// its mana cost (Malcolm, Alluring Scoundrel: chorus counters, 4).
@@ -3945,6 +3960,8 @@ pub enum When {
     /// mana ability (CR 605.1b), fired on the source after its mana is added, whether tapped by hand
     /// or by the automatic payer; controlled by the source's controller.
     TappedForMana,
+    /// "Whenever you sacrifice an artifact or creature" (Ravenous Squirrel), each one.
+    YouSacrificeArtifactOrCreature,
 }
 
 #[derive(Clone, Debug, PartialEq)]
