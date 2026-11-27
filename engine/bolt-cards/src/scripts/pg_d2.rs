@@ -1603,6 +1603,31 @@ pub fn script(name: &str) -> Option<Script> {
                 conditional(d, When::Upkeep { your_turn_only: true }, twenty, vec![], vec![Effect::WinTheGame]);
             },
         ),
+        // ---- Core: triggers, batch 33 (Zurgo: Kinbinding, on d3's scale; token 112) ----
+        "Kinbinding" => s(
+            &[
+                "Creatures you control get +X/+X, where X is the number of creatures that entered the battlefield under your control this turn.",
+                "At the beginning of combat on your turn, create a 1/1 green and white Kithkin creature token.",
+            ],
+            |d, t| {
+                d.statics.push(Static {
+                    subtype: None,
+                    lose_abilities: false,
+                    base_pt: None,
+                    protection: [false; 5],
+                    scale: Some(Scale::PerCreatureEnteredUnderYourControlThisTurn),
+                    scope: Scope::YourCreatures,
+                    your_turn_only: false,
+                    condition: None,
+                    power: 1,
+                    toughness: 1,
+                    keywords: Keywords::NONE,
+                    set_colors: None,
+                    becomes_land: false,
+                });
+                on(d, When::BeginCombatYourTurn, vec![], vec![Effect::CreateToken { who: Who::You, def: t.kithkin, n: 1 }]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1864,4 +1889,6 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Palani's Hatcher",
     "Moonstone Eulogist",
     "Simic Ascendancy",
+    // Core: triggers, batch 33
+    "Kinbinding",
 ];

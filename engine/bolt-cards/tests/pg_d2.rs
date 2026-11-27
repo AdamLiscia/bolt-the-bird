@@ -3528,8 +3528,27 @@ fn palanis_hatcher_makes_eggs_and_hatches_one_into_a_hasty_dinosaur_each_combat(
     let hatcher = hand(&mut g, 0, "Palani's Hatcher");
     play(&mut g, hatcher, false, &[], &[]);
     assert_eq!(tokens(&g, 0, "Dinosaur Egg").len(), 2);
-    to_step(&mut g, 5, 0, Step::BeginCombat);
-    assert_eq!(tokens(&g, 0, "Dinosaur Egg").len(), 1, "one Egg sacrificed");
+    let eggs = tokens(&g, 0, "Dinosaur Egg");
+    g.start_turn(5, 0);
+    let mut asked = false;
+    while !(g.step == Step::BeginCombat && g.items.is_empty() && asked) {
+        let a = match g.pending {
+            Pending::Decide(_) => {
+                let legal = g.legal_actions();
+                assert!(legal.contains(&Action::Pick(eggs[0])) && legal.contains(&Action::Pick(eggs[1])));
+                asked = true;
+                Action::Pick(eggs[1]) // you choose which Egg
+            }
+            Pending::ChooseTarget(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(
+        tokens(&g, 0, "Dinosaur Egg"),
+        vec![eggs[0]],
+        "the chosen Egg sacrificed"
+    );
     let dino = tokens(&g, 0, "Dinosaur");
     assert_eq!(dino.len(), 1);
     assert_eq!((g.power(dino[0]), g.toughness(dino[0])), (3, 3));
@@ -3583,4 +3602,36 @@ fn simic_ascendancy_grows_with_counters_and_wins_at_twenty() {
         act(&mut g, a);
     }
     assert!(g.is_over(), "twenty growth counters at your upkeep");
+}
+
+#[test]
+fn simic_ascendancy_counts_counters_a_creature_enters_with() {
+    let mut g = table();
+    let asc = put(&mut g, 0, "Simic Ascendancy");
+    let h = hand(&mut g, 0, "Goldvein Hydra");
+    act(&mut g, Action::CastX(h, 3));
+    drain(&mut g);
+    assert_eq!(g.obj(h).counters, 3);
+    assert_eq!(g.obj(asc).kind_counters, 3, "entering with three +1/+1 counters");
+}
+
+#[test]
+fn kinbinding_pumps_per_creature_entered_this_turn_and_makes_a_kithkin_each_combat() {
+    let mut g = table();
+    put(&mut g, 0, "Kinbinding");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    to_step(&mut g, 5, 0, Step::BeginCombat);
+    let kithkin = tokens(&g, 0, "Kithkin");
+    assert_eq!(kithkin.len(), 1);
+    assert_eq!(
+        g.colors_of(kithkin[0]),
+        [true, false, false, false, true],
+        "green and white"
+    );
+    assert_eq!(
+        (g.power(lions), g.toughness(lions)),
+        (3, 2),
+        "the Kithkin entered this turn"
+    );
+    assert_eq!((g.power(kithkin[0]), g.toughness(kithkin[0])), (2, 2));
 }

@@ -3234,7 +3234,7 @@
    "lane": "d3",
    "theme": "triggers",
    "owner": "d2",
-   "status": "waiting: return a creature card tapped and attacking (d3/mac-c)"
+   "status": "done: d3 batch 34 (e865b23)"
   },
   {
    "card": "Deadly Brew",
@@ -5174,7 +5174,7 @@
    "lane": "mac-b",
    "theme": "triggers",
    "owner": "d2",
-   "status": "waiting: put a permanent card with MV <= the entering permanent's from hand, marked as put by this ability (d3 effect)"
+   "status": "done: d3 batch 34 (e865b23)"
   },
   {
    "card": "Rose Room Treasurer",
@@ -6701,7 +6701,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "waiting: put a creature card with MV <= attacking count from hand tapped and attacking (d3 effect)"
+   "status": "done: d3 batch 34 (e865b23)"
   },
   {
    "card": "Goliath Daydreamer",
@@ -6800,7 +6800,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "waiting: source becomes a 7/7 Beast creature in addition to its types, for good (d3 type change)"
+   "status": "done: d3 batch 34 (e865b23)"
   },
   {
    "card": "Roaring Earth",
@@ -7014,6 +7014,15 @@
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"
+  },
+  {
+   "card": "Kinbinding",
+   "deck": "Zurgo (idea)",
+   "missing": "+X/+X per creature entered this turn (d3 scale); a 1/1 G/W Kithkin token",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "done: d2 batch 33 (token 112, d3's Scale)"
   }
  ]
 }

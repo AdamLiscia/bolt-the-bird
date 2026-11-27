@@ -2162,7 +2162,7 @@ fn stop_unless_nth_resolution_lets_only_the_nth_this_turn_through() {
 }
 
 #[test]
-fn sacrifice_your_subtype_takes_a_token_first_and_counts_as_a_sacrifice() {
+fn sacrifice_your_subtype_asks_which_one_and_counts_as_a_sacrifice() {
     // Sol Ring: "Whenever you cast a spell, sacrifice a Cat"; "Whenever you sacrifice a Cat, gain 1".
     let sac = trigger(When::YouCast, None, vec![Effect::SacrificeYourSubtype("Cat")]);
     let gain = trigger(When::YouSacrificeSubtype("Cat"), None, gain_one());
@@ -2172,11 +2172,11 @@ fn sacrifice_your_subtype_takes_a_token_first_and_counts_as_a_sacrifice() {
     });
     g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
     let card = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
-    let cat = token_def("Cat");
-    let token = g.add_card(0, cat, Zone::Battlefield);
-    let c = g.add_card(0, cid("Llanowar Elves"), Zone::Hand);
-    play(&mut g, c, false, &[], &[]);
-    assert_ne!(g.obj(token).zone, Zone::Battlefield, "the token goes first");
-    assert_eq!(g.obj(card).zone, Zone::Battlefield);
+    let token = g.add_card(0, token_def("Cat"), Zone::Battlefield);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Hand);
+    assert!(g.has_subtype(elves, "Elf"));
+    play(&mut g, elves, false, &[], &[Action::Pick(card)]); // you choose: the card, not the token
+    assert_eq!(g.obj(card).zone, Zone::Graveyard);
+    assert_eq!(g.obj(token).zone, Zone::Battlefield);
     assert_eq!(g.players[0].life, 41, "a sacrifice");
 }

@@ -321,3 +321,8 @@ def test_hand_to_battlefield_and_exile_from_hand_picks():
     assert sv._decision_label(kodama, "Pick", 0, "Sol Ring") == "Put onto the battlefield: Sol Ring"
     ashiok = {"kind": "ExileCardFromHand"}
     assert sv._decision_label(ashiok, "Pick", 0, "Opt") == "Exile from your hand: Opt"
+
+
+def test_palanis_hatcher_picks_the_egg_to_sacrifice():
+    dec = {"kind": "SacrificeOfSubtype", "sub": "Egg"}
+    assert sv._decision_label(dec, "Pick", 0, "Dinosaur Egg") == "Sacrifice Dinosaur Egg"

@@ -2751,8 +2751,8 @@ pub enum Effect {
     /// Reveal cards from the top of your library until a creature card; put it onto the
     /// battlefield and the rest on the bottom in a random order (Atla Palani, Nest Tender).
     RevealUntilCreatureOntoBattlefield,
-    /// "Sacrifice a [subtype]": the engine picks one you control, tokens first, then the lowest
-    /// power (Palani's Hatcher: an Egg); nothing happens if you control none.
+    /// "Sacrifice a [subtype]": you pick one you control (`Decision::SacrificeOfSubtype`; Palani's
+    /// Hatcher: an Egg); nothing happens if you control none.
     SacrificeYourSubtype(&'static str),
     /// Put kind counters (`Object::kind_counters`) equal to the trigger's amount on the source
     /// (Simic Ascendancy's growth counters).

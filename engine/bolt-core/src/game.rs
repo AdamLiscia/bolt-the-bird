@@ -1474,6 +1474,9 @@ pub enum Decision {
     /// `Pick` a card in your hand to exile (Ashiok, Nightmare Muse's -3: the bounced permanent's
     /// owner).
     ExileCardFromHand,
+    /// `Pick` a permanent you control with subtype `sub` to sacrifice ("sacrifice an Egg":
+    /// Palani's Hatcher); the rest of the ability follows.
+    SacrificeOfSubtype { source: ObjId, sub: &'static str },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -6061,6 +6064,7 @@ impl Game {
                 self.counters_placed(controller, n);
                 self.counter_put_on(id); // CR 122.6: entering with counters counts
                 self.fire_source(id, When::PlusCountersPutOnThis);
+                self.plus_counters_on_your_creature(id, n);
             }
             if let Some((n, cond)) = def.enters_counters {
                 let controller = self.obj(id).controller;
@@ -6080,6 +6084,7 @@ impl Game {
                     self.counters_placed(controller, n);
                     self.counter_put_on(id);
                     self.fire_source(id, When::PlusCountersPutOnThis);
+                    self.plus_counters_on_your_creature(id, n);
                 }
             }
             if def.types.land {
@@ -12498,6 +12503,20 @@ impl Game {
         }
     }
 
+    /// "Whenever one or more +1/+1 counters are put on a creature you control" (Simic Ascendancy):
+    /// `n` were just put on `id`, by an effect or as it entered (CR 122.6).
+    fn plus_counters_on_your_creature(&mut self, id: ObjId, n: i32) {
+        if n <= 0 || !self.types_of(id).creature {
+            return;
+        }
+        let controller = self.obj(id).controller;
+        let before = self.triggered.len();
+        self.fire(controller, When::PlusCountersOnYourCreature, None);
+        for t in &mut self.triggered[before..] {
+            t.amount = n;
+        }
+    }
+
     /// "When the Nth [kind] counter is put on this" (Claim the Kingdom): the source's
     /// `When::KindCountersReachOnThis(k)` triggers whose N its kind counters just went past.
     fn kind_counters_reached(&mut self, id: ObjId, before: i32) {
@@ -13132,14 +13151,7 @@ impl Game {
         let controller = self.obj(id).controller;
         self.counters_placed(controller, n);
         self.counter_put_on(id);
-        if self.types_of(id).creature {
-            // Simic Ascendancy: "that many".
-            let before = self.triggered.len();
-            self.fire(controller, When::PlusCountersOnYourCreature, None);
-            for t in &mut self.triggered[before..] {
-                t.amount = n;
-            }
-        }
+        self.plus_counters_on_your_creature(id, n);
         if self.types_of(id).creature && !self.has_subtype(id, "Hydra") {
             let controller = self.obj(id).controller;
             self.fire(controller, When::CountersOnAnotherNonHydraYouControl, Some(id));
@@ -14041,6 +14053,11 @@ impl Game {
                 v.push(Action::No);
                 v
             }
+            Decision::SacrificeOfSubtype { sub, .. } => self
+                .permanents(p)
+                .filter(|&x| self.has_subtype(x, sub) && !self.cant_be_sacrificed(x))
+                .map(Action::Pick)
+                .collect(),
             Decision::LookPick {
                 cards, pick, rest, ..
             } => {
@@ -14802,6 +14819,10 @@ impl Game {
                 self.pay_mana(p, &cost, None)
             }
             (Decision::SacrificeAnother { .. }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Graveyard);
+                self.sacrificed(c, p);
+            }
+            (Decision::SacrificeOfSubtype { .. }, Action::Pick(c)) => {
                 self.move_to(c, Zone::Graveyard);
                 self.sacrificed(c, p);
             }
@@ -21549,13 +21570,11 @@ impl Game {
             }
             Effect::SacrificeYourSubtype(sub) => {
                 let p = item.controller;
-                let pick = self
+                if self
                     .permanents(p)
-                    .filter(|&x| self.has_subtype(x, sub) && !self.cant_be_sacrificed(x))
-                    .min_by_key(|&x| (!self.is_token(x), self.power(x)));
-                if let Some(x) = pick {
-                    self.move_to(x, Zone::Graveyard);
-                    self.sacrificed(x, p);
+                    .any(|x| self.has_subtype(x, sub) && !self.cant_be_sacrificed(x))
+                {
+                    self.ask(p, Decision::SacrificeOfSubtype { source: src, sub });
                 }
             }
             Effect::StopUnlessNthResolutionThisTurn(n) => {
