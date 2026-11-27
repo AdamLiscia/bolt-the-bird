@@ -3778,7 +3778,7 @@
   {
    "card": "Vraska, Betrayal's Sting",
    "deck": "Atraxa, Praetors' Voice",
-   "missing": "needs core: proliferate, compleated, a creature becoming a Treasure, and poison counters [d3 batches 31-32: proliferate (Decision::Proliferate), Effect::BecomeTreasure(slot) (-2), Effect::TargetPlayerPoisonUpTo { slot, n: 9 } (-9) are in]",
+   "missing": "needs core: proliferate, compleated, a creature becoming a Treasure, and poison counters [d3 batches 31-32: proliferate (Decision::Proliferate), Effect::BecomeTreasure(slot) (-2), Effect::TargetPlayerPoisonUpTo { slot, n: 9 } (-9) are in] [done by d3 batch 37: scripted (pg_d3) on d1 compleated]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -6826,7 +6826,7 @@
   {
    "card": "Flare of Malice",
    "deck": "Sephiroth, Fabled SOLDIER",
-   "missing": "alternative cost: sacrifice a nontoken black creature [claimed by d1, idea decks]",
+   "missing": "alternative cost: sacrifice a nontoken black creature [claimed by d1, idea decks] [d3 batch 37: Effect::OpponentSacrificesGreatestMvCreatureOrPlaneswalker (Decision::SacrificeGreatestMv) is in; d1 adds the alt cost and scripts the card]",
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"
@@ -7290,7 +7290,7 @@
   {
    "card": "Ad Nauseam",
    "deck": "IDEA Sephiroth, Fabled SOLDIER",
-   "missing": "idea-deck claim (2026-11-27), d3 next",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 37: scripted (pg_d3)]",
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"
@@ -7298,7 +7298,7 @@
   {
    "card": "Ram Through",
    "deck": "IDEA Tifa Lockhart",
-   "missing": "idea-deck claim (2026-11-27), d3 next",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 37: scripted (pg_d3)]",
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"
@@ -7306,7 +7306,7 @@
   {
    "card": "Scale Up",
    "deck": "IDEA Tifa Lockhart",
-   "missing": "idea-deck claim (2026-11-27), d3 next",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 37: scripted (pg_d3)]",
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"
@@ -7314,7 +7314,7 @@
   {
    "card": "Roiling Regrowth",
    "deck": "IDEA Hearthhull, the Worldseed; IDEA Tifa Lockhart",
-   "missing": "idea-deck claim (2026-11-27), d3 next",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 37: scripted (pg_d3)]",
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"
@@ -7322,7 +7322,7 @@
   {
    "card": "Planar Engineering",
    "deck": "IDEA Tifa Lockhart",
-   "missing": "idea-deck claim (2026-11-27), d3 next",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 37: scripted (pg_d3)]",
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"
@@ -7330,7 +7330,7 @@
   {
    "card": "Entish Restoration",
    "deck": "IDEA Tifa Lockhart",
-   "missing": "idea-deck claim (2026-11-27), d3 next",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 37: scripted (pg_d3)]",
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"
@@ -7338,7 +7338,7 @@
   {
    "card": "Archdruid's Charm",
    "deck": "IDEA Tifa Lockhart",
-   "missing": "idea-deck claim (2026-11-27), d3 next",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 37: scripted (pg_d3)]",
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"

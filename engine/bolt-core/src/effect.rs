@@ -2855,6 +2855,42 @@ pub enum Effect {
     CopyExtraSpell,
     /// "Your opponents can't cast spells this turn." (Silence), `Game::no_more_spells_turn`.
     OpponentsCantCastThisTurn,
+    /// "Target creature you control deals damage equal to its power to target creature you don't
+    /// control. If the creature you control has trample, excess damage is dealt to that creature's
+    /// controller instead." (Ram Through)
+    BiteTrampleExcess {
+        from: u8,
+        to: u8,
+    },
+    /// Until end of turn, the creature in `slot` (each creature you control, with `None`: overload)
+    /// becomes `colors` with `subtype` and base power and toughness `power`/`toughness` (Scale Up: a
+    /// green Wurm 6/4).
+    BecomeBaseEot {
+        slot: Option<u8>,
+        power: i32,
+        toughness: i32,
+        colors: [bool; 5],
+        subtype: &'static [&'static str],
+    },
+    /// Sacrifice `n` lands of your choice (Roiling Regrowth, Planar Engineering), as
+    /// `Decision::SacrificeLands`.
+    SacrificeLands(u8),
+    /// Search for up to `n` cards (`more` instead if you control a creature with power `power` or
+    /// greater) (Entish Restoration).
+    SearchMoreIfControlPower {
+        what: SearchFor,
+        to: SearchTo,
+        n: u8,
+        more: u8,
+        power: i32,
+    },
+    /// Ad Nauseam: reveal the top card, put it into your hand, lose life equal to its mana value;
+    /// you may repeat (`Decision::AdNauseamAgain`).
+    AdNauseam,
+    /// "Each opponent sacrifices a creature or planeswalker with the greatest mana value among
+    /// creatures and planeswalkers they control." (Flare of Malice), as
+    /// `Decision::SacrificeGreatestMv` among the tied.
+    OpponentSacrificesGreatestMvCreatureOrPlaneswalker,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -2928,6 +2964,8 @@ pub enum SearchFor {
     ColorlessCreature,
     /// An artifact card (Inventors' Fair, Goblin Engineer, Reckless Handling).
     Artifact,
+    /// A creature or land card (Archdruid's Charm).
+    CreatureOrLand,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -2957,6 +2995,9 @@ pub enum SearchTo {
     /// Opposition Agent: exiled instead, playable by the searcher's opponent for as long as it
     /// stays exiled, with mana of any color.
     ExiledForOpponent,
+    /// Onto the battlefield tapped if it's a land card, otherwise into your hand (Archdruid's
+    /// Charm).
+    TappedIfLandElseHand,
 }
 
 /// What a static ability affects.

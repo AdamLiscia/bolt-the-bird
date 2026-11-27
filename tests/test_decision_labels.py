@@ -337,3 +337,16 @@ def test_hand_to_battlefield_and_exile_from_hand_picks():
 def test_demons_disciple_each_player_sacrifices():
     dec = {"kind": "EachSacrificesCreatureOrPlaneswalker", "next": 1}
     assert sv._decision_label(dec, "Pick", 0, "Llanowar Elves") == "Sacrifice Llanowar Elves"
+
+
+def test_land_sacrifice_and_ad_nauseam_labels():
+    sac = {"kind": "SacrificeLands", "left": 1}
+    assert sv._decision_label(sac, "Pick", 0, "Forest") == "Sacrifice Forest"
+    ad = {"kind": "AdNauseamAgain"}
+    assert label(ad, "Yes", 0) == "Reveal another card (Ad Nauseam)"
+    assert label(ad, "No", 0) == "Stop (Ad Nauseam)"
+
+
+def test_flare_of_malice_sacrifices_the_greatest():
+    dec = {"kind": "SacrificeGreatestMv"}
+    assert sv._decision_label(dec, "Pick", 0, "Sol Ring") == "Sacrifice Sol Ring"

@@ -3497,3 +3497,25 @@ fn each_player_sacrifices_a_creature_or_planeswalker() {
         (Zone::Graveyard, Zone::Graveyard)
     );
 }
+
+#[test]
+fn opponent_sacrifices_a_greatest_mana_value_creature_or_planeswalker() {
+    let flare = Effect::OpponentSacrificesGreatestMvCreatureOrPlaneswalker;
+    let (mut g, t) = game_with(vec![sorcery(vec![], vec![flare])]);
+    let small = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+    let a = g.add_card(1, cid("Pippin, Guard of the Citadel"), Zone::Battlefield);
+    let b = g.add_card(1, cid("Savannah Lions"), Zone::Battlefield);
+    let _ = b;
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    while !matches!(g.pending, Pending::Decide(1)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(
+        legal.contains(&Action::Pick(a)) && !legal.contains(&Action::Pick(small)),
+        "the greatest only"
+    );
+    act(&mut g, Action::Pick(a));
+    assert_eq!(g.obj(a).zone, Zone::Graveyard);
+}

@@ -1483,6 +1483,13 @@ pub enum Decision {
     /// `Pick` a creature or planeswalker you control to sacrifice, then `next` does (Demon's
     /// Disciple; asked only when there is one).
     EachSacrificesCreatureOrPlaneswalker { next: Option<PlayerId> },
+    /// `Pick` a land you control to sacrifice, `left` more after this one (Roiling Regrowth).
+    SacrificeLands { left: u8 },
+    /// Ad Nauseam: `Yes` repeats (reveal the next card, lose its mana value), `No` stops.
+    AdNauseamAgain,
+    /// `Pick` one of your creatures or planeswalkers tied for the greatest mana value to sacrifice
+    /// (Flare of Malice).
+    SacrificeGreatestMv,
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -4166,6 +4173,39 @@ impl Game {
             && self
                 .permanents(opponent(p))
                 .any(|x| self.def_of(x).opponents_cast_only_from_hand && !self.lost_abilities(x))
+    }
+
+    /// Asks `p` to sacrifice one of `left` more lands, if they have one.
+    fn ask_sacrifice_lands(&mut self, p: PlayerId, left: u8) {
+        let any = self
+            .permanents(p)
+            .any(|x| self.types_of(x).land && !self.cant_be_sacrificed(x));
+        if left > 0 && any {
+            self.ask(p, Decision::SacrificeLands { left: left - 1 });
+        }
+    }
+
+    /// `p`'s creatures and planeswalkers with the greatest mana value among them that can be
+    /// sacrificed (Flare of Malice).
+    fn greatest_mv_sacrifice_options(&self, p: PlayerId) -> Vec<ObjId> {
+        let all: Vec<ObjId> = self.creature_or_walker_sacrifice_options(p);
+        let mv = |c: ObjId| self.def_of(c).cost.mana_value();
+        let top = all.iter().map(|&c| mv(c)).max();
+        all.into_iter().filter(|&c| Some(mv(c)) == top).collect()
+    }
+
+    /// Ad Nauseam: the top card to `p`'s hand, life lost equal to its mana value; then may repeat.
+    fn ad_nauseam_step(&mut self, p: PlayerId) {
+        if let Some(&c) = self.players[p].library.last() {
+            self.move_to(c, Zone::Hand);
+            let mv = self.def_of(c).cost.mana_value() as i32;
+            if mv > 0 {
+                self.lose_life(p, mv);
+            }
+            if !self.players[p].library.is_empty() && self.players[p].life > 0 {
+                self.ask(p, Decision::AdNauseamAgain);
+            }
+        }
     }
 
     /// Whether trigger `n` of `src` hasn't triggered yet this turn, recording it now ("This ability
@@ -13652,6 +13692,7 @@ impl Game {
                     SearchFor::CreatureMvExactly(mv) => d.types.creature && d.cost.mana_value() == mv,
                     SearchFor::ArtifactManaValue(mv) => d.types.artifact && d.cost.mana_value() == mv,
                     SearchFor::Artifact => d.types.artifact,
+                    SearchFor::CreatureOrLand => d.types.creature || d.types.land,
                     SearchFor::ArtifactWithManaAbilityOrBasicLand => {
                         (d.types.basic && d.types.land) || (d.types.artifact && Game::has_mana_ability(d))
                     }
@@ -14713,6 +14754,17 @@ impl Game {
                 v
             }
             Decision::ExileCardFromHand => hand.iter().copied().map(Action::Pick).collect(),
+            Decision::SacrificeLands { .. } => self
+                .permanents(p)
+                .filter(|&x| self.types_of(x).land && !self.cant_be_sacrificed(x))
+                .map(Action::Pick)
+                .collect(),
+            Decision::AdNauseamAgain => vec![Action::Yes, Action::No],
+            Decision::SacrificeGreatestMv => self
+                .greatest_mv_sacrifice_options(p)
+                .into_iter()
+                .map(Action::Pick)
+                .collect(),
             Decision::EachSacrificesCreatureOrPlaneswalker { .. } => self
                 .creature_or_walker_sacrifice_options(p)
                 .into_iter()
@@ -15633,6 +15685,14 @@ impl Game {
                     .any(|x| self.def_of(x).opponents_searches_exiled_for_you && !self.lost_abilities(x));
                 let to = if agent { SearchTo::ExiledForOpponent } else { to };
                 match to {
+                    SearchTo::TappedIfLandElseHand => {
+                        if self.def_of(c).types.land {
+                            self.move_to(c, Zone::Battlefield);
+                            self.obj_mut(c).tapped = true;
+                        } else {
+                            self.move_to(c, Zone::Hand);
+                        }
+                    }
                     SearchTo::ExiledForOpponent => {
                         self.move_to(c, Zone::Exile);
                         if self.obj(c).zone == Zone::Exile {
@@ -16617,6 +16677,17 @@ impl Game {
                 }
             }
             (Decision::ExileCardFromHand, Action::Pick(c)) => self.move_to(c, Zone::Exile),
+            (Decision::SacrificeLands { left }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Graveyard);
+                self.sacrificed(c, p);
+                self.ask_sacrifice_lands(p, left);
+            }
+            (Decision::AdNauseamAgain, Action::Yes) => self.ad_nauseam_step(p),
+            (Decision::SacrificeGreatestMv, Action::Pick(c)) => {
+                self.move_to(c, Zone::Graveyard);
+                self.sacrificed(c, p);
+            }
+            (Decision::AdNauseamAgain, _) => {}
             (Decision::EachSacrificesCreatureOrPlaneswalker { next }, a) => {
                 if let Action::Pick(c) = a {
                     self.move_to(c, Zone::Graveyard);
@@ -25222,6 +25293,80 @@ impl Game {
             Effect::RollD20ReanimateTotalManaValue => {
                 let x = self.roll_die(20);
                 self.reanimate_total_next(item.controller, x);
+            }
+            Effect::BiteTrampleExcess { from, to } => {
+                let (Some(a), Some(b)) = (
+                    Game::slot_object(item, legal, from),
+                    Game::slot_object(item, legal, to),
+                ) else {
+                    return;
+                };
+                let power = self.power(a);
+                if power > 0 {
+                    let mut to_creature = power;
+                    if self.keywords(a).has(Keywords::TRAMPLE) {
+                        // Lethal damage first (CR 702.19c): 1 with deathtouch.
+                        let left = (self.toughness(b) - self.obj(b).damage).max(0);
+                        let lethal = if self.keywords(a).has(Keywords::DEATHTOUCH) {
+                            left.min(1)
+                        } else {
+                            left
+                        };
+                        to_creature = power.min(lethal);
+                    }
+                    let excess = power - to_creature;
+                    let controller = self.obj(b).controller;
+                    if to_creature > 0 {
+                        self.deal_damage(a, Target::Object(b), to_creature);
+                    }
+                    if excess > 0 {
+                        self.deal_damage(a, Target::Player(controller), excess);
+                    }
+                }
+            }
+            Effect::BecomeBaseEot {
+                slot,
+                power,
+                toughness,
+                colors,
+                subtype,
+            } => {
+                let ids: Vec<ObjId> = match slot {
+                    Some(n) => Game::slot_object(item, legal, n).into_iter().collect(),
+                    None => self.creatures(item.controller).collect(),
+                };
+                let turn = self.turn;
+                for id in ids {
+                    if self.obj(id).zone == Zone::Battlefield {
+                        let change = TypeChange {
+                            turn,
+                            base_pt: Some((power, toughness)),
+                            colors: Some(colors),
+                            subtypes: subtype,
+                            ..TypeChange::default()
+                        };
+                        self.add_type_change(id, change);
+                    }
+                }
+            }
+            Effect::SacrificeLands(n) => self.ask_sacrifice_lands(item.controller, n),
+            Effect::SearchMoreIfControlPower {
+                what,
+                to,
+                n,
+                more,
+                power,
+            } => {
+                let big = self.creatures(item.controller).any(|c| self.power(c) >= power);
+                let n = if big { more } else { n };
+                self.ask(item.controller, Decision::Search { what, to, left: n });
+            }
+            Effect::AdNauseam => self.ad_nauseam_step(item.controller),
+            Effect::OpponentSacrificesGreatestMvCreatureOrPlaneswalker => {
+                let q = opponent(item.controller);
+                if !self.greatest_mv_sacrifice_options(q).is_empty() {
+                    self.ask(q, Decision::SacrificeGreatestMv);
+                }
             }
             Effect::OpponentsCantCastThisTurn => {
                 let q = opponent(item.controller);
