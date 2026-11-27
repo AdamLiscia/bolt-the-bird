@@ -151,6 +151,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         kinds = ("+1/+1", "-1/-1", "stun", "incubation", "soul", "revival", "fellowship", "bait")
         kinds += ("quest", "its own kind of", "slime", "time", "shield", "loyalty", "lore")
         return f"Another {kinds[value]} counter" if 0 <= value < len(kinds) else None
+    if d == "AdNauseamAgain" and kind in ("Yes", "No"):
+        return "Reveal another card (Ad Nauseam)" if kind == "Yes" else "Stop (Ad Nauseam)"
     if d == "Proliferate":
         if kind == "Pick":
             return f"Proliferate: {card_name}"
@@ -230,6 +232,9 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"CreatureFromHandAttackingMaxMv": "Put onto the battlefield attacking:"}.get(d)
         verb = verb or {"PermanentFromHandMaxMv": "Put onto the battlefield:"}.get(d)
         verb = verb or {"ExileCardFromHand": "Exile from your hand:"}.get(d)
+        verb = verb or {"SacrificeLands": "Sacrifice"}.get(d)
+        verb = verb or {"SacrificeGreatestMv": "Sacrifice"}.get(d)
+        verb = verb or {"EachSacrificesCreatureOrPlaneswalker": "Sacrifice"}.get(d)
         verb = verb or {"SacrificeOfSubtype": "Sacrifice"}.get(d)
         verb = verb or {"MaySacrificeLand": "Sacrifice", "MaySacrificeArtifactOrCreature": "Sacrifice"}.get(d)  # fmt: skip
         verb = verb or {"NameCardInLibrary": "Name"}.get(d)

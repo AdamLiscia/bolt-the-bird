@@ -2040,6 +2040,169 @@ pub fn script(name: &str) -> Option<Script> {
             // "Partner" is deck building only (CR 702.124).
             |d, _| on(d, When::AnotherPermanentYouControlEnters, vec![], vec![Effect::MayPutPermanentFromHandMvAtMostExtra]),
         ),
+        "Noggle the Mind" => s(
+            &[
+                "Enchant creature",
+                "Enchanted creature loses all abilities and is a colorless Noggle with base power and toughness 1/1.",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                d.enchanted_creature_type_becomes = Some("Noggle");
+                d.statics.push(Static {
+                    scope: Scope::Attached,
+                    lose_abilities: true,
+                    base_pt: Some((1, 1)),
+                    set_colors: Some([false; 5]),
+                    ..neutral_static()
+                });
+            },
+        ),
+        "Maskwood Nexus" => s(
+            &[
+                "Creatures you control are every creature type. The same is true for creature spells you control and creature cards you own that aren't on the battlefield.",
+                "{3}, {T}: Create a 2/2 blue Shapeshifter creature token with changeling.",
+            ],
+            |d, t| {
+                d.your_creatures_every_creature_type = true;
+                let token = Effect::CreateToken { who: Who::You, def: t.shapeshifter_changeling_blue, n: 1 };
+                activated(d, "{3}", true, vec![], vec![token]);
+            },
+        ),
+        "Jin-Gitaxias, Progress Tyrant" => s(
+            &[
+                "Whenever you cast an artifact, instant, or sorcery spell, copy that spell. You may choose new targets for the copy. This ability triggers only once each turn.",
+                "Whenever an opponent casts an artifact, instant, or sorcery spell, counter that spell. This ability triggers only once each turn.",
+            ],
+            |d, _| {
+                on(d, When::YouCastArtifactInstantOrSorceryOnceEachTurn, vec![], vec![Effect::CopyExtraSpell]);
+                on(d, When::OpponentCastsArtifactInstantOrSorceryOnceEachTurn, vec![], vec![Effect::CounterExtra]);
+            },
+        ),
+        "Silence" => s(&["Your opponents can't cast spells this turn."], |d, _| {
+            spell(d, vec![], vec![Effect::OpponentsCantCastThisTurn])
+        }),
+        "Drannith Magistrate" => s(&["Your opponents can't cast spells from anywhere other than their hands."], |d, _| {
+            d.opponents_cast_only_from_hand = true;
+        }),
+        "Vizier of Remedies" => s(
+            &["If one or more -1/-1 counters would be put on a creature you control, that many -1/-1 counters minus one are put on it instead."],
+            |d, _| d.your_minus_counters_minus_one = true,
+        ),
+        "Mental Misstep" => s(&["Counter target spell with mana value 1."], |d, _| {
+            let one = Filter { spell_min_mana_value: Some(1), max_mana_value: Some(1), ..SPELL };
+            spell(d, vec![one], vec![Effect::Counter(0)]);
+        }),
+        "Spell Pierce" => s(&["Counter target noncreature spell unless its controller pays {2}."], |d, _| {
+            let noncreature = Filter { spell_creature: Some(false), ..SPELL };
+            spell(d, vec![noncreature], vec![Effect::CounterUnlessPays(0, 2, 2)]);
+        }),
+        "Dismember" => s(&["Target creature gets -5/-5 until end of turn."], |d, _| {
+            spell(d, vec![CREATURE], vec![Effect::Pump { slot: 0, power: -5, toughness: -5 }])
+        }),
+        "Opposition Agent" => s(
+            &[
+                "You control your opponents while they're searching their libraries.",
+                "While an opponent is searching their library, they exile each card they find. You may play those cards for as long as they remain exiled, and you may spend mana as though it were mana of any color to cast them.",
+            ],
+            // Known gap: "you control your opponents while they're searching" isn't modeled (1v1:
+            // the searcher still chooses what to find); only the exile-and-play half is.
+            |d, _| d.opponents_searches_exiled_for_you = true,
+        ),
+        "Ram Through" => s(
+            &["Target creature you control deals damage equal to its power to target creature you don't control. If the creature you control has trample, excess damage is dealt to that creature's controller instead."],
+            |d, _| {
+                let theirs = Filter { controller: Controller::Opponent, ..CREATURE };
+                spell(d, vec![YOUR_CREATURE, theirs], vec![Effect::BiteTrampleExcess { from: 0, to: 1 }]);
+            },
+        ),
+        "Scale Up" => s(
+            &[
+                "Until end of turn, target creature you control becomes a green Wurm with base power and toughness 6/4.",
+                "Overload {4}{G}{G}",
+            ],
+            |d, _| {
+                let wurm = |slot| Effect::BecomeBaseEot {
+                    slot,
+                    power: 6,
+                    toughness: 4,
+                    colors: [false, false, false, false, true],
+                    subtype: &["Wurm"],
+                };
+                spell(d, vec![YOUR_CREATURE], vec![wurm(Some(0))]);
+                d.alt_cost = Some((ManaCost::parse("{4}{G}{G}").expect("cost"), 0));
+                d.overload_spell = Some(Ability::new(vec![], vec![wurm(None)]));
+            },
+        ),
+        "Roiling Regrowth" => s(
+            &["Sacrifice a land. Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle."],
+            |d, _| {
+                let find = Effect::Search { what: SearchFor::BasicLand, to: SearchTo::Battlefield { tapped: true }, n: 2, kicked_n: None };
+                spell(d, vec![], vec![Effect::SacrificeLands(1), find]);
+            },
+        ),
+        "Planar Engineering" => s(
+            &["Sacrifice two lands. Search your library for four basic land cards, put them onto the battlefield tapped, then shuffle."],
+            |d, _| {
+                let find = Effect::Search { what: SearchFor::BasicLand, to: SearchTo::Battlefield { tapped: true }, n: 4, kicked_n: None };
+                spell(d, vec![], vec![Effect::SacrificeLands(2), find]);
+            },
+        ),
+        "Entish Restoration" => s(
+            &["Sacrifice a land. Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle. If you control a creature with power 4 or greater, instead search your library for up to three basic land cards, put them onto the battlefield tapped, then shuffle."],
+            |d, _| {
+                let find = Effect::SearchMoreIfControlPower {
+                    what: SearchFor::BasicLand,
+                    to: SearchTo::Battlefield { tapped: true },
+                    n: 2,
+                    more: 3,
+                    power: 4,
+                };
+                spell(d, vec![], vec![Effect::SacrificeLands(1), find]);
+            },
+        ),
+        "Archdruid's Charm" => s(
+            &[
+                "Choose one —",
+                "• Search your library for a creature or land card and reveal it. Put it onto the battlefield tapped if it's a land card. Otherwise, put it into your hand. Then shuffle.",
+                "• Put a +1/+1 counter on target creature you control. It deals damage equal to its power to target creature you don't control.",
+                "• Exile target artifact or enchantment.",
+            ],
+            |d, _| {
+                let theirs = Filter { controller: Controller::Opponent, ..CREATURE };
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![], vec![search(SearchFor::CreatureOrLand, SearchTo::TappedIfLandElseHand)]),
+                        Ability::new(
+                            vec![YOUR_CREATURE, theirs],
+                            vec![Effect::Counters { slot: 0, n: 1 }, Effect::Bite { from: 0, to: 1 }],
+                        ),
+                        Ability::new(vec![ARTIFACT_OR_ENCHANTMENT], vec![Effect::Exile(0)]),
+                    ],
+                );
+            },
+        ),
+        "Ad Nauseam" => s(
+            &["Reveal the top card of your library and put that card into your hand. You lose life equal to its mana value. You may repeat this process any number of times."],
+            |d, _| spell(d, vec![], vec![Effect::AdNauseam]),
+        ),
+        "Vraska, Betrayal's Sting" => s(
+            &[
+                "Compleated",
+                "0: You draw a card and lose 1 life. Proliferate.",
+                "\u{2212}2: Target creature becomes a Treasure artifact with \"{T}, Sacrifice this artifact: Add one mana of any color\" and loses all other card types and abilities.",
+                "\u{2212}9: If target player has fewer than nine poison counters, they get a number of poison counters equal to the difference.",
+            ],
+            |d, _| {
+                d.mana_ext.compleated = true; // d1's
+                let zero = vec![draw(1), Effect::LoseLife { who: Who::You, n: 1 }, Effect::Proliferate];
+                loyalty(d, 0, Ability::new(vec![], zero));
+                loyalty(d, -2, Ability::new(vec![CREATURE], vec![Effect::BecomeTreasure(0)]));
+                let player = Filter { creatures: false, planeswalkers: false, ..Filter::ANY };
+                loyalty(d, -9, Ability::new(vec![player], vec![Effect::TargetPlayerPoisonUpTo { slot: 0, n: 9 }]));
+            },
+        ),
         "Skyscribing" => s(
             &[
                 "Each player draws X cards.",
@@ -2334,4 +2497,25 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Alesha, Who Smiles at Death",
     "Ride the Shoopuf",
     "Kodama of the East Tree",
+    // Core theme d3, batch 35
+    "Noggle the Mind",
+    "Maskwood Nexus",
+    // Core theme d3, batch 36
+    "Jin-Gitaxias, Progress Tyrant",
+    "Silence",
+    "Drannith Magistrate",
+    "Vizier of Remedies",
+    "Mental Misstep",
+    "Spell Pierce",
+    "Dismember",
+    "Opposition Agent",
+    // Core theme d3, batch 37
+    "Ram Through",
+    "Scale Up",
+    "Roiling Regrowth",
+    "Planar Engineering",
+    "Entish Restoration",
+    "Archdruid's Charm",
+    "Ad Nauseam",
+    "Vraska, Betrayal's Sting",
 ];

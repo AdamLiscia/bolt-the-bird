@@ -2316,9 +2316,11 @@ fn into_end_step(g: &mut Game) {
 #[test]
 fn deals_damage_to_one_or_more_creatures_in_combat_and_outside_it() {
     let mut g = game_with(|defs: &mut Vec<CardDef>| {
-        defs[cid("Savannah Lions")]
-            .triggers
-            .push(trigger(When::DealsDamageToOneOrMoreCreatures, None, gain_one()));
+        defs[cid("Savannah Lions")].triggers.push(trigger(
+            When::DealsDamageToOneOrMoreCreatures,
+            None,
+            gain_one(),
+        ));
     });
     let lions = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
     let elves = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
@@ -2414,7 +2416,9 @@ fn a_case_solves_at_your_end_step_after_four_instants_and_sorceries() {
 fn clues_sacrificed_this_turn_are_counted_per_player() {
     let mut g = game_with(|defs: &mut Vec<CardDef>| {
         defs[cid("Sol Ring")].triggers.push(trigger(
-            When::EndStep { your_turn_only: false },
+            When::EndStep {
+                your_turn_only: false,
+            },
             Some(Condition::SacrificedCluesThisTurnAtLeast(3)),
             gain_one(),
         ));
@@ -2468,7 +2472,11 @@ fn creatures_with_a_mana_ability_attacking_and_seven_mana_spells() {
     g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
     let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
     let lions = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
-    assert_eq!((g.power(elves), g.toughness(elves)), (2, 2), "a mana ability: +1/+1");
+    assert_eq!(
+        (g.power(elves), g.toughness(elves)),
+        (2, 2),
+        "a mana ability: +1/+1"
+    );
     assert_eq!((g.power(lions), g.toughness(lions)), (2, 1), "none: no pump");
     let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Hand);
     play(&mut g, bolt, false, &[bolt_core::Target::Player(1)], &[]);

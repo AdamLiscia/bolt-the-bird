@@ -525,6 +525,45 @@ pub fn token_defs() -> Vec<CardDef> {
             t.changeling = true;
             t
         },
+        {
+            // 120, lane C: Ashiok, Nightmare Muse's "2/3 blue and black Nightmare creature token with
+            // \"Whenever this token attacks or blocks, each opponent exiles the top two cards of their
+            // library.\""
+            let mut t = token("Nightmare", "Nightmare", 2, 3, Keywords::NONE);
+            t.colors = [false, true, true, false, false];
+            for when in [When::Attacks, When::Blocks] {
+                on(&mut t, when, vec![], vec![Effect::EachOpponentExilesTop(2)]);
+            }
+            t
+        },
+        {
+            // 121, lane d3: Maskwood Nexus's "2/2 blue Shapeshifter creature token with changeling".
+            let mut t = token("Shapeshifter", "Shapeshifter", 2, 2, Keywords::NONE);
+            t.colors = [false, true, false, false, false];
+            t.changeling = true;
+            t
+        },
+        // 122: d1's Human Cleric, a placeholder until it lands on tarkir.
+        token("Placeholder 122", "Placeholder", 0, 0, Keywords::NONE),
+        // 123, lane C: Nesting Dragon's "0/2 red Dragon Egg creature token with defender"; its dies
+        // trigger (making 124) is wired in `CardSet::load`, since a row here can't name another token.
+        red(token("Dragon Egg", "Dragon Egg", 0, 2, Keywords::DEFENDER)),
+        {
+            // 124, lane C: the Egg's "2/2 red Dragon creature token with flying and '{R}: This token
+            // gets +1/+0 until end of turn.'"
+            let mut t = red(token("Dragon", "Dragon", 2, 2, Keywords::FLYING));
+            activated(
+                &mut t,
+                "{R}",
+                false,
+                vec![],
+                vec![Effect::PumpSelf {
+                    power: 1,
+                    toughness: 0,
+                }],
+            );
+            t
+        },
     ]
 }
 
@@ -771,6 +810,17 @@ pub struct Tokens {
     pub dinosaur_3: usize,
     /// 119: d3's Crib Swap Shapeshifter, a 1/1 colorless with changeling.
     pub shapeshifter_changeling_1: usize,
+    /// 120: lane C's Ashiok Nightmare, a 2/3 blue and black (attacks or blocks: each opponent exiles
+    /// the top two).
+    pub nightmare: usize,
+    /// 121: d3's Maskwood Nexus Shapeshifter, a 2/2 blue with changeling.
+    pub shapeshifter_changeling_blue: usize,
+    /// 122: d1's Human Cleric, a placeholder until it lands on tarkir.
+    pub placeholder_122: usize,
+    /// 123: lane C's Nesting Dragon Egg, a 0/2 red with defender (dies: token 124).
+    pub dragon_egg: usize,
+    /// 124: lane C's 2/2 red flying Dragon with "{R}: +1/+0".
+    pub dragon_2_firebreathing: usize,
 }
 
 impl Tokens {
@@ -896,6 +946,11 @@ impl Tokens {
             dinosaur_egg: base + 117,
             dinosaur_3: base + 118,
             shapeshifter_changeling_1: base + 119,
+            nightmare: base + 120,
+            shapeshifter_changeling_blue: base + 121,
+            placeholder_122: base + 122,
+            dragon_egg: base + 123,
+            dragon_2_firebreathing: base + 124,
         }
     }
 }

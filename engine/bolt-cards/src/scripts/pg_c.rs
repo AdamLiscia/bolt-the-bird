@@ -2439,6 +2439,100 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].sacrifice_subtype = Some("Slug");
             },
         ),
+        "Rev, Tithe Extractor" => s(
+            &[
+                "Whenever you attack, target creature gains deathtouch until end of turn.",
+                "Whenever one or more creatures you control deal combat damage to a player, create a Treasure token, then look at the top card of that player's library and exile it face down. You may cast that card for as long as it remains exiled.",
+            ],
+            |d, t| {
+                on(d, When::YouAttack, vec![Filter::CREATURE], vec![Effect::Grant { slot: 0, keywords: Keywords::DEATHTOUCH }]);
+                // "That player" is the one opponent (1v1).
+                let treasure = Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 };
+                on(d, When::YourCreaturesDealCombatDamageToPlayer, vec![], vec![treasure, Effect::ExileTopOfOpponentFaceDownCastable]);
+            },
+        ),
+        "Alchemist's Talent" => s(
+            &[
+                "When this Class enters, create two tapped Treasure tokens.",
+                "{1}{R}: Level 2",
+                "Treasures you control have \"{T}, Sacrifice this artifact: Add two mana of any one color.\"",
+                "{4}{R}: Level 3",
+                "Whenever you cast a spell, if mana from a Treasure was spent to cast it, this Class deals damage equal to that spell's mana value to each opponent.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::CreateTokensTapped { def: t.treasure, n: 2 }]);
+                for (level, cost) in [(2, "{1}{R}"), (3, "{4}{R}")] {
+                    let n = activated(d, cost, false, vec![], vec![Effect::ClassLevelUp(level)]);
+                    d.activated[n].sorcery = true;
+                    d.activated[n].level_up_to = level;
+                }
+                d.mana_ext.treasures_add_two_at_level = 2; // d1's two-mana Treasures
+                let mut burn = Ability::new(vec![], vec![Effect::StopUnlessTreasureManaSpentOnExtra, Effect::DamageEachOpponentCastSpellManaValue]);
+                burn.condition = Some(Condition::ClassLevelAtLeast(3));
+                d.triggers.push(Trigger { when: When::YouCast, ability: burn });
+            },
+        ),
+        "Blade of the Bloodchief" => s(
+            &[
+                "Whenever a creature dies, put a +1/+1 counter on equipped creature. If equipped creature is a Vampire, put two +1/+1 counters on it instead.",
+                "Equip {1}",
+            ],
+            |d, _| {
+                // The Blade isn't a creature, so "another creature" is every creature.
+                let grow = Effect::CountersOnAttachedBySubtype { n: 1, subtype: "Vampire", n_if: 2 };
+                on(d, When::AnotherCreatureDies, vec![], vec![grow]);
+                equip(d, "{1}");
+            },
+        ),
+        "Nesting Dragon" => s(
+            &["Landfall — Whenever a land you control enters, create a 0/2 red Dragon Egg creature token with defender and \"When this token dies, create a 2/2 red Dragon creature token with flying and '{R}: This token gets +1/+0 until end of turn.'\""],
+            |d, t| {
+                // Token 123, the Egg, carries the dies trigger that makes token 124.
+                on(d, When::LandYouControlEnters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.dragon_egg, n: 1 }]);
+            },
+        ),
+        "Ashiok, Nightmare Muse" => s(
+            &[
+                "+1: Create a 2/3 blue and black Nightmare creature token with \"Whenever this token attacks or blocks, each opponent exiles the top two cards of their library.\"",
+                "−3: Return target nonland permanent to its owner's hand, then that player exiles a card from their hand.",
+                "−7: You may cast up to three spells from among face-up cards your opponents own from exile without paying their mana costs.",
+            ],
+            |d, t| {
+                loyalty(d, 1, Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.nightmare, n: 1 }]));
+                // d3's -3: the owner picks the card to exile (`Decision::ExileCardFromHand`).
+                let nonland = Filter { controller: Controller::Any, ..OPP_NONLAND };
+                loyalty(d, -3, Ability::new(vec![nonland], vec![Effect::BounceThenOwnerExilesFromHand(0)]));
+                // "Up to three": a free-cast window you may pass, closing after three spells.
+                loyalty(d, -7, Ability::new(vec![], vec![Effect::CastFaceUpOpponentExiledFreeUpTo(3)]));
+            },
+        ),
+        "Fortune Teller's Talent" => s(
+            &[
+                "You may look at the top card of your library any time.",
+                "{3}{U}: Level 2",
+                "As long as you've cast a spell this turn, you may play cards from the top of your library.",
+                "{2}{U}: Level 3",
+                "Spells you cast from anywhere other than your hand cost {2} less to cast.",
+            ],
+            |d, _| {
+                // Looking at the top card is information only: no rules effect.
+                for (level, cost) in [(2, "{3}{U}"), (3, "{2}{U}")] {
+                    let n = activated(d, cost, false, vec![], vec![Effect::ClassLevelUp(level)]);
+                    d.activated[n].sorcery = true;
+                    d.activated[n].level_up_to = level;
+                }
+                d.zones.top_cards_if_cast_spell_at_level = 2;
+                d.mana_ext.not_from_hand_discount = Some((3, 2)); // d1's discount
+            },
+        ),
+        // Unclaimed on purpose: the damage line is left out of `lines`, so the card isn't supported (or
+        // built) until a free-cast window can offer a hidden land as a land play (CR 305.2). With it, the
+        // lines are "Hideaway 3, hideaway 3" and "Whenever this creature deals combat damage to a player,
+        // if there are cards exiled with it, you may play one of them without paying its mana cost."
+        "Evercoat Ursine" => s(&["Hideaway 3, hideaway 3"], |d, _| {
+            on(d, When::Enters, vec![], vec![Effect::Hideaway(3), Effect::HideawayAnother(3)]);
+            on(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::MayCastOneHideawayFree]);
+        }),
         "Deep-Cavern Bat" => s(
             &["When this creature enters, look at target opponent's hand. You may exile a nonland card from it until this creature leaves the battlefield."],
             |d, _| {
@@ -2764,4 +2858,11 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Goliath Daydreamer",
     "Pippin, Guard of the Citadel",
     "Toxrill, the Corrosive",
+    "Rev, Tithe Extractor",
+    "Alchemist's Talent",
+    "Fortune Teller's Talent",
+    "Blade of the Bloodchief",
+    "Nesting Dragon",
+    "Ashiok, Nightmare Muse",
+    // Not "Evercoat Ursine" (unclaimed: a hidden land must be playable as a land play).
 ];

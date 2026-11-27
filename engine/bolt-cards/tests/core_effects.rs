@@ -3462,3 +3462,60 @@ fn bounce_then_the_owner_exiles_a_card_from_hand() {
     act(&mut g, Action::Pick(theirs));
     assert_eq!(g.obj(theirs).zone, Zone::Exile, "its owner chose it");
 }
+
+#[test]
+fn discard_at_random_then_damage_if_it_was_an_artifact() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![],
+        vec![Effect::DiscardRandomIfArtifactDamageEachOpponent(2)],
+    )]);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Hand);
+    let life = g.players[1].life;
+    // Discard the whole hand one random card at a time: only the Sol Ring is an artifact.
+    while !g.players[0].hand.is_empty() {
+        let c = g.add_card(0, t, Zone::Hand);
+        act(&mut g, Action::Cast(c));
+        resolve_all(&mut g, &[]);
+    }
+    assert_eq!(g.obj(ring).zone, Zone::Graveyard);
+    assert_eq!(g.players[1].life, life - 2, "an artifact: 2 damage");
+}
+
+#[test]
+fn each_player_sacrifices_a_creature_or_planeswalker() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![],
+        vec![Effect::EachPlayerSacrificesCreatureOrPlaneswalker],
+    )]);
+    let mine = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    resolve_all(&mut g, &[Action::Pick(mine), Action::Pick(theirs)]);
+    assert_eq!(
+        (g.obj(mine).zone, g.obj(theirs).zone),
+        (Zone::Graveyard, Zone::Graveyard)
+    );
+}
+
+#[test]
+fn opponent_sacrifices_a_greatest_mana_value_creature_or_planeswalker() {
+    let flare = Effect::OpponentSacrificesGreatestMvCreatureOrPlaneswalker;
+    let (mut g, t) = game_with(vec![sorcery(vec![], vec![flare])]);
+    let small = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+    let a = g.add_card(1, cid("Pippin, Guard of the Citadel"), Zone::Battlefield);
+    let b = g.add_card(1, cid("Savannah Lions"), Zone::Battlefield);
+    let _ = b;
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    while !matches!(g.pending, Pending::Decide(1)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(
+        legal.contains(&Action::Pick(a)) && !legal.contains(&Action::Pick(small)),
+        "the greatest only"
+    );
+    act(&mut g, Action::Pick(a));
+    assert_eq!(g.obj(a).zone, Zone::Graveyard);
+}
