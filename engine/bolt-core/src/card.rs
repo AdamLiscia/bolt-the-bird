@@ -407,6 +407,24 @@ pub struct Activated {
     /// Activated only while the card is in the command zone, by its owner (Derevi: "{1}{G}{W}{U}:
     /// Put Derevi onto the battlefield from the command zone.").
     pub from_command_zone: bool,
+    /// Activated from your hand, exiling this card as a cost (Elvish Spirit Guide: "Exile this
+    /// card from your hand: Add {G}.").
+    pub from_hand_exile: bool,
+    /// "Sacrifice N creatures" in the cost (Westvale Abbey: five): the player picks each one
+    /// (`Decision::SacrificeCreaturesForCost`) before the ability is activated; they're
+    /// sacrificed as it's activated, before its mana is paid.
+    pub sacrifice_n_creatures: u8,
+    /// "Remove N counters from this creature" in the cost (Glen Elendra Guardian: 1, Reaping Willow:
+    /// 2): any kind; with more than one kind on it, `Game::remove_any_counter`'s demo rule picks (as
+    /// Tekuthal's).
+    pub remove_counters_self: u8,
+    /// "Return a [subtype] you control to its owner's hand" in the cost (Quirion Ranger: a Forest;
+    /// Wirewood Symbiote: an Elf): activated with `Action::ActivateWith`, that permanent the victim.
+    pub return_own_subtype: Option<&'static str>,
+    /// "Tap an untapped creature you control" in the cost, the player naming it: activated with
+    /// `Action::ActivateWith`, that creature the victim (Earthcraft). Summoning sickness doesn't
+    /// matter (it isn't the creature's own {T}).
+    pub tap_named_creature: bool,
 }
 
 /// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,
@@ -1393,6 +1411,31 @@ pub struct ManaExt {
     /// "Creatures you control with power 2 or less can't be blocked by creatures with power 3 or
     /// greater." (Delney, Streetwise Lookout)
     pub small_creatures_evade_big: bool,
+    /// "{T}: Add one mana of any of the exiled card's colors." (Chrome Mox): its `mana` is limited
+    /// to the colors of its imprinted card (`Object::hideaway`); none: no mana.
+    pub mana_imprinted_colors: bool,
+    /// "If this artifact would enter, you may discard a land card instead. If you do, put this
+    /// artifact onto the battlefield. If you don't, put it into its owner's graveyard." (Mox
+    /// Diamond): a replacement (CR 614.1c) asked as the spell resolves, before it would enter, as
+    /// `Decision::DiscardLandOrGraveyard`; declined, it goes from the stack to the graveyard.
+    pub enters_discard_land_or_graveyard: bool,
+    /// "Enchanted creature can attack as though it had haste." (Instill Energy)
+    pub enchanted_attacks_as_haste: bool,
+    /// "This creature enters with N -1/-1 counters on it." (Glen Elendra Guardian, Flitterwing
+    /// Nuisance: 1)
+    pub enters_with_minus_counters: u8,
+    /// "You may sacrifice a nontoken [color] creature rather than pay this spell's mana cost."
+    /// (Flare of Malice: black): `Action::CastWith` names the creature (the player's pick), as a
+    /// pitch spell names its card.
+    pub alt_sacrifice_nontoken_color: Option<u8>,
+    /// With `enchanted_land_extra_any`: the additional mana is one of this color (WUBRG 0-4; Wild
+    /// Growth: green), or 5 for the Aura's chosen color (Utopia Sprawl), instead of any color.
+    pub enchanted_land_extra_color: Option<u8>,
+    /// Its mana ability has no {T}: its cost is "Remove a [kind] counter from this" (Druids'
+    /// Repository: "Remove a charge counter from this enchantment: Add one mana of any color.").
+    /// Set with `mana` and `mana_per_kind_counter`: one mana per counter, each removing one, usable
+    /// while tapped; a manual activation makes one mana.
+    pub counter_mana_no_tap: bool,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana
@@ -2450,6 +2493,13 @@ pub struct ZonesExt {
     /// (Fortune Teller's Talent, level 2): while this permanent is at this Class level or higher (1:
     /// always). 0: none.
     pub top_cards_if_cast_spell_at_level: u8,
+}
+
+impl Keywords {
+    /// These keywords taken away (Shadowspear: "lose hexproof and indestructible").
+    pub fn without(self, k: Keywords) -> Keywords {
+        Keywords(self.0 & !k.0)
+    }
 }
 
 #[cfg(test)]

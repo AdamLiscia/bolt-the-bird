@@ -150,6 +150,10 @@ pub struct Filter {
     /// Spells not cast from their owner's hand only, unless this spell was cast for its alternative
     /// cost (Wash Away uncleaved: "target spell that wasn't cast from its owner's hand").
     pub spell_not_from_hand_unless_alt: bool,
+    /// Land cards or permanents only (Deathrite Shaman: "target land card from a graveyard").
+    pub land_cards: bool,
+    /// Basic permanents only (Earthcraft: "target basic land").
+    pub basic_only: bool,
 }
 
 impl Filter {
@@ -220,6 +224,8 @@ impl Filter {
         tapped_only: false,
         subtypes_any: &[],
         spell_not_from_hand_unless_alt: false,
+        land_cards: false,
+        basic_only: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -2985,6 +2991,14 @@ pub enum Effect {
     /// "Each opponent exiles the top `n` cards of their library." (Ashiok's Nightmare token: 2)
     EachOpponentExilesTop(u8),
     /// Create `n` `def` tokens tapped (Alchemist's Talent: two tapped Treasures).
+    /// Imprint (Chrome Mox): you may exile a nonartifact, nonland card from your hand, as
+    /// `Decision::ImprintNonartifactNonland`; it's the source's `hideaway`.
+    ImprintNonartifactNonlandFromHand,
+    /// "Add N mana of any one color." (Lion's Eye Diamond: 3), as `Decision::ManaOfOneColor`.
+    AddManaOneColor(u8),
+    /// Cumulative upkeep—Add {R} (Braid of Fire): an age counter, then add {R} for each age counter
+    /// or sacrifice it, as `Decision::UpkeepAddManaOrSacrifice`.
+    CumulativeUpkeepAddMana(crate::Color),
     CreateTokensTapped {
         def: usize,
         n: u8,
@@ -3026,6 +3040,57 @@ pub enum Effect {
     SacrificeTargetsRevealTopPermanent(u8),
     /// Put the source onto the battlefield from the command zone (Derevi); it isn't cast.
     PutSourceOntoBattlefieldFromCommand,
+    /// "Until your next turn, instant and sorcery spells you cast cost {N} less to cast." (Ral,
+    /// Leyline Prodigy's +1: 1), kept in `Game::instant_sorcery_discount_until`.
+    InstantSorceryDiscountUntilYourNextTurn(u8),
+    /// "Choose a color. Add an amount of mana of that color equal to the number of creatures you
+    /// control of the chosen type." (Three Tree City: the source's `chosen_type`), as
+    /// `Decision::ManaOfOneColor`.
+    AddManaOneColorPerChosenType,
+    /// "You may blight `n`. If you do, ..." (Scuzzback Scrounger): `Decision::BlightCreature` picks a
+    /// creature you control for `n` -1/-1 counters, or `No` skips the rest (as does controlling none).
+    MayBlightThen(u8),
+    /// "Add N mana of this color. Spend this mana only to cast creature spells or activate
+    /// abilities of creatures." (Castle Garenbrig: six {G}): held in
+    /// `Game::creature_ability_color_mana`, it pays as Somberwald Sage's mana does, for a creature
+    /// spell or an ability whose source is a creature.
+    AddCreatureSpellOrAbilityMana(u8, crate::Color),
+    /// The source Case becomes solved (CR 719.3): its "To solve" trigger. Stored as level 2 of
+    /// `Object::class_level` (a Case is never a Class), read by `Condition::CaseSolved`.
+    SolveCase,
+    /// "When that creature dies this turn, ..." (End-Blaze Epiphany): the creature in `slot`, as
+    /// this object (`Game::delayed_slot_dies`); the source's trigger number `trigger` fires once,
+    /// with the power it died with as the amount.
+    DelayedWhenSlotDiesThisTurn {
+        slot: u8,
+        trigger: usize,
+    },
+    /// Exile the top N cards of your library (N the trigger's amount), then choose one of them
+    /// (`Decision::ChooseExiledToPlay`); until the end of your next turn, you may play it
+    /// (End-Blaze Epiphany).
+    ExileTopAmountChooseOnePlayableUntilYourNextTurn,
+    /// Create `n` `def` tokens that are tapped and attacking (CR 506.3a), not sacrificed later
+    /// (Adeline, Resplendent Cathar: one for each opponent).
+    CreateTokensTappedAndAttacking {
+        def: usize,
+        n: u8,
+    },
+    /// Return the card in `slot` (in a graveyard or exile) to the battlefield under its owner's
+    /// control at the beginning of the next end step (`Game::delayed_returns`; Lifeline).
+    ReturnSlotAtNextEndStep(u8),
+    /// Kindred Summons: choose a creature type (`Decision::KindredSummonsType`), then reveal from
+    /// the top until X creature cards of it, X the creatures you control of that type; those go onto
+    /// the battlefield, the rest are shuffled in.
+    KindredSummons,
+    /// "Permanents your opponents control lose hexproof and indestructible until end of turn."
+    /// (Shadowspear), as `Game::lose_hexproof_indestructible_turn`.
+    OpponentsPermanentsLoseHexproofIndestructibleEot,
+    /// "Sacrifice X lands. For each land sacrificed this way, draw a card." (Nahiri's
+    /// Lithoforming; X the spell's X), as `Decision::SacrificeLandsDraw`: the cards are drawn once
+    /// all the lands are sacrificed.
+    SacrificeXLandsDrawEach,
+    /// "You may play X additional lands this turn." (Nahiri's Lithoforming; X the spell's X)
+    ExtraLandsThisTurnX,
     /// Gluttonous Hellkite's cast trigger: "each player sacrifices X creatures" (X of the spell
     /// that is the source, from its cast snapshot), starting with the active player, as
     /// `Decision::EachSacrificesXCreatures`; the spell then "enters with `n` +1/+1 counters on it
@@ -3194,6 +3259,8 @@ pub enum Scope {
     OtherYourColorlessCreatures,
     /// Other tapped creatures you control (Adept Watershaper).
     OtherYourTappedCreatures,
+    /// Creatures you control with a mana ability, as printed (Raggadragga, Goreguts Boss).
+    YourCreaturesWithManaAbility,
 }
 
 /// What a scaled static ability counts.
@@ -3235,6 +3302,8 @@ pub enum Scale {
     /// Other creatures you control with flying, printed or granted until end of turn (Skycat
     /// Sovereign).
     PerOtherYourCreatureWithFlying,
+    /// Lands you control (Blackblade Reforged).
+    PerLandYouControl,
 }
 
 /// A condition on a static ability ("as long as ...").
@@ -3528,6 +3597,22 @@ pub enum Condition {
     /// The source has at least this many kind counters (`Object::kind_counters`; Simic Ascendancy:
     /// twenty growth counters).
     SourceKindCountersAtLeast(i32),
+    /// Its controller has cast at least this many instant and sorcery spells this turn
+    /// (`Game::instants_sorceries_cast`; Case of the Ransacked Lab: four).
+    InstantsSorceriesCastThisTurnAtLeast(u8),
+    /// The source Case is solved (`Effect::SolveCase`): its "Solved" abilities.
+    CaseSolved,
+    /// The source Case isn't solved yet: its "To solve" end-step trigger (CR 719.3).
+    CaseUnsolved,
+    /// Its controller has sacrificed at least this many Clues this turn (`Game::clues_sacrificed`;
+    /// Briarbridge Patrol: three).
+    SacrificedCluesThisTurnAtLeast(u32),
+    /// With `When::YouCast`: at least this much mana was spent to cast that spell
+    /// (`Object::mana_spent`; Raggadragga: seven), checked as it triggers.
+    ManaSpentToCastAtLeast(u32),
+    /// A creature is on the battlefield (Lifeline: "if another creature is on the battlefield",
+    /// checked after the dying creature has left).
+    CreatureOnBattlefield,
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -3553,6 +3638,9 @@ pub struct Ability {
     pub divide_lands: bool,
     /// "Each of X target ...": exactly the ability's X targets.
     pub targets_exactly_x: bool,
+    /// "Choose any target, then choose another target for each time this spell was kicked"
+    /// (Comet Storm): exactly 1 + `Game::times_kicked` of its slots are chosen.
+    pub targets_one_plus_kicks: bool,
 }
 
 impl Ability {
@@ -3568,6 +3656,7 @@ impl Ability {
             divide: 0,
             divide_lands: false,
             targets_exactly_x: false,
+            targets_one_plus_kicks: false,
         }
     }
 
@@ -4090,6 +4179,30 @@ pub enum When {
     /// `Object::chosen_type`, chosen as it entered (`CardDef::choose_creature_type`); the spell in
     /// `extra`.
     YouCastCreatureOfChosenType,
+    /// "Whenever this creature deals damage to one or more creatures" (Briarbridge Patrol): once for
+    /// each combat damage step it deals damage to creatures in, and once for each other damage
+    /// event.
+    DealsDamageToOneOrMoreCreatures,
+    /// "Whenever a creature you control with a mana ability attacks" (Raggadragga): once for each
+    /// such attacker, which is the trigger's `extra` (`Effect::UntapExtra`: "untap it").
+    CreatureYouControlWithManaAbilityAttacks,
+    /// "Whenever you cast an artifact or enchantment spell" (Alela, Artful Provocateur): once for
+    /// each such spell, an artifact enchantment included.
+    YouCastArtifactOrEnchantment,
+    /// "Whenever an artifact creature you control deals combat damage to a player" (Sharding
+    /// Sphinx): once for each such creature.
+    YourArtifactCreatureDealsCombatDamageToPlayer,
+    /// "Whenever one or more artifact creatures you control deal combat damage to a player"
+    /// (Thopter Spy Network): once for each combat damage step.
+    YourArtifactCreaturesDealCombatDamageToPlayer,
+    /// An Aura's grant "as long as enchanted creature is <color> (WUBRG index), it has 'Whenever
+    /// this creature deals damage to an opponent, ...'" (Helm of the Ghastlord). The ability is the
+    /// creature's, so the creature's controller controls the trigger; "that player" is the
+    /// opponent it damaged.
+    EnchantedOfColorDealsDamageToOpponent(u8),
+    /// "Whenever a creature dies" (Lifeline): any creature other than the source, with the card that
+    /// died in slot 0 when the first target filter is `triggering`.
+    AnotherCreatureDiesIt,
 }
 
 #[derive(Clone, Debug, PartialEq)]

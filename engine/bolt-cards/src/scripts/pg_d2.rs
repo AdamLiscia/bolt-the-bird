@@ -1760,6 +1760,174 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::YouCastCreatureOfChosenType, vec![], vec![draw(1)]);
             },
         ),
+        // ---- Core: triggers, batch 38 ----
+        "Case of the Ransacked Lab" => s(
+            &[
+                "Instant and sorcery spells you cast cost {1} less to cast.",
+                "To solve \u{2014} You've cast four or more instant and sorcery spells this turn.",
+                "Solved \u{2014} Whenever you cast an instant or sorcery spell, draw a card.",
+            ],
+            |d, _| {
+                d.mana_ext.instant_sorcery_discount = 1;
+                let to_solve = Condition::Both(
+                    Box::new(Condition::CaseUnsolved),
+                    Box::new(Condition::InstantsSorceriesCastThisTurnAtLeast(4)),
+                );
+                conditional(d, When::EndStep { your_turn_only: true }, to_solve, vec![], vec![Effect::SolveCase]);
+                conditional(d, When::YouCastInstantOrSorcery, Condition::CaseSolved, vec![], vec![draw(1)]);
+            },
+        ),
+        "Briarbridge Patrol" => s(
+            &[
+                "Whenever this creature deals damage to one or more creatures, investigate.",
+                "At the beginning of each end step, if you sacrificed three or more Clues this turn, you may put a creature card from your hand onto the battlefield.",
+            ],
+            |d, t| {
+                on(d, When::DealsDamageToOneOrMoreCreatures, vec![], vec![Effect::Investigate { def: t.clue, n: 1 }]);
+                conditional(
+                    d,
+                    When::EndStep { your_turn_only: false },
+                    Condition::SacrificedCluesThisTurnAtLeast(3),
+                    vec![],
+                    vec![Effect::MayPutCreatureFromHand],
+                );
+            },
+        ),
+        "Raggadragga, Goreguts Boss" => s(
+            &[
+                "Each creature you control with a mana ability gets +2/+2.",
+                "Whenever a creature you control with a mana ability attacks, untap it.",
+                "Whenever you cast a spell, if at least seven mana was spent to cast it, untap target creature. It gets +7/+7 and gains trample until end of turn.",
+            ],
+            |d, _| {
+                static_on(d, Scope::YourCreaturesWithManaAbility, false, Keywords::NONE);
+                let n = d.statics.len() - 1;
+                d.statics[n].power = 2;
+                d.statics[n].toughness = 2;
+                on(d, When::CreatureYouControlWithManaAbilityAttacks, vec![], vec![Effect::UntapExtra]);
+                conditional(
+                    d,
+                    When::YouCast,
+                    Condition::ManaSpentToCastAtLeast(7),
+                    vec![CREATURE],
+                    vec![
+                        Effect::UntapTarget(0),
+                        Effect::Pump { slot: 0, power: 7, toughness: 7 },
+                        Effect::Grant { slot: 0, keywords: Keywords::TRAMPLE },
+                    ],
+                );
+            },
+        ),
+        // ---- Core: triggers, batch 39 ----
+        "End-Blaze Epiphany" => s(
+            &["End-Blaze Epiphany deals X damage to target creature. When that creature dies this turn, exile a number of cards from the top of your library equal to its power, then choose a card exiled this way. Until the end of your next turn, you may play that card."],
+            |d, _| {
+                let n = d.triggers.len();
+                spell(
+                    d,
+                    vec![CREATURE],
+                    vec![
+                        Effect::DamageX { to: Recipient::Target(0) },
+                        Effect::DelayedWhenSlotDiesThisTurn { slot: 0, trigger: n },
+                    ],
+                );
+                on(d, When::Never, vec![], vec![Effect::ExileTopAmountChooseOnePlayableUntilYourNextTurn]);
+            },
+        ),
+        // ---- Core: triggers, batch 40 (idea decks: artifact and enchantment casts, artifact combat damage, color-gated grants, deaths) ----
+        "Cathars' Crusade" => s(
+            &["Whenever a creature you control enters, put a +1/+1 counter on each creature you control."],
+            // An enchantment: "a creature you control" is always another permanent.
+            |d, _| on(d, When::AnotherCreatureYouControlEnters, vec![], vec![Effect::CountersAll { who: Who::You, n: 1 }]),
+        ),
+        "Juniper Order Ranger" => s(
+            &["Whenever another creature you control enters, put a +1/+1 counter on that creature and a +1/+1 counter on this creature."],
+            |d, _| {
+                let that = Filter { triggering: true, ..CREATURE };
+                on(
+                    d,
+                    When::AnotherCreatureYouControlEnters,
+                    vec![that],
+                    vec![Effect::Counters { slot: 0, n: 1 }, Effect::CountersSelf { n: 1 }],
+                );
+            },
+        ),
+        "Adeline, Resplendent Cathar" => s(
+            &[
+                "Adeline's power is equal to the number of creatures you control.",
+                "Whenever you attack, for each opponent, create a 1/1 white Human creature token that's tapped and attacking that player or a planeswalker they control.",
+            ],
+            |d, t| {
+                static_on(d, Scope::This, false, Keywords::NONE);
+                let st = d.statics.last_mut().expect("just added");
+                st.power = 1;
+                st.scale = Some(Scale::PerCreatureYouControl);
+                // 1v1: one opponent, so one Human, attacking the player who's being attacked.
+                on(d, When::YouAttack, vec![], vec![Effect::CreateTokensTappedAndAttacking { def: t.human, n: 1 }]);
+            },
+        ),
+        "Alela, Artful Provocateur" => s(
+            &[
+                "Other creatures you control with flying get +1/+0.",
+                "Whenever you cast an artifact or enchantment spell, create a 1/1 blue Faerie creature token with flying.",
+            ],
+            |d, t| {
+                static_on(d, Scope::OtherYourFliers, false, Keywords::NONE);
+                d.statics.last_mut().expect("just added").power = 1;
+                on(d, When::YouCastArtifactOrEnchantment, vec![], vec![Effect::CreateToken { who: Who::You, def: t.faerie, n: 1 }]);
+            },
+        ),
+        "Sharding Sphinx" => s(
+            &["Whenever an artifact creature you control deals combat damage to a player, you may create a 1/1 blue Thopter artifact creature token with flying."],
+            |d, t| {
+                let thopter = Effect::CreateToken { who: Who::You, def: t.thopter, n: 1 };
+                may(d, When::YourArtifactCreatureDealsCombatDamageToPlayer, vec![], vec![thopter]);
+            },
+        ),
+        "Thopter Spy Network" => s(
+            &[
+                "At the beginning of your upkeep, if you control an artifact, create a 1/1 colorless Thopter artifact creature token with flying.",
+                "Whenever one or more artifact creatures you control deal combat damage to a player, draw a card.",
+            ],
+            |d, t| {
+                let thopter = Effect::CreateToken { who: Who::You, def: t.thopter, n: 1 };
+                let upkeep = When::Upkeep { your_turn_only: true };
+                conditional(d, upkeep, Condition::ControlArtifactsAtLeast(1), vec![], vec![thopter]);
+                on(d, When::YourArtifactCreaturesDealCombatDamageToPlayer, vec![], vec![draw(1)]);
+            },
+        ),
+        "Helm of the Ghastlord" => s(
+            &[
+                "Enchant creature",
+                "As long as enchanted creature is blue, it gets +1/+1 and has \"Whenever this creature deals damage to an opponent, draw a card.\"",
+                "As long as enchanted creature is black, it gets +1/+1 and has \"Whenever this creature deals damage to an opponent, that player discards a card.\"",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                for color in [1, 2] {
+                    attached(d, false, 1, 1, Keywords::NONE);
+                    d.statics.last_mut().expect("just added").condition = Some(StaticCondition::AttachedIsColor(color));
+                }
+                // The granted triggers, controlled by the creature's controller (see the When).
+                on(d, When::EnchantedOfColorDealsDamageToOpponent(1), vec![], vec![draw(1)]);
+                let discard = Effect::Discard { who: Who::EachOpponent, n: 1 }; // 1v1: the player it damaged
+                on(d, When::EnchantedOfColorDealsDamageToOpponent(2), vec![], vec![discard]);
+            },
+        ),
+        "Lifeline" => s(
+            &["Whenever a creature dies, if another creature is on the battlefield, return the first card to the battlefield under its owner's control at the beginning of the next end step."],
+            |d, _| {
+                let it = Filter { triggering: true, ..graveyard_cards(true, Controller::Any) };
+                conditional(
+                    d,
+                    When::AnotherCreatureDiesIt,
+                    Condition::CreatureOnBattlefield,
+                    vec![it],
+                    vec![Effect::ReturnSlotAtNextEndStep(0)],
+                );
+            },
+        ),
         _ => None,
     }
 }
@@ -2041,4 +2209,19 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Horizon Explorer",
     // Core: triggers, batch 37
     "Vanquisher's Banner",
+    // Core: triggers, batch 38
+    "Case of the Ransacked Lab",
+    "Briarbridge Patrol",
+    "Raggadragga, Goreguts Boss",
+    // Core: triggers, batch 39
+    "End-Blaze Epiphany",
+    // Core: triggers, batch 40
+    "Cathars' Crusade",
+    "Juniper Order Ranger",
+    "Adeline, Resplendent Cathar",
+    "Alela, Artful Provocateur",
+    "Sharding Sphinx",
+    "Thopter Spy Network",
+    "Helm of the Ghastlord",
+    "Lifeline",
 ];

@@ -25202,5 +25202,1389 @@
   "types": [
    "Artifact"
   ]
+ },
+ {
+  "name": "Aether Spellbomb",
+  "color": "",
+  "rarity": "common",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "Aluren",
+  "color": "G",
+  "rarity": "rare",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Angelic Renewal",
+  "color": "W",
+  "rarity": "common",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Archon of Cruelty",
+  "color": "B",
+  "rarity": "mythic",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Archon of Emeria",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Artifact Mutation",
+  "color": "RG",
+  "rarity": "rare",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Autumn's Veil",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Aven Mindcensor",
+  "color": "W",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Ayara, First of Locthwain",
+  "color": "B",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Back to Basics",
+  "color": "U",
+  "rarity": "rare",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Bartolom\u00e9 del Presidio",
+  "color": "WB",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Baylen, the Haymaker",
+  "color": "WRG",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Bedevil",
+  "color": "BR",
+  "rarity": "rare",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Bilbo's Gambit",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Birgi, God of Storytelling // Harnfel, Horn of Bounty",
+  "color": "R",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Black Mage's Rod",
+  "color": "B",
+  "rarity": "common",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "Black Market",
+  "color": "B",
+  "rarity": "rare",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Bloodflow Connoisseur",
+  "color": "B",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Bonehoard Dracosaur",
+  "color": "R",
+  "rarity": "mythic",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Boromir, Warden of the Tower",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Brainsurge",
+  "color": "U",
+  "rarity": "uncommon",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Bruna, the Fading Light",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Cadira, Caller of the Small",
+  "color": "WG",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Carpet of Flowers",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Champions from Beyond",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Charismatic Conqueror",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Chrome Host Seedshark",
+  "color": "U",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Circle of Power",
+  "color": "B",
+  "rarity": "uncommon",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Commune with Lava",
+  "color": "R",
+  "rarity": "rare",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Containment Priest",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Cornered by Black Mages",
+  "color": "B",
+  "rarity": "common",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Court of Grace",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Crime Novelist",
+  "color": "R",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Cruel Celebrant",
+  "color": "WB",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Cursed Totem",
+  "color": "",
+  "rarity": "rare",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "Dakkon Blackblade",
+  "color": "WUB",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Deafening Silence",
+  "color": "W",
+  "rarity": "uncommon",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Decadent Dragon // Expensive Taste",
+  "color": "R",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Delay",
+  "color": "U",
+  "rarity": "uncommon",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Delayed Blast Fireball",
+  "color": "R",
+  "rarity": "rare",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Dream Devourer",
+  "color": "B",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Dress Down",
+  "color": "U",
+  "rarity": "rare",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Duskwatch Recruiter // Krallenhorde Howler",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Endurance",
+  "color": "G",
+  "rarity": "mythic",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Enduring Renewal",
+  "color": "W",
+  "rarity": "special",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Ethersworn Adjudicator",
+  "color": "U",
+  "rarity": "mythic",
+  "types": [
+   "Artifact",
+   "Creature"
+  ]
+ },
+ {
+  "name": "Fandaniel, Telophoroi Ascian",
+  "color": "B",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Farmer Cotton",
+  "color": "WG",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Fecundity",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Fevered Suspicion",
+  "color": "BR",
+  "rarity": "rare",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Fiend Hunter",
+  "color": "W",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Filigree Angel",
+  "color": "WU",
+  "rarity": "rare",
+  "types": [
+   "Artifact",
+   "Creature"
+  ]
+ },
+ {
+  "name": "Forth Eorlingas!",
+  "color": "WR",
+  "rarity": "rare",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "G'raha Tia, Scion Reborn",
+  "color": "WUB",
+  "rarity": "mythic",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Gaea's Cradle",
+  "color": "",
+  "rarity": "rare",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Gandalf the White",
+  "color": "W",
+  "rarity": "mythic",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Garruk, Primal Hunter",
+  "color": "G",
+  "rarity": "mythic",
+  "types": [
+   "Planeswalker"
+  ]
+ },
+ {
+  "name": "Gauntlets of Light",
+  "color": "W",
+  "rarity": "uncommon",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Gift of Immortality",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Gisela, the Broken Blade",
+  "color": "W",
+  "rarity": "mythic",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Gleaming Splendor",
+  "color": "W",
+  "rarity": "mythic",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Gollum, Patient Plotter",
+  "color": "B",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Grafdigger's Cage",
+  "color": "",
+  "rarity": "rare",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "Heritage Druid",
+  "color": "G",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Hermes, Overseer of Elpis",
+  "color": "U",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Hex Magic",
+  "color": "R",
+  "rarity": "uncommon",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Hurl Through Hell",
+  "color": "BR",
+  "rarity": "rare",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Hushwood Verge",
+  "color": "",
+  "rarity": "rare",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Ignite the Future",
+  "color": "R",
+  "rarity": "rare",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Improvisation Capstone",
+  "color": "R",
+  "rarity": "mythic",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Jinnie Fay, Jetmir's Second",
+  "color": "WRG",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Jolene, the Plunder Queen",
+  "color": "RG",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Joraga Treespeaker",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Jubilant Skybonder",
+  "color": "WU",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Kambal, Consul of Allocation",
+  "color": "WB",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Kambal, Profiteering Mayor",
+  "color": "WB",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Karn Liberated",
+  "color": "",
+  "rarity": "mythic",
+  "types": [
+   "Planeswalker"
+  ]
+ },
+ {
+  "name": "Kataki, War's Wage",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Katilda, Dawnhart Martyr // Katilda's Rising Dawn",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Kenrith's Transformation",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Kher Keep",
+  "color": "",
+  "rarity": "rare",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Kitchen Finks",
+  "color": "WG",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Knuckles the Echidna",
+  "color": "R",
+  "rarity": "mythic",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Laelia, the Blade Reforged",
+  "color": "R",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Latchkey Faerie",
+  "color": "U",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Leonin Arbiter",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Leonin Relic-Warder",
+  "color": "W",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Leyline of the Void",
+  "color": "B",
+  "rarity": "rare",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Liege of the Hollows",
+  "color": "G",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Life's Legacy",
+  "color": "G",
+  "rarity": "rare",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Lifecrafter's Bestiary",
+  "color": "",
+  "rarity": "rare",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "Light Up the Stage",
+  "color": "R",
+  "rarity": "uncommon",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Linvala, Keeper of Silence",
+  "color": "W",
+  "rarity": "mythic",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Lotho, Corrupt Shirriff",
+  "color": "WB",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Luminarch Aspirant",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Lyse Hext",
+  "color": "WU",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Magister Sphinx",
+  "color": "WUB",
+  "rarity": "rare",
+  "types": [
+   "Artifact",
+   "Creature"
+  ]
+ },
+ {
+  "name": "Mai, Scornful Striker",
+  "color": "B",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Manglehorn",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "March of Swirling Mist",
+  "color": "U",
+  "rarity": "rare",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Medomai the Ageless",
+  "color": "WU",
+  "rarity": "mythic",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Melira, Sylvok Outcast",
+  "color": "G",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Nasty End",
+  "color": "B",
+  "rarity": "common",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Nazg\u00fbl",
+  "color": "B",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Nihil Spellbomb",
+  "color": "",
+  "rarity": "common",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "Norn's Annex",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "Oakhame Adversary",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Ocelot Pride",
+  "color": "W",
+  "rarity": "mythic",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Papalymo Totolymo",
+  "color": "WB",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Passionate Archaeologist",
+  "color": "R",
+  "rarity": "mythic",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Platinum Angel",
+  "color": "",
+  "rarity": "mythic",
+  "types": [
+   "Artifact",
+   "Creature"
+  ]
+ },
+ {
+  "name": "Ranger-Captain of Eos",
+  "color": "W",
+  "rarity": "mythic",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Ratadrabik of Urborg",
+  "color": "WB",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Read the Bones",
+  "color": "B",
+  "rarity": "common",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Reckless Endeavor",
+  "color": "R",
+  "rarity": "rare",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Reckless Impulse",
+  "color": "R",
+  "rarity": "common",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Reconnaissance Mission",
+  "color": "U",
+  "rarity": "uncommon",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Regrowth",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Relic of Legends",
+  "color": "",
+  "rarity": "uncommon",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "Render Silent",
+  "color": "WU",
+  "rarity": "rare",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Rest in Peace",
+  "color": "W",
+  "rarity": "mythic",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Rocco, Cabaretti Caterer",
+  "color": "WRG",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Rosie Cotton of South Lane",
+  "color": "W",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Rule of Law",
+  "color": "W",
+  "rarity": "uncommon",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Samwise the Stouthearted",
+  "color": "W",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Sanctum Prelate",
+  "color": "W",
+  "rarity": "mythic",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Scion of Oona",
+  "color": "U",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Seal of Cleansing",
+  "color": "W",
+  "rarity": "common",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Season of the Burrow",
+  "color": "W",
+  "rarity": "mythic",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Secret Arcade // Dusty Parlor",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Sevinne's Reclamation",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Slate of Ancestry",
+  "color": "",
+  "rarity": "rare",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "Smaug, Wicked Worm",
+  "color": "BR",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Snapcaster Mage",
+  "color": "U",
+  "rarity": "mythic",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Soaring Lightbringer",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Enchantment",
+   "Creature"
+  ]
+ },
+ {
+  "name": "Spark Double",
+  "color": "U",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Sphinx Summoner",
+  "color": "UB",
+  "rarity": "uncommon",
+  "types": [
+   "Artifact",
+   "Creature"
+  ]
+ },
+ {
+  "name": "Springleaf Parade",
+  "color": "G",
+  "rarity": "rare",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Starscape Cleric",
+  "color": "B",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Sword of Light and Shadow",
+  "color": "",
+  "rarity": "mythic",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "Tainted Field",
+  "color": "",
+  "rarity": "uncommon",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Talion, the Kindly Lord",
+  "color": "UB",
+  "rarity": "mythic",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Tana, the Bloodsower",
+  "color": "RG",
+  "rarity": "mythic",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Tender Wildguide",
+  "color": "G",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Teysa Karlov",
+  "color": "WB",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Thalia, Guardian of Thraben",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "The Battle of Bywater",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "The Cabbage Merchant",
+  "color": "G",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "The Celestus",
+  "color": "",
+  "rarity": "rare",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "The Destined Black Mage",
+  "color": "B",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Theater of Horrors",
+  "color": "BR",
+  "rarity": "rare",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Thopter Assembly",
+  "color": "",
+  "rarity": "rare",
+  "types": [
+   "Artifact",
+   "Creature"
+  ]
+ },
+ {
+  "name": "Tidehollow Strix",
+  "color": "UB",
+  "rarity": "common",
+  "types": [
+   "Artifact",
+   "Creature"
+  ]
+ },
+ {
+  "name": "Tithe Taker",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Torpor Orb",
+  "color": "",
+  "rarity": "mythic",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "Transpose",
+  "color": "B",
+  "rarity": "rare",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Twilight Drover",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Tymna the Weaver",
+  "color": "WB",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Uncover the Moon-Letters",
+  "color": "U",
+  "rarity": "rare",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Urza's Ruinous Blast",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Valeria Richards, Precocious",
+  "color": "U",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "War of the Last Alliance",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Wear // Tear",
+  "color": "WR",
+  "rarity": "uncommon",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Weftstalker Ardent",
+  "color": "R",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Wild-Magic Sorcerer",
+  "color": "R",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Wildfire Awakener",
+  "color": "WR",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Wizard's Staff",
+  "color": "U",
+  "rarity": "rare",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "Woodfall Primus",
+  "color": "G",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Wrenn's Resolve",
+  "color": "R",
+  "rarity": "common",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Y'shtola Rhul",
+  "color": "U",
+  "rarity": "mythic",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Y'shtola, Night's Blessed",
+  "color": "WUB",
+  "rarity": "mythic",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "You Find Some Prisoners",
+  "color": "R",
+  "rarity": "uncommon",
+  "types": [
+   "Instant"
+  ]
  }
 ]

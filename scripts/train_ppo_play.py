@@ -30,7 +30,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from bolt.backup import upload_quietly  # noqa: E402
 from bolt.play_data import concat  # noqa: E402
-from bolt.play_net import pad_optimizer, pad_state  # noqa: E402
+from bolt.play_net import load_into, pad_optimizer  # noqa: E402
 from bolt.play_ppo import gae, league, ppo_step  # noqa: E402
 from bolt.play_runner import run_parallel  # noqa: E402
 
@@ -60,10 +60,34 @@ def eval_jobs(decks, pairs):
     return [(decks[i % n], decks[(i + 1 + (i // n) % (n - 1)) % n], 9_000 + i, i % 2) for i in range(pairs)]
 
 
+PLAY_SET = os.environ.get("BOLT_PLAY_SET", "FDN").upper()
+
+
 def load_net(path):
+    """A play checkpoint on today's card pool for BOLT_PLAY_SET (rows moved if the pool grew since it was saved)."""
     from bolt.play_net import load_checkpoint
 
-    return load_checkpoint(path)
+    return load_checkpoint(path, set_name=PLAY_SET)
+
+
+def resume_into(net, opt, s):
+    """A saved {"model", "opt", ...} into net and opt: inputs grown, card rows moved to today's pool (by the names
+    it was saved with, or for a state saved before names were kept, the pool of its size; bolt.play_net)."""
+    from bolt.play_net import legacy_names
+
+    names = s.get("card_names") or legacy_names(PLAY_SET, s["model"]["card.weight"].shape[0] - 2)
+    rows = load_into(net, s["model"], names)
+    opt.load_state_dict(s["opt"])
+    pad_optimizer(opt, net, rows)
+
+
+def snapshot(net, opt, state):
+    return {
+        "model": net.state_dict(),
+        "opt": opt.state_dict(),
+        "state": state,
+        "card_names": net.config.get("card_names"),
+    }
 
 
 def save_atomic(obj, path: Path):
@@ -107,7 +131,13 @@ def main():
     ap.add_argument("--eval-every", type=int, default=10)
     ap.add_argument("--eval-pairs", type=int, default=200)
     ap.add_argument("--stall-minutes", type=float, default=30)
-    ap.add_argument("--eval-smart-ms", type=int, default=None, help="cap the smart opponent's time per move")
+    ap.add_argument(
+        "--smart-ms",
+        type=int,
+        default=200,
+        help="cap on every smart-player move in training games (0 = none): uncapped, one move can take minutes",
+    )
+    ap.add_argument("--eval-smart-ms", type=int, default=None, help="the same cap in evaluations (default --smart-ms)")
     ap.add_argument("--resume", action="store_true")
     ap.add_argument(
         "--self-play",
@@ -115,12 +145,18 @@ def main():
         help="train only against itself and its past checkpoints (no rules or smart opponents)",
     )
     a = ap.parse_args()
+    if a.eval_smart_ms is None:
+        a.eval_smart_ms = a.smart_ms or None
     if os.environ.get("BOLT_THREADS"):  # farm.py --job-threads (the 12-thread nights)
         a.workers = a.threads = int(os.environ["BOLT_THREADS"])
     torch.set_num_threads(a.threads)
     ck = ROOT / "checkpoints" / "play" / a.name
     ck.mkdir(parents=True, exist_ok=True)
     results = ROOT / "results" / f"ppo_play_{a.name}.json"
+    import bolt.play_runner as play_runner
+
+    if not play_runner.HANG_LOG:  # games whose engine call never returned: one JSON line each, for lane S
+        play_runner.HANG_LOG = str(ROOT / "results" / f"hangs_{a.name}.jsonl")
     net = load_net(ROOT / a.init)
     ref = load_net(ROOT / a.init).eval()
     for p in ref.parameters():
@@ -129,9 +165,7 @@ def main():
     state = {"iter": 0, "history": [], "evals": [], "past": [], "best": None}
     if a.resume and (ck / "state.pt").exists():
         s = torch.load(ck / "state.pt", map_location="cpu", weights_only=False)
-        net.load_state_dict(pad_state(s["model"]))
-        opt.load_state_dict(s["opt"])
-        pad_optimizer(opt, net)
+        resume_into(net, opt, s)
         state = s["state"]
         print(f"resumed at iteration {state['iter']}", flush=True)
     # On the farm (BOLT_JOB set by farm.py): power-cut-safe checkpoints on S3 (bolt.jobs), resumed first.
@@ -142,9 +176,7 @@ def main():
         job = Job(os.environ["BOLT_JOB"])
         s = job.resume()
         if s is not None:
-            net.load_state_dict(pad_state(s["model"]))  # saved before inputs were appended: grown
-            opt.load_state_dict(s["opt"])
-            pad_optimizer(opt, net)
+            resume_into(net, opt, s)
             state = s["state"]
             for f in state["past"]:  # a fresh disk: fetch the past opponents too
                 if not (ck / f).exists():
@@ -191,7 +223,11 @@ def main():
                 jobs.append((decks[d1], decks[d2], 20_000_000 + it * 10_000 + k * 1_000 + i, i % 2))
             opp = load_net(ck / rng.choice(state["past"])) if "opp" in seats else None
             record = tuple(i for i, s in enumerate(seats) if s == "net")
-            r = run_parallel(net, jobs, workers=a.workers, chunk=20, seats=seats, sample=True, seed=it * 100 + k,
+            # Commander games vary a lot in length: small chunks (4 a worker) keep every worker busy to the end
+            chunk = max(1, -(-len(jobs) // (4 * a.workers))) if COMMANDER else 20
+            smart = (1, 2, a.smart_ms) if a.smart_ms else (1, 2)
+            r = run_parallel(net, jobs, workers=a.workers, chunk=chunk, seats=seats, sample=True, seed=it * 100 + k,
+                             smart=smart,
                              record=record, opp_net=opp, compact=True)  # fmt: skip
             part = r["arrays"]
             part["adv"], part["ret"] = gae(part, lam=a.lam)  # per matchup: game numbers restart per call
@@ -248,15 +284,15 @@ def main():
                 upload_quietly(ck / "best.pt")
             print(json.dumps({"eval": it, **e, "best_iter": state["best"]["iter"]}), flush=True)
             beat["t"] = time.time()
-        save_atomic({"model": net.state_dict(), "opt": opt.state_dict(), "state": state}, ck / "state.pt")
+        save_atomic(snapshot(net, opt, state), ck / "state.pt")
         write_results()
         if job and job.due():
-            job.save({"model": net.state_dict(), "opt": opt.state_dict(), "state": state}, step=it)
+            job.save(snapshot(net, opt, state), step=it)
             if job.stop_requested:
                 print(f"stopped at iteration {it} (SIGTERM); checkpoint saved", flush=True)
                 return
     if job:
-        job.save({"model": net.state_dict(), "opt": opt.state_dict(), "state": state}, step=state["iter"], done=True)
+        job.save(snapshot(net, opt, state), step=state["iter"], done=True)
 
 
 if __name__ == "__main__":

@@ -157,7 +157,7 @@ def load_kit() -> Kit:
     c = torch.load(ck / "play" / "play_v3_ppo4_i170.pt", map_location="cpu", weights_only=False)
     from bolt.play_net import load_checkpoint
 
-    net = load_checkpoint(c)
+    net = load_checkpoint(c, set_name="FDN")  # FDN tokens added since it was trained get rows
     return Kit(info=info, bolt=load(DraftTransformer, "bot_ppo.pt"), human=load(DraftTransformer, "human_model.pt"),
                judge=load(DeckJudge, "judge_b.pt"), packs=np.load(ASSETS / "FDN_sample_packs.npy"), net=net.eval(),
                models={"drafter": "bot_ppo.pt", "human_drafter": "human_model.pt",
@@ -541,7 +541,12 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
                     full_name[n] = longer[0]
 
     def canon(n: str) -> str:
-        return full_name.get(n, n)
+        n = full_name.get(n, n)
+        # A deck list may name a two-part card in full ("Purging Stormbrood // Absorb Essence", an Omen or
+        # Adventure) while the pool row and its script carry the front name only: use the front then.
+        if n not in kit.info.index and " // " in n and n.split(" // ")[0] in kit.info.index:
+            return n.split(" // ")[0]
+        return n
 
     def check_commander_deck(
         commanders: list[str], cards_: list[Card], strict: bool = True
