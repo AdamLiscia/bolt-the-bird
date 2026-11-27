@@ -114,6 +114,7 @@ fn determinizing_is_reproducible_from_its_seed() {
 }
 
 #[test]
+#[ignore = "slow (full games with rollouts, 15 min in debug under load): the merger runs it with --include-ignored"]
 fn the_rollout_pilot_plays_legal_moves_to_the_end() {
     let cfg = rollout::Config {
         rollouts: 2,

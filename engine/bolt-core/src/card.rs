@@ -1097,6 +1097,10 @@ pub struct SubsystemExt {
     /// The chapter whose resolving grants its `mana` ability (Urza's Saga: "I — This Saga gains
     /// \"{T}: Add {C}.\""; see `Game::lacks_chapter_mana`).
     pub chapter_mana: Option<u8>,
+    /// "Commander creatures you own have \"[trigger n]\"" (a Background: Agent of the Iron Throne).
+    /// The trigger is on this card's own `triggers`; `Game::fire_subsystems` makes it trigger once
+    /// for each commander creature its controller owns and controls (with none, not at all).
+    pub commanders_have_trigger: Option<usize>,
 }
 
 /// A card's mana, cost and keyword pieces added by the d1 theme (see [`CardDef::mana_ext`]).

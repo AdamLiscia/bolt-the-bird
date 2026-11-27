@@ -2674,6 +2674,9 @@ pub enum Effect {
         land: usize,
         nonland: usize,
     },
+    /// Exile each creature that crewed the source this turn; return them to the battlefield tapped
+    /// under their owner's control at the beginning of the next end step (Golden Argosy).
+    ExileCrewersReturnTappedAtEnd,
     /// "Each player draws X cards." (Skyscribing), X the spell's X, you first.
     EachPlayerDrawsX,
     /// The creature in `slot` (the source, with `None`) gains protection from card type `kind`
@@ -3748,4 +3751,7 @@ pub enum SubsystemEffect {
     /// controller controls. The ability is offered only while there is one
     /// (`Game::lacks_chapter_activated`), so it takes no target slot.
     AttachToYourCommander,
+    /// "This creature deals damage equal to the total mana value of other permanents you control
+    /// to each opponent." (Summon: Bahamut's chapter IV, Mega Flare)
+    DamageEachOpponentTotalManaValueOfOthers,
 }

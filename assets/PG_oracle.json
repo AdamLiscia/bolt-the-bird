@@ -43261,5 +43261,2019 @@
 "loyalty": null,
 "produced_mana": null,
 "collector_number": "300"
+},
+{
+"name": "Ad Nauseam",
+"mana_cost": "{3}{B}{B}",
+"cmc": 5.0,
+"type_line": "Instant",
+"oracle_text": "Reveal the top card of your library and put that card into your hand. You lose life equal to its mana value. You may repeat this process any number of times.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "76"
+},
+{
+"name": "Adept Watershaper",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Merfolk Cleric",
+"oracle_text": "Other tapped creatures you control have indestructible.",
+"power": "3",
+"toughness": "4",
+"keywords": [],
+"colors": [
+"W"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "3"
+},
+{
+"name": "Aquitect's Defenses",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Enchantment \u2014 Aura",
+"oracle_text": "Flash\nEnchant creature you control\nWhen this Aura enters, enchanted creature gains hexproof until end of turn. (It can't be the target of spells or abilities your opponents control.)\nEnchanted creature gets +1/+2.",
+"power": null,
+"toughness": null,
+"keywords": [
+"Enchant",
+"Flash"
+],
+"colors": [
+"U"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "44"
+},
+{
+"name": "Archdruid's Charm",
+"mana_cost": "{G}{G}{G}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Choose one \u2014\n\u2022 Search your library for a creature or land card and reveal it. Put it onto the battlefield tapped if it's a land card. Otherwise, put it into your hand. Then shuffle.\n\u2022 Put a +1/+1 counter on target creature you control. It deals damage equal to its power to target creature you don't control.\n\u2022 Exile target artifact or enchantment.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"G"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "151"
+},
+{
+"name": "Ashling, Rekindled // Ashling, Rimebound",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Legendary Creature \u2014 Elemental Sorcerer",
+"oracle_text": "Whenever this creature enters or transforms into Ashling, Rekindled, you may discard a card. If you do, draw a card.\nAt the beginning of your first main phase, you may pay {U}. If you do, transform Ashling.",
+"power": "1",
+"toughness": "3",
+"keywords": [
+"Transform"
+],
+"colors": [
+"R"
+],
+"rarity": "rare",
+"layout": "transform",
+"loyalty": null,
+"produced_mana": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"collector_number": "124",
+"back": {
+"name": "Ashling, Rimebound",
+"mana_cost": "",
+"type_line": "Legendary Creature \u2014 Elemental Wizard",
+"oracle_text": "Whenever this creature transforms into Ashling, Rimebound and at the beginning of your first main phase, add two mana of any one color. Spend this mana only to cast spells with mana value 4 or greater.\nAt the beginning of your first main phase, you may pay {R}. If you do, transform Ashling.",
+"power": "1",
+"toughness": "3",
+"colors": [
+"U"
+],
+"loyalty": null
+}
+},
+{
+"name": "Beza, the Bounding Spring",
+"mana_cost": "{2}{W}{W}",
+"cmc": 4.0,
+"type_line": "Legendary Creature \u2014 Elemental Elk",
+"oracle_text": "When Beza enters, create a Treasure token if an opponent controls more lands than you. You gain 4 life if an opponent has more life than you. Create two 1/1 blue Fish creature tokens if an opponent controls more creatures than you. Draw a card if an opponent has more cards in hand than you.",
+"power": "4",
+"toughness": "5",
+"keywords": [
+"Treasure"
+],
+"colors": [
+"W"
+],
+"rarity": "mythic",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "2"
+},
+{
+"name": "Blackblade Reforged",
+"mana_cost": "{2}",
+"cmc": 2.0,
+"type_line": "Legendary Artifact \u2014 Equipment",
+"oracle_text": "Equipped creature gets +1/+1 for each land you control.\nEquip legendary creature {3}\nEquip {7}",
+"power": null,
+"toughness": null,
+"keywords": [
+"Equip"
+],
+"colors": [],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "178"
+},
+{
+"name": "Blood Pet",
+"mana_cost": "{B}",
+"cmc": 1.0,
+"type_line": "Creature \u2014 Thrull",
+"oracle_text": "Sacrifice this creature: Add {B}.",
+"power": "1",
+"toughness": "1",
+"keywords": [],
+"colors": [
+"B"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B"
+],
+"collector_number": "121"
+},
+{
+"name": "Boulder Dash",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Sorcery",
+"oracle_text": "Boulder Dash deals 2 damage to any target and 1 damage to any other target.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"R"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "127"
+},
+{
+"name": "Brain Freeze",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Target player mills three cards.\nStorm (When you cast this spell, copy it for each spell cast before it this turn. You may choose new targets for the copies.)",
+"power": null,
+"toughness": null,
+"keywords": [
+"Storm",
+"Mill"
+],
+"colors": [
+"U"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "57"
+},
+{
+"name": "Bristly Bill, Spine Sower",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Legendary Creature \u2014 Plant Druid",
+"oracle_text": "Landfall \u2014 Whenever a land you control enters, put a +1/+1 counter on target creature.\n{3}{G}{G}: Double the number of +1/+1 counters on each creature you control.",
+"power": "2",
+"toughness": "2",
+"keywords": [
+"Double",
+"Landfall"
+],
+"colors": [
+"G"
+],
+"rarity": "mythic",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "157"
+},
+{
+"name": "Brokers Hideout",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "When this land enters, sacrifice it. When you do, search your library for a basic Forest, Plains, or Island card, put it onto the battlefield tapped, then shuffle and you gain 1 life.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "248"
+},
+{
+"name": "Cabal Ritual",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Add {B}{B}{B}.\nThreshold \u2014 Add {B}{B}{B}{B}{B} instead if there are seven or more cards in your graveyard.",
+"power": null,
+"toughness": null,
+"keywords": [
+"Threshold"
+],
+"colors": [
+"B"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B"
+],
+"collector_number": "106"
+},
+{
+"name": "Chain of Vapor",
+"mana_cost": "{U}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "Return target nonland permanent to its owner's hand. Then that permanent's controller may sacrifice a land of their choice. If the player does, they may copy this spell and may choose a new target for that copy.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"U"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "84"
+},
+{
+"name": "Chrome Mox",
+"mana_cost": "{0}",
+"cmc": 0.0,
+"type_line": "Artifact",
+"oracle_text": "Imprint \u2014 When this artifact enters, you may exile a nonartifact, nonland card from your hand.\n{T}: Add one mana of any of the exiled card's colors.",
+"power": null,
+"toughness": null,
+"keywords": [
+"Imprint"
+],
+"colors": [],
+"rarity": "mythic",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"collector_number": "240"
+},
+{
+"name": "Claim the Kingdom",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Enchantment \u2014 Plan",
+"oracle_text": "Landfall \u2014 Whenever a land you control enters, put a +1/+1 counter on target creature you control and a plan counter on this enchantment.\nWhen the fourth plan counter is put on this enchantment, sacrifice it. When you do, put an indestructible counter on target creature you control.",
+"power": null,
+"toughness": null,
+"keywords": [
+"Landfall"
+],
+"colors": [
+"G"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "163"
+},
+{
+"name": "Crib Swap",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Kindred Instant \u2014 Shapeshifter",
+"oracle_text": "Changeling (This card is every creature type.)\nExile target creature. Its controller creates a 1/1 colorless Shapeshifter creature token with changeling.",
+"power": null,
+"toughness": null,
+"keywords": [
+"Changeling"
+],
+"colors": [
+"W"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "11"
+},
+{
+"name": "Culling the Weak",
+"mana_cost": "{B}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "As an additional cost to cast this spell, sacrifice a creature.\nAdd {B}{B}{B}{B}.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B"
+],
+"collector_number": "55"
+},
+{
+"name": "Deathrite Shaman",
+"mana_cost": "{B/G}",
+"cmc": 1.0,
+"type_line": "Creature \u2014 Elf Shaman",
+"oracle_text": "{T}: Exile target land card from a graveyard. Add one mana of any color. (Activate only as an instant.)\n{B}, {T}: Exile target instant or sorcery card from a graveyard. Each opponent loses 2 life.\n{G}, {T}: Exile target creature card from a graveyard. You gain 2 life.",
+"power": "1",
+"toughness": "2",
+"keywords": [],
+"colors": [
+"B",
+"G"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"collector_number": "175"
+},
+{
+"name": "Demonic Consultation",
+"mana_cost": "{B}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "Choose a card name. Exile the top six cards of your library, then reveal cards from the top of your library until you reveal a card with the chosen name. Put that card into your hand and exile all other cards revealed this way.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "85"
+},
+{
+"name": "Dismember",
+"mana_cost": "{1}{B/P}{B/P}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "({B/P} can be paid with either {B} or 2 life.)\nTarget creature gets -5/-5 until end of turn.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "79"
+},
+{
+"name": "Disruptor of Currents",
+"mana_cost": "{3}{U}{U}",
+"cmc": 5.0,
+"type_line": "Creature \u2014 Merfolk Wizard",
+"oracle_text": "Flash\nConvoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nWhen this creature enters, return up to one other target nonland permanent to its owner's hand.",
+"power": "3",
+"toughness": "3",
+"keywords": [
+"Flash",
+"Convoke"
+],
+"colors": [
+"U"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "47"
+},
+{
+"name": "Drannith Magistrate",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Human Wizard",
+"oracle_text": "Your opponents can't cast spells from anywhere other than their hands.",
+"power": "1",
+"toughness": "3",
+"keywords": [],
+"colors": [
+"W"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "11"
+},
+{
+"name": "Elvish Spirit Guide",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Elf Spirit",
+"oracle_text": "Exile this card from your hand: Add {G}.",
+"power": "2",
+"toughness": "2",
+"keywords": [],
+"colors": [
+"G"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"G"
+],
+"collector_number": "157"
+},
+{
+"name": "End-Blaze Epiphany",
+"mana_cost": "{X}{R}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "End-Blaze Epiphany deals X damage to target creature. When that creature dies this turn, exile a number of cards from the top of your library equal to its power, then choose a card exiled this way. Until the end of your next turn, you may play that card.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"R"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "134"
+},
+{
+"name": "Entish Restoration",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Sacrifice a land. Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle. If you control a creature with power 4 or greater, instead search your library for up to three basic land cards, put them onto the battlefield tapped, then shuffle.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"G"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "163"
+},
+{
+"name": "Escape Tunnel",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "{T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.\n{T}, Sacrifice this land: Target creature with power 2 or less can't be blocked this turn.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "184"
+},
+{
+"name": "Flare of Malice",
+"mana_cost": "{2}{B}{B}",
+"cmc": 4.0,
+"type_line": "Instant",
+"oracle_text": "You may sacrifice a nontoken black creature rather than pay this spell's mana cost.\nEach opponent sacrifices a creature or planeswalker with the greatest mana value among creatures and planeswalkers they control.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "95"
+},
+{
+"name": "Forsaken Miner",
+"mana_cost": "{B}",
+"cmc": 1.0,
+"type_line": "Creature \u2014 Skeleton Rogue",
+"oracle_text": "This creature can't block.\nWhenever you commit a crime, you may pay {B}. If you do, return this card from your graveyard to the battlefield. (Targeting opponents, anything they control, and/or cards in their graveyards is a crime.)",
+"power": "2",
+"toughness": "2",
+"keywords": [],
+"colors": [
+"B"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "88"
+},
+{
+"name": "Gemstone Caverns",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Legendary Land",
+"oracle_text": "If this card is in your opening hand and you're not the starting player, you may begin the game with Gemstone Caverns on the battlefield with a luck counter on it. If you do, exile a card from your hand.\n{T}: Add {C}. If Gemstone Caverns has a luck counter on it, instead add one mana of any color.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "mythic",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B",
+"C",
+"G",
+"R",
+"U",
+"W"
+],
+"collector_number": "280"
+},
+{
+"name": "Glen Elendra's Answer",
+"mana_cost": "{2}{U}{U}",
+"cmc": 4.0,
+"type_line": "Instant",
+"oracle_text": "This spell can't be countered.\nCounter all spells your opponents control and all abilities your opponents control. Create a 1/1 blue and black Faerie creature token with flying for each spell and ability countered this way.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"U"
+],
+"rarity": "mythic",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "52"
+},
+{
+"name": "Goatnap",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Sorcery",
+"oracle_text": "Gain control of target creature until end of turn. Untap that creature. It gains haste until end of turn. If that creature is a Goat, it also gets +3/+0 until end of turn.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"R"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "142"
+},
+{
+"name": "Goliath Daydreamer",
+"mana_cost": "{2}{R}{R}",
+"cmc": 4.0,
+"type_line": "Creature \u2014 Giant Wizard",
+"oracle_text": "Whenever you cast an instant or sorcery spell from your hand, exile that card with a dream counter on it instead of putting it into your graveyard as it resolves.\nWhenever this creature attacks, you may cast a spell from among cards you own in exile with dream counters on them without paying its mana cost.",
+"power": "4",
+"toughness": "4",
+"keywords": [],
+"colors": [
+"R"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "143"
+},
+{
+"name": "Gravecrawler",
+"mana_cost": "{B}",
+"cmc": 1.0,
+"type_line": "Creature \u2014 Zombie",
+"oracle_text": "This creature can't block.\nYou may cast this card from your graveyard as long as you control a Zombie.",
+"power": "2",
+"toughness": "1",
+"keywords": [],
+"colors": [
+"B"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "93"
+},
+{
+"name": "Greedy Freebooter",
+"mana_cost": "{B}",
+"cmc": 1.0,
+"type_line": "Creature \u2014 Human Pirate",
+"oracle_text": "When this creature dies, scry 1 and create a Treasure token. (To scry 1, look at the top card of your library. You may put that card on the bottom. A Treasure token is an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")",
+"power": "1",
+"toughness": "1",
+"keywords": [
+"Treasure",
+"Scry"
+],
+"colors": [
+"B"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"collector_number": "109"
+},
+{
+"name": "Hearthhull, the Worldseed",
+"mana_cost": "{1}{B}{R}{G}",
+"cmc": 4.0,
+"type_line": "Legendary Artifact \u2014 Spacecraft",
+"oracle_text": "Station (Tap another creature you control: Put charge counters equal to its power on this Spacecraft. Station only as a sorcery. It's an artifact creature at 8+.)\n2+ | {1}, {T}, Sacrifice a land: Draw two cards. You may play an additional land this turn.\n8+ | Flying, vigilance, haste\nWhenever you sacrifice a land, each opponent loses 2 life.",
+"power": "6",
+"toughness": "7",
+"keywords": [
+"Station"
+],
+"colors": [
+"B",
+"G",
+"R"
+],
+"rarity": "mythic",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "1"
+},
+{
+"name": "Horizon Explorer",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Insect Scout",
+"oracle_text": "Lands you control enter untapped.\nWhenever you attack a player, create a Lander token. (It's an artifact with \"{2}, {T}, Sacrifice this token: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.\")",
+"power": "2",
+"toughness": "4",
+"keywords": [],
+"colors": [
+"G"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "15"
+},
+{
+"name": "Imperial Seal",
+"mana_cost": "{B}",
+"cmc": 1.0,
+"type_line": "Sorcery",
+"oracle_text": "Search your library for a card, then shuffle and put that card on top. You lose 2 life.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B"
+],
+"rarity": "mythic",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "79"
+},
+{
+"name": "Invigorate",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "If you control a Forest, rather than pay this spell's mana cost, you may have an opponent gain 3 life.\nTarget creature gets +4/+4 until end of turn.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"G"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "172"
+},
+{
+"name": "Iridescent Vinelasher",
+"mana_cost": "{B}",
+"cmc": 1.0,
+"type_line": "Creature \u2014 Lizard Assassin",
+"oracle_text": "Offspring {2} (You may pay an additional {2} as you cast this spell. If you do, when this creature enters, create a 1/1 token copy of it.)\nLandfall \u2014 Whenever a land you control enters, this creature deals 1 damage to target opponent.",
+"power": "1",
+"toughness": "2",
+"keywords": [
+"Offspring",
+"Landfall"
+],
+"colors": [
+"B"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "99"
+},
+{
+"name": "Jadar, Ghoulcaller of Nephalia",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Legendary Creature \u2014 Human Wizard",
+"oracle_text": "At the beginning of your end step, if you control no creatures with decayed, create a 2/2 black Zombie creature token with decayed. (It can't block. When it attacks, sacrifice it at end of combat.)",
+"power": "1",
+"toughness": "1",
+"keywords": [],
+"colors": [
+"B"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "217"
+},
+{
+"name": "Keep Out",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Choose one \u2014\n\u2022 Keep Out deals 4 damage to target tapped creature.\n\u2022 Destroy target enchantment.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"W"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "19"
+},
+{
+"name": "Kenrith, the Returned King",
+"mana_cost": "{4}{W}",
+"cmc": 5.0,
+"type_line": "Legendary Creature \u2014 Human Noble",
+"oracle_text": "{R}: All creatures gain trample and haste until end of turn.\n{1}{G}: Put a +1/+1 counter on target creature.\n{2}{W}: Target player gains 5 life.\n{3}{U}: Target player draws a card.\n{4}{B}: Put target creature card from a graveyard onto the battlefield under its owner's control.",
+"power": "5",
+"toughness": "5",
+"keywords": [],
+"colors": [
+"W"
+],
+"rarity": "mythic",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "ELD-303"
+},
+{
+"name": "Kinbinding",
+"mana_cost": "{3}{W}{W}",
+"cmc": 5.0,
+"type_line": "Enchantment",
+"oracle_text": "Creatures you control get +X/+X, where X is the number of creatures that entered the battlefield under your control this turn.\nAt the beginning of combat on your turn, create a 1/1 green and white Kithkin creature token.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"W"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "20"
+},
+{
+"name": "Kinscaer Sentry",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Kithkin Soldier",
+"oracle_text": "First strike, lifelink\nWhenever this creature attacks, you may put a creature card with mana value X or less from your hand onto the battlefield tapped and attacking, where X is the number of attacking creatures you control.",
+"power": "2",
+"toughness": "2",
+"keywords": [
+"Lifelink",
+"First strike"
+],
+"colors": [
+"W"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "22"
+},
+{
+"name": "Lavaleaper",
+"mana_cost": "{3}{R}",
+"cmc": 4.0,
+"type_line": "Creature \u2014 Elemental",
+"oracle_text": "All creatures have haste.\nWhenever a player taps a basic land for mana, that player adds one mana of any type that land produced.",
+"power": "4",
+"toughness": "4",
+"keywords": [],
+"colors": [
+"R"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"collector_number": "150"
+},
+{
+"name": "Lion's Eye Diamond",
+"mana_cost": "{0}",
+"cmc": 0.0,
+"type_line": "Artifact",
+"oracle_text": "Discard your hand, Sacrifice this artifact: Add three mana of any one color. Activate only as an instant.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "mythic",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"collector_number": "271"
+},
+{
+"name": "Mental Misstep",
+"mana_cost": "{U/P}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "({U/P} can be paid with either {U} or 2 life.)\nCounter target spell with mana value 1.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"U"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "38"
+},
+{
+"name": "Mightform Harmonizer",
+"mana_cost": "{2}{G}{G}",
+"cmc": 4.0,
+"type_line": "Creature \u2014 Insect Druid",
+"oracle_text": "Landfall \u2014 Whenever a land you control enters, double the power of target creature you control until end of turn.\nWarp {2}{G} (You may cast this card from your hand for its warp cost. Exile this creature at the beginning of the next end step, then you may cast it from exile on a later turn.)",
+"power": "4",
+"toughness": "4",
+"keywords": [
+"Warp",
+"Double",
+"Landfall"
+],
+"colors": [
+"G"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "200"
+},
+{
+"name": "Mina and Denn, Wildborn",
+"mana_cost": "{2}{R}{G}",
+"cmc": 4.0,
+"type_line": "Legendary Creature \u2014 Elf Ally",
+"oracle_text": "You may play an additional land on each of your turns.\n{R}{G}, Return a land you control to its owner's hand: Target creature gains trample until end of turn.",
+"power": "4",
+"toughness": "4",
+"keywords": [],
+"colors": [
+"G",
+"R"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "94"
+},
+{
+"name": "Mox Diamond",
+"mana_cost": "{0}",
+"cmc": 0.0,
+"type_line": "Artifact",
+"oracle_text": "If this artifact would enter, you may discard a land card instead. If you do, put this artifact onto the battlefield. If you don't, put it into its owner's graveyard.\n{T}: Add one mana of any color.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "mythic",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"collector_number": "228"
+},
+{
+"name": "Nahiri's Lithoforming",
+"mana_cost": "{X}{R}{R}",
+"cmc": 2.0,
+"type_line": "Sorcery",
+"oracle_text": "Sacrifice X lands. For each land sacrificed this way, draw a card. You may play X additional lands this turn. Lands you control enter tapped this turn.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"R"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "151"
+},
+{
+"name": "Opposition Agent",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Human Rogue",
+"oracle_text": "Flash\nYou control your opponents while they're searching their libraries.\nWhile an opponent is searching their library, they exile each card they find. You may play those cards for as long as they remain exiled, and you may spend mana as though it were mana of any color to cast them.",
+"power": "3",
+"toughness": "2",
+"keywords": [
+"Flash"
+],
+"colors": [
+"B"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "141"
+},
+{
+"name": "Orcish Lumberjack",
+"mana_cost": "{R}",
+"cmc": 1.0,
+"type_line": "Creature \u2014 Orc",
+"oracle_text": "{T}, Sacrifice a Forest: Add three mana in any combination of {R} and/or {G}.",
+"power": "1",
+"toughness": "1",
+"keywords": [],
+"colors": [
+"R"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"G",
+"R"
+],
+"collector_number": "179"
+},
+{
+"name": "Overprotect",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Target creature you control gets +3/+3 and gains trample, hexproof, and indestructible until end of turn.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"G"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "185"
+},
+{
+"name": "Planar Engineering",
+"mana_cost": "{3}{G}",
+"cmc": 4.0,
+"type_line": "Sorcery",
+"oracle_text": "Sacrifice two lands. Search your library for four basic land cards, put them onto the battlefield tapped, then shuffle.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"G"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "158"
+},
+{
+"name": "Pyrrhic Strike",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "As an additional cost to cast this spell, you may blight 2. (You may put two -1/-1 counters on a creature you control.)\nChoose one. If this spell's additional cost was paid, choose both instead.\n\u2022 Destroy target artifact or enchantment.\n\u2022 Destroy target creature with mana value 3 or greater.",
+"power": null,
+"toughness": null,
+"keywords": [
+"Blight"
+],
+"colors": [
+"W"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "30"
+},
+{
+"name": "Ram Through",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Target creature you control deals damage equal to its power to target creature you don't control. If the creature you control has trample, excess damage is dealt to that creature's controller instead.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"G"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "314"
+},
+{
+"name": "Reaping Willow",
+"mana_cost": "{1}{W/B}{W/B}{W/B}",
+"cmc": 4.0,
+"type_line": "Creature \u2014 Treefolk Cleric",
+"oracle_text": "Lifelink\nThis creature enters with two -1/-1 counters on it.\n{1}{W/B}, Remove two counters from this creature: Return target creature card with mana value 3 or less from your graveyard to the battlefield. Activate only as a sorcery.",
+"power": "3",
+"toughness": "6",
+"keywords": [
+"Lifelink"
+],
+"colors": [
+"B",
+"W"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "240"
+},
+{
+"name": "Rev, Tithe Extractor",
+"mana_cost": "{3}{B}",
+"cmc": 4.0,
+"type_line": "Legendary Creature \u2014 Human Rogue",
+"oracle_text": "Whenever you attack, target creature gains deathtouch until end of turn.\nWhenever one or more creatures you control deal combat damage to a player, create a Treasure token, then look at the top card of that player's library and exile it face down. You may cast that card for as long as it remains exiled. (A Treasure token is an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")",
+"power": "3",
+"toughness": "3",
+"keywords": [
+"Treasure"
+],
+"colors": [
+"B"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"collector_number": "45"
+},
+{
+"name": "Ride the Shoopuf",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Enchantment",
+"oracle_text": "Landfall \u2014 Whenever a land you control enters, put a +1/+1 counter on target creature you control.\n{5}{G}{G}: This enchantment becomes a 7/7 Beast creature in addition to its other types.",
+"power": null,
+"toughness": null,
+"keywords": [
+"Landfall"
+],
+"colors": [
+"G"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "197"
+},
+{
+"name": "Riverguard's Reflexes",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Target creature gets +2/+2 and gains first strike until end of turn. Untap it.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"W"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "33"
+},
+{
+"name": "Riveteers Overlook",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "When this land enters, sacrifice it. When you do, search your library for a basic Swamp, Mountain, or Forest card, put it onto the battlefield tapped, then shuffle and you gain 1 life.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "162"
+},
+{
+"name": "Roaring Earth",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Enchantment",
+"oracle_text": "Landfall \u2014 Whenever a land you control enters, put a +1/+1 counter on target creature or Vehicle you control.\nChannel \u2014 {X}{G}{G}, Discard this card: Put X +1/+1 counters on target land you control. It becomes a 0/0 green Spirit creature with haste. It's still a land.",
+"power": null,
+"toughness": null,
+"keywords": [
+"Channel",
+"Landfall"
+],
+"colors": [
+"G"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "204"
+},
+{
+"name": "Roiling Regrowth",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Sacrifice a land. Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"G"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "105"
+},
+{
+"name": "Sabotender",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Plant",
+"oracle_text": "Reach\nLandfall \u2014 Whenever a land you control enters, this creature deals 1 damage to each opponent.",
+"power": "2",
+"toughness": "1",
+"keywords": [
+"Reach",
+"Landfall"
+],
+"colors": [
+"R"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "153"
+},
+{
+"name": "Sanar, Innovative First-Year",
+"mana_cost": "{2}{U/R}{U/R}",
+"cmc": 4.0,
+"type_line": "Legendary Creature \u2014 Goblin Sorcerer",
+"oracle_text": "Vivid \u2014 At the beginning of your first main phase, reveal cards from the top of your library until you reveal X nonland cards, where X is the number of colors among permanents you control. For each of those colors, you may exile a card of that color from among the revealed cards. Then shuffle. You may cast the exiled cards this turn.",
+"power": "2",
+"toughness": "4",
+"keywords": [
+"Vivid"
+],
+"colors": [
+"R",
+"U"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "241"
+},
+{
+"name": "Scale Up",
+"mana_cost": "{G}",
+"cmc": 1.0,
+"type_line": "Sorcery",
+"oracle_text": "Until end of turn, target creature you control becomes a green Wurm with base power and toughness 6/4.\nOverload {4}{G}{G} (You may cast this spell for its overload cost. If you do, change \"target\" in its text to \"each.\")",
+"power": null,
+"toughness": null,
+"keywords": [
+"Overload"
+],
+"colors": [
+"G"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "179"
+},
+{
+"name": "Scuzzback Scrounger",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Goblin Warrior",
+"oracle_text": "At the beginning of your first main phase, you may blight 1. If you do, create a Treasure token. (To blight 1, put a -1/-1 counter on a creature you control. A Treasure token is an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")",
+"power": "3",
+"toughness": "2",
+"keywords": [
+"Blight",
+"Treasure"
+],
+"colors": [
+"R"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"collector_number": "153"
+},
+{
+"name": "Scythecat Cub",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Cat",
+"oracle_text": "Trample\nLandfall \u2014 Whenever a land you control enters, put a +1/+1 counter on target creature you control. If this is the second time this ability has resolved this turn, double the number of +1/+1 counters on that creature instead.",
+"power": "2",
+"toughness": "2",
+"keywords": [
+"Trample",
+"Double",
+"Landfall"
+],
+"colors": [
+"G"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "24"
+},
+{
+"name": "Sear",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Sear deals 4 damage to target creature or planeswalker.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"R"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "154"
+},
+{
+"name": "Sephiroth, Fabled SOLDIER // Sephiroth, One-Winged Angel",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Legendary Creature \u2014 Human Avatar Soldier",
+"oracle_text": "Whenever Sephiroth enters or attacks, you may sacrifice another creature. If you do, draw a card.\nWhenever another creature dies, target opponent loses 1 life and you gain 1 life. If this is the fourth time this ability has resolved this turn, transform Sephiroth.",
+"power": "3",
+"toughness": "3",
+"keywords": [
+"Flying",
+"Transform",
+"Super Nova"
+],
+"colors": [
+"B"
+],
+"rarity": "mythic",
+"layout": "transform",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "115",
+"back": {
+"name": "Sephiroth, One-Winged Angel",
+"mana_cost": "",
+"type_line": "Legendary Creature \u2014 Angel Nightmare Avatar",
+"oracle_text": "Flying\nSuper Nova \u2014 As this creature transforms into Sephiroth, One-Winged Angel, you get an emblem with \"Whenever a creature dies, target opponent loses 1 life and you gain 1 life.\"\nWhenever Sephiroth attacks, you may sacrifice any number of other creatures. If you do, draw that many cards.",
+"power": "5",
+"toughness": "5",
+"colors": [
+"B"
+],
+"loyalty": null
+}
+},
+{
+"name": "Silence",
+"mana_cost": "{W}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "Your opponents can't cast spells this turn.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"W"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "35"
+},
+{
+"name": "Skyclave Pick-Axe",
+"mana_cost": "{G}",
+"cmc": 1.0,
+"type_line": "Artifact \u2014 Equipment",
+"oracle_text": "When this Equipment enters, attach it to target creature you control.\nLandfall \u2014 Whenever a land you control enters, equipped creature gets +2/+2 until end of turn.\nEquip {2}{G} ({2}{G}: Attach to target creature you control. Equip only as a sorcery.)",
+"power": null,
+"toughness": null,
+"keywords": [
+"Equip",
+"Landfall"
+],
+"colors": [
+"G"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "712"
+},
+{
+"name": "Snuff Out",
+"mana_cost": "{3}{B}",
+"cmc": 4.0,
+"type_line": "Instant",
+"oracle_text": "If you control a Swamp, you may pay 4 life rather than pay this spell's mana cost.\nDestroy target nonblack creature. It can't be regenerated.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "53"
+},
+{
+"name": "Spell Pierce",
+"mana_cost": "{U}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "Counter target noncreature spell unless its controller pays {2}.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"U"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "64"
+},
+{
+"name": "Springbloom Druid",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Elf Druid",
+"oracle_text": "When this creature enters, you may sacrifice a land. If you do, search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.",
+"power": "1",
+"toughness": "1",
+"keywords": [],
+"colors": [
+"G"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "767"
+},
+{
+"name": "Spymaster's Vault",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "This land enters tapped unless you control a Swamp.\n{T}: Add {B}.\n{B}, {T}: Target creature you control connives X, where X is the number of creatures that died this turn. (Draw X cards, then discard X cards. Put a +1/+1 counter on that creature for each nonland card discarded this way.)",
+"power": null,
+"toughness": null,
+"keywords": [
+"Connive"
+],
+"colors": [],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B"
+],
+"collector_number": "230"
+},
+{
+"name": "Staff of Titania",
+"mana_cost": "{2}",
+"cmc": 2.0,
+"type_line": "Artifact \u2014 Equipment",
+"oracle_text": "Equipped creature gets +X/+X, where X is the number of Forests you control.\nWhenever equipped creature attacks, create a 1/1 green Forest Dryad land creature token. (It's affected by summoning sickness.)\nEquip {3}",
+"power": null,
+"toughness": null,
+"keywords": [
+"Equip"
+],
+"colors": [],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "27"
+},
+{
+"name": "Stridehangar Automaton",
+"mana_cost": "{3}",
+"cmc": 3.0,
+"type_line": "Artifact Creature \u2014 Construct",
+"oracle_text": "Thopters you control get +1/+1.\nIf one or more artifact tokens would be created under your control, those tokens plus an additional 1/1 colorless Thopter artifact creature token with flying are created instead.",
+"power": "1",
+"toughness": "4",
+"keywords": [],
+"colors": [],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "19"
+},
+{
+"name": "Summoner's Pact",
+"mana_cost": "{0}",
+"cmc": 0.0,
+"type_line": "Instant",
+"oracle_text": "Search your library for a green creature card, reveal it, put it into your hand, then shuffle.\nAt the beginning of your next upkeep, pay {2}{G}{G}. If you don't, you lose the game.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"G"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "234"
+},
+{
+"name": "Tamiyo's Safekeeping",
+"mana_cost": "{G}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "Target permanent you control gains hexproof and indestructible until end of turn. You gain 2 life. (A permanent with hexproof and indestructible can't be the target of spells or abilities your opponents control. Damage and effects that say \"destroy\" don't destroy it.)",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"G"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "211"
+},
+{
+"name": "Tannuk, Memorial Ensign",
+"mana_cost": "{1}{R}{G}",
+"cmc": 3.0,
+"type_line": "Legendary Creature \u2014 Kavu Pilot",
+"oracle_text": "Landfall \u2014 Whenever a land you control enters, Tannuk deals 1 damage to each opponent. If this is the second time this ability has resolved this turn, draw a card.",
+"power": "2",
+"toughness": "4",
+"keywords": [
+"Landfall"
+],
+"colors": [
+"G",
+"R"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "233"
+},
+{
+"name": "Thassa's Oracle",
+"mana_cost": "{U}{U}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Merfolk Wizard",
+"oracle_text": "When this creature enters, look at the top X cards of your library, where X is your devotion to blue. Put up to one of them on top of your library and the rest on the bottom of your library in a random order. If X is greater than or equal to the number of cards in your library, you win the game. (Each {U} in the mana costs of permanents you control counts toward your devotion to blue.)",
+"power": "1",
+"toughness": "3",
+"keywords": [],
+"colors": [
+"U"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "73"
+},
+{
+"name": "Tifa Lockhart",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Legendary Creature \u2014 Human Monk",
+"oracle_text": "Trample\nLandfall \u2014 Whenever a land you control enters, double Tifa Lockhart's power until end of turn.",
+"power": "1",
+"toughness": "2",
+"keywords": [
+"Trample",
+"Double",
+"Landfall"
+],
+"colors": [
+"G"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "206"
+},
+{
+"name": "Tifa's Limit Break",
+"mana_cost": "{G}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "Tiered (Choose one additional cost.)\n\u2022 Somersault \u2014 {0} \u2014 Target creature gets +2/+2 until end of turn.\n\u2022 Meteor Strikes \u2014 {2} \u2014 Double target creature's power and toughness until end of turn.\n\u2022 Final Heaven \u2014 {6}{G} \u2014 Triple target creature's power and toughness until end of turn.",
+"power": null,
+"toughness": null,
+"keywords": [
+"Triple",
+"Final Heaven",
+"Meteor Strikes",
+"Somersault",
+"Tiered",
+"Double"
+],
+"colors": [
+"G"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "207"
+},
+{
+"name": "Timeline Culler",
+"mana_cost": "{B}{B}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Drix Warlock",
+"oracle_text": "Haste\nYou may cast this card from your graveyard using its warp ability.\nWarp\u2014{B}, Pay 2 life. (You may cast this card from your hand or graveyard for its warp cost. If you do, exile this creature at the beginning of the next end step, then you may cast it from exile on a later turn.)",
+"power": "2",
+"toughness": "2",
+"keywords": [
+"Haste",
+"Warp"
+],
+"colors": [
+"B"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "121"
+},
+{
+"name": "Tropical Island",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land \u2014 Forest Island",
+"oracle_text": "({T}: Add {G} or {U}.)",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"G",
+"U"
+],
+"collector_number": "321"
+},
+{
+"name": "Tyvar's Stand",
+"mana_cost": "{X}{G}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "Target creature you control gets +X/+X and gains hexproof and indestructible until end of turn. (It can't be the target of spells or abilities your opponents control. Damage and effects that say \"destroy\" don't destroy it.)",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"G"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "291"
+},
+{
+"name": "Underground Sea",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land \u2014 Island Swamp",
+"oracle_text": "({T}: Add {U} or {B}.)",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B",
+"U"
+],
+"collector_number": "323"
+},
+{
+"name": "Underworld Breach",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Enchantment",
+"oracle_text": "Each nonland card in your graveyard has escape. The escape cost is equal to the card's mana cost plus exile three other cards from your graveyard. (You may cast cards from your graveyard for their escape cost.)\nAt the beginning of the end step, sacrifice this enchantment.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"R"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "161"
+},
+{
+"name": "Unexpected Assistance",
+"mana_cost": "{3}{U}{U}",
+"cmc": 5.0,
+"type_line": "Instant",
+"oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nDraw three cards, then discard a card.",
+"power": null,
+"toughness": null,
+"keywords": [
+"Convoke"
+],
+"colors": [
+"U"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "80"
+},
+{
+"name": "Utopia Sprawl",
+"mana_cost": "{G}",
+"cmc": 1.0,
+"type_line": "Enchantment \u2014 Aura",
+"oracle_text": "Enchant Forest\nAs this Aura enters, choose a color.\nWhenever enchanted Forest is tapped for mana, its controller adds an additional one mana of the chosen color.",
+"power": null,
+"toughness": null,
+"keywords": [
+"Enchant"
+],
+"colors": [
+"G"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"collector_number": "159"
+},
+{
+"name": "Vernal Fen",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land \u2014 Swamp Forest",
+"oracle_text": "({T}: Add {B} or {G}.)\nThis land enters tapped unless you control two or more basic lands.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B",
+"G"
+],
+"collector_number": "419"
+},
+{
+"name": "Vizier of Remedies",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Human Cleric",
+"oracle_text": "If one or more -1/-1 counters would be put on a creature you control, that many -1/-1 counters minus one are put on it instead.",
+"power": "2",
+"toughness": "1",
+"keywords": [],
+"colors": [
+"W"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "38"
+},
+{
+"name": "Volcanic Island",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land \u2014 Island Mountain",
+"oracle_text": "({T}: Add {U} or {R}.)",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"R",
+"U"
+],
+"collector_number": "324"
+},
+{
+"name": "Westvale Abbey // Ormendahl, Profane Prince",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "{T}: Add {C}.\n{5}, {T}, Pay 1 life: Create a 1/1 white and black Human Cleric creature token.\n{5}, {T}, Sacrifice five creatures: Transform this land, then untap it.",
+"power": null,
+"toughness": null,
+"keywords": [
+"Flying",
+"Lifelink",
+"Indestructible",
+"Transform",
+"Haste"
+],
+"colors": [],
+"rarity": "rare",
+"layout": "transform",
+"loyalty": null,
+"produced_mana": [
+"C"
+],
+"collector_number": "287",
+"back": {
+"name": "Ormendahl, Profane Prince",
+"mana_cost": "",
+"type_line": "Legendary Creature \u2014 Demon",
+"oracle_text": "Flying, lifelink, indestructible, haste",
+"power": "9",
+"toughness": "7",
+"colors": [
+"B"
+],
+"loyalty": null
+}
+},
+{
+"name": "Wheel of Fortune",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Sorcery",
+"oracle_text": "Each player discards their hand, then draws seven cards.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"R"
+],
+"rarity": "mythic",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "192"
+},
+{
+"name": "Wild Growth",
+"mana_cost": "{G}",
+"cmc": 1.0,
+"type_line": "Enchantment \u2014 Aura",
+"oracle_text": "Enchant land\nWhenever enchanted land is tapped for mana, its controller adds an additional {G}.",
+"power": null,
+"toughness": null,
+"keywords": [
+"Enchant"
+],
+"colors": [
+"G"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"G"
+],
+"collector_number": "195"
+},
+{
+"name": "Wishclaw Talisman",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Artifact",
+"oracle_text": "This artifact enters with three wish counters on it.\n{1}, {T}, Remove a wish counter from this artifact: Search your library for a card, put it into your hand, then shuffle. An opponent gains control of this artifact. Activate only during your turn.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "617"
 }
 ]
