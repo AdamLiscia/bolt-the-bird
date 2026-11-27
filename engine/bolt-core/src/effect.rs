@@ -2680,6 +2680,17 @@ pub enum Effect {
     ExileCrewersReturnTappedAtEnd,
     /// "Each player draws X cards." (Skyscribing), X the spell's X, you first.
     EachPlayerDrawsX,
+    /// Exile the creature in `slot`; return it to the battlefield tapped under its owner's control
+    /// at the beginning of the next end step (Morningtide's Light).
+    ExileSlotReturnTappedAtEnd(u8),
+    /// Until your next turn, prevent all damage that would be dealt to you (Morningtide's Light),
+    /// see `Game::damage_to_you_prevented_until`.
+    PreventDamageToYouUntilYourNextTurn,
+    /// Counter all spells and abilities your opponents control; create a `def` token for each one
+    /// countered this way (Glen Elendra's Answer: a 1/1 blue and black Faerie with flying).
+    CounterOpponentsSpellsAndAbilitiesTokenEach {
+        def: usize,
+    },
     /// The creature in `slot` (the source, with `None`) gains protection from card type `kind`
     /// until end of turn (`Decision::ChooseCardType`'s order: 0 artifact, 1 creature, 2
     /// enchantment, 3 instant, 4 land, 5 planeswalker, 6 sorcery), in
@@ -2999,6 +3010,10 @@ pub enum EmblemKind {
     /// An emblem with a triggered ability: trigger number `trigger` of the card that made it
     /// (written with `When::Never`) happens whenever `when` fires for the emblem's owner.
     Triggered { when: When, trigger: usize },
+    /// "Whenever you cast a [color] spell, ...": trigger number `trigger` of the card that made it
+    /// (written with `When::Never`), for its owner's spells of `color` (a `Color` index; Chandra,
+    /// Dressed to Kill: red). The trigger's `extra` is that spell.
+    OnYourColorSpellCast { color: usize, trigger: usize },
 }
 
 /// Which looked-at card may be picked.
@@ -3775,4 +3790,12 @@ pub enum SubsystemEffect {
     /// "This creature deals damage equal to the total mana value of other permanents you control
     /// to each opponent." (Summon: Bahamut's chapter IV, Mega Flare)
     DamageEachOpponentTotalManaValueOfOthers,
+    /// "Until end of turn, you may cast instant and sorcery spells from any graveyard. If a spell cast
+    /// this way would be put into a graveyard, exile it instead." (The Great Work's chapter III):
+    /// sets `Game::any_graveyard_spells_turn`; such a cast is a flashback-style cast (`CastFlashback`,
+    /// its mana cost, exiled as it leaves the stack).
+    CastSpellsFromAnyGraveyardThisTurn,
+    /// "This [source] deals X damage to [the target in `slot`], where X is the amount of mana spent to
+    /// cast that spell." (Chandra, Dressed to Kill's emblem; that spell is the item's `extra`)
+    DamageManaSpentOnThatSpell(u8),
 }

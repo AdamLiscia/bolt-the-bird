@@ -538,6 +538,7 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         others_of_chosen_type_enter_with_counter: false,
         triples_creature_tokens: false,
         lands_in_graveyard_have_dredge: None,
+        first_tokens_copy_equipped: false,
         your_subtypes_tap_for_green: &[],
         proliferate_twice: false,
         untargetable_by_opponents_abilities: false,

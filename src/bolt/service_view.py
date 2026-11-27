@@ -249,6 +249,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         "SylvanDraw": ("Draw two additional cards", "Don't draw"),
         "CrewTap": ("Tap the chosen creatures", "Don't tap them"),
         "Dredge": ("Dredge", "Draw a card"),
+        "MirrormindCopies": ("Make copies of the equipped creature instead", "Make the tokens"),
         "SylvanPayOrTop": (f"Pay 4 life to keep {subject or 'it'}", f"Put {subject or 'it'} on top of your library"),
         "ExpropriateVote": ("Vote time (an extra turn)", "Vote money (a permanent)"),
         "PayUpkeep": (f"Pay the upkeep {dec.get('cost', '')}", f"Don't pay (sacrifice {subject or src})"),
