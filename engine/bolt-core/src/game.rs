@@ -5840,7 +5840,15 @@ impl Game {
             {
                 self.obj_mut(id).tapped = true;
             }
-            if def.shock_land {
+            // Horizon Explorer: "Lands you control enter untapped."
+            let untapped = def.types.land
+                && self
+                    .permanents(controller_now)
+                    .any(|x| self.def_of(x).mana_ext.your_lands_enter_untapped && !self.lost_abilities(x));
+            if untapped {
+                self.obj_mut(id).tapped = false;
+            }
+            if def.shock_land && !untapped {
                 self.obj_mut(id).shock_pending = true;
             }
             if def.zones.enters_as_land_copy_tapped {
@@ -8245,6 +8253,9 @@ impl Game {
             }
             let e = &self.def_of(x).mana_ext;
             n += e.spell_discount_all as usize;
+            if t.instant || t.sorcery || mode.mode == Some(OMEN_MODE) {
+                n += e.instant_sorcery_discount as usize; // Case of the Ransacked Lab
+            }
             if def.colors == [false; 5] && mode.mode != Some(OMEN_MODE) {
                 if def.subtypes.iter().any(|s| s == "Eldrazi") {
                     n += e.colorless_eldrazi_spell_discount as usize; // Eye of Ugin
@@ -18926,6 +18937,14 @@ impl Game {
                             left: 1,
                         },
                     );
+                }
+            }
+            Effect::AwakenX { slot, subtype } => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    if self.obj(id).zone == Zone::Battlefield {
+                        self.obj_mut(id).eot_creature = Some((u32::MAX, 0, 0, subtype, Keywords::HASTE));
+                        self.add_counters(id, item.x as i32);
+                    }
                 }
             }
             Effect::Awaken { slot, n } => {
