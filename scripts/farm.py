@@ -12,7 +12,8 @@ Each job runs under scripts/guard.sh in active-time mode (a paused job's time do
 is done when its S3 pointer (`farm/<name>/latest.json`) says `"done": true`. The job writes that itself with
 `bolt.jobs.Job.save(..., done=True)`. A job that exits without finishing is started again on the next pass,
 and resumes from its last checkpoint. SIGTERM to farm.py stops every job gracefully (each gets `grace` seconds, default
-180, to save a checkpoint) and exits without relaunching: send it to farm.py alone, not its process group.
+180, to save a checkpoint) and exits without relaunching: send it to farm.py alone, not its process group. The handler only sets a flag;
+the main loop (1-second sleeps) stops the jobs within a second, and starts nothing once the flag is set.
 
 `--job-threads N` runs every job at N threads instead of its file's `threads`, and passes `BOLT_THREADS=N`,
 which train_ppo_play.py uses for --workers and --threads. Nights at 12: stop farm.py gracefully (SIGTERM), then
@@ -25,6 +26,7 @@ import os
 import signal
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -32,6 +34,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from bolt.jobs import Job  # noqa: E402
+
+GRACE_MAX = 600  # the longest job grace farm.py waits for before killing
 
 
 def load_jobs() -> list[dict]:
@@ -65,28 +69,28 @@ def main():
         ap.error("--job-threads can't exceed --budget")
     (ROOT / "logs").mkdir(exist_ok=True)
     running: dict[str, tuple[subprocess.Popen, int]] = {}
-    stopping = {"now": False}
+    stop_now = threading.Event()
 
     def stop(*_):
-        """SIGTERM: pass it to every job (each saves a checkpoint within its grace), wait, and exit without
-        starting anything again."""
-        stopping["now"] = True
-        for name, (proc, _) in running.items():
-            print(f"{time.strftime('%H:%M:%S')} stopping {name}", flush=True)
-            proc.terminate()
-        for proc, _ in running.values():
-            proc.wait()
-        sys.exit(0)
+        """SIGTERM/SIGINT only sets a flag. Python runs a handler on the main thread between bytecodes, so the
+        loop below (sleeping in 1-second steps) notices within a second and does the stopping itself."""
+        stop_now.set()
 
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
-    while True:
+
+    def reap():
         for name, (proc, _) in list(running.items()):
             if proc.poll() is not None:
                 print(f"{time.strftime('%H:%M:%S')} {name} exited {proc.returncode}", flush=True)
                 del running[name]
+
+    while not stop_now.is_set():
+        reap()
         used = sum(t for _, t in running.values())
         for j in load_jobs():
+            if stop_now.is_set():
+                break
             if a.job_threads:
                 j["threads"], j["threads_override"] = a.job_threads, True
             if j["name"] in running or used + j["threads"] > a.budget:
@@ -97,13 +101,38 @@ def main():
             except Exception as e:  # noqa: BLE001 - S3 unreachable: try again next pass
                 print(f"{j['name']}: can't read its pointer ({e}); skipping this pass", flush=True)
                 continue
+            if stop_now.is_set():
+                break
             running[j["name"]] = (start(j), j["threads"])
             used += j["threads"]
         if a.once:
-            for proc, _ in running.values():
-                proc.wait()
-            return
-        time.sleep(a.every)
+            while running and not stop_now.is_set():
+                reap()
+                time.sleep(1)
+            if not stop_now.is_set():
+                return
+        for _ in range(a.every):
+            if stop_now.is_set():
+                break
+            time.sleep(1)
+    shutdown(running)
+
+
+def shutdown(running: dict) -> None:
+    """Pass SIGTERM to every job (guard.sh gives it `grace` seconds to save a checkpoint), wait, and exit
+    without starting anything again."""
+    for name, (proc, _) in running.items():
+        print(f"{time.strftime('%H:%M:%S')} stopping {name}", flush=True)
+        proc.terminate()
+    for name, (proc, _) in running.items():
+        try:
+            proc.wait(timeout=GRACE_MAX + 60)
+        except subprocess.TimeoutExpired:
+            print(f"{time.strftime('%H:%M:%S')} {name} didn't stop; killing it", flush=True)
+            proc.kill()
+            proc.wait()
+    print(f"{time.strftime('%H:%M:%S')} farm stopped", flush=True)
+    sys.exit(0)
 
 
 if __name__ == "__main__":
