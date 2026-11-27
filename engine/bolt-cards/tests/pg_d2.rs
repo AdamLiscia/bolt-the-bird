@@ -3635,3 +3635,131 @@ fn kinbinding_pumps_per_creature_entered_this_turn_and_makes_a_kithkin_each_comb
     );
     assert_eq!((g.power(kithkin[0]), g.toughness(kithkin[0])), (2, 2));
 }
+
+// ---- Batch 34 (idea decks: Kenrith, Sephiroth, Tifa) ----
+
+#[test]
+fn kenrith_has_five_colored_abilities() {
+    let mut g = table();
+    let k = put(&mut g, 0, "Kenrith, the Returned King");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let theirs = put(&mut g, 1, "Savannah Lions");
+    act(&mut g, Action::Activate(k, 0));
+    drain(&mut g);
+    for c in [lions, theirs] {
+        assert!(
+            g.keywords(c).has(Keywords::TRAMPLE) && g.keywords(c).has(Keywords::HASTE),
+            "all creatures"
+        );
+    }
+    act(&mut g, Action::Activate(k, 1));
+    act(&mut g, Action::Target(Target::Object(lions)));
+    drain(&mut g);
+    assert_eq!(g.obj(lions).counters, 1);
+    act(&mut g, Action::Activate(k, 2));
+    act(&mut g, Action::Target(Target::Player(0)));
+    drain(&mut g);
+    assert_eq!(g.players[0].life, 45);
+    let before = g.players[1].hand.len();
+    act(&mut g, Action::Activate(k, 3));
+    act(&mut g, Action::Target(Target::Player(1)));
+    drain(&mut g);
+    assert_eq!(g.players[1].hand.len(), before + 1);
+    let dead = g.add_card(1, cid("Serra Angel"), Zone::Graveyard);
+    act(&mut g, Action::Activate(k, 4));
+    act(&mut g, Action::Target(Target::Object(dead)));
+    drain(&mut g);
+    assert_eq!(g.obj(dead).zone, Zone::Battlefield);
+    assert_eq!(g.obj(dead).controller, 1, "under its owner's control");
+}
+
+#[test]
+fn imperial_seal_puts_any_card_on_top_for_two_life() {
+    let mut g = table();
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    g.players[0].library.rotate_right(1); // not on top
+    let seal = hand(&mut g, 0, "Imperial Seal");
+    play(&mut g, seal, false, &[], &[Action::Pick(ring)]);
+    assert_eq!(g.players[0].library.last(), Some(&ring));
+    assert_eq!(g.players[0].life, 38);
+}
+
+#[test]
+fn gamble_tutors_then_discards_at_random() {
+    let mut g = table();
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    let gamble = hand(&mut g, 0, "Gamble");
+    let hand_before = g.players[0].hand.len(); // Gamble included
+    play(&mut g, gamble, false, &[], &[Action::Pick(ring)]);
+    assert_eq!(
+        g.players[0].hand.len(),
+        hand_before - 1 + 1 - 1,
+        "cast, tutor, one at random"
+    );
+    assert_eq!(g.players[0].graveyard.len(), 2, "Gamble and the discarded card");
+}
+
+#[test]
+fn wheel_of_fortune_discards_both_hands_and_draws_seven_each() {
+    let mut g = table();
+    let wheel = hand(&mut g, 0, "Wheel of Fortune");
+    hand(&mut g, 1, "Sol Ring");
+    let mine = g.players[0].hand.len() - 1;
+    let theirs = g.players[1].hand.len();
+    play(&mut g, wheel, false, &[], &[]);
+    assert_eq!(g.players[0].hand.len(), 7);
+    assert_eq!(g.players[1].hand.len(), 7);
+    assert_eq!(g.players[0].graveyard.len(), mine + 1);
+    assert_eq!(g.players[1].graveyard.len(), theirs);
+}
+
+#[test]
+fn summoners_pact_finds_a_green_creature_and_must_be_paid_next_upkeep() {
+    let mut g = table();
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Library);
+    let pact = hand(&mut g, 0, "Summoner's Pact");
+    play(&mut g, pact, false, &[], &[Action::Pick(elves)]);
+    assert_eq!(g.obj(elves).zone, Zone::Hand);
+    g.start_turn(5, 0);
+    let mut asked = false;
+    while g.step != Step::Main1 {
+        let legal = g.legal_actions();
+        let a = match g.pending {
+            Pending::Decide(_) if legal.contains(&Action::Yes) => {
+                asked = true;
+                Action::Yes // pay {2}{G}{G}
+            }
+            Pending::ChooseTarget(_) | Pending::Decide(_) => legal[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert!(asked, "asked to pay at the next upkeep");
+    assert!(!g.is_over(), "paid");
+}
+
+#[test]
+fn overprotect_tyvars_stand_and_tamiyos_safekeeping_protect() {
+    let mut g = table();
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let o = hand(&mut g, 0, "Overprotect");
+    play(&mut g, o, false, &[obj(lions)], &[]);
+    assert_eq!((g.power(lions), g.toughness(lions)), (5, 4));
+    let k = g.keywords(lions);
+    assert!(k.has(Keywords::TRAMPLE) && k.has(Keywords::HEXPROOF) && k.has(Keywords::INDESTRUCTIBLE));
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let stand = hand(&mut g, 0, "Tyvar's Stand");
+    act(&mut g, Action::CastX(stand, 3));
+    act(&mut g, Action::Target(Target::Object(elves)));
+    drain(&mut g);
+    assert_eq!((g.power(elves), g.toughness(elves)), (4, 4));
+    assert!(g.keywords(elves).has(Keywords::INDESTRUCTIBLE));
+    let ring = put(&mut g, 0, "Sol Ring");
+    let safe = hand(&mut g, 0, "Tamiyo's Safekeeping");
+    play(&mut g, safe, false, &[obj(ring)], &[]);
+    assert!(
+        g.keywords(ring).has(Keywords::HEXPROOF),
+        "any permanent you control"
+    );
+    assert_eq!(g.players[0].life, 42);
+}

@@ -2757,6 +2757,22 @@ pub enum Effect {
     /// Put kind counters (`Object::kind_counters`) equal to the trigger's amount on the source
     /// (Simic Ascendancy's growth counters).
     KindCountersSelfAmount,
+    /// Put the creature card in `slot` from a graveyard onto the battlefield under its owner's
+    /// control (Kenrith, the Returned King).
+    ReanimateUnderOwner(u8),
+    /// `who` discards `n` cards at random (the game's seeded RNG; Gamble).
+    DiscardAtRandom {
+        who: Who,
+        n: u8,
+    },
+    /// Each player discards their hand, then draws `n` cards (Wheel of Fortune: 7); you first.
+    EachPlayerDiscardsHandThenDraws(u8),
+    /// The creature in `slot` gets +X/+X and gains `keywords` until end of turn, X the spell's X
+    /// (Tyvar's Stand).
+    PumpXXAndGrant {
+        slot: u8,
+        keywords: crate::Keywords,
+    },
     /// Exile the creature in `slot`; return it to the battlefield tapped under its owner's control
     /// at the beginning of the next end step (Morningtide's Light).
     ExileSlotReturnTappedAtEnd(u8),
@@ -3843,6 +3859,10 @@ pub enum When {
     /// placement by an effect (`Game::add_counters`), the number put in the trigger's amount (Simic
     /// Ascendancy: "that many").
     PlusCountersOnYourCreature,
+    /// "Whenever you tap this [permanent] for mana" (Forbidden Orchard): a triggered ability, not a
+    /// mana ability (CR 605.1b), fired on the source after its mana is added, whether tapped by hand
+    /// or by the automatic payer; controlled by the source's controller.
+    TappedForMana,
 }
 
 #[derive(Clone, Debug, PartialEq)]

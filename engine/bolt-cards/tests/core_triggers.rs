@@ -2180,3 +2180,27 @@ fn sacrifice_your_subtype_asks_which_one_and_counts_as_a_sacrifice() {
     assert_eq!(g.obj(token).zone, Zone::Battlefield);
     assert_eq!(g.players[0].life, 41, "a sacrifice");
 }
+
+#[test]
+fn tapped_for_mana_triggers_after_the_mana_by_hand_or_by_the_payer() {
+    // Sol Ring, given "Whenever you tap this artifact for mana, you gain 1 life." for this test.
+    let mut g = game_with(ring_with(trigger(When::TappedForMana, None, gain_one())));
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    tap(&mut g, ring);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 41, "tapped by hand: a trigger on the stack");
+    // Untapped again, the automatic payer taps it for a {2} spell.
+    g.objects[ring.0 as usize].tapped = false;
+    g.players[0].pool.clear(); // the first tap's {C}{C}
+    for land in g
+        .permanents(0)
+        .filter(|&x| g.types_of(x).land)
+        .collect::<Vec<_>>()
+    {
+        g.objects[land.0 as usize].tapped = true;
+    }
+    let s = g.add_card(0, cid("Mind Stone"), Zone::Hand);
+    play(&mut g, s, false, &[], &[]);
+    assert_eq!(g.obj(s).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].life, 42, "tapped by the payer");
+}

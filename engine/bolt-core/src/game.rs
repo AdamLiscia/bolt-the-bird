@@ -8588,10 +8588,15 @@ impl Game {
             if life_cost > 0 && !self.obj(id).tapped {
                 self.lose_life(p, life_cost); // Mana Confluence: "Pay 1 life"
             }
+            // Forbidden Orchard: once for the tap, not for each mana it makes.
+            let first_unit = !self.obj(id).tapped;
             if !self.def_of(id).mana_ext.sac_mana_no_tap {
                 self.become_tapped(id);
             }
             self.land_tapped_for_mana(p, id);
+            if first_unit {
+                self.fire_source(id, When::TappedForMana);
+            }
             if self.def_of(id).mana_taps_creature {
                 if let Some(c) = self.relic_partner(p, exclude) {
                     self.become_tapped(c);
@@ -8770,6 +8775,10 @@ impl Game {
             self.become_tapped(id);
         }
         self.land_tapped_for_mana(p, id);
+        // Forbidden Orchard: a triggered ability, put on the stack as you keep priority.
+        let before = self.triggered.len();
+        self.fire_source(id, When::TappedForMana);
+        let tapped_trigger = self.triggered.len() > before;
         if self.def_of(id).mana_taps_creature {
             if let Some(partner) = self.relic_partner(p, None) {
                 self.become_tapped(partner);
@@ -8781,6 +8790,9 @@ impl Game {
             self.sacrificed(id, by);
         }
         self.pending = Pending::Priority(p);
+        if tapped_trigger {
+            self.give_priority(p);
+        }
     }
 
     fn can_pay(&self, p: PlayerId, cost: &ManaCost, exclude: Option<ObjId>) -> bool {
@@ -21559,6 +21571,53 @@ impl Game {
                 for c in revealed {
                     self.players[p].library.insert(0, c);
                 }
+            }
+            Effect::ReanimateUnderOwner(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    if self.obj(id).zone == Zone::Graveyard {
+                        self.move_to(id, Zone::Battlefield);
+                        let owner = self.obj(id).owner;
+                        self.obj_mut(id).controller = owner;
+                    }
+                }
+            }
+            Effect::DiscardAtRandom { who, n } => {
+                for q in self.players_for(item, legal, who) {
+                    for _ in 0..n {
+                        let k = self.players[q].hand.len();
+                        if k == 0 {
+                            break;
+                        }
+                        let c = self.players[q].hand[self.rng.below(k)];
+                        self.move_to(c, Zone::Graveyard);
+                    }
+                }
+            }
+            Effect::EachPlayerDiscardsHandThenDraws(n) => {
+                let you = item.controller;
+                for q in [you, opponent(you)] {
+                    for c in self.players[q].hand.clone() {
+                        self.move_to(c, Zone::Graveyard);
+                    }
+                }
+                for q in [you, opponent(you)] {
+                    for _ in 0..n {
+                        self.draw(q);
+                    }
+                }
+            }
+            Effect::PumpXXAndGrant { slot, keywords } => {
+                let x = item.x as i32;
+                self.run_effect(
+                    item,
+                    legal,
+                    Effect::Pump {
+                        slot,
+                        power: x,
+                        toughness: x,
+                    },
+                );
+                self.run_effect(item, legal, Effect::Grant { slot, keywords });
             }
             Effect::KindCountersSelfAmount => {
                 if self.obj(src).zone == Zone::Battlefield && item.amount > 0 {

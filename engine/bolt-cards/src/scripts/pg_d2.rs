@@ -1628,6 +1628,78 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::BeginCombatYourTurn, vec![], vec![Effect::CreateToken { who: Who::You, def: t.kithkin, n: 1 }]);
             },
         ),
+        // ---- Batch 34 (idea decks: Kenrith, Sephiroth, Tifa) ----
+        "Kenrith, the Returned King" => s(
+            &[
+                "{R}: All creatures gain trample and haste until end of turn.",
+                "{1}{G}: Put a +1/+1 counter on target creature.",
+                "{2}{W}: Target player gains 5 life.",
+                "{3}{U}: Target player draws a card.",
+                "{4}{B}: Put target creature card from a graveyard onto the battlefield under its owner's control.",
+            ],
+            |d, _| {
+                let k = Keywords::TRAMPLE.with(Keywords::HASTE);
+                let all = vec![Effect::GrantAll { who: Who::You, keywords: k }, Effect::GrantAll { who: Who::EachOpponent, keywords: k }];
+                activated(d, "{R}", false, vec![], all);
+                activated(d, "{1}{G}", false, vec![CREATURE], vec![Effect::Counters { slot: 0, n: 1 }]);
+                activated(d, "{2}{W}", false, vec![Filter::PLAYER], vec![Effect::GainLife { who: Who::TargetPlayer(0), n: 5 }]);
+                activated(d, "{3}{U}", false, vec![Filter::PLAYER], vec![Effect::Draw { who: Who::TargetPlayer(0), n: 1 }]);
+                let card = graveyard_cards(true, Controller::Any);
+                activated(d, "{4}{B}", false, vec![card], vec![Effect::ReanimateUnderOwner(0)]);
+            },
+        ),
+        "Imperial Seal" => s(&["Search your library for a card, then shuffle and put that card on top. You lose 2 life."], |d, _| {
+            spell(d, vec![], vec![search(SearchFor::Any, SearchTo::Top), Effect::LoseLife { who: Who::You, n: 2 }])
+        }),
+        "Gamble" => s(
+            &["Search your library for a card, put that card into your hand, discard a card at random, then shuffle."],
+            |d, _| spell(d, vec![], vec![search(SearchFor::Any, SearchTo::Hand), Effect::DiscardAtRandom { who: Who::You, n: 1 }]),
+        ),
+        "Wheel of Fortune" => s(&["Each player discards their hand, then draws seven cards."], |d, _| {
+            spell(d, vec![], vec![Effect::EachPlayerDiscardsHandThenDraws(7)])
+        }),
+        "Summoner's Pact" => s(
+            &[
+                "Search your library for a green creature card, reveal it, put it into your hand, then shuffle.",
+                "At the beginning of your next upkeep, pay {2}{G}{G}. If you don't, you lose the game.",
+            ],
+            |d, _| {
+                let trigger = d.triggers.len();
+                let green = search(SearchFor::ColoredCreatureMvAtMost(4, u32::MAX), SearchTo::Hand);
+                spell(d, vec![], vec![green, Effect::DelayedAtYourNextUpkeep { trigger }]);
+                let cost = ManaCost::parse("{2}{G}{G}").expect("a mana cost");
+                on(d, When::Never, vec![], vec![Effect::PayOrLoseGame(cost)]);
+            },
+        ),
+        "Overprotect" => s(
+            &["Target creature you control gets +3/+3 and gains trample, hexproof, and indestructible until end of turn."],
+            |d, _| {
+                let k = Keywords::TRAMPLE.with(Keywords::HEXPROOF).with(Keywords::INDESTRUCTIBLE);
+                spell(d, vec![YOUR_CREATURE], vec![Effect::Pump { slot: 0, power: 3, toughness: 3 }, Effect::Grant { slot: 0, keywords: k }]);
+            },
+        ),
+        "Tamiyo's Safekeeping" => s(
+            &["Target permanent you control gains hexproof and indestructible until end of turn. You gain 2 life."],
+            |d, _| {
+                let yours = Filter {
+                    players: false,
+                    creatures: false,
+                    planeswalkers: false,
+                    any_permanent: true,
+                    controller: Controller::You,
+                    ..Filter::ANY
+                };
+                let k = Keywords::HEXPROOF.with(Keywords::INDESTRUCTIBLE);
+                spell(d, vec![yours], vec![Effect::Grant { slot: 0, keywords: k }, Effect::GainLife { who: Who::You, n: 2 }]);
+            },
+        ),
+        "Tyvar's Stand" => s(
+            &["Target creature you control gets +X/+X and gains hexproof and indestructible until end of turn."],
+            |d, _| {
+                let k = Keywords::HEXPROOF.with(Keywords::INDESTRUCTIBLE);
+                spell(d, vec![YOUR_CREATURE], vec![Effect::PumpXXAndGrant { slot: 0, keywords: k }]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1891,4 +1963,13 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Simic Ascendancy",
     // Core: triggers, batch 33
     "Kinbinding",
+    // Batch 34
+    "Kenrith, the Returned King",
+    "Imperial Seal",
+    "Gamble",
+    "Wheel of Fortune",
+    "Summoner's Pact",
+    "Overprotect",
+    "Tamiyo's Safekeeping",
+    "Tyvar's Stand",
 ];
