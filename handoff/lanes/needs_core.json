@@ -2946,7 +2946,7 @@
   {
    "card": "Currency Converter",
    "deck": "Sefris of the Hidden Ways",
-   "missing": "needs core: exiling a discarded card linked to the source, and a 2/2 black Rogue creature token",
+   "missing": "needs core: exiling a discarded card linked to the source, and a 2/2 black Rogue creature token [done by d2 batch 24: token 108 rogue_2, Effect::ExiledWithSourceToGraveyardToken, Decision::ExiledWithToGraveyard, scripted in pg_d2]",
    "lane": "d3",
    "theme": "triggers",
    "owner": "d2"

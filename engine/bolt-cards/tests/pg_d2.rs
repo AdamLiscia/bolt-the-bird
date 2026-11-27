@@ -2694,3 +2694,52 @@ fn daring_sleuth_transforms_on_a_clue_and_investigates_on_combat_damage() {
     play(&mut g, bolt, false, &[Target::Player(1)], &[]);
     assert_eq!(g.power(sleuth), power + 1, "prowess");
 }
+
+#[test]
+fn currency_converter_exiles_discards_and_turns_them_into_treasure_or_rogues() {
+    let mut g = table();
+    let cc = put(&mut g, 0, "Currency Converter");
+    let angel = hand(&mut g, 0, "Serra Angel");
+    let forest = hand(&mut g, 0, "Forest");
+    // {2}, {T}: draw, then discard; discard the Angel and exile it.
+    act(&mut g, Action::Activate(cc, 0));
+    let mut answered = false;
+    while !g.items.is_empty() || matches!(g.pending, Pending::Decide(_)) {
+        let a = match g.pending {
+            _ if has(&g, Action::Discard(angel)) => Action::Discard(angel),
+            Pending::Decide(_) => {
+                answered = true;
+                Action::Yes // may exile it
+            }
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert!(answered);
+    assert_eq!(g.obj(angel).zone, Zone::Exile, "exiled with it");
+    // Discarding the Forest some other way: Exile it too.
+    g.objects[cc.0 as usize].tapped = false;
+    act(&mut g, Action::Activate(cc, 0));
+    while !g.items.is_empty() || matches!(g.pending, Pending::Decide(_)) {
+        let a = match g.pending {
+            _ if has(&g, Action::Discard(forest)) => Action::Discard(forest),
+            Pending::Decide(_) => Action::Yes,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(forest).zone, Zone::Exile);
+    // {T}: the Angel back to the graveyard makes a Rogue; the Forest a Treasure.
+    g.objects[cc.0 as usize].tapped = false;
+    act(&mut g, Action::Activate(cc, 1));
+    resolve_all(&mut g, &[Action::Pick(angel)]);
+    assert_eq!(g.obj(angel).zone, Zone::Graveyard);
+    assert_eq!(tokens(&g, 0, "Rogue").len(), 1);
+    let rogue = tokens(&g, 0, "Rogue")[0];
+    assert_eq!((g.power(rogue), g.toughness(rogue)), (2, 2));
+    g.objects[cc.0 as usize].tapped = false;
+    act(&mut g, Action::Activate(cc, 1));
+    resolve_all(&mut g, &[Action::Pick(forest)]);
+    assert_eq!(g.obj(forest).zone, Zone::Graveyard);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 1);
+}

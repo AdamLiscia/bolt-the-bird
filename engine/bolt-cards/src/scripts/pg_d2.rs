@@ -1202,6 +1202,20 @@ pub fn script(name: &str) -> Option<Script> {
                 on(b, When::DealsCombatDamageToPlayer, vec![], vec![Effect::Investigate { def: t.clue, n: 1 }]);
             },
         ),
+        // ---- Core: triggers, batch 24 (a discard exiles the card with the source; token 108) ----
+        "Currency Converter" => s(
+            &[
+                "Whenever you discard a card, you may exile that card from your graveyard.",
+                "{2}, {T}: Draw a card, then discard a card.",
+                "{T}: Put a card exiled with this artifact into its owner's graveyard. If it's a land card, create a Treasure token. If it's a nonland card, create a 2/2 black Rogue creature token.",
+            ],
+            |d, t| {
+                let that = Filter { triggering: true, ..graveyard_cards(false, Controller::You) };
+                may(d, When::YouDiscard, vec![that], vec![Effect::ExileCardWithSource(0)]);
+                activated(d, "{2}", true, vec![], vec![draw(1), discard(1)]);
+                activated(d, "{0}", true, vec![], vec![Effect::ExiledWithSourceToGraveyardToken { land: t.treasure, nonland: t.rogue_2 }]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1424,4 +1438,5 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Palant\u{ed}r of Orthanc",
     "Panharmonicon",
     "Daring Sleuth // Bearer of Overwhelming Truths",
+    "Currency Converter",
 ];

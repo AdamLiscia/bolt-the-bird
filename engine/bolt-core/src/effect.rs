@@ -2652,6 +2652,13 @@ pub enum Effect {
     /// (`Decision::LetDrawOrMill`); if they don't, you mill X cards, X the source's own kind of
     /// counters (influence), and they lose life equal to the total mana value of those cards.
     TargetMayLetYouDrawElseMillKindCounters(u8),
+    /// Currency Converter: put a card exiled with the source (`Game::exiled_with`) into its
+    /// owner's graveyard (`Decision::ExiledWithToGraveyard`); create a `land` token if it's a land
+    /// card, a `nonland` token otherwise.
+    ExiledWithSourceToGraveyardToken {
+        land: usize,
+        nonland: usize,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
