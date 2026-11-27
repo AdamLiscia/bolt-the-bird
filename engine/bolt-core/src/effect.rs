@@ -2652,6 +2652,12 @@ pub enum Effect {
     /// (`Decision::LetDrawOrMill`); if they don't, you mill X cards, X the source's own kind of
     /// counters (influence), and they lose life equal to the total mana value of those cards.
     TargetMayLetYouDrawElseMillKindCounters(u8),
+    /// Create a `fewer` token, or a `seven` token instead if you control seven or more lands with
+    /// different names (The Necrobloom's landfall).
+    CreateTokenBySevenLandNames {
+        fewer: usize,
+        seven: usize,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

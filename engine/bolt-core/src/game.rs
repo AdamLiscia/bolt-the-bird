@@ -1401,6 +1401,16 @@ pub enum Decision {
     /// Palantír of Orthanc, asked of the targeted opponent: `Yes` has `player` draw a card; `No`
     /// has `player` mill `x` cards and you lose life equal to their total mana value.
     LetDrawOrMill { player: PlayerId, x: u8 },
+    /// Dredge (CR 702.52): before `player` draws (`left` draws to go, then the `more` players'
+    /// draws), `Pick` a card with dredge in their graveyard to return it to their hand and mill N
+    /// instead of drawing, or `No` to draw. `draw_step`: the turn's draw, so the draw step goes on
+    /// afterwards.
+    Dredge {
+        player: PlayerId,
+        left: u32,
+        more: Vec<(PlayerId, u32)>,
+        draw_step: bool,
+    },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -12647,6 +12657,57 @@ impl Game {
             .collect()
     }
 
+    /// Dredge (CR 702.52a): the cards in `p`'s graveyard that may replace a draw, with their dredge
+    /// number, offered only when `p`'s library has at least that many cards (The Necrobloom: land
+    /// cards, dredge 2).
+    fn dredge_options(&self, p: PlayerId) -> Vec<(ObjId, u8)> {
+        let Some(n) = self
+            .permanents(p)
+            .filter(|&x| !self.lost_abilities(x))
+            .find_map(|x| self.def_of(x).lands_in_graveyard_have_dredge)
+        else {
+            return Vec::new();
+        };
+        if self.players[p].library.len() < n as usize {
+            return Vec::new();
+        }
+        self.players[p]
+            .graveyard
+            .iter()
+            .copied()
+            .filter(|&c| self.def_of(c).types.land)
+            .map(|c| (c, n))
+            .collect()
+    }
+
+    /// Draws for the given players, offering dredge before each draw that could be dredged
+    /// (`Decision::Dredge`). Returns true if a decision is now pending (the caller stops; the
+    /// rest happens as it's answered).
+    fn draws_with_dredge(&mut self, mut draws: Vec<(PlayerId, u32)>, draw_step: bool) -> bool {
+        while !draws.is_empty() {
+            let (p, left) = draws.remove(0);
+            for k in 0..left {
+                if !self.dredge_options(p).is_empty() {
+                    let more = draws;
+                    self.ask(
+                        p,
+                        Decision::Dredge {
+                            player: p,
+                            left: left - k,
+                            more,
+                            draw_step,
+                        },
+                    );
+                    return true;
+                }
+                self.in_draw_step_draw = draw_step;
+                self.draw(p);
+                self.in_draw_step_draw = false;
+            }
+        }
+        false
+    }
+
     /// The nontoken artifacts `p` controls that can be sacrificed (Rootcast Apprenticeship).
     fn nontoken_artifacts_to_sacrifice(&self, p: PlayerId) -> Vec<ObjId> {
         self.permanents(p)
@@ -12805,6 +12866,15 @@ impl Game {
             }
             Decision::ChooseEnterMode { .. } => vec![Action::Mode(0), Action::Mode(1)],
             Decision::Riot { .. } => vec![Action::Mode(0), Action::Mode(1)],
+            Decision::Dredge { player, .. } => {
+                let mut v: Vec<Action> = self
+                    .dredge_options(*player)
+                    .into_iter()
+                    .map(|e| Action::Pick(e.0))
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::CrewTap { source, n, chosen } => {
                 let a = self.activated_of(*source, *n);
                 let need = a.crew.max(a.saddle) as i32;
@@ -13896,6 +13966,47 @@ impl Game {
                 self.give_priority(p);
             } else {
                 self.open_free_casts();
+            }
+            return;
+        }
+        if let Decision::Dredge {
+            player,
+            left,
+            more,
+            draw_step,
+        } = d
+        {
+            if let Action::Pick(c) = a {
+                // Return it to the hand and mill N instead of drawing (not a draw).
+                let n = self
+                    .dredge_options(player)
+                    .iter()
+                    .find(|e| e.0 == c)
+                    .map_or(0, |e| e.1);
+                self.move_to(c, Zone::Hand);
+                for _ in 0..n {
+                    if let Some(&top) = self.players[player].library.last() {
+                        self.move_to(top, Zone::Graveyard);
+                    }
+                }
+            } else {
+                self.in_draw_step_draw = draw_step;
+                self.draw(player);
+                self.in_draw_step_draw = false;
+            }
+            let mut draws = vec![(player, left - 1)];
+            draws.extend(more);
+            draws.retain(|e| e.1 > 0);
+            if self.draws_with_dredge(draws, draw_step) {
+                return;
+            }
+            if draw_step {
+                let active = self.active;
+                self.fire(active, When::EachDrawStep, None);
+                self.fire(opponent(active), When::EachDrawStep, None);
+                self.give_priority(active);
+            } else if self.resolving.is_some() {
+                self.continue_resolving();
             }
             return;
         }
@@ -16165,10 +16276,13 @@ impl Game {
                 }
             }
             Effect::Draw { who, n } => {
-                for p in self.players_for(item, legal, who) {
-                    for _ in 0..n {
-                        self.draw(p);
-                    }
+                let draws: Vec<(PlayerId, u32)> = self
+                    .players_for(item, legal, who)
+                    .into_iter()
+                    .map(|p| (p, n as u32))
+                    .collect();
+                if self.draws_with_dredge(draws, false) {
+                    return; // dredge? (the rest of the effects follow the answer)
                 }
             }
             Effect::GainLife { who, n } => {
@@ -18995,8 +19109,8 @@ impl Game {
                     item.targets.get(slot as usize),
                     legal.get(slot as usize).copied().unwrap_or(false),
                 ) {
-                    for _ in 0..item.x {
-                        self.draw(q);
+                    if self.draws_with_dredge(vec![(q, item.x as u32)], false) {
+                        return;
                     }
                 }
             }
@@ -19784,6 +19898,18 @@ impl Game {
                     }
                 }
             }
+            Effect::CreateTokenBySevenLandNames { fewer, seven } => {
+                let p = item.controller;
+                let mut names: Vec<&str> = self
+                    .permanents(p)
+                    .filter(|&x| self.types_of(x).land)
+                    .map(|x| self.def_of(x).name.as_str())
+                    .collect();
+                names.sort_unstable();
+                names.dedup();
+                let def = if names.len() >= 7 { seven } else { fewer };
+                self.create_token(p, def);
+            }
             Effect::OpponentLifeBecomesOne => {
                 let q = opponent(item.controller);
                 let life = self.players[q].life;
@@ -20017,8 +20143,8 @@ impl Game {
                 }
             }
             Effect::DrawX => {
-                for _ in 0..item.x {
-                    self.draw(item.controller);
+                if self.draws_with_dredge(vec![(item.controller, item.x as u32)], false) {
+                    return;
                 }
             }
             Effect::AddManaAnyColor => {
@@ -20515,8 +20641,9 @@ impl Game {
                 }
             }
             Effect::DrawAmount => {
-                for _ in 0..item.amount {
-                    self.draw(item.controller);
+                let n = item.amount.max(0) as u32;
+                if self.draws_with_dredge(vec![(item.controller, n)], false) {
+                    return;
                 }
             }
             Effect::CreateTokensAmount { def } => {
@@ -24698,10 +24825,8 @@ impl Game {
             }
             Step::Draw => {
                 // CR 103.8a: the player who goes first skips their first draw.
-                if self.turn > 1 {
-                    self.in_draw_step_draw = true;
-                    self.draw(a);
-                    self.in_draw_step_draw = false;
+                if self.turn > 1 && self.draws_with_dredge(vec![(a, 1)], true) {
+                    return; // dredge? (the draw step goes on after the answer)
                 }
                 self.fire(a, When::EachDrawStep, None);
                 self.fire(opponent(a), When::EachDrawStep, None);

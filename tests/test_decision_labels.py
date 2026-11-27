@@ -244,3 +244,9 @@ def test_palantir_asks_the_opponent_to_let_you_draw_or_mill():
     dec = {"kind": "LetDrawOrMill", "x": 2}
     assert label(dec, "Yes", 0) == "Let them draw a card"
     assert label(dec, "No", 0) == "Make them mill 2 (you lose life equal to the total mana value)"
+
+
+def test_dredge_reads_as_returning_a_card_or_drawing():
+    dec = {"kind": "Dredge"}
+    assert sv._decision_label(dec, "Pick", 0, "Forest") == "Dredge instead of drawing: Forest"
+    assert label(dec, "No", 0) == "Draw a card"
