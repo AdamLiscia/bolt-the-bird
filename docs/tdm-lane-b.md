@@ -1143,3 +1143,12 @@ One Ring's check in `deal_damage`). Claims recorded in needs_core.json.
   enters with (the Aura can't be attached yet) and direct counter writes that bypass these three
   (`endure_token` and a few cost removals; removals aren't "put").
 - Script: an Aura with `Effect::TapAttached` on enters.
+
+### Legendary sorceries, Urza's Ruinous Blast (2026-11-27)
+
+- CR 205.4e: `Game::legendary_sorcery_blocked` removes every cast action, and every free cast
+  from `free_cast_actions`, for a card whose printed types are Legendary and Sorcery unless its
+  caster controls a legendary creature or planeswalker (checked with current types). Not covered:
+  casts offered inside a resolving decision, such as cascade's.
+- Urza's Ruinous Blast: `Effect::ExileAllNonlandNonlegendary` (current types). The reminder line
+  isn't scripted.

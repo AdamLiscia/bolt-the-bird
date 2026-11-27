@@ -4601,3 +4601,37 @@ fn blossombind_taps_and_keeps_the_creature_tapped_and_counterless() {
     }
     assert!(g.obj(champ).tapped, "can't become untapped");
 }
+
+// ---- Legendary sorceries (CR 205.4e), Urza's Ruinous Blast ----
+
+#[test]
+fn a_legendary_sorcery_needs_a_legendary_creature_or_planeswalker() {
+    let mut g = table();
+    let blast = hand(&mut g, 0, "Urza's Ruinous Blast");
+    put(&mut g, 1, "Ms. Bumbleflower");
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(blast)),
+        "only the opponent's legend"
+    );
+    put(&mut g, 0, "Bello, Bard of the Brambles");
+    assert!(g.legal_actions().contains(&Action::Cast(blast)));
+}
+
+#[test]
+fn urzas_ruinous_blast_exiles_nonland_permanents_that_arent_legendary() {
+    let mut g = table();
+    let bello = put(&mut g, 0, "Bello, Bard of the Brambles");
+    let theirs = put(&mut g, 1, "Ms. Bumbleflower");
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let ring = put(&mut g, 1, "Sol Ring");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let land = g.permanents(0).find(|&x| g.def_of(x).name == "Plains").unwrap();
+    let blast = hand(&mut g, 0, "Urza's Ruinous Blast");
+    play(&mut g, blast, false, &[], &[]);
+    for x in [elves, ring, lions] {
+        assert_eq!(g.obj(x).zone, Zone::Exile);
+    }
+    for x in [bello, theirs, land] {
+        assert_eq!(g.obj(x).zone, Zone::Battlefield, "legendary or a land");
+    }
+}

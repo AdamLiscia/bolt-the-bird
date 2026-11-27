@@ -3096,6 +3096,8 @@ pub enum Effect {
     /// `Decision::EachSacrificesXCreatures`; the spell then "enters with `n` +1/+1 counters on it
     /// for each creature sacrificed this way" (`Game::sacrifice_enter_counters`).
     EachPlayerSacrificesXCreaturesCountersPer(i32),
+    /// "Exile all nonland permanents that aren't legendary." (Urza's Ruinous Blast)
+    ExileAllNonlandNonlegendary,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

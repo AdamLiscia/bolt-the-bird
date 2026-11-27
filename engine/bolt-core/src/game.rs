@@ -4403,6 +4403,18 @@ impl Game {
         (n - viziers).max(0)
     }
 
+    /// CR 205.4e: "You may cast a legendary sorcery only if you control a legendary creature or
+    /// planeswalker." Whether that stops `p` casting `c`.
+    fn legendary_sorcery_blocked(&self, p: PlayerId, c: ObjId) -> bool {
+        let t = self.def_of(c).types;
+        t.legendary
+            && t.sorcery
+            && !self.permanents(p).any(|x| {
+                let t = self.types_of(x);
+                t.legendary && (t.creature || t.planeswalker)
+            })
+    }
+
     /// Whether Drannith Magistrate stops `p` casting the card in `zone` (anywhere but a hand).
     fn cast_zone_blocked(&self, p: PlayerId, zone: Zone) -> bool {
         zone != Zone::Hand
@@ -8125,7 +8137,7 @@ impl Game {
             | Action::CastFromGraveyard(c)
             | Action::CastFromGraveyardAs(c, _)
             | Action::CastHarmonize(c, _)
-            | Action::CastOmen(c) => !self.cast_zone_blocked(p, self.obj(c).zone),
+            | Action::CastOmen(c) => !self.cast_zone_blocked(p, self.obj(c).zone) && !self.legendary_sorcery_blocked(p, c),
             _ => true,
         });
         v.extend(self.activations(p));
@@ -13648,7 +13660,11 @@ impl Game {
         }
         for &c in &self.free_casts {
             let def = self.def_of(c);
-            if !free_zone(self.obj(c).zone) || def.types.land || self.cast_zone_blocked(p, self.obj(c).zone) {
+            if !free_zone(self.obj(c).zone)
+                || def.types.land
+                || self.cast_zone_blocked(p, self.obj(c).zone)
+                || self.legendary_sorcery_blocked(p, c)
+            {
                 continue;
             }
             let castable = def.types.is_permanent() || def.spell.is_some() || !def.modes.is_empty();
@@ -27118,6 +27134,14 @@ impl Game {
                     .collect();
                 for c in all {
                     self.destroy(c);
+                }
+            }
+            Effect::ExileAllNonlandNonlegendary => {
+                for x in self.battlefield.clone() {
+                    let t = self.types_of(x);
+                    if self.obj(x).zone == Zone::Battlefield && !t.land && !t.legendary {
+                        self.move_to(x, Zone::Exile);
+                    }
                 }
             }
             Effect::ExileAllPermanents => {

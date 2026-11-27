@@ -2441,6 +2441,10 @@ pub fn script(name: &str) -> Option<Script> {
                 d.enchanted_cant_have_counters = true;
             },
         ),
+        "Urza's Ruinous Blast" => s(&["Exile all nonland permanents that aren't legendary."], |d, _| {
+            // CR 205.4e (legendary sorcery) is checked as it's cast, from its type line.
+            spell(d, vec![], vec![Effect::ExileAllNonlandNonlegendary]);
+        }),
         _ => None,
     }
 }
@@ -2720,6 +2724,7 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Gluttonous Hellkite",
     "The Earth Crystal",
     "Blossombind",
+    "Urza's Ruinous Blast",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",
