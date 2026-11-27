@@ -3338,7 +3338,7 @@
   {
    "card": "Shanna, Sisay's Legacy",
    "deck": "Najeela, the Blade-Blossom",
-   "missing": "needs core: can't be the target of abilities your opponents control",
+   "missing": "needs core: can't be the target of abilities your opponents control [done by d3 batch 32: scripted (pg_d3); CardDef::untargetable_by_opponents_abilities, Scale::PerCreatureYouControl]",
    "lane": "d3",
    "theme": "mana",
    "owner": "d1"
@@ -3778,7 +3778,7 @@
   {
    "card": "Vraska, Betrayal's Sting",
    "deck": "Atraxa, Praetors' Voice",
-   "missing": "needs core: proliferate, compleated, a creature becoming a Treasure, and poison counters",
+   "missing": "needs core: proliferate, compleated, a creature becoming a Treasure, and poison counters [d3 batches 31-32: proliferate (Decision::Proliferate), Effect::BecomeTreasure(slot) (-2), Effect::TargetPlayerPoisonUpTo { slot, n: 9 } (-9) are in; the card waits for d1 compleated on tarkir]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -3786,7 +3786,7 @@
   {
    "card": "Tekuthal, Inquiry Dominus",
    "deck": "Atraxa, Praetors' Voice",
-   "missing": "needs core: proliferate twice, and removing counters from among your permanents as a cost",
+   "missing": "needs core: proliferate twice, and removing counters from among your permanents as a cost [d3 batch 31: CardDef::proliferate_twice is in; the remove-three-counters cost goes to d1]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -3834,7 +3834,7 @@
   {
    "card": "Ichormoon Gauntlet",
    "deck": "Atraxa, Praetors' Voice",
-   "missing": "needs core: loyalty abilities granted to planeswalkers, and an extra counter of a chosen kind",
+   "missing": "needs core: loyalty abilities granted to planeswalkers, and an extra counter of a chosen kind [routing 2026-11-27: lane B the granted loyalty abilities, d3 the additional counter of the chosen kind]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "mac-c"

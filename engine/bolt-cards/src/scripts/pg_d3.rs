@@ -1899,6 +1899,21 @@ pub fn script(name: &str) -> Option<Script> {
                 d.adventure = true;
             },
         ),
+        "Shanna, Sisay's Legacy" => s(
+            &[
+                "Shanna can't be the target of abilities your opponents control.",
+                "Shanna gets +1/+1 for each creature you control.",
+            ],
+            |d, _| {
+                d.untargetable_by_opponents_abilities = true;
+                d.statics.push(Static {
+                    power: 1,
+                    toughness: 1,
+                    scale: Some(Scale::PerCreatureYouControl),
+                    ..neutral_static()
+                });
+            },
+        ),
         "Skyscribing" => s(
             &[
                 "Each player draws X cards.",
@@ -2176,4 +2191,6 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     // Core theme d3, batch 31
     "Malcolm, Alluring Scoundrel",
     "Brightcap Badger // Fungus Frolic",
+    // Core theme d3, batch 32
+    "Shanna, Sisay's Legacy",
 ];

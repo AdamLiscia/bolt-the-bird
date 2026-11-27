@@ -1116,6 +1116,9 @@ pub struct CardDef {
     /// "If you would proliferate, proliferate twice instead." (Tekuthal, Inquiry Dominus), in
     /// `Effect::Proliferate`.
     pub proliferate_twice: bool,
+    /// "[This] can't be the target of abilities your opponents control." (Shanna, Sisay's
+    /// Legacy), in `target_legal`.
+    pub untargetable_by_opponents_abilities: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1717,6 +1720,7 @@ impl CardDef {
             soulbond_damage_draw: false,
             your_subtypes_tap_for_green: &[],
             proliferate_twice: false,
+            untargetable_by_opponents_abilities: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2015,6 +2019,7 @@ impl CardDef {
             soulbond_damage_draw: false,
             your_subtypes_tap_for_green: &[],
             proliferate_twice: false,
+            untargetable_by_opponents_abilities: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2313,6 +2318,7 @@ impl CardDef {
             soulbond_damage_draw: false,
             your_subtypes_tap_for_green: &[],
             proliferate_twice: false,
+            untargetable_by_opponents_abilities: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

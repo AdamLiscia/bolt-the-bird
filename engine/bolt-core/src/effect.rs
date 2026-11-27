@@ -2780,6 +2780,16 @@ pub enum Effect {
         n: u8,
         color: crate::Color,
     },
+    /// The creature in `slot` becomes a Treasure artifact with "{T}, Sacrifice this artifact: Add
+    /// one mana of any color" and loses all other card types and abilities, for as long as it
+    /// stays (Vraska, Betrayal's Sting's -2; `TypeChange::treasure_form`).
+    BecomeTreasure(u8),
+    /// "If target player has fewer than `n` poison counters, they get a number of poison counters
+    /// equal to the difference." (Vraska, Betrayal's Sting's -9: 9)
+    TargetPlayerPoisonUpTo {
+        slot: u8,
+        n: i32,
+    },
     /// Nissa, Ascended Animist's +1: create the `def` token (printed 0/0) with base power and
     /// toughness X/X, X the source's loyalty as it resolves.
     CreateTokenXxSourceLoyalty {

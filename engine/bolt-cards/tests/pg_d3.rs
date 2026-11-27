@@ -4204,3 +4204,28 @@ fn brightcap_badger_makes_saprolings_that_tap_for_green() {
         "a Saproling at your end step"
     );
 }
+
+#[test]
+fn shanna_grows_per_creature_and_dodges_opponents_abilities() {
+    let mut g = table();
+    let shanna = put(&mut g, 1, "Shanna, Sisay's Legacy");
+    assert_eq!((g.power(shanna), g.toughness(shanna)), (1, 1), "herself");
+    let elves = put(&mut g, 1, "Llanowar Elves");
+    assert_eq!((g.power(shanna), g.toughness(shanna)), (2, 2));
+    let thassa = put(&mut g, 0, "Thassa, Deep-Dwelling");
+    act(&mut g, Action::Activate(thassa, 0));
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Target(obj(elves))));
+    assert!(
+        !legal.contains(&Action::Target(obj(shanna))),
+        "an opponent's ability"
+    );
+    act(&mut g, Action::Target(obj(elves)));
+    resolve_all(&mut g, &[]);
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    act(&mut g, Action::Cast(bolt));
+    assert!(
+        g.legal_actions().contains(&Action::Target(obj(shanna))),
+        "spells still can"
+    );
+}
