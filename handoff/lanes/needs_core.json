@@ -7512,6 +7512,501 @@
    "theme": "triggers",
    "owner": "d2",
    "status": "done: d2 batch 39"
+  },
+  {
+   "card": "Gleaming Splendor",
+   "deck": "IDEA Sythis, Harvest's Hand",
+   "missing": "an opponent draws their second card each turn",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Soaring Lightbringer",
+   "deck": "IDEA Sythis, Harvest's Hand",
+   "missing": "whenever you attack a player: a token tapped and attacking (needs token: 1/1 white Glimmer enchantment creature)",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Ayara, First of Locthwain",
+   "deck": "IDEA Ratadrabik of Urborg",
+   "missing": "this or another black creature you control enters",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Cruel Celebrant",
+   "deck": "IDEA Ratadrabik of Urborg",
+   "missing": "this or another creature or planeswalker you control dies",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Lotho, Corrupt Shirriff",
+   "deck": "IDEA Ratadrabik of Urborg",
+   "missing": "a player casts their second spell each turn",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Cadira, Caller of the Small",
+   "deck": "IDEA Baylen, the Haymaker",
+   "missing": "combat damage to a player: a token per token you control (needs token: 1/1 white Rabbit)",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Cathars' Crusade",
+   "deck": "IDEA Baylen, the Haymaker",
+   "missing": "a creature you control enters: counters on each",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Charismatic Conqueror",
+   "deck": "IDEA Baylen, the Haymaker",
+   "missing": "an opponent's artifact or creature enters untapped; they may tap it (needs token: 1/1 white Vampire with lifelink)",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Knuckles the Echidna",
+   "deck": "IDEA Baylen, the Haymaker",
+   "missing": "one or more creatures you control deal combat damage to a player; upkeep win with thirty artifacts",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Ocelot Pride",
+   "deck": "IDEA Baylen, the Haymaker",
+   "missing": "end step if you gained life; tokens that entered this turn (city's blessing)",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Rosie Cotton of South Lane",
+   "deck": "IDEA Baylen, the Haymaker",
+   "missing": "whenever you create a token",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "The Cabbage Merchant",
+   "deck": "IDEA Baylen, the Haymaker",
+   "missing": "an opponent casts a noncreature spell; a creature deals combat damage to you (Food mana: d1)",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Fandaniel, Telophoroi Ascian",
+   "deck": "IDEA Y'shtola, Night's Blessed",
+   "missing": "instant/sorcery cast surveil; end step: opponent may sacrifice or lose life",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "G'raha Tia, Scion Reborn",
+   "deck": "IDEA Y'shtola, Night's Blessed",
+   "missing": "cast noncreature: may pay X life, once each turn (needs token: 1/1 colorless Hero)",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Helm of the Ghastlord",
+   "deck": "IDEA Y'shtola, Night's Blessed",
+   "missing": "granted damage-to-an-opponent triggers by enchanted creature's color",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Hermes, Overseer of Elpis",
+   "deck": "IDEA Y'shtola, Night's Blessed",
+   "missing": "cast noncreature: a Bird token; attack with Birds: scry (needs token: 1/1 blue Bird flying vigilance)",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Kambal, Consul of Allocation",
+   "deck": "IDEA Y'shtola, Night's Blessed",
+   "missing": "an opponent casts a noncreature spell",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Mai, Scornful Striker",
+   "deck": "IDEA Y'shtola, Night's Blessed",
+   "missing": "a player casts a noncreature spell: they lose 2",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Papalymo Totolymo",
+   "deck": "IDEA Y'shtola, Night's Blessed",
+   "missing": "cast noncreature drain; each opponent who lost life sacrifices the greatest power",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Starscape Cleric",
+   "deck": "IDEA Y'shtola, Night's Blessed",
+   "missing": "whenever you gain life, each opponent loses 1",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Uncover the Moon-Letters",
+   "deck": "IDEA Y'shtola, Night's Blessed",
+   "missing": "cast noncreature: may draw X (mana spent), then discard two",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Valeria Richards, Precocious",
+   "deck": "IDEA Y'shtola, Night's Blessed",
+   "missing": "your first noncreature spell each turn",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Wizard's Staff",
+   "deck": "IDEA Y'shtola, Night's Blessed",
+   "missing": "triggered abilities of the equipped creature trigger an additional time (fire doubling)",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Y'shtola, Night's Blessed",
+   "deck": "IDEA Y'shtola, Night's Blessed",
+   "missing": "end step if a player lost 4+ life this turn; noncreature MV 3+",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Angelic Renewal",
+   "deck": "IDEA Rocco, Cabaretti Caterer",
+   "missing": "a creature is put into your graveyard from the battlefield: may sacrifice, return it",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Fecundity",
+   "deck": "IDEA Rocco, Cabaretti Caterer",
+   "missing": "whenever a creature dies, its controller may draw",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Juniper Order Ranger",
+   "deck": "IDEA Rocco, Cabaretti Caterer",
+   "missing": "another creature you control enters: counters on it and this",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Liege of the Hollows",
+   "deck": "IDEA Rocco, Cabaretti Caterer",
+   "missing": "dies: each player may pay any amount, Squirrels (needs token: 1/1 green Squirrel)",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Lifecrafter's Bestiary",
+   "deck": "IDEA Rocco, Cabaretti Caterer",
+   "missing": "upkeep scry; cast creature: may pay {G} to draw",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Lifeline",
+   "deck": "IDEA Rocco, Cabaretti Caterer",
+   "missing": "a creature dies, if another is on the battlefield: return it at the next end step",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Nim Deathmantle",
+   "deck": "IDEA Rocco, Cabaretti Caterer",
+   "missing": "a nontoken creature to your graveyard from the battlefield: may pay {4}, return and attach",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Twilight Drover",
+   "deck": "IDEA Rocco, Cabaretti Caterer",
+   "missing": "a creature token leaves the battlefield",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Adeline, Resplendent Cathar",
+   "deck": "IDEA Tymna the Weaver + Tana, the Bloodsower",
+   "missing": "whenever you attack: a Human token tapped and attacking",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Luminarch Aspirant",
+   "deck": "IDEA Tymna the Weaver + Tana, the Bloodsower",
+   "missing": "beginning of combat on your turn: a counter on target creature you control",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Oakhame Adversary",
+   "deck": "IDEA Tymna the Weaver + Tana, the Bloodsower",
+   "missing": "combat damage to a player: draw",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Tana, the Bloodsower",
+   "deck": "IDEA Tymna the Weaver + Tana, the Bloodsower",
+   "missing": "combat damage to a player: that many Saprolings",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Tymna the Weaver",
+   "deck": "IDEA Tymna the Weaver + Tana, the Bloodsower",
+   "missing": "postcombat main: pay X life, X opponents dealt combat damage this turn",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Alela, Artful Provocateur",
+   "deck": "IDEA Alela, Artful Provocateur",
+   "missing": "cast an artifact or enchantment spell: a Faerie token (needs token: 1/1 blue Faerie flying)",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Archon of Cruelty",
+   "deck": "IDEA Alela, Artful Provocateur",
+   "missing": "enters or attacks: opponent sacrifices, discards, loses 3; you draw, gain 3",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Black Market",
+   "deck": "IDEA Alela, Artful Provocateur",
+   "missing": "a creature dies: charge counter; first main phase: {B} per counter",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Medomai the Ageless",
+   "deck": "IDEA Alela, Artful Provocateur",
+   "missing": "combat damage to a player: extra turn; can't attack in extra turns",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Reconnaissance Mission",
+   "deck": "IDEA Alela, Artful Provocateur",
+   "missing": "a creature you control deals combat damage to a player: may draw",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Sharding Sphinx",
+   "deck": "IDEA Alela, Artful Provocateur",
+   "missing": "an artifact creature you control deals combat damage to a player: may make a Thopter",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Sword of Light and Shadow",
+   "deck": "IDEA Alela, Artful Provocateur",
+   "missing": "equipped creature deals combat damage to a player: gain 3, may return a creature card",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Thopter Assembly",
+   "deck": "IDEA Alela, Artful Provocateur",
+   "missing": "upkeep, if no other Thopters: bounce it, five Thopters",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Thopter Spy Network",
+   "deck": "IDEA Alela, Artful Provocateur",
+   "missing": "upkeep if you control an artifact: Thopter; artifact creatures deal combat damage: draw",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Zur the Enchanter",
+   "deck": "IDEA Alela, Artful Provocateur",
+   "missing": "attacks: may search an enchantment MV 3 or less onto the battlefield",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Crime Novelist",
+   "deck": "IDEA Prosper, Tome-Bound",
+   "missing": "you sacrifice an artifact: counter and {R}",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Decadent Dragon // Expensive Taste",
+   "deck": "IDEA Prosper, Tome-Bound",
+   "missing": "attacks: a Treasure (Omen half: mac-c)",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Laelia, the Blade Reforged",
+   "deck": "IDEA Prosper, Tome-Bound",
+   "missing": "attacks: impulse; cards put into exile from library or graveyard",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Passionate Archaeologist",
+   "deck": "IDEA Prosper, Tome-Bound",
+   "missing": "commanders you own have 'cast a spell from exile: damage equal to its MV'",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Smaug, Wicked Worm",
+   "deck": "IDEA Prosper, Tome-Bound",
+   "missing": "cast a spell with Treasure mana: draw, lose 1",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Weftstalker Ardent",
+   "deck": "IDEA Prosper, Tome-Bound",
+   "missing": "another creature or artifact you control enters: 1 damage to each opponent (warp: d1)",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Talion, the Kindly Lord",
+   "deck": "IDEA Dakkon Blackblade",
+   "missing": "an opponent casts a spell with MV, power or toughness equal to the chosen number",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Nihil Spellbomb",
+   "deck": "IDEA Dakkon Blackblade",
+   "missing": "put into a graveyard from the battlefield: may pay {B}, draw",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
   }
  ]
 }
