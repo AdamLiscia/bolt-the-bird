@@ -337,3 +337,9 @@ def test_hand_to_battlefield_and_exile_from_hand_picks():
 def test_palanis_hatcher_picks_the_egg_to_sacrifice():
     dec = {"kind": "SacrificeOfSubtype", "sub": "Egg"}
     assert sv._decision_label(dec, "Pick", 0, "Dinosaur Egg") == "Sacrifice Dinosaur Egg"
+
+
+def test_tekuthal_picks_each_counter_to_remove():
+    dec = {"kind": "RemoveCountersFromOthers", "left": 3}
+    assert sv._decision_label(dec, "Pick", 0, "Sol Ring") == "Remove a counter from Sol Ring"
+    assert label(dec, "No", 0) == "Don't activate it"

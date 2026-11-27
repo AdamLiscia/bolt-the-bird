@@ -147,6 +147,9 @@ pub struct Filter {
     /// Only permanents with one of these subtypes (Seasoned Dungeoneer: "Cleric, Rogue, Warrior, or
     /// Wizard"); empty: no restriction.
     pub subtypes_any: &'static [&'static str],
+    /// Spells not cast from their owner's hand only, unless this spell was cast for its alternative
+    /// cost (Wash Away uncleaved: "target spell that wasn't cast from its owner's hand").
+    pub spell_not_from_hand_unless_alt: bool,
 }
 
 impl Filter {
@@ -216,6 +219,7 @@ impl Filter {
         up_to_x: false,
         tapped_only: false,
         subtypes_any: &[],
+        spell_not_from_hand_unless_alt: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -2889,6 +2893,26 @@ pub enum Effect {
     /// Return the nonland permanent in `slot` to its owner's hand, then that player exiles a card
     /// from their hand (Ashiok, Nightmare Muse's -3), as `Decision::ExileCardFromHand`.
     BounceThenOwnerExilesFromHand(u8),
+    /// Sorcerer Class, level 3: the spell in `extra` deals damage to each opponent equal to the
+    /// number of instant and sorcery spells you've cast this turn (`Game::instants_sorceries_cast`).
+    ExtraDamagesEachOpponentInstantsSorceriesThisTurn,
+    /// Roaring Earth's channel: X +1/+1 counters (the item's X) on the land in `slot`, and it
+    /// becomes a 0/0 creature with `subtype` and haste for good (still a land), as `Awaken`.
+    AwakenX {
+        slot: u8,
+        subtype: &'static str,
+    },
+    /// The creature in `slot` can't be blocked this turn by creatures the chosen player controls,
+    /// the chosen player one with the most life or tied (The Black Gate). One opponent: only the
+    /// other player's creatures can block it, so it gains unblockable when that player has the
+    /// most life or is tied (a tie's choice is that player; the other choice does nothing).
+    GrantUnblockableIfBlockersMostLife(u8),
+    /// The creature in `slot` connives X, X the number of creatures that died this turn
+    /// (Spymaster's Vault), as `Decision::ConniveDiscard`.
+    ConniveDiedThisTurn(u8),
+    /// "Triple the power and toughness of" the creature in `slot` until end of turn (Tifa's Limit
+    /// Break): +2X/+2Y.
+    TriplePowerToughness(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

@@ -1486,6 +1486,9 @@ pub enum Decision {
     /// `Pick` a permanent you control with subtype `sub` to sacrifice ("sacrifice an Egg":
     /// Palani's Hatcher); the rest of the ability follows.
     SacrificeOfSubtype { source: ObjId, sub: &'static str },
+    /// Tekuthal: `Pick` another artifact, creature or planeswalker you control to remove a counter
+    /// from (`left` including this one) for the cost of `source`'s ability `n`, or `No` to cancel.
+    RemoveCountersFromOthers { source: ObjId, n: usize, left: u8 },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -5954,7 +5957,15 @@ impl Game {
             {
                 self.obj_mut(id).tapped = true;
             }
-            if def.shock_land {
+            // Horizon Explorer: "Lands you control enter untapped."
+            let untapped = def.types.land
+                && self
+                    .permanents(controller_now)
+                    .any(|x| self.def_of(x).mana_ext.your_lands_enter_untapped && !self.lost_abilities(x));
+            if untapped {
+                self.obj_mut(id).tapped = false;
+            }
+            if def.shock_land && !untapped {
                 self.obj_mut(id).shock_pending = true;
             }
             if def.zones.enters_as_land_copy_tapped {
@@ -7168,6 +7179,10 @@ impl Game {
         {
             return false;
         }
+        // Wash Away: uncleaved, only a spell that wasn't cast from its owner's hand.
+        if f.spell_not_from_hand_unless_alt && !item.alt && self.obj(x).from_hand {
+            return false;
+        }
         if f.mana_value_is_x && self.def_of(x).cost.mana_value() != item.x as u32 {
             return false;
         }
@@ -7481,7 +7496,11 @@ impl Game {
             }
             // An X spell's targets can depend on X (Stolen by the Fae), and a kicked spell can have
             // its own targets (Tear Asunder): those are checked per way of casting below.
-            let per_mode = def.cost.x > 0 || def.kicked_spell.is_some() || def.overload_spell.is_some();
+            // Cleave (Wash Away) can widen its targets too.
+            let per_mode = def.cost.x > 0
+                || def.kicked_spell.is_some()
+                || def.overload_spell.is_some()
+                || def.mana_ext.cleave.is_some();
             if let Some(ability) = &def.spell {
                 if !per_mode && !self.trigger_can_target(&Game::casting(c, p), ability) {
                     continue; // CR 601.2c: a spell needs a legal choice for every target.
@@ -7512,6 +7531,7 @@ impl Game {
                     let item = StackItem {
                         x: mode.x,
                         kicked: mode.kicked,
+                        alt: mode.alt,
                         ..Game::casting(c, p)
                     };
                     if ability.is_some_and(|a| !self.trigger_can_target(&item, a)) {
@@ -7723,8 +7743,10 @@ impl Game {
             // Will of the Abzan: both modes only while you control a commander.
             let commander = self.permanents(p).any(|x| self.is_commander(x));
             let last = def.modes.len() - 1;
-            return (0..def.modes.len())
+            let blight_both = def.mana_ext.blight_chooses_last_mode;
+            let mut v: Vec<(Action, CastMode)> = (0..def.modes.len())
                 .filter(|&m| !(def.last_mode_needs_commander && m == last && !commander))
+                .filter(|&m| !(blight_both && m == last))
                 .filter(|&m| {
                     // An X spell's mode may need X for its targets (Kozilek's Command): check with
                     // the largest X the mana could reach.
@@ -7744,6 +7766,17 @@ impl Game {
                     )
                 })
                 .collect();
+            // Pyrrhic Strike: blighting a creature you control casts both modes.
+            if blight_both && self.trigger_can_target(&Game::casting(c, p), &def.modes[last]) {
+                for x in self.creatures(p).collect::<Vec<_>>() {
+                    let mode = CastMode {
+                        mode: Some(last as u8),
+                        ..CastMode::with(x)
+                    };
+                    v.push((Action::CastWith(c, x), mode));
+                }
+            }
+            return v;
         }
         let creatures = || {
             self.creatures(p)
@@ -7777,6 +7810,12 @@ impl Game {
                 .collect(),
             Some(ExtraCost::SacrificeCreatureOfColor(k)) => creatures()
                 .filter(|&(_, m)| m.extra.is_some_and(|x| self.colors_of(x)[*k as usize]))
+                .collect(),
+            Some(ExtraCost::BlightOrPay(..)) => std::iter::once((Action::Cast(c), CastMode::default()))
+                .chain(
+                    self.creatures(p)
+                        .map(|x| (Action::CastWith(c, x), CastMode::with(x))),
+                )
                 .collect(),
             Some(ExtraCost::Casualty(n)) => std::iter::once((Action::Cast(c), CastMode::default()))
                 .chain(creatures().filter(|&(_, m)| m.extra.is_some_and(|x| self.power(x) >= *n as i32)))
@@ -8090,8 +8129,14 @@ impl Game {
             0
         };
         cost.generic = cost.generic.saturating_add(tax);
-        if let (Some(ExtraCost::SacrificeCreatureOrPay(m) | ExtraCost::ForageOrPay(m)), None) =
-            (&def.extra_cost, mode.extra)
+        if let (
+            Some(
+                ExtraCost::SacrificeCreatureOrPay(m)
+                | ExtraCost::ForageOrPay(m)
+                | ExtraCost::BlightOrPay(_, m),
+            ),
+            None,
+        ) = (&def.extra_cost, mode.extra)
         {
             cost = add_costs(&cost, m);
         }
@@ -8358,6 +8403,9 @@ impl Game {
             }
             let e = &self.def_of(x).mana_ext;
             n += e.spell_discount_all as usize;
+            if t.instant || t.sorcery || mode.mode == Some(OMEN_MODE) {
+                n += e.instant_sorcery_discount as usize; // Case of the Ransacked Lab
+            }
             if def.colors == [false; 5] && mode.mode != Some(OMEN_MODE) {
                 if def.subtypes.iter().any(|s| s == "Eldrazi") {
                     n += e.colorless_eldrazi_spell_discount as usize; // Eye of Ugin
@@ -8913,7 +8961,8 @@ impl Game {
         exclude: Option<ObjId>,
         spell: PayFor,
     ) -> Vec<(ObjId, ManaSource)> {
-        self.untapped_sources(p)
+        let mut v: Vec<(ObjId, ManaSource)> = self
+            .untapped_sources(p)
             .into_iter()
             .filter(|s| Some(s.0) != exclude)
             .filter(|s| {
@@ -8983,7 +9032,46 @@ impl Game {
             })
             .chain(self.convoke_sources(p, exclude, spell))
             .chain(self.eldrazi_temple_extra(p, exclude, spell))
-            .collect()
+            .collect();
+        // Sorcerer Class: your creatures tap for its colors, for instants, sorceries and Class levels.
+        let for_spells = match spell {
+            PayFor::Spell(c) => self.def_of(c).types.instant || self.def_of(c).types.sorcery,
+            PayFor::OmenSpell(_) => true,
+            PayFor::Ability(src) => self.def_of(src).activated.iter().any(|a| a.level_up_to > 0),
+            PayFor::Other => false,
+        };
+        if for_spells {
+            let colors = self
+                .permanents(p)
+                .filter(|&x| !self.lost_abilities(x))
+                .filter_map(|x| {
+                    let (level, colors) = self.def_of(x).mana_ext.creatures_tap_for_instant_sorcery?;
+                    (self.class_level(x) >= level).then_some(colors)
+                })
+                .reduce(|a, b| std::array::from_fn(|i| a[i] || b[i]));
+            if let Some(colors) = colors {
+                let m = ManaSource {
+                    colors,
+                    ..ManaSource::default()
+                };
+                for c in self.creatures(p).collect::<Vec<_>>() {
+                    if Some(c) == exclude || !self.can_tap(c) {
+                        continue;
+                    }
+                    if v.iter().any(|s| s.0 == c) {
+                        // A mana creature: the same tap makes either.
+                        for s in v.iter_mut().filter(|s| s.0 == c) {
+                            for (k, on) in colors.iter().enumerate() {
+                                s.1.colors[k] |= *on;
+                            }
+                        }
+                    } else {
+                        v.push((c, m));
+                    }
+                }
+            }
+        }
+        v
     }
 
     /// Eldrazi Temple: the rest of its "{C}{C}" for a colorless Eldrazi spell or an ability of a
@@ -9461,6 +9549,9 @@ impl Game {
                     || (a.once_each_turn && self.obj(id).activated_turn == Some(self.turn))
                     || self.obj(id).kind_counters < a.remove_kind_counters
                     || (a.remove_plus_counters > 0 && self.obj(id).counters < a.remove_plus_counters as i32)
+                    || (a.remove_counters_from_others > 0
+                        && self.others_with_counters(p, id).iter().map(|e| e.1).sum::<i32>()
+                            < a.remove_counters_from_others as i32)
                     || (a.tap_attached
                         && !self
                             .obj(id)
@@ -9790,6 +9881,23 @@ impl Game {
                             .filter(|&c| !self.cant_be_sacrificed(c))
                             .map(|c| Action::ActivateWith(id, n, c)),
                     );
+                } else if a.sacrifice_artifact_or_creature {
+                    // "Sacrifice an artifact or creature" (Ravenous Squirrel), kept out of the mana.
+                    let victims: Vec<ObjId> = self
+                        .permanents(p)
+                        .filter(|&c| {
+                            let t = self.types_of(c);
+                            (t.artifact || t.creature) && !self.cant_be_sacrificed(c)
+                        })
+                        .collect();
+                    v.extend(
+                        victims
+                            .into_iter()
+                            .filter(|&c| {
+                                uses_self || self.can_pay_for(p, &a.mana, Some(c), PayFor::Ability(id))
+                            })
+                            .map(|c| Action::ActivateWith(id, n, c)),
+                    );
                 } else if a.sacrifice_artifact {
                     // "Sacrifice an artifact" (Goblin Engineer), kept out of the mana payment.
                     let artifacts: Vec<ObjId> = self
@@ -9961,7 +10069,12 @@ impl Game {
         let exclude = if uses_self {
             Some(id)
         } else {
-            victim.filter(|_| a.sacrifice_token || a.sacrifice_subtype.is_some() || a.sacrifice_artifact)
+            victim.filter(|_| {
+                a.sacrifice_token
+                    || a.sacrifice_subtype.is_some()
+                    || a.sacrifice_artifact
+                    || a.sacrifice_artifact_or_creature
+            })
         };
         // Mana first: a creature can tap for mana and then be sacrificed for the same cost
         // (CR 602.2b). The fuzzer found the reverse order failing.
@@ -10287,6 +10400,11 @@ impl Game {
         } else {
             0
         };
+        let leapers = self
+            .battlefield
+            .iter()
+            .filter(|&&x| self.def_of(x).mana_ext.basic_lands_add_extra && !self.lost_abilities(x))
+            .count();
         for (id, m) in base {
             let life_cost = self.def_of(id).mana_ext.mana_life_cost;
             if life_cost > 0 && self.players[p].life < life_cost {
@@ -10299,6 +10417,9 @@ impl Game {
                 for &c in &creature_adders {
                     out.push((id, ManaSource::of(&[c]))); // Leyline of Abundance
                 }
+            }
+            if leapers > 0 && self.types_of(id).land && self.types_of(id).basic {
+                out.extend(std::iter::repeat_n((id, m), leapers)); // Lavaleaper
             }
             if tide > 0 && self.types_of(id).land && self.has_subtype(id, "Island") {
                 // High Tide: an additional {U} for each one this turn.
@@ -10830,6 +10951,9 @@ impl Game {
             && tap.len() >= alt.tap as usize
             && self.alt_ext_returns(p, alt).len() >= alt.return_lands as usize
             && !(alt.first_spell_this_game && self.cast_a_spell_this_game[p])
+            && alt
+                .if_you_control
+                .is_none_or(|sub| self.permanents(p).any(|x| self.has_subtype(x, sub)))
     }
 
     /// The permanents an [`crate::card::AltCostExt`] returns to hand, as the engine picks them:
@@ -11106,6 +11230,13 @@ impl Game {
         if champion {
             return false;
         }
+        // Delney, Streetwise Lookout: power 2 or less can't be blocked by power 3 or greater.
+        let delney = self
+            .permanents(self.obj(attacker).controller)
+            .any(|x| self.def_of(x).mana_ext.small_creatures_evade_big && !self.lost_abilities(x));
+        if delney && self.power(attacker) <= 2 && self.power(blocker) >= 3 {
+            return false;
+        }
         let only_legendary = self.permanents(self.obj(attacker).controller).any(|x| {
             self.def_of(x).mana_ext.your_creatures_blocked_only_by_legendary && !self.lost_abilities(x)
         });
@@ -11354,10 +11485,13 @@ impl Game {
                 let energy = self.def_of(x).permanents_for_energy > 0
                     && self.obj(x).zone == Zone::Battlefield
                     && self.def_of(c).extra_cost.is_none();
-                let mode = CastMode {
+                let mut mode = CastMode {
                     alt: energy,
                     ..CastMode::with(x)
                 };
+                if self.def_of(c).mana_ext.blight_chooses_last_mode {
+                    mode.mode = Some((self.def_of(c).modes.len() - 1) as u8); // Pyrrhic Strike: both
+                }
                 self.cast(p, c, mode)
             }
             (Pending::Priority(p), Action::Loyalty(id, n)) => self.activate_loyalty(p, id, n),
@@ -11448,7 +11582,15 @@ impl Game {
                     ..CastMode::default()
                 },
             ),
-            (Pending::Priority(p), Action::Activate(id, n)) => self.activate(p, id, n, None),
+            (Pending::Priority(p), Action::Activate(id, n)) => {
+                let left = self.activated_of(id, n).remove_counters_from_others;
+                if left > 0 {
+                    // Tekuthal: the counters are chosen first.
+                    self.ask(p, Decision::RemoveCountersFromOthers { source: id, n, left });
+                } else {
+                    self.activate(p, id, n, None)
+                }
+            }
             (Pending::Priority(p), Action::ActivateWith(id, n, victim)) => {
                 let a = self.activated_of(id, n);
                 let crew = a.crew.max(a.saddle) as i32; // saddle uses the same summed-power cost
@@ -11862,6 +12004,58 @@ impl Game {
         }
     }
 
+    /// Tekuthal: the other artifacts, creatures and planeswalkers `p` controls with counters, and how
+    /// many each has (+1/+1 or -1/-1, loyalty, its own kind, stun, revival).
+    fn others_with_counters(&self, p: PlayerId, source: ObjId) -> Vec<(ObjId, i32)> {
+        self.permanents(p)
+            .filter(|&x| x != source)
+            .filter(|&x| {
+                let t = self.types_of(x);
+                t.artifact || t.creature || t.planeswalker
+            })
+            .map(|x| {
+                let o = self.obj(x);
+                let loyalty = if self.types_of(x).planeswalker {
+                    o.loyalty.max(0)
+                } else {
+                    0
+                };
+                (
+                    x,
+                    o.counters.abs() + loyalty + o.kind_counters.max(0) + o.stun.max(0) + o.revival.max(0),
+                )
+            })
+            .filter(|e| e.1 > 0)
+            .collect()
+    }
+
+    /// Removes one counter from `x` (Tekuthal's cost; the player picked `x`). Demo rule until the
+    /// kind is a Mode pick: the kind with the most counters on it, but never loyalty while another
+    /// kind is present (ties: +1/+1 or -1/-1, its own kind, stun, revival).
+    fn remove_any_counter(&mut self, x: ObjId) {
+        let walker = self.types_of(x).planeswalker;
+        let o = self.obj(x);
+        let others = [
+            o.counters.abs(),
+            o.kind_counters.max(0),
+            o.stun.max(0),
+            o.revival.max(0),
+        ];
+        let loyalty = if walker { o.loyalty.max(0) } else { 0 };
+        let best = (0..4)
+            .max_by_key(|&k| (others[k], std::cmp::Reverse(k)))
+            .filter(|&k| others[k] > 0);
+        let o = self.obj_mut(x);
+        match best {
+            Some(0) => o.counters -= o.counters.signum(),
+            Some(1) => o.kind_counters -= 1,
+            Some(2) => o.stun -= 1,
+            Some(_) => o.revival -= 1,
+            None if loyalty > 0 => o.loyalty -= 1,
+            None => {}
+        }
+    }
+
     /// The creatures that saddled `mount` this turn that `p` can still sacrifice (The Gitrog).
     fn gitrog_riders(&self, p: PlayerId, mount: ObjId) -> Vec<ObjId> {
         let (turn, mz) = (self.turn, self.obj(mount).zcc);
@@ -12153,6 +12347,9 @@ impl Game {
             if alt.life > 0 {
                 self.lose_life(p, alt.life);
             }
+            if alt.opponent_gains > 0 {
+                self.gain_life(opponent(p), alt.opponent_gains); // Invigorate
+            }
             for v in sac.into_iter().take(alt.sacrifice as usize) {
                 self.move_to(v, Zone::Graveyard);
                 self.sacrificed(v, p);
@@ -12240,6 +12437,17 @@ impl Game {
             self.def_of(card).extra_cost,
             Some(ExtraCost::RevealColorlessCreature)
         );
+        // Blight N: N -1/-1 counters on the named creature instead of sacrificing it.
+        let blight = match self.def_of(card).extra_cost {
+            Some(ExtraCost::BlightOrPay(n, _)) if !item.flashback => Some(n),
+            _ => None,
+        };
+        if let (Some(n), Some(x)) = (blight, item.extra) {
+            if self.obj(x).zone == Zone::Battlefield {
+                self.obj_mut(x).counters -= n as i32;
+            }
+        }
+        let revealed = revealed || blight.is_some();
         if let Some(x) = item
             .extra
             .filter(|_| energy_by.is_none() && !foraged && !revealed)
@@ -13723,6 +13931,15 @@ impl Game {
                 v.push(Action::No);
                 v
             }
+            Decision::RemoveCountersFromOthers { source, .. } => {
+                let mut v: Vec<Action> = self
+                    .others_with_counters(p, *source)
+                    .into_iter()
+                    .map(|(x, _)| Action::Pick(x))
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::CrewTap { source, n, chosen } => {
                 let a = self.activated_of(*source, *n);
                 let need = a.crew.max(a.saddle) as i32;
@@ -14953,6 +15170,28 @@ impl Game {
                 self.give_priority(active);
             } else if self.resolving.is_some() {
                 self.continue_resolving();
+            }
+            return;
+        }
+        if let Decision::RemoveCountersFromOthers { source, n, left } = d {
+            // Tekuthal's cost, before the ability is activated (as crew's taps).
+            match a {
+                Action::Pick(x) => {
+                    self.remove_any_counter(x);
+                    if left > 1 {
+                        self.ask(
+                            p,
+                            Decision::RemoveCountersFromOthers {
+                                source,
+                                n,
+                                left: left - 1,
+                            },
+                        );
+                    } else {
+                        self.activate(p, source, n, None);
+                    }
+                }
+                _ => self.give_priority(p), // cancelled
             }
             return;
         }
@@ -19064,6 +19303,14 @@ impl Game {
                             left: 1,
                         },
                     );
+                }
+            }
+            Effect::AwakenX { slot, subtype } => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    if self.obj(id).zone == Zone::Battlefield {
+                        self.obj_mut(id).eot_creature = Some((u32::MAX, 0, 0, subtype, Keywords::HASTE));
+                        self.add_counters(id, item.x as i32);
+                    }
                 }
             }
             Effect::Awaken { slot, n } => {
@@ -25296,6 +25543,13 @@ impl Game {
                     }
                 }
             }
+            Effect::ExtraDamagesEachOpponentInstantsSorceriesThisTurn => {
+                let p = item.controller;
+                let n = self.instants_sorceries_cast[p] as i32;
+                if let (Some(spell), true) = (item.extra, n > 0) {
+                    self.deal_damage(spell, Target::Player(opponent(p)), n);
+                }
+            }
             Effect::CreateTokenXxSourceLoyalty { def } => {
                 let x = self.obj(src).loyalty.max(0);
                 self.create_token(item.controller, def);
@@ -25316,6 +25570,49 @@ impl Game {
                         keywords,
                         dies: None,
                     });
+                }
+            }
+            Effect::GrantUnblockableIfBlockersMostLife(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let c = self.obj(id).controller;
+                    if self.players[opponent(c)].life >= self.players[c].life {
+                        self.run_effect(
+                            item,
+                            legal,
+                            Effect::Grant {
+                                slot,
+                                keywords: Keywords::UNBLOCKABLE,
+                            },
+                        );
+                    }
+                }
+            }
+            Effect::TriplePowerToughness(n) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    let (power, toughness, zcc) = (self.power(id), self.toughness(id), self.obj(id).zcc);
+                    self.until_eot.push(Modifier {
+                        obj: id,
+                        zcc,
+                        power: 2 * power,
+                        toughness: 2 * toughness,
+                        keywords: Keywords::NONE,
+                        dies: None,
+                    });
+                }
+            }
+            Effect::ConniveDiedThisTurn(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let (t, n) = self.creatures_died;
+                    let x = if t == self.turn {
+                        n.min(u8::MAX as u32) as u8
+                    } else {
+                        0
+                    };
+                    let p = item.controller;
+                    for _ in 0..x {
+                        self.draw(p);
+                    }
+                    self.connive_next(p, id, x, 0);
                 }
             }
             Effect::CounterIfNotFromHandUnlessCleaved(slot) => {
