@@ -1125,6 +1125,18 @@ pub struct CardDef {
     /// "Creatures you control are every creature type. The same is true for creature spells you
     /// control and creature cards you own that aren't on the battlefield." (Maskwood Nexus)
     pub your_creatures_every_creature_type: bool,
+    /// "Your opponents can't cast spells from anywhere other than their hands." (Drannith
+    /// Magistrate), in the priority and free-cast actions.
+    pub opponents_cast_only_from_hand: bool,
+    /// "If one or more -1/-1 counters would be put on a creature you control, that many -1/-1
+    /// counters minus one are put on it instead." (Vizier of Remedies), `Game::minus_counters_for`.
+    pub your_minus_counters_minus_one: bool,
+    /// Opposition Agent: "While an opponent is searching their library, they exile each card they
+    /// find. You may play those cards for as long as they remain exiled, and you may spend mana as
+    /// though it were mana of any color to cast them." (`SearchTo::ExiledForOpponent`). Not
+    /// modeled: "You control your opponents while they're searching their libraries" (1v1, the
+    /// searcher still chooses).
+    pub opponents_searches_exiled_for_you: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1729,6 +1741,9 @@ impl CardDef {
             untargetable_by_opponents_abilities: false,
             enchanted_creature_type_becomes: None,
             your_creatures_every_creature_type: false,
+            opponents_cast_only_from_hand: false,
+            your_minus_counters_minus_one: false,
+            opponents_searches_exiled_for_you: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2030,6 +2045,9 @@ impl CardDef {
             untargetable_by_opponents_abilities: false,
             enchanted_creature_type_becomes: None,
             your_creatures_every_creature_type: false,
+            opponents_cast_only_from_hand: false,
+            your_minus_counters_minus_one: false,
+            opponents_searches_exiled_for_you: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2331,6 +2349,9 @@ impl CardDef {
             untargetable_by_opponents_abilities: false,
             enchanted_creature_type_becomes: None,
             your_creatures_every_creature_type: false,
+            opponents_cast_only_from_hand: false,
+            your_minus_counters_minus_one: false,
+            opponents_searches_exiled_for_you: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

@@ -2069,6 +2069,46 @@ pub fn script(name: &str) -> Option<Script> {
                 activated(d, "{3}", true, vec![], vec![token]);
             },
         ),
+        "Jin-Gitaxias, Progress Tyrant" => s(
+            &[
+                "Whenever you cast an artifact, instant, or sorcery spell, copy that spell. You may choose new targets for the copy. This ability triggers only once each turn.",
+                "Whenever an opponent casts an artifact, instant, or sorcery spell, counter that spell. This ability triggers only once each turn.",
+            ],
+            |d, _| {
+                on(d, When::YouCastArtifactInstantOrSorceryOnceEachTurn, vec![], vec![Effect::CopyExtraSpell]);
+                on(d, When::OpponentCastsArtifactInstantOrSorceryOnceEachTurn, vec![], vec![Effect::CounterExtra]);
+            },
+        ),
+        "Silence" => s(&["Your opponents can't cast spells this turn."], |d, _| {
+            spell(d, vec![], vec![Effect::OpponentsCantCastThisTurn])
+        }),
+        "Drannith Magistrate" => s(&["Your opponents can't cast spells from anywhere other than their hands."], |d, _| {
+            d.opponents_cast_only_from_hand = true;
+        }),
+        "Vizier of Remedies" => s(
+            &["If one or more -1/-1 counters would be put on a creature you control, that many -1/-1 counters minus one are put on it instead."],
+            |d, _| d.your_minus_counters_minus_one = true,
+        ),
+        "Mental Misstep" => s(&["Counter target spell with mana value 1."], |d, _| {
+            let one = Filter { spell_min_mana_value: Some(1), max_mana_value: Some(1), ..SPELL };
+            spell(d, vec![one], vec![Effect::Counter(0)]);
+        }),
+        "Spell Pierce" => s(&["Counter target noncreature spell unless its controller pays {2}."], |d, _| {
+            let noncreature = Filter { spell_creature: Some(false), ..SPELL };
+            spell(d, vec![noncreature], vec![Effect::CounterUnlessPays(0, 2, 2)]);
+        }),
+        "Dismember" => s(&["Target creature gets -5/-5 until end of turn."], |d, _| {
+            spell(d, vec![CREATURE], vec![Effect::Pump { slot: 0, power: -5, toughness: -5 }])
+        }),
+        "Opposition Agent" => s(
+            &[
+                "You control your opponents while they're searching their libraries.",
+                "While an opponent is searching their library, they exile each card they find. You may play those cards for as long as they remain exiled, and you may spend mana as though it were mana of any color to cast them.",
+            ],
+            // Known gap: "you control your opponents while they're searching" isn't modeled (1v1:
+            // the searcher still chooses what to find); only the exile-and-play half is.
+            |d, _| d.opponents_searches_exiled_for_you = true,
+        ),
         "Skyscribing" => s(
             &[
                 "Each player draws X cards.",
@@ -2366,4 +2406,13 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     // Core theme d3, batch 35
     "Noggle the Mind",
     "Maskwood Nexus",
+    // Core theme d3, batch 36
+    "Jin-Gitaxias, Progress Tyrant",
+    "Silence",
+    "Drannith Magistrate",
+    "Vizier of Remedies",
+    "Mental Misstep",
+    "Spell Pierce",
+    "Dismember",
+    "Opposition Agent",
 ];

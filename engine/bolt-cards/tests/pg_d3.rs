@@ -4472,3 +4472,130 @@ fn maskwood_nexus_makes_your_creatures_every_type_and_shapeshifters() {
     assert_eq!((g.power(x), g.toughness(x)), (2, 2));
     assert_eq!(g.colors_of(x), [false, true, false, false, false]);
 }
+
+#[test]
+fn jin_gitaxias_progress_tyrant_copies_yours_and_counters_theirs_once_each_turn() {
+    let mut g = table();
+    put(&mut g, 0, "Jin-Gitaxias, Progress Tyrant");
+    let life = g.players[1].life;
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[Action::Target(Target::Player(1))]);
+    assert_eq!(g.players[1].life, life - 6, "the Bolt and its copy");
+    let second = hand(&mut g, 0, "Lightning Bolt");
+    act(&mut g, Action::Cast(second));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, life - 9, "once each turn: no second copy");
+    // The opponent's first artifact, instant or sorcery spell each turn is countered.
+    g.start_turn(4, 1);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let theirs = hand(&mut g, 1, "Sol Ring");
+    act(&mut g, Action::Cast(theirs));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard, "countered");
+    let again = hand(&mut g, 1, "Sol Ring");
+    act(&mut g, Action::Cast(again));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(again).zone, Zone::Battlefield, "once each turn");
+}
+
+#[test]
+fn silence_stops_the_opponents_spells_this_turn() {
+    let mut g = table();
+    let s = hand(&mut g, 0, "Silence");
+    play(&mut g, s, false, &[], &[]);
+    assert_eq!(g.no_more_spells_turn[1], g.turn);
+    assert_ne!(g.no_more_spells_turn[0], g.turn, "yours still");
+}
+
+#[test]
+fn drannith_magistrate_stops_casting_from_anywhere_but_the_hand() {
+    let mut g = table();
+    put(&mut g, 0, "Drannith Magistrate");
+    g.start_turn(4, 1);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let turn = g.turn;
+    let grave = g.add_card(1, cid("Llanowar Elves"), Zone::Graveyard);
+    g.objects[grave.0 as usize].playable = Some((1, turn));
+    let from_hand = hand(&mut g, 1, "Llanowar Elves");
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Cast(from_hand)));
+    assert!(!legal.contains(&Action::Cast(grave)), "not from the graveyard");
+}
+
+#[test]
+fn vizier_of_remedies_puts_one_fewer_minus_counter_on_yours() {
+    let mut g = table();
+    put(&mut g, 0, "Vizier of Remedies");
+    let mine = put(&mut g, 0, "Pippin, Guard of the Citadel");
+    let theirs = put(&mut g, 1, "Pippin, Guard of the Citadel");
+    // Proliferate a -1/-1 counter on each: yours gets none (one minus one).
+    g.objects[mine.0 as usize].counters = -1;
+    g.objects[theirs.0 as usize].counters = -1;
+    let karn = put(&mut g, 0, "Karn's Bastion");
+    act(&mut g, Action::Activate(karn, 0));
+    resolve_all(&mut g, &[Action::Pick(mine), Action::Pick(theirs), Action::Yes]);
+    assert_eq!(g.obj(mine).counters, -1, "yours: one fewer, none");
+    assert_eq!(
+        g.obj(theirs).zone,
+        Zone::Graveyard,
+        "theirs: a second -1/-1 counter kills the 2/2"
+    );
+}
+
+#[test]
+fn mental_misstep_counters_only_mana_value_one() {
+    let mut g = table();
+    let ring = hand(&mut g, 0, "Sol Ring");
+    act(&mut g, Action::Cast(ring));
+    let mm = hand(&mut g, 0, "Mental Misstep");
+    act(&mut g, Action::Cast(mm));
+    act(&mut g, Action::Target(obj(ring)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ring).zone, Zone::Graveyard, "countered");
+    let pippin = hand(&mut g, 0, "Pippin, Guard of the Citadel");
+    act(&mut g, Action::Cast(pippin));
+    let mm = hand(&mut g, 0, "Mental Misstep");
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(mm)),
+        "no mana value 1 spell to target"
+    );
+}
+
+#[test]
+fn spell_pierce_and_dismember() {
+    let mut g = table();
+    let ring = hand(&mut g, 0, "Sol Ring");
+    act(&mut g, Action::Cast(ring));
+    let sp = hand(&mut g, 0, "Spell Pierce");
+    act(&mut g, Action::Cast(sp));
+    act(&mut g, Action::Target(obj(ring)));
+    resolve_all(&mut g, &[Action::No]);
+    assert_eq!(g.obj(ring).zone, Zone::Graveyard, "didn't pay");
+    let theirs = put(&mut g, 1, "Pippin, Guard of the Citadel");
+    let dm = hand(&mut g, 0, "Dismember");
+    play(&mut g, dm, false, &[obj(theirs)], &[]);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+}
+
+#[test]
+fn opposition_agent_exiles_what_the_opponent_finds_for_you_to_play() {
+    let mut g = table();
+    put(&mut g, 0, "Opposition Agent");
+    let wilds = put(&mut g, 1, "Evolving Wilds");
+    g.start_turn(4, 1);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let forest = g.add_card(1, cid("Forest"), Zone::Library); // after the draw
+    act(&mut g, Action::Activate(wilds, 0));
+    resolve_all(&mut g, &[Action::Pick(forest)]);
+    assert_eq!(g.obj(forest).zone, Zone::Exile, "exiled instead");
+    assert_eq!(g.obj(forest).playable.map(|p| p.0), Some(0), "you may play it");
+}
