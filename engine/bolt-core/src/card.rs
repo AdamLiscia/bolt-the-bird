@@ -400,6 +400,10 @@ pub struct Activated {
     /// kind (until it's a Mode pick): the kind with the most counters on that permanent, never
     /// loyalty (or lore) while another kind is present (`Game::remove_any_counter`).
     pub remove_counters_from_others: u8,
+    /// "Sacrifice an artifact or creature" in the cost (Ravenous Squirrel): one
+    /// `Action::ActivateWith` per artifact or creature you control (the player's pick), kept out of
+    /// the mana payment.
+    pub sacrifice_artifact_or_creature: bool,
 }
 
 /// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,
@@ -1322,6 +1326,13 @@ pub struct ManaExt {
     pub your_lands_enter_untapped: bool,
     /// "Instant and sorcery spells you cast cost {N} less to cast." (Case of the Ransacked Lab: 1)
     pub instant_sorcery_discount: u8,
+    /// With `ExtraCost::BlightOrPay` on a modal spell: "If this spell's additional cost was paid,
+    /// choose both instead." (Pyrrhic Strike). `Action::CastModal` offers every mode but the last
+    /// (both); `Action::CastWith` naming a creature to blight casts the last mode.
+    pub blight_chooses_last_mode: bool,
+    /// "Creatures you control with power 2 or less can't be blocked by creatures with power 3 or
+    /// greater." (Delney, Streetwise Lookout)
+    pub small_creatures_evade_big: bool,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana
@@ -1345,6 +1356,11 @@ pub struct AltCostExt {
     /// Only while you haven't cast a spell this game (Once Upon a Time: "If this spell is the first
     /// spell you've cast this game, you may cast it without paying its mana cost.").
     pub first_spell_this_game: bool,
+    /// Only while you control a permanent with this subtype (Snuff Out: "If you control a Swamp").
+    pub if_you_control: Option<&'static str>,
+    /// Instead of paying, the opponent gains this much life (Invigorate: "you may have an opponent
+    /// gain 3 life"; one opponent).
+    pub opponent_gains: i32,
 }
 
 /// Which events don't cause abilities to trigger (see [`CardDef::suppresses_triggers`]).

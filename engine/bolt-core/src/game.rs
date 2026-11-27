@@ -7380,8 +7380,10 @@ impl Game {
             // Will of the Abzan: both modes only while you control a commander.
             let commander = self.permanents(p).any(|x| self.is_commander(x));
             let last = def.modes.len() - 1;
-            return (0..def.modes.len())
+            let blight_both = def.mana_ext.blight_chooses_last_mode;
+            let mut v: Vec<(Action, CastMode)> = (0..def.modes.len())
                 .filter(|&m| !(def.last_mode_needs_commander && m == last && !commander))
+                .filter(|&m| !(blight_both && m == last))
                 .filter(|&m| {
                     // An X spell's mode may need X for its targets (Kozilek's Command): check with
                     // the largest X the mana could reach.
@@ -7401,6 +7403,17 @@ impl Game {
                     )
                 })
                 .collect();
+            // Pyrrhic Strike: blighting a creature you control casts both modes.
+            if blight_both && self.trigger_can_target(&Game::casting(c, p), &def.modes[last]) {
+                for x in self.creatures(p).collect::<Vec<_>>() {
+                    let mode = CastMode {
+                        mode: Some(last as u8),
+                        ..CastMode::with(x)
+                    };
+                    v.push((Action::CastWith(c, x), mode));
+                }
+            }
+            return v;
         }
         let creatures = || {
             self.creatures(p)
@@ -9493,6 +9506,23 @@ impl Game {
                             .filter(|&c| !self.cant_be_sacrificed(c))
                             .map(|c| Action::ActivateWith(id, n, c)),
                     );
+                } else if a.sacrifice_artifact_or_creature {
+                    // "Sacrifice an artifact or creature" (Ravenous Squirrel), kept out of the mana.
+                    let victims: Vec<ObjId> = self
+                        .permanents(p)
+                        .filter(|&c| {
+                            let t = self.types_of(c);
+                            (t.artifact || t.creature) && !self.cant_be_sacrificed(c)
+                        })
+                        .collect();
+                    v.extend(
+                        victims
+                            .into_iter()
+                            .filter(|&c| {
+                                uses_self || self.can_pay_for(p, &a.mana, Some(c), PayFor::Ability(id))
+                            })
+                            .map(|c| Action::ActivateWith(id, n, c)),
+                    );
                 } else if a.sacrifice_artifact {
                     // "Sacrifice an artifact" (Goblin Engineer), kept out of the mana payment.
                     let artifacts: Vec<ObjId> = self
@@ -9664,7 +9694,12 @@ impl Game {
         let exclude = if uses_self {
             Some(id)
         } else {
-            victim.filter(|_| a.sacrifice_token || a.sacrifice_subtype.is_some() || a.sacrifice_artifact)
+            victim.filter(|_| {
+                a.sacrifice_token
+                    || a.sacrifice_subtype.is_some()
+                    || a.sacrifice_artifact
+                    || a.sacrifice_artifact_or_creature
+            })
         };
         // Mana first: a creature can tap for mana and then be sacrificed for the same cost
         // (CR 602.2b). The fuzzer found the reverse order failing.
@@ -10522,6 +10557,9 @@ impl Game {
             && tap.len() >= alt.tap as usize
             && self.alt_ext_returns(p, alt).len() >= alt.return_lands as usize
             && !(alt.first_spell_this_game && self.cast_a_spell_this_game[p])
+            && alt
+                .if_you_control
+                .is_none_or(|sub| self.permanents(p).any(|x| self.has_subtype(x, sub)))
     }
 
     /// The permanents an [`crate::card::AltCostExt`] returns to hand, as the engine picks them:
@@ -10798,6 +10836,13 @@ impl Game {
         if champion {
             return false;
         }
+        // Delney, Streetwise Lookout: power 2 or less can't be blocked by power 3 or greater.
+        let delney = self
+            .permanents(self.obj(attacker).controller)
+            .any(|x| self.def_of(x).mana_ext.small_creatures_evade_big && !self.lost_abilities(x));
+        if delney && self.power(attacker) <= 2 && self.power(blocker) >= 3 {
+            return false;
+        }
         let only_legendary = self.permanents(self.obj(attacker).controller).any(|x| {
             self.def_of(x).mana_ext.your_creatures_blocked_only_by_legendary && !self.lost_abilities(x)
         });
@@ -11046,10 +11091,13 @@ impl Game {
                 let energy = self.def_of(x).permanents_for_energy > 0
                     && self.obj(x).zone == Zone::Battlefield
                     && self.def_of(c).extra_cost.is_none();
-                let mode = CastMode {
+                let mut mode = CastMode {
                     alt: energy,
                     ..CastMode::with(x)
                 };
+                if self.def_of(c).mana_ext.blight_chooses_last_mode {
+                    mode.mode = Some((self.def_of(c).modes.len() - 1) as u8); // Pyrrhic Strike: both
+                }
                 self.cast(p, c, mode)
             }
             (Pending::Priority(p), Action::Loyalty(id, n)) => self.activate_loyalty(p, id, n),
@@ -11879,6 +11927,9 @@ impl Game {
             let (sac, _) = self.alt_ext_creatures(p, &alt);
             if alt.life > 0 {
                 self.lose_life(p, alt.life);
+            }
+            if alt.opponent_gains > 0 {
+                self.gain_life(opponent(p), alt.opponent_gains); // Invigorate
             }
             for v in sac.into_iter().take(alt.sacrifice as usize) {
                 self.move_to(v, Zone::Graveyard);
@@ -24473,6 +24524,49 @@ impl Game {
                         keywords,
                         dies: None,
                     });
+                }
+            }
+            Effect::GrantUnblockableIfBlockersMostLife(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let c = self.obj(id).controller;
+                    if self.players[opponent(c)].life >= self.players[c].life {
+                        self.run_effect(
+                            item,
+                            legal,
+                            Effect::Grant {
+                                slot,
+                                keywords: Keywords::UNBLOCKABLE,
+                            },
+                        );
+                    }
+                }
+            }
+            Effect::TriplePowerToughness(n) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    let (power, toughness, zcc) = (self.power(id), self.toughness(id), self.obj(id).zcc);
+                    self.until_eot.push(Modifier {
+                        obj: id,
+                        zcc,
+                        power: 2 * power,
+                        toughness: 2 * toughness,
+                        keywords: Keywords::NONE,
+                        dies: None,
+                    });
+                }
+            }
+            Effect::ConniveDiedThisTurn(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let (t, n) = self.creatures_died;
+                    let x = if t == self.turn {
+                        n.min(u8::MAX as u32) as u8
+                    } else {
+                        0
+                    };
+                    let p = item.controller;
+                    for _ in 0..x {
+                        self.draw(p);
+                    }
+                    self.connive_next(p, id, x, 0);
                 }
             }
             Effect::CounterIfNotFromHandUnlessCleaved(slot) => {

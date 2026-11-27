@@ -2744,6 +2744,17 @@ pub enum Effect {
         slot: u8,
         subtype: &'static str,
     },
+    /// The creature in `slot` can't be blocked this turn by creatures the chosen player controls,
+    /// the chosen player one with the most life or tied (The Black Gate). One opponent: only the
+    /// other player's creatures can block it, so it gains unblockable when that player has the
+    /// most life or is tied (a tie's choice is that player; the other choice does nothing).
+    GrantUnblockableIfBlockersMostLife(u8),
+    /// The creature in `slot` connives X, X the number of creatures that died this turn
+    /// (Spymaster's Vault), as `Decision::ConniveDiscard`.
+    ConniveDiedThisTurn(u8),
+    /// "Triple the power and toughness of" the creature in `slot` until end of turn (Tifa's Limit
+    /// Break): +2X/+2Y.
+    TriplePowerToughness(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

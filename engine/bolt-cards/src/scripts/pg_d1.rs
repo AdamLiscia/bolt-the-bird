@@ -1764,6 +1764,111 @@ pub fn script(name: &str) -> Option<Script> {
                 spell(d, vec![], vec![search(SearchFor::Land, SearchTo::Battlefield { tapped: false })]);
             },
         ),
+        // ---- idea decks: Sephiroth ----
+        "Snuff Out" => s(
+            &[
+                "If you control a Swamp, you may pay 4 life rather than pay this spell's mana cost.",
+                "Destroy target nonblack creature. It can't be regenerated.",
+            ],
+            |d, _| {
+                d.mana_ext.alt_cost_ext = Some(bolt_core::card::AltCostExt {
+                    life: 4,
+                    if_you_control: Some("Swamp"),
+                    ..Default::default()
+                });
+                spell(d, vec![Filter { not_color: Some(2), ..CREATURE }], vec![Effect::DestroyNoRegen(0)]);
+            },
+        ),
+        "Spymaster's Vault" => s(
+            &[
+                "This land enters tapped unless you control a Swamp.",
+                "{T}: Add {B}.",
+                "{B}, {T}: Target creature you control connives X, where X is the number of creatures that died this turn.",
+            ],
+            |d, _| {
+                d.enters_tapped_unless = Some(["Swamp", "Swamp"]);
+                d.mana = Some(ManaSource::of(&[Color::Black]));
+                activated(d, "{B}", true, vec![YOUR_CREATURE], vec![Effect::ConniveDiedThisTurn(0)]);
+            },
+        ),
+        "The Black Gate" => s(
+            &[
+                "As The Black Gate enters, you may pay 3 life. If you don't, it enters tapped.",
+                "{T}: Add {B}.",
+                "{1}{B}, {T}: Choose a player with the most life or tied for most life. Target creature can't be blocked by creatures that player controls this turn.",
+            ],
+            |d, _| {
+                // One opponent: see `Effect::GrantUnblockableIfBlockersMostLife`.
+                d.shock_land = true;
+                d.zones.shock_life = 3;
+                d.mana = Some(ManaSource::of(&[Color::Black]));
+                activated(d, "{1}{B}", true, vec![CREATURE], vec![Effect::GrantUnblockableIfBlockersMostLife(0)]);
+            },
+        ),
+        // ---- idea decks: Tifa ----
+        "Escape Tunnel" => s(
+            &[
+                "{T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
+                "{T}, Sacrifice this land: Target creature with power 2 or less can't be blocked this turn.",
+            ],
+            |d, _| {
+                let n = activated(d, "", true, vec![], vec![search(SearchFor::BasicLand, SearchTo::Battlefield { tapped: true })]);
+                d.activated[n].sacrifice_self = true;
+                let small = Filter { creature_max_power: Some(2), ..CREATURE };
+                let n = activated(d, "", true, vec![small], vec![Effect::Grant { slot: 0, keywords: Keywords::UNBLOCKABLE }]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Invigorate" => s(
+            &[
+                "If you control a Forest, rather than pay this spell's mana cost, you may have an opponent gain 3 life.",
+                "Target creature gets +4/+4 until end of turn.",
+            ],
+            |d, _| {
+                d.mana_ext.alt_cost_ext = Some(bolt_core::card::AltCostExt {
+                    opponent_gains: 3,
+                    if_you_control: Some("Forest"),
+                    ..Default::default()
+                });
+                spell(d, vec![CREATURE], vec![Effect::Pump { slot: 0, power: 4, toughness: 4 }]);
+            },
+        ),
+        "Tifa's Limit Break" => s(
+            &[
+                "Tiered",
+                "• Somersault — {0} — Target creature gets +2/+2 until end of turn.",
+                "• Meteor Strikes — {2} — Double target creature's power and toughness until end of turn.",
+                "• Final Heaven — {6}{G} — Triple target creature's power and toughness until end of turn.",
+            ],
+            |d, _| {
+                // Tiered: exactly one mode, each with its additional cost.
+                d.modes = vec![
+                    Ability::new(vec![CREATURE], vec![Effect::Pump { slot: 0, power: 2, toughness: 2 }]),
+                    Ability::new(vec![CREATURE], vec![Effect::DoublePowerToughness(0)]),
+                    Ability::new(vec![CREATURE], vec![Effect::TriplePowerToughness(0)]),
+                ];
+                d.mode_costs = ["{0}", "{2}", "{6}{G}"].map(|c| ManaCost::parse(c).expect("cost")).to_vec();
+            },
+        ),
+        // ---- idea decks: Zurgo ----
+        "Pyrrhic Strike" => s(
+            &[
+                "As an additional cost to cast this spell, you may blight 2.",
+                "Choose one. If this spell's additional cost was paid, choose both instead.",
+                "• Destroy target artifact or enchantment.",
+                "• Destroy target creature with mana value 3 or greater.",
+            ],
+            |d, _| {
+                d.extra_cost = Some(ExtraCost::BlightOrPay(2, ManaCost::default()));
+                d.mana_ext.blight_chooses_last_mode = true;
+                let big = Filter { min_mana_value: Some(3), ..CREATURE };
+                d.modes = vec![
+                    Ability::new(vec![ARTIFACT_OR_ENCHANTMENT], vec![Effect::Destroy(0)]),
+                    Ability::new(vec![big], vec![Effect::Destroy(0)]),
+                    Ability::new(vec![ARTIFACT_OR_ENCHANTMENT, big], vec![Effect::Destroy(0), Effect::Destroy(1)]),
+                ];
+            },
+        ),
         _ => None,
     }
 }
@@ -1985,4 +2090,11 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Cabal Ritual",
     "Volrath's Stronghold",
     "Crop Rotation",
+    "Snuff Out",
+    "Spymaster's Vault",
+    "The Black Gate",
+    "Escape Tunnel",
+    "Invigorate",
+    "Pyrrhic Strike",
+    "Tifa's Limit Break",
 ];
