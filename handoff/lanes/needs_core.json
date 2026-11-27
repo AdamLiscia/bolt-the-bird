@@ -162,7 +162,7 @@
   {
    "card": "Ygra, Eater of All",
    "deck": "Ygra, Eater of All",
-   "missing": "ward\u2014sacrifice a Food; other creatures are Food artifacts with the Food ability; a Food-to-graveyard trigger",
+   "missing": "ward\u2014sacrifice a Food; other creatures are Food artifacts with the Food ability; a Food-to-graveyard trigger [d1 batch 15: ward\u2014sacrifice a Food is in: d.ward_sacrifice = 1 with d.mana_ext.ward_sacrifice_subtype = Some(Food)]",
    "lane": "d1",
    "theme": "triggers",
    "owner": "d2"
