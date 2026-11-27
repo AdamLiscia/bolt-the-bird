@@ -12,7 +12,10 @@ import numpy as np
 import torch
 
 from bolt.play_data import batch, groups
+from bolt.play_encoding import GLOBAL_NAMES, PENDING
 from bolt.rl import ppo_loss
+
+PENDING_AT = GLOBAL_NAMES.index(f"pending_{PENDING[0]}")
 
 FIXED = (("net", "rules"), ("rules", "net"), ("net", "smart"), ("smart", "net"))
 
@@ -62,7 +65,9 @@ def ppo_step(net, ref_net, opt, arr, idx, adv, clip=0.2, kl_coef=0.02, value_coe
     n = len(idx)
     pos = {int(i): k for k, i in enumerate(idx)}
     total = 0.0
-    stats = {"clipped": 0.0, "kl": 0.0, "value_mse": 0.0, "entropy": 0.0, "ratio_dev": 0.0, "value_mse_z": 0.0}
+    stats = {"clipped": 0.0, "kl": 0.0, "value_mse": 0.0, "entropy": 0.0, "ratio_dev": 0.0, "value_mse_z": 0.0,
+             "entropy_norm": 0.0, "log_legal": 0.0}  # fmt: skip
+    by_kind: dict = {}  # pending kind -> [decisions, entropy sum, normalized entropy sum, |ratio - 1| sum]
     for g in groups(arr, idx):
         x, action, z = batch(arr, g)
         logits, value = net(x)
@@ -85,9 +90,26 @@ def ppo_step(net, ref_net, opt, arr, idx, adv, clip=0.2, kl_coef=0.02, value_coe
         stats["kl"] += w * st["kl"]
         stats["value_mse_z"] += w * mse_z
         stats["ratio_dev"] += w * st["ratio_dev"]
-        with torch.no_grad():  # the policy's entropy over each decision's legal moves (diagnostic only)
+        with torch.no_grad():  # diagnostics only
+            # Entropy over each decision's legal moves, so it grows with how many there are (log n at most): a
+            # batch richer in many-option decisions has more of it with the policy unchanged. entropy_norm divides
+            # each decision's by log(its legal moves), and by_kind splits both by the pending decision's kind.
             lp = torch.log_softmax(logits, -1)
-            stats["entropy"] += w * float(-torch.where(lp.isfinite(), lp.exp() * lp, 0.0).sum(-1).mean())
+            ent = -torch.where(lp.isfinite(), lp.exp() * lp, 0.0).sum(-1)
+            log_n = (~x["act_pad"]).sum(-1).clamp(min=2).float().log()
+            norm = ent / log_n
+            ratio = (lp.gather(1, action[:, None]).squeeze(1) - old).exp()
+            dev = (ratio - 1).abs()
+            stats["entropy"] += w * float(ent.mean())
+            stats["entropy_norm"] += w * float(norm.mean())
+            stats["log_legal"] += w * float(log_n.mean())
+            kinds = x["globals"][:, PENDING_AT : PENDING_AT + len(PENDING)].argmax(1).tolist()
+            for r, k in enumerate(kinds):
+                b = by_kind.setdefault(PENDING[k], [0, 0.0, 0.0, 0.0])
+                b[0] += 1
+                b[1] += float(ent[r])
+                b[2] += float(norm[r])
+                b[3] += float(dev[r])
         stats["value_mse"] += w * vl.item()
     if not torch.isfinite(total):
         raise FloatingPointError("non-finite PPO loss")
@@ -98,4 +120,5 @@ def ppo_step(net, ref_net, opt, arr, idx, adv, clip=0.2, kl_coef=0.02, value_coe
         raise FloatingPointError("non-finite gradient")
     opt.step()
     stats["loss"] = float(total.detach())
+    stats["by_kind"] = by_kind
     return stats

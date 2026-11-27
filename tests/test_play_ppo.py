@@ -146,3 +146,30 @@ def test_value_mse_z_measures_the_value_against_the_result_whatever_the_target()
     st = ppo_step(net, None, opt, arr, idx, torch.zeros(4), ret=ret)
     assert st["value_mse"] < 1e-8
     assert abs(st["value_mse_z"] - float(((v - 1) ** 2).mean())) < 1e-5
+
+
+def test_a_uniform_policy_has_normalized_entropy_one_whatever_its_move_count():
+    import math
+
+    import numpy as np
+    import torch
+    from test_play_commander import obs
+
+    from bolt.play_data import to_arrays
+    from bolt.play_encoding import encode
+    from bolt.play_net import PlayNet
+    from bolt.play_ppo import ppo_step
+
+    three = obs(legal_actions=[("PassPriority", -1, -1, -1)] * 3, legal_cards=[(-1, -1, -1)] * 3)
+    two = obs()  # Priority, two moves
+    steps = [{"game": 0, "seat": 0, "enc": encode(o, 0), "action": 0, "logp": -1.0, "value": 0.0}
+             for o in (two, two, three, three)]  # fmt: skip
+    arr = to_arrays(steps, [{"result": "p0"}])
+    net = PlayNet(n_cards=8, dim=16, layers=1, heads=2)
+    torch.nn.init.zeros_(net.policy[2].weight)
+    torch.nn.init.zeros_(net.policy[2].bias)  # every move scores 0: uniform
+    st = ppo_step(net, None, torch.optim.SGD(net.parameters(), lr=0.0), arr, np.arange(4), torch.zeros(4))
+    assert abs(st["entropy"] - (math.log(2) + math.log(3)) / 2) < 1e-5, "raw entropy grows with the move count"
+    assert abs(st["entropy_norm"] - 1) < 1e-5, "normalized: 1 for any uniform policy"
+    k = st["by_kind"]["Priority"]
+    assert k[0] == 4 and abs(k[2] / k[0] - 1) < 1e-5
