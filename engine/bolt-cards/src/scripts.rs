@@ -458,10 +458,15 @@ pub fn token_defs() -> Vec<CardDef> {
         },
         // 108, lane d2: Currency Converter's "2/2 black Rogue creature token".
         black(token("Rogue", "Rogue", 2, 2, Keywords::NONE)),
-        // 109: another lane's token, a placeholder until it lands on tarkir.
-        token("Placeholder 109", "Placeholder", 0, 0, Keywords::NONE),
-        // 110: another lane's token, a placeholder until it lands on tarkir.
-        token("Placeholder 110", "Placeholder", 0, 0, Keywords::NONE),
+        // 109, lane d2: Toxrill, the Corrosive's "1/1 black Slug creature token".
+        black(token("Slug", "Slug", 1, 1, Keywords::NONE)),
+        {
+            // 110, lane d1: Nissa, Ascended Animist's "X/X green Phyrexian Horror creature token"
+            // (0/0, its P/T set from X).
+            let mut t = token("Phyrexian Horror", "Phyrexian Horror", 0, 0, Keywords::NONE);
+            t.colors = [false, false, false, false, true];
+            t
+        },
         // 111: another lane's token, a placeholder until it lands on tarkir.
         token("Placeholder 111", "Placeholder", 0, 0, Keywords::NONE),
         // 112: another lane's token, a placeholder until it lands on tarkir.
@@ -717,9 +722,11 @@ pub struct Tokens {
     pub spirit_cleric: usize,
     /// 108: d2's Currency Converter Rogue, a 2/2 black.
     pub rogue_2: usize,
-    /// 109-118: other lanes' tokens, placeholders until they land on tarkir.
-    pub placeholder_109: usize,
-    pub placeholder_110: usize,
+    /// 109: d2's Toxrill Slug, a 1/1 black.
+    pub slug: usize,
+    /// 110: Nissa, Ascended Animist's X/X green Phyrexian Horror (0/0, P/T set from X).
+    pub phyrexian_horror_x: usize,
+    /// 111-118: other lanes' tokens, placeholders until they land on tarkir.
     pub placeholder_111: usize,
     pub placeholder_112: usize,
     pub placeholder_113: usize,
@@ -848,8 +855,8 @@ impl Tokens {
             warrior_white: base + 106,
             spirit_cleric: base + 107,
             rogue_2: base + 108,
-            placeholder_109: base + 109,
-            placeholder_110: base + 110,
+            slug: base + 109,
+            phyrexian_horror_x: base + 110,
             placeholder_111: base + 111,
             placeholder_112: base + 112,
             placeholder_113: base + 113,
