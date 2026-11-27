@@ -372,6 +372,8 @@ pub struct Activated {
     /// `Decision::CrewTap` the rest). Scripted with `sorcery` and `victim_in_extra`;
     /// `Effect::BecomeSaddled` records the riders.
     pub saddle: u8,
+    /// "Remove a +1/+1 counter from this creature" in the cost (Walking Ballista).
+    pub remove_plus_counter: bool,
 }
 
 /// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,
@@ -1257,6 +1259,9 @@ pub struct ManaExt {
     /// "Once during each of your turns, you may cast a creature spell from your graveyard."
     /// (Karador, Ghost Chieftain): `Action::CastFromGraveyardAs(card, KARADOR_CAST)`.
     pub creature_from_graveyard_once_each_turn: bool,
+    /// "You can spend mana of any type to cast creature spells." (Vizier of the Menagerie): your
+    /// creature spells' colored, hybrid and {C} pips are paid as generic.
+    pub creature_spells_any_type_mana: bool,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana

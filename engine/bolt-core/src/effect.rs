@@ -2652,6 +2652,10 @@ pub enum Effect {
     /// (`Decision::LetDrawOrMill`); if they don't, you mill X cards, X the source's own kind of
     /// counters (influence), and they lose life equal to the total mana value of those cards.
     TargetMayLetYouDrawElseMillKindCounters(u8),
+    /// "Add N mana of any one color. Spend this mana only to cast creature spells." (Somberwald
+    /// Sage: 3): held for creature spells with Food Chain's (`Game::creature_spell_mana`, any
+    /// color, not one chosen color).
+    AddCreatureSpellMana(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

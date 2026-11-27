@@ -362,7 +362,7 @@
   {
    "card": "Walking Ballista",
    "deck": "Raggadragga, Goreguts Boss",
-   "missing": "'Remove a +1/+1 counter from this creature' as a cost [lane C 2026-11-26: blocked on d1: 'Remove a +1/+1 counter from this creature' as an activation cost; lane C's part: none; enters_with_x_counters and the {4} counter exist]",
+   "missing": "'Remove a +1/+1 counter from this creature' as a cost [lane C 2026-11-26: blocked on d1: 'Remove a +1/+1 counter from this creature' as an activation cost; lane C's part: none; enters_with_x_counters and the {4} counter exist] [done by d1 batch 22: Activated::remove_plus_counter; scripted in pg_d1]",
    "lane": "d1",
    "theme": "objects_zones",
    "owner": "d1"
@@ -3610,7 +3610,7 @@
   {
    "card": "Vizier of the Menagerie",
    "deck": "Animar, Soul of Elements",
-   "missing": "needs core: cast creature spells from the top of your library, and spend mana as any type for them [lane C 2026-11-26: blocked on d1: spend mana of any type to cast creature spells; lane C's part: none; top_spells_creatures exists]",
+   "missing": "needs core: cast creature spells from the top of your library, and spend mana as any type for them [lane C 2026-11-26: blocked on d1: spend mana of any type to cast creature spells; lane C's part: none; top_spells_creatures exists] [done by d1 batch 22: ManaExt::creature_spells_any_type_mana; scripted in pg_d1]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "d1"
@@ -3706,7 +3706,7 @@
   {
    "card": "Somberwald Sage",
    "deck": "Animar, Soul of Elements",
-   "missing": "needs core: three mana of one chosen color (the payer would split the colors) [lane C 2026-11-26: blocked on d1: three mana of one chosen color, spendable only on creature spells; lane C's part: none]",
+   "missing": "needs core: three mana of one chosen color (the payer would split the colors) [lane C 2026-11-26: blocked on d1: three mana of one chosen color, spendable only on creature spells; lane C's part: none] [done by d1 batch 22: Effect::AddCreatureSpellMana; scripted in pg_d1]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "d1"

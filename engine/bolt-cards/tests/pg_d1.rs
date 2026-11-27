@@ -2899,3 +2899,53 @@ fn karador_costs_less_per_creature_card_and_casts_one_creature_from_the_graveyar
         "once each turn"
     );
 }
+
+// ---- Animar, Soul of Elements ----
+
+#[test]
+fn walking_ballista_enters_with_x_and_pings_by_removing_counters() {
+    let mut g = table();
+    let b = hand(&mut g, 0, "Walking Ballista");
+    act(&mut g, Action::CastX(b, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(b).counters, 1, "X = 1");
+    let life = g.players[1].life;
+    act(&mut g, Action::Activate(b, 1));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, life - 1);
+    assert_eq!(g.obj(b).zone, Zone::Graveyard, "a 0/0 with no counters");
+}
+
+#[test]
+fn somberwald_sage_makes_three_mana_for_creature_spells_only() {
+    let mut g = game(&[]);
+    let sage = put(&mut g, 0, "Somberwald Sage");
+    g.objects[sage.0 as usize].since_turn = 0;
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    act(&mut g, Action::Activate(sage, 0));
+    resolve_all(&mut g, &[]);
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::Cast(bolt)), "not for an instant");
+    assert!(legal.contains(&Action::Cast(elves)), "{legal:?}");
+    act(&mut g, Action::Cast(elves));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+}
+
+#[test]
+fn vizier_of_the_menagerie_spends_any_mana_on_creature_spells() {
+    let mut g = game(&["Plains"]);
+    put(&mut g, 0, "Vizier of the Menagerie");
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Cast(elves)), "{{G}} paid with a Plains");
+    assert!(!legal.contains(&Action::Cast(bolt)), "creature spells only");
+    let top = g.add_card(0, cid("Fyndhorn Elves"), Zone::Library);
+    assert!(
+        g.legal_actions().contains(&Action::Cast(top)),
+        "from the top of the library"
+    );
+}

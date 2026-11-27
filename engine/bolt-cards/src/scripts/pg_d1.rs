@@ -1369,6 +1369,38 @@ pub fn script(name: &str) -> Option<Script> {
                 d.mana_ext.creature_from_graveyard_once_each_turn = true;
             },
         ),
+        // ---- Animar, Soul of Elements ----
+        "Walking Ballista" => s(
+            &[
+                "This creature enters with X +1/+1 counters on it.",
+                "{4}: Put a +1/+1 counter on this creature.",
+                "Remove a +1/+1 counter from this creature: It deals 1 damage to any target.",
+            ],
+            |d, _| {
+                d.enters_with_x_counters = true;
+                activated(d, "{4}", false, vec![], vec![Effect::CountersSelf { n: 1 }]);
+                let n = activated(d, "", false, vec![Filter::ANY], vec![damage(1, Recipient::Target(0))]);
+                d.activated[n].remove_plus_counter = true;
+            },
+        ),
+        "Somberwald Sage" => s(
+            &["{T}: Add three mana of any one color. Spend this mana only to cast creature spells."],
+            |d, _| {
+                activated(d, "", true, vec![], vec![Effect::AddCreatureSpellMana(3)]);
+            },
+        ),
+        "Vizier of the Menagerie" => s(
+            &[
+                "You may look at the top card of your library any time.",
+                "You may cast creature spells from the top of your library.",
+                "You can spend mana of any type to cast creature spells.",
+            ],
+            |d, _| {
+                // Looking at the top card any time is information only.
+                d.top_spells_creatures = true;
+                d.mana_ext.creature_spells_any_type_mana = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -1546,4 +1578,7 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Sunbird's Invocation",
     "The Gitrog, Ravenous Ride",
     "Karador, Ghost Chieftain",
+    "Walking Ballista",
+    "Somberwald Sage",
+    "Vizier of the Menagerie",
 ];

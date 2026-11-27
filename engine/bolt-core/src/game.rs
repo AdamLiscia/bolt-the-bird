@@ -7839,6 +7839,21 @@ impl Game {
             cost.hybrid = [0; 10];
             cost.twobrid = [0; 5];
         }
+        if def.types.creature
+            && self
+                .permanents(p)
+                .any(|x| self.def_of(x).mana_ext.creature_spells_any_type_mana && !self.lost_abilities(x))
+        {
+            // Vizier of the Menagerie: "mana of any type": every pip is generic.
+            cost.generic += cost.colored.iter().sum::<u8>()
+                + cost.hybrid.iter().sum::<u8>()
+                + cost.twobrid.iter().sum::<u8>()
+                + cost.colorless;
+            cost.colored = [0; 5];
+            cost.hybrid = [0; 10];
+            cost.twobrid = [0; 5];
+            cost.colorless = 0;
+        }
         cost
     }
 
@@ -8936,6 +8951,7 @@ impl Game {
                     || (a.once && self.obj(id).used_once)
                     || (a.once_each_turn && self.obj(id).activated_turn == Some(self.turn))
                     || self.obj(id).kind_counters < a.remove_kind_counters
+                    || (a.remove_plus_counter && self.obj(id).counters < 1)
                     || (a.tap_attached
                         && !self
                             .obj(id)
@@ -9606,6 +9622,9 @@ impl Game {
             self.obj_mut(id).activated_turn = Some(self.turn);
         }
         self.obj_mut(id).kind_counters -= a.remove_kind_counters;
+        if a.remove_plus_counter {
+            self.obj_mut(id).counters -= 1; // Walking Ballista
+        }
         if a.tap_attached {
             if let Some((c, _)) = self.obj(id).attached_to {
                 self.become_tapped(c);
@@ -16388,6 +16407,11 @@ impl Game {
                 } else {
                     self.fabricate_servos(item.controller, n, servo); // CR 702.123b
                 }
+            }
+            Effect::AddCreatureSpellMana(n) => {
+                let p = item.controller;
+                let now = self.creature_mana_now(p);
+                self.creature_spell_mana[p] = (now + n as u32, self.turn, self.step);
             }
             Effect::AddCreatureSpellManaExtraMvPlusOne => {
                 let p = item.controller;
