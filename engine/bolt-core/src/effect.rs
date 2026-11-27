@@ -2611,6 +2611,25 @@ pub enum Effect {
     /// "If a source would deal damage to a player or battle this turn, it deals that much damage
     /// plus 2 instead." (Rankle and Torbran), see `Game::plus_two_to_players`.
     DamageToPlayersPlusTwoThisTurn,
+    /// The player in `slot` may sacrifice two nonland, nontoken permanents of their choice; if they
+    /// don't, you draw two cards (Rakdos, Patron of Chaos; `Decision::PatronOfChaosSacrifice`).
+    TargetOpponentMaySacrificeTwoOrYouDrawTwo(u8),
+    /// "Whenever this creature attacks a player, exile all cards from that player's hand, then they
+    /// draw that many cards. You may play lands and cast spells from among the exiled cards for as
+    /// long as they remain exiled. If you cast a spell this way, you may spend mana as though it
+    /// were mana of any color to cast it." (Elder Brain), 1v1: the defending player; nothing if the
+    /// source is attacking a planeswalker. See `Game::exile_defending_hand_draw_that_many`.
+    ExileDefendingHandDrawThatManyPlayable,
+    /// "You lose 1 life for each [kind] counter on [the source]" (The One Ring's burden counters,
+    /// `Object::kind_counters`).
+    YouLoseLifePerKindCounter,
+    /// "Draw a card for each [kind] counter on [the source]" (The One Ring).
+    YouDrawPerKindCounter,
+    /// "Look at target opponent's hand. You may exile a nonland card from it until this creature
+    /// leaves the battlefield." (Deep-Cavern Bat): the player in `slot`, as
+    /// `Decision::ExileFromHandUntilSourceLeaves`; the card returns to its owner's hand
+    /// (`Game::hand_links`).
+    ExileFromHandUntilSourceLeaves(u8),
     /// Sunbird's Invocation: reveal the top X cards of your library, X the mana value of the spell
     /// in `extra` (its {X} included); you may cast one with mana value X or less from among them
     /// free (`free_casts_one`); the rest go to the bottom in a random order. The revealed cards

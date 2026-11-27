@@ -989,3 +989,55 @@ counters the engine has). "Destroy all battles" is an empty mode: the engine has
 destroy; revisit when battles (Invasion of Ikoria) land. Test in core_objects (52).
 Built on 6343801 (tarkir 56ccd07 merged): Final Act passes. 2,173 Rust tests (core_objects 52, pg_c 212, play.rs 3
 ignored), pytest 166, clippy, fmt and ruff clean.
+
+## 2026-11-27: Agent of the Iron Throne, Summon: Bahamut, and the Bruna/Olivia routing
+
+- Agent of the Iron Throne and Summon: Bahamut: skipped. d4 batch 8 (`SubsystemExt::commanders_have_trigger`,
+  `SubsystemEffect::DamageEachOpponentTotalManaValueOfOthers`) isn't on origin/lane-d4 (still 855074f) or tarkir.
+- Bruna, Light-Paws, Sovereigns of Lost Alara, Olivia, Dragonhawk, Charming Scoundrel, Witch's Mark: all already
+  scripted in pg_c (batches 9-11) and built on tarkir; their needs_core entries are now marked done. The rest of
+  those two decks is in "Still waiting, by owner" under the script-only pass above.
+
+## Live-validator queue, batch 14 (unbuilt)
+
+Core (appended): `Effect::TargetOpponentMaySacrificeTwoOrYouDrawTwo(slot)` with `Decision::PatronOfChaosSacrifice
+{ controller, first }` (Pick, Pick; `No` before the first: you draw two; offered only with two or more nonland
+nontoken permanents that can be sacrificed, else you just draw), labelled in service_view and
+test_decision_labels; `ZonesExt::top_spells_flash_or_flying` (one more clause in `priority_actions`' `top`).
+Cards (4): Rakdos, Patron of Chaos; Hanweir Battlements (Hanweir Garrison isn't in the pool, so the meld ability
+resolves and does nothing: noted in the script; meld itself isn't built); Errant and Giada. Tests in core_objects
+(55). Tokens 104-106 unused.
+Likely failure spots: the Rakdos test's `to_end_step_target` (expects the end-step trigger to ask for its target),
+and Hanweir's ability indices (mana ability not in `activated`: haste 0, meld 1).
+Left, by blocker:
+- Tendo Ice Bridge, Flitterwing Nuisance, Glen Elendra Guardian: d1 ("remove a counter" as a mana or activation
+  cost, like Walking Ballista). The enters-with-counter part is easy once that lands.
+- Inkshield: Mac B (prevent combat damage, a token per point prevented); needs a 2/1 W/B Inkling flier (104).
+- Skycat Sovereign: d3 (+1/+1 per other flier you control, scaled statics); Cat Bird token would be 105.
+- Mausoleum Wanderer: "counter unless they pay X, X its power" (d3 effect).
+- Deep-Cavern Bat: lane C, next (look at the hand, exile a nonland card until it leaves).
+- The One Ring: burden counters, the upkeep loss and the draw are lane C's; "you gain protection from everything"
+  for a player needs damage prevention (Mac B) and untargetability (d3's target_ok). Next after the Bat, or split.
+
+## Merge of tarkir e369439, and batch 15: Elder Brain, Inkshield, The One Ring, Deep-Cavern Bat (built)
+
+Merge a1a959e: tarkir e369439 into tarkir-c. Conflicts only at the ends of `Effect` and `Decision` (tarkir's
+variants first, then lane C's). Tokens are tarkir's exactly: 100 `bird_flying_wu` (d1), 101-103 lane C, 104
+`placeholder_104` (lane B's, still free for lane C), 105 `inkling`, 106 `warrior_white`. needs_core.json: union by
+card (835).
+
+Core (appended; arms after `TargetOpponentMaySacrificeTwoOrYouDrawTwo`, functions in game/zones.rs):
+- `Effect::ExileDefendingHandDrawThatManyPlayable` (Elder Brain, on `When::Attacks`; nothing if it's attacking a
+  planeswalker): exiles the defending player's hand, sets `playable = Some((you, u32::MAX))` and d1's
+  `any_color_mana` on each, then they draw that many.
+- `Effect::{YouLoseLifePerKindCounter, YouDrawPerKindCounter}` (The One Ring; burden counters are `kind_counters`).
+- `Effect::ExileFromHandUntilSourceLeaves(slot)` with `Decision::ExileFromHandUntilSourceLeaves { victim, source,
+  zcc }` (Pick a nonland card, or No; labelled, tested) and `Game::hand_links`: one call in `move_to`'s
+  from-battlefield block (`return_hand_links`) sends the card back to its owner's hand (CR 610.3), unlike
+  `links`, which return to the battlefield.
+Cards (4): Elder Brain, Inkshield (lane B's `PreventCombatDamageToYouMakingTokens`, token 105), The One Ring (lane
+B's `YouGainProtectionUntilYourNextTurn` behind `Condition::CastIt`; "can't be enchanted" by a Curse isn't
+modelled), Deep-Cavern Bat. Tests in core_objects (59). Fix: `to_end_step_target` (Rakdos) now finishes attacks
+and blocks on the way.
+Built: 2,220 Rust tests pass (core_objects 59, pg_c 212, play.rs 3 ignored), every binary's count equals its
+`#[test]` count; clippy, fmt, ruff (check and format) clean; pytest 172.

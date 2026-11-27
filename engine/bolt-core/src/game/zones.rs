@@ -762,4 +762,158 @@ impl Game {
         q.poison = 0;
         q.energy = 0;
     }
+
+    /// Rakdos, Patron of Chaos: `q`'s nonland, nontoken permanents that can be sacrificed.
+    fn patron_of_chaos_options(&self, q: PlayerId) -> Vec<ObjId> {
+        self.permanents(q)
+            .filter(|&x| !self.types_of(x).land && !self.is_token(x) && !self.cant_be_sacrificed(x))
+            .collect()
+    }
+
+    /// Ask `q` whether to sacrifice two, if they can; otherwise `controller` draws two.
+    pub(super) fn patron_of_chaos_ask(&mut self, q: PlayerId, controller: PlayerId) {
+        if self.patron_of_chaos_options(q).len() >= 2 {
+            self.ask(
+                q,
+                Decision::PatronOfChaosSacrifice {
+                    controller,
+                    first: None,
+                },
+            );
+        } else {
+            for _ in 0..2 {
+                self.draw(controller);
+            }
+        }
+    }
+
+    pub(super) fn patron_of_chaos_actions(&self, q: PlayerId, first: Option<ObjId>) -> Vec<Action> {
+        let mut v: Vec<Action> = self
+            .patron_of_chaos_options(q)
+            .into_iter()
+            .filter(|&x| Some(x) != first)
+            .map(Action::Pick)
+            .collect();
+        if first.is_none() {
+            v.push(Action::No);
+        }
+        v
+    }
+
+    /// The first pick waits for the second; both are then sacrificed together. `No` (before the
+    /// first) means they don't, so `controller` draws two.
+    pub(super) fn patron_of_chaos_decide(
+        &mut self,
+        q: PlayerId,
+        controller: PlayerId,
+        first: Option<ObjId>,
+        a: Action,
+    ) {
+        match (first, a) {
+            (None, Action::Pick(c)) => {
+                self.ask(
+                    q,
+                    Decision::PatronOfChaosSacrifice {
+                        controller,
+                        first: Some(c),
+                    },
+                );
+            }
+            (Some(f), Action::Pick(c)) => {
+                for x in [f, c] {
+                    if self.obj(x).zone == Zone::Battlefield {
+                        self.move_to(x, Zone::Graveyard);
+                        self.sacrificed(x, q);
+                    }
+                }
+            }
+            _ => {
+                for _ in 0..2 {
+                    self.draw(controller);
+                }
+            }
+        }
+    }
+
+    /// Elder Brain, attacking a player (1v1: the defending player): exile their hand, they draw
+    /// that many, and `p` may play the exiled cards while they stay exiled, spending mana as though
+    /// it were any color (`Object::any_color_mana`, see `Game::spell_cost`).
+    pub(super) fn exile_defending_hand_draw_that_many(&mut self, src: ObjId, p: PlayerId) {
+        let at_planeswalker = self
+            .combat
+            .as_ref()
+            .is_some_and(|c| c.at_planeswalker.iter().any(|&(x, _)| x == src));
+        if at_planeswalker {
+            return;
+        }
+        let q = opponent(p);
+        let hand = self.players[q].hand.clone();
+        let mut n = 0;
+        for c in hand {
+            self.move_to(c, Zone::Exile);
+            if self.obj(c).zone == Zone::Exile {
+                let o = self.obj_mut(c);
+                o.playable = Some((p, u32::MAX));
+                o.any_color_mana = true;
+                n += 1;
+            }
+        }
+        for _ in 0..n {
+            self.draw(q);
+        }
+    }
+
+    /// Deep-Cavern Bat: `p` looks at `victim`'s hand and may exile a nonland card from it, if the
+    /// source is still on the battlefield (CR 610.3c).
+    pub(super) fn hand_link_ask(&mut self, src: ObjId, p: PlayerId, victim: PlayerId) {
+        if self.obj(src).zone != Zone::Battlefield || self.hand_link_actions(victim).len() < 2 {
+            return;
+        }
+        let zcc = self.obj(src).zcc;
+        self.ask(
+            p,
+            Decision::ExileFromHandUntilSourceLeaves {
+                victim,
+                source: src,
+                zcc,
+            },
+        );
+    }
+
+    pub(super) fn hand_link_actions(&self, victim: PlayerId) -> Vec<Action> {
+        let mut v: Vec<Action> = self.players[victim]
+            .hand
+            .iter()
+            .filter(|&&c| !self.types_of(c).land)
+            .map(|&c| Action::Pick(c))
+            .collect();
+        v.push(Action::No);
+        v
+    }
+
+    pub(super) fn hand_link_decide(&mut self, src: ObjId, zcc: u32, a: Action) {
+        if let Action::Pick(c) = a {
+            let o = self.obj(src);
+            if o.zone == Zone::Battlefield && o.zcc == zcc {
+                self.move_to(c, Zone::Exile);
+                if self.obj(c).zone == Zone::Exile {
+                    self.hand_links.push((src, zcc, c));
+                }
+            }
+        }
+    }
+
+    /// `id` left the battlefield: the cards it exiled from a hand go back to their owners' hands.
+    pub(super) fn return_hand_links(&mut self, id: ObjId) {
+        let left_zcc = self.obj(id).zcc - 1;
+        let (back, keep): (Vec<_>, Vec<_>) = std::mem::take(&mut self.hand_links)
+            .into_iter()
+            .partition(|&(src, z, _)| src == id && z == left_zcc);
+        self.hand_links = keep;
+        for (_, _, card) in back {
+            if self.obj(card).zone == Zone::Exile {
+                self.move_to(card, Zone::Hand);
+            }
+        }
+    }
 }
