@@ -1481,6 +1481,81 @@ pub fn script(name: &str) -> Option<Script> {
                 equip(d, "{3}");
             },
         ),
+        // ---- Core: triggers, batch 31 (Bello, Ghyrson, Tifa, Sephiroth) ----
+        "Grothama, All-Devouring" => s(
+            &[
+                "Other creatures have \"Whenever this creature attacks, you may have it fight Grothama, All-Devouring.\"",
+                "When Grothama leaves the battlefield, each player draws cards equal to the amount of damage dealt to Grothama this turn by sources they controlled.",
+            ],
+            |d, _| {
+                may(d, When::OtherCreatureAttacksGranted, vec![], vec![Effect::ExtraFightsSource]);
+                on(d, When::LeavesBattlefield, vec![], vec![Effect::EachPlayerDrawsDamageDealtToSourceThisTurn]);
+            },
+        ),
+        "Ral, Storm Conduit" => s(
+            &[
+                "Whenever you cast or copy an instant or sorcery spell, Ral deals 1 damage to target opponent or planeswalker.",
+                "+2: Scry 1.",
+                "\u{2212}2: When you next cast an instant or sorcery spell this turn, copy that spell. You may choose new targets for the copy.",
+            ],
+            |d, _| {
+                // 1v1: the opponent or a planeswalker they control.
+                let opp_or_pw = Filter { creatures: false, ..Filter::ANY }.controlled_by(Controller::Opponent);
+                on(d, When::YouCastOrCopyInstantOrSorcery, vec![opp_or_pw], vec![damage(1, Recipient::Target(0))]);
+                on(d, When::Never, vec![], vec![Effect::CopySpellNewTargets]);
+                loyalty(d, 2, Ability::new(vec![], vec![Effect::Scry { n: 1 }]));
+                loyalty(d, -2, Ability::new(vec![], vec![Effect::CopyNextInstantOrSorceryThisTurn(1)]));
+            },
+        ),
+        "Scythecat Cub" => s(
+            &["Landfall — Whenever a land you control enters, put a +1/+1 counter on target creature you control. If this is the second time this ability has resolved this turn, double the number of +1/+1 counters on that creature instead."],
+            |d, _| on(d, When::LandYouControlEnters, vec![YOUR_CREATURE], vec![Effect::CounterOrDoubleOnSecondResolution(0)]),
+        ),
+        "Claim the Kingdom" => s(
+            &[
+                "Landfall — Whenever a land you control enters, put a +1/+1 counter on target creature you control and a plan counter on this enchantment.",
+                "When the fourth plan counter is put on this enchantment, sacrifice it. When you do, put an indestructible counter on target creature you control.",
+            ],
+            |d, _| {
+                on(d, When::LandYouControlEnters, vec![YOUR_CREATURE], vec![Effect::Counters { slot: 0, n: 1 }, Effect::KindCounterSelf(1)]);
+                on(d, When::KindCountersReachOnThis(4), vec![], vec![Effect::SacrificeSource, Effect::Reflexive(2)]);
+                let indestructible = Effect::KeywordCounter { slot: 0, keywords: Keywords::INDESTRUCTIBLE };
+                on(d, When::Never, vec![YOUR_CREATURE], vec![indestructible]);
+            },
+        ),
+        "Sephiroth, Fabled SOLDIER // Sephiroth, One-Winged Angel" => s(
+            &[
+                "Whenever Sephiroth enters or attacks, you may sacrifice another creature. If you do, draw a card.",
+                "Whenever another creature dies, target opponent loses 1 life and you gain 1 life. If this is the fourth time this ability has resolved this turn, transform Sephiroth.",
+                "Back: Super Nova — As this creature transforms into Sephiroth, One-Winged Angel, you get an emblem with \"Whenever a creature dies, target opponent loses 1 life and you gain 1 life.\"",
+                "Back: Whenever Sephiroth attacks, you may sacrifice any number of other creatures. If you do, draw that many cards.",
+            ],
+            |d, _| {
+                let drain = vec![Effect::LoseLife { who: Who::TargetPlayer(0), n: 1 }, Effect::GainLife { who: Who::You, n: 1 }];
+                // Trigger 0 on both faces: the Super Nova emblem's ability (it reads the card's
+                // current face).
+                on(d, When::Never, vec![opponent_player()], drain.clone());
+                let sac_draw = vec![Effect::MaySacrificeAnother, draw(1)];
+                on(d, When::Enters, vec![], sac_draw.clone());
+                on(d, When::Attacks, vec![], sac_draw);
+                let mut fourth = drain.clone();
+                fourth.extend([
+                    Effect::StopUnlessNthResolutionThisTurn(4),
+                    Effect::TransformSelf,
+                    // Super Nova: it transforms only this way, so the emblem comes with it.
+                    Effect::Emblem(EmblemKind::Triggered { when: When::AnotherCreatureDies, trigger: 0 }),
+                ]);
+                on(d, When::AnotherCreatureDies, vec![opponent_player()], fourth);
+                let b = d.back.as_mut().expect("Sephiroth, One-Winged Angel");
+                on(b, When::Never, vec![opponent_player()], drain);
+                // "Any number": one more creature at a time, each drawing a card, until you stop.
+                let mut any = Vec::new();
+                for _ in 0..20 {
+                    any.extend([Effect::MaySacrificeAnother, draw(1)]);
+                }
+                on(b, When::Attacks, vec![], any);
+            },
+        ),
         _ => None,
     }
 }
@@ -1731,4 +1806,10 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Mightform Harmonizer",
     "Skyclave Pick-Axe",
     "Staff of Titania",
+    // Core: triggers, batch 31
+    "Grothama, All-Devouring",
+    "Ral, Storm Conduit",
+    "Scythecat Cub",
+    "Claim the Kingdom",
+    "Sephiroth, Fabled SOLDIER // Sephiroth, One-Winged Angel",
 ];

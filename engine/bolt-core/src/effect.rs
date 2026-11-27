@@ -2729,6 +2729,24 @@ pub enum Effect {
     },
     /// Return the source from your graveyard to the battlefield (untapped; Forsaken Miner).
     ReturnSelfFromGraveyard,
+    /// The creature in `extra` fights the source (Grothama, All-Devouring's granted "you may have
+    /// it fight Grothama"); no damage if either has left the battlefield (CR 701.12b).
+    ExtraFightsSource,
+    /// "Each player draws cards equal to the amount of damage dealt to [the source] this turn by
+    /// sources they controlled" (Grothama), from `Object::damage_by`; you first.
+    EachPlayerDrawsDamageDealtToSourceThisTurn,
+    /// "When you next cast an instant or sorcery spell this turn": the source's trigger number `n`
+    /// triggers then, with that spell in `extra` (Ral, Storm Conduit's -2), in
+    /// `Game::copy_next_instant_sorcery`.
+    CopyNextInstantOrSorceryThisTurn(usize),
+    /// Put a +1/+1 counter on the creature in `slot`; if this is the second time this ability has
+    /// resolved this turn, double the +1/+1 counters on it instead (Scythecat Cub; counted per
+    /// source, each turn, in `Object::resolved_this_turn`).
+    CounterOrDoubleOnSecondResolution(u8),
+    /// Count this resolution (`Object::resolved_this_turn`) and stop here unless it's the `n`th this
+    /// turn (Sephiroth, Fabled SOLDIER: "If this is the fourth time this ability has resolved this
+    /// turn, ...").
+    StopUnlessNthResolutionThisTurn(u32),
     /// Exile the creature in `slot`; return it to the battlefield tapped under its owner's control
     /// at the beginning of the next end step (Morningtide's Light).
     ExileSlotReturnTappedAtEnd(u8),
@@ -3741,6 +3759,13 @@ pub enum When {
     /// once for each spell or ability. Fired for your permanents and for the cards in your graveyard
     /// (Forsaken Miner).
     YouCommitCrime,
+    /// "Other creatures have 'Whenever this creature attacks, ...'" (Grothama, All-Devouring): fired
+    /// on the source for each other attacking creature, anyone's, controlled by the attacker's
+    /// controller, with the attacker in `extra`.
+    OtherCreatureAttacksGranted,
+    /// "When the Nth [kind] counter is put on this" (Claim the Kingdom: the fourth plan counter), on
+    /// `Object::kind_counters` reaching N as counters are put on it.
+    KindCountersReachOnThis(i32),
 }
 
 #[derive(Clone, Debug, PartialEq)]

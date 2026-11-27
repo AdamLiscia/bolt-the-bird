@@ -3230,7 +3230,8 @@
    "missing": "needs core: return a creature card tapped and attacking, after a may-pay hybrid cost",
    "lane": "d3",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "waiting: return a creature card tapped and attacking (d3/mac-c)"
   },
   {
    "card": "Deadly Brew",
@@ -3798,7 +3799,8 @@
    "missing": "needs core: a 2/3 blue and black Nightmare creature token with an attack/block trigger, and casting from exile",
    "lane": "d3",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "waiting: Nightmare token with attack/block trigger, -3 bounce then exile from hand, -7 cast from exile (d3/mac-c)"
   },
   {
    "card": "City of Shadows",
@@ -4910,7 +4912,8 @@
    "missing": "magecraft/damage triggers",
    "lane": "mac-b",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 31"
   },
   {
    "card": "Case of the Ransacked Lab",
@@ -4918,7 +4921,8 @@
    "missing": "magecraft/damage triggers",
    "lane": "mac-b",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "waiting: Case / to-solve infrastructure (d4 or merger) and the instant/sorcery cost reduction (d1)"
   },
   {
    "card": "End the Festivities",
@@ -5166,7 +5170,8 @@
    "missing": "BLC (lane B's routing, 2026-11-26)",
    "lane": "mac-b",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "waiting: put a permanent card with MV <= the entering permanent's from hand, marked as put by this ability (d3 effect)"
   },
   {
    "card": "Rose Room Treasurer",
@@ -5206,7 +5211,8 @@
    "missing": "BLC (lane B's routing, 2026-11-26)",
    "lane": "mac-b",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 31"
   },
   {
    "card": "Tamiyo, Field Researcher",
@@ -6679,7 +6685,8 @@
    "missing": "whenever you attack a player: a Lander token (needs a token number)",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "waiting: 'lands you control enter untapped' (d1, land entry); Lander token 111 is in"
   },
   {
    "card": "Kinscaer Sentry",
@@ -6687,7 +6694,8 @@
    "missing": "attacks: put a creature card with mana value X or less from hand tapped and attacking, X attacking creatures",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "waiting: put a creature card with MV <= attacking count from hand tapped and attacking (d3 effect)"
   },
   {
    "card": "Goliath Daydreamer",
@@ -6740,7 +6748,8 @@
    "missing": "whenever you attack; one or more creatures deal combat damage to a player",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "waiting: exile face down, castable while it stays exiled (mac-c)"
   },
   {
    "card": "Sephiroth, Fabled SOLDIER // Sephiroth, One-Winged Angel",
@@ -6748,7 +6757,8 @@
    "missing": "enters or attacks: may sacrifice to draw; another creature dies: drain 1, the fourth time this turn transform",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 31"
   },
   {
    "card": "Bristly Bill, Spine Sower",
@@ -6765,7 +6775,8 @@
    "missing": "landfall counters and plan counters; the fourth plan counter",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 31"
   },
   {
    "card": "Mightform Harmonizer",
@@ -6782,7 +6793,8 @@
    "missing": "landfall counter on target creature you control",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "waiting: source becomes a 7/7 Beast creature in addition to its types, for good (d3 type change)"
   },
   {
    "card": "Roaring Earth",
@@ -6790,7 +6802,8 @@
    "missing": "landfall counter on target creature or Vehicle",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "waiting: channel, an ability activated from hand by discarding the card (merger/d1)"
   },
   {
    "card": "Scythecat Cub",
@@ -6798,7 +6811,8 @@
    "missing": "landfall counter; the second time this turn, double counters",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 31"
   },
   {
    "card": "Skyclave Pick-Axe",

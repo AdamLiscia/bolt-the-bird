@@ -3302,3 +3302,185 @@ fn staff_of_titania_pumps_per_forest_and_makes_a_dryad_on_attack() {
     assert_eq!(dryads.len(), 1);
     assert_eq!(g.power(lions), 8, "the Dryad is a Forest too");
 }
+
+// ---- Core: triggers, batch 31 (Bello, Ghyrson, Tifa, Sephiroth) ----
+
+/// Passes until the stack is empty, answering targets with the opponent (else the first legal
+/// choice) and decisions with `Yes` if offered (else the first legal choice).
+fn drain_yes(g: &mut Game) {
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let legal = g.legal_actions();
+        let a = match g.pending {
+            Pending::ChooseTarget(_) if legal.contains(&Action::Target(Target::Player(1))) => {
+                Action::Target(Target::Player(1))
+            }
+            Pending::Decide(_) if legal.contains(&Action::Yes) => Action::Yes,
+            Pending::ChooseTarget(_) | Pending::Decide(_) => legal[0],
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn grothama_lets_attackers_fight_it_and_draws_for_the_damage_as_it_leaves() {
+    let mut g = table();
+    let grothama = put(&mut g, 0, "Grothama, All-Devouring");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    attack(&mut g, &[lions]);
+    drain_yes(&mut g); // you may have it fight Grothama: yes
+    assert!(in_graveyard(&g, 0, lions), "10 damage back");
+    assert_eq!(g.obj(grothama).damage, 2);
+    for _ in 0..3 {
+        put(&mut g, 0, "Swamp");
+    }
+    let kill = hand(&mut g, 0, "Hero's Downfall");
+    let (mine, theirs) = (g.players[0].hand.len(), g.players[1].hand.len());
+    act(&mut g, Action::Cast(kill));
+    act(&mut g, Action::Target(Target::Object(grothama)));
+    drain_yes(&mut g);
+    assert!(in_graveyard(&g, 0, grothama));
+    assert_eq!(g.players[0].hand.len(), mine - 1 + 2, "your sources dealt it 2");
+    assert_eq!(g.players[1].hand.len(), theirs, "theirs dealt it none");
+}
+
+#[test]
+fn ral_storm_conduit_pings_on_casts_and_copies_and_copies_the_next_instant() {
+    let mut g = table();
+    let ral = put(&mut g, 0, "Ral, Storm Conduit");
+    g.objects[ral.0 as usize].loyalty = 4; // put onto the battlefield without its counters
+    let loyalty = g.obj(ral).loyalty;
+    act(&mut g, Action::Loyalty(ral, 1)); // -2
+    drain_yes(&mut g);
+    assert_eq!(g.obj(ral).loyalty, loyalty - 2);
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    play(&mut g, elves, false, &[], &[]); // a creature spell doesn't use up the copy
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    drain_yes(&mut g);
+    assert_eq!(
+        g.players[1].life,
+        40 - 3 - 3 - 1 - 1,
+        "the bolt, its copy and two pings"
+    );
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    drain_yes(&mut g);
+    assert_eq!(g.players[1].life, 32 - 3 - 1, "only the next one is copied");
+}
+
+#[test]
+fn scythecat_cub_counts_then_doubles_on_the_second_landfall() {
+    let mut g = table();
+    put(&mut g, 0, "Scythecat Cub");
+    put(&mut g, 0, "Composer of Spring");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    g.objects[lions.0 as usize].counters = 2;
+    let forest = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(forest));
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) => Action::Target(Target::Object(lions)),
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(lions).counters, 3, "the first time: a counter");
+    let island = hand(&mut g, 0, "Island");
+    let blood = hand(&mut g, 0, "Exquisite Blood");
+    act(&mut g, Action::Cast(blood));
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) => Action::Target(Target::Object(lions)),
+            Pending::Decide(_) => Action::Pick(island), // Composer puts the Island in
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(island).zone, Zone::Battlefield);
+    assert_eq!(g.obj(lions).counters, 6, "the second time: doubled instead");
+}
+
+#[test]
+fn claim_the_kingdom_sacrifices_on_the_fourth_plan_counter_for_an_indestructible_counter() {
+    let mut g = table();
+    let claim = put(&mut g, 0, "Claim the Kingdom");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    g.objects[claim.0 as usize].kind_counters = 3;
+    let forest = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(forest));
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) => Action::Target(Target::Object(lions)),
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(lions).counters, 1);
+    assert!(in_graveyard(&g, 0, claim), "the fourth plan counter");
+    assert!(g.keywords(lions).has(Keywords::INDESTRUCTIBLE));
+}
+
+#[test]
+fn sephiroth_drains_on_deaths_and_transforms_the_fourth_time_with_an_emblem() {
+    let mut g = table();
+    let seph = put(
+        &mut g,
+        0,
+        "Sephiroth, Fabled SOLDIER // Sephiroth, One-Winged Angel",
+    );
+    for _ in 0..12 {
+        put(&mut g, 0, "Swamp");
+    }
+    for n in 1..=5 {
+        let victim = put(&mut g, 1, "Savannah Lions");
+        let kill = hand(&mut g, 0, "Hero's Downfall");
+        act(&mut g, Action::Cast(kill));
+        act(&mut g, Action::Target(Target::Object(victim)));
+        drain_yes(&mut g);
+        assert_eq!(g.players[1].life, 40 - n, "death {n}");
+        assert_eq!(g.players[0].life, 40 + n);
+        assert_eq!(g.obj(seph).transformed, n >= 4, "transformed on the fourth");
+    }
+    assert_eq!(g.emblems.len(), 1, "Super Nova's emblem drains from the fifth on");
+    assert_eq!(g.def_of(seph).name, "Sephiroth, One-Winged Angel");
+}
+
+#[test]
+fn sephiroth_one_winged_angel_sacrifices_any_number_on_attack_to_draw() {
+    let mut g = table();
+    let seph = put(
+        &mut g,
+        0,
+        "Sephiroth, Fabled SOLDIER // Sephiroth, One-Winged Angel",
+    );
+    g.objects[seph.0 as usize].transformed = true;
+    let a = put(&mut g, 0, "Savannah Lions");
+    let b = put(&mut g, 0, "Llanowar Elves");
+    attack(&mut g, &[seph]);
+    let before = g.players[0].hand.len();
+    let mut sacrificed = 0;
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let legal = g.legal_actions();
+        let act_now = match g.pending {
+            Pending::Decide(_) if sacrificed < 2 && legal.contains(&Action::Pick(a)) => {
+                sacrificed += 1;
+                Action::Pick(a)
+            }
+            Pending::Decide(_) if sacrificed < 2 && legal.contains(&Action::Pick(b)) => {
+                sacrificed += 1;
+                Action::Pick(b)
+            }
+            Pending::Decide(_) if legal.contains(&Action::Yes) => Action::Yes,
+            Pending::ChooseTarget(_) | Pending::Decide(_) => legal[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, act_now);
+    }
+    assert!(in_graveyard(&g, 0, a) && in_graveyard(&g, 0, b));
+    assert_eq!(g.players[0].hand.len(), before + 2, "two sacrificed, two cards");
+    // Their deaths drain only with the emblem (not made here: it was transformed by hand).
+    assert_eq!(g.players[1].life, 40);
+}

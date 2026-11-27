@@ -333,6 +333,9 @@ pub struct Object {
     /// The slime counters it had as it last left the battlefield (last known information, CR
     /// 603.10a: Toxrill's "a creature you don't control with a slime counter on it dies").
     pub last_slime: i32,
+    /// Damage dealt to it this turn by sources each player controlled: (the turn, per player)
+    /// (Grothama, All-Devouring).
+    pub damage_by: (u32, [i32; 2]),
 }
 
 /// One resolved effect's change to a permanent's characteristics (lane d3's type-changing store):
@@ -1948,6 +1951,9 @@ pub struct Game {
     pub damage_to_you_prevented_until: [Option<u32>; 2],
     /// Mirrormind Crown: the turn each player's first token creation was replaced (once each turn).
     pub mirrormind_used: [u32; 2],
+    /// Ral, Storm Conduit's "when you next cast an instant or sorcery spell this turn": (source, its
+    /// trigger number, controller, the turn).
+    pub copy_next_instant_sorcery: Vec<(ObjId, usize, PlayerId, u32)>,
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2255,6 +2261,7 @@ impl Game {
             firing_spell: None,
             any_graveyard_spells_turn: [0; 2],
             any_graveyard_casts: Vec::new(),
+            copy_next_instant_sorcery: Vec::new(),
         }
     }
 
@@ -2527,6 +2534,7 @@ impl Game {
             left_as_artifact: false,
             slime: 0,
             last_slime: 0,
+            damage_by: (0, [0; 2]),
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -11066,6 +11074,31 @@ impl Game {
                         ..Game::casting(x, q)
                     });
                 }
+                // Grothama: "Other creatures have 'Whenever this creature attacks, ...'", controlled
+                // by the attacker's controller.
+                let granters: Vec<(ObjId, usize)> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&x| x != c && !self.lost_abilities(x))
+                    .flat_map(|x| {
+                        self.def_of(x)
+                            .triggers
+                            .iter()
+                            .enumerate()
+                            .filter(|(_, tr)| tr.when == When::OtherCreatureAttacksGranted)
+                            .map(move |(n, _)| (x, n))
+                            .collect::<Vec<_>>()
+                    })
+                    .collect();
+                let attacker_controller = self.obj(c).controller;
+                for (x, n) in granters {
+                    self.triggered.push(StackItem {
+                        kind: StackKind::Trigger(n),
+                        extra: Some(c),
+                        ..Game::casting(x, attacker_controller)
+                    });
+                }
                 let turn = self.turn;
                 let (t, n) = self.obj(c).attacks_turn;
                 self.obj_mut(c).attacks_turn = (turn, if t == turn { n.saturating_add(1) } else { 1 });
@@ -11959,6 +11992,19 @@ impl Game {
             });
         }
         if instant_or_sorcery {
+            // Ral, Storm Conduit: "When you next cast an instant or sorcery spell this turn".
+            let turn = self.turn;
+            let (now, later): (Vec<_>, Vec<_>) = std::mem::take(&mut self.copy_next_instant_sorcery)
+                .into_iter()
+                .partition(|&(_, _, q, t)| q == p && t == turn);
+            self.copy_next_instant_sorcery = later;
+            for (source, n, controller, _) in now {
+                self.triggered.push(StackItem {
+                    kind: StackKind::Trigger(n),
+                    extra: Some(card),
+                    ..Game::casting(source, controller)
+                });
+            }
             // Bonus Round: "until end of turn, whenever a player casts an instant or sorcery
             // spell, that player copies it": controlled by the caster, the spell in `extra`.
             let turn = self.turn;
@@ -12215,6 +12261,30 @@ impl Game {
                     && self.slot_ok(item, f, Target::Object(id))
                     && self.target_ok(f, item.controller, Target::Object(id))
             }
+        }
+    }
+
+    /// "When the Nth [kind] counter is put on this" (Claim the Kingdom): the source's
+    /// `When::KindCountersReachOnThis(k)` triggers whose N its kind counters just went past.
+    fn kind_counters_reached(&mut self, id: ObjId, before: i32) {
+        if self.lost_abilities(id) {
+            return;
+        }
+        let now = self.obj(id).kind_counters;
+        let controller = self.obj(id).controller;
+        let hits: Vec<usize> = self
+            .def_of(id)
+            .triggers
+            .iter()
+            .enumerate()
+            .filter(|(_, tr)| matches!(tr.when, When::KindCountersReachOnThis(k) if before < k && k <= now))
+            .map(|(n, _)| n)
+            .collect();
+        for n in hits {
+            self.triggered.push(StackItem {
+                kind: StackKind::Trigger(n),
+                ..Game::casting(id, controller)
+            });
         }
     }
 
@@ -21037,6 +21107,64 @@ impl Game {
                     self.move_to(src, Zone::Battlefield);
                 }
             }
+            Effect::ExtraFightsSource => {
+                if let Some(them) = item.extra {
+                    let both = [src, them]
+                        .iter()
+                        .all(|&x| self.obj(x).zone == Zone::Battlefield && self.types_of(x).creature);
+                    if both && them != src {
+                        let (a, b) = (self.power(them), self.power(src));
+                        if a > 0 {
+                            self.deal_damage(them, Target::Object(src), a);
+                        }
+                        if b > 0 {
+                            self.deal_damage(src, Target::Object(them), b);
+                        }
+                    }
+                }
+            }
+            Effect::EachPlayerDrawsDamageDealtToSourceThisTurn => {
+                let (turn, by) = self.obj(src).damage_by;
+                let you = item.controller;
+                for p in [you, opponent(you)] {
+                    let n = if turn == self.turn { by[p].max(0) } else { 0 };
+                    for _ in 0..n {
+                        self.draw(p);
+                    }
+                }
+            }
+            Effect::CopyNextInstantOrSorceryThisTurn(trigger) => {
+                let entry = (src, trigger, item.controller, self.turn);
+                self.copy_next_instant_sorcery.push(entry);
+            }
+            Effect::CounterOrDoubleOnSecondResolution(slot) => {
+                let turn = self.turn;
+                let o = self.obj_mut(src);
+                o.resolved_this_turn = if o.resolved_this_turn.0 == turn {
+                    (turn, o.resolved_this_turn.1 + 1)
+                } else {
+                    (turn, 1)
+                };
+                let second = o.resolved_this_turn.1 == 2;
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let n = if second { self.obj(id).counters } else { 1 };
+                    if n > 0 {
+                        self.add_counters(id, n);
+                    }
+                }
+            }
+            Effect::StopUnlessNthResolutionThisTurn(n) => {
+                let turn = self.turn;
+                let o = self.obj_mut(src);
+                o.resolved_this_turn = if o.resolved_this_turn.0 == turn {
+                    (turn, o.resolved_this_turn.1 + 1)
+                } else {
+                    (turn, 1)
+                };
+                if o.resolved_this_turn.1 != n {
+                    self.resolving.as_mut().expect("resolving").remaining.clear();
+                }
+            }
             Effect::LookAtTop {
                 n,
                 pick,
@@ -22498,8 +22626,10 @@ impl Game {
             Effect::KindCounterSelf(n) => {
                 if self.obj(src).zone == Zone::Battlefield {
                     let n = n * self.doubling(self.obj(src).controller);
+                    let before = self.obj(src).kind_counters;
                     self.obj_mut(src).kind_counters += n;
                     self.counters_placed(item.controller, n);
+                    self.kind_counters_reached(src, before);
                 }
             }
             Effect::MaySacrificeToken => {
@@ -25271,6 +25401,7 @@ impl Game {
         self.combats_after_main2 = 0;
         self.untap_attackers_at_combat = false;
         self.copy_next_spell.clear();
+        self.copy_next_instant_sorcery.clear();
         self.delayed_this_turn.clear();
         self.damage_shields.clear();
         self.graveyard_left_this_turn = [false; 2];
@@ -26604,6 +26735,15 @@ impl Game {
                 self.obj_mut(id).loyalty -= amount; // CR 120.3c
             }
             Target::Object(id) => {
+                if amount > 0 {
+                    // Grothama: damage dealt to it this turn by each player's sources.
+                    let (by, turn) = (self.obj(source).controller, self.turn);
+                    let o = self.obj_mut(id);
+                    if o.damage_by.0 != turn {
+                        o.damage_by = (turn, [0; 2]);
+                    }
+                    o.damage_by.1[by] += amount;
+                }
                 let o = self.obj_mut(id);
                 o.damage += amount;
                 o.deathtouched |= k.has(Keywords::DEATHTOUCH);

@@ -2119,3 +2119,44 @@ fn control_no_subtype_and_no_decayed_conditions() {
     cast(&mut g);
     assert_eq!(g.players[0].life, 43, "a Cat and a creature with decayed");
 }
+
+#[test]
+fn kind_counters_reach_n_triggers_once_as_the_nth_goes_on() {
+    // Sol Ring: "Whenever you cast a spell, put a [kind] counter on this"; "When the second one is
+    // put on this, you gain 1 life."
+    let count = trigger(When::YouCast, None, vec![Effect::KindCounterSelf(1)]);
+    let reach = trigger(When::KindCountersReachOnThis(2), None, gain_one());
+    let mut g = game_with(move |defs: &mut Vec<CardDef>| {
+        ring_with(count.clone())(defs);
+        ring_with(reach.clone())(defs);
+    });
+    g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    let mut lives = Vec::new();
+    for _ in 0..3 {
+        let c = g.add_card(0, cid("Llanowar Elves"), Zone::Hand);
+        play(&mut g, c, false, &[], &[]);
+        lives.push(g.players[0].life);
+    }
+    assert_eq!(lives, vec![40, 41, 41], "only as the second counter is put on");
+}
+
+#[test]
+fn stop_unless_nth_resolution_lets_only_the_nth_this_turn_through() {
+    let third = trigger(
+        When::YouCast,
+        None,
+        vec![
+            Effect::StopUnlessNthResolutionThisTurn(3),
+            Effect::GainLife { who: Who::You, n: 1 },
+        ],
+    );
+    let mut g = game_with(ring_with(third));
+    g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    let mut lives = Vec::new();
+    for _ in 0..4 {
+        let c = g.add_card(0, cid("Llanowar Elves"), Zone::Hand);
+        play(&mut g, c, false, &[], &[]);
+        lives.push(g.players[0].life);
+    }
+    assert_eq!(lives, vec![40, 40, 41, 41]);
+}
