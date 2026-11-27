@@ -427,3 +427,40 @@ fn scute_swarm_past_the_permanent_cap_ends_in_a_draw() {
         g.battlefield.len()
     );
 }
+
+/// Farm, 2026-11-27: `finish_cast` panicked "payable": a spell offered as castable whose mana, as
+/// cast, couldn't be paid. Forced here with a cost that depends on the target (Dragon's Prey's
+/// "{2} more if it targets a Dragon", patched onto Lightning Bolt): castable with one Mountain, but
+/// not at an Elf. The cast is rolled back (the card in hand, the Mountain untapped, nothing on the
+/// stack), and that cast isn't offered again this step.
+#[test]
+fn an_unpayable_cast_rolls_back_instead_of_panicking() {
+    let mut defs = (*set("CMD").unwrap().defs).clone();
+    let bolt = cid("Lightning Bolt");
+    defs[bolt].reduction = Some(bolt_core::Reduction::MoreIfTargetsSubtype("Elf", 5));
+    let mut g = Game::empty(std::sync::Arc::new(defs), 1, 0);
+    g.auto_pass = false;
+    let mountain = g.add_card(0, cid("Mountain"), Zone::Battlefield);
+    let elves = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+    let card = g.add_card(0, bolt, Zone::Hand);
+    for p in 0..2 {
+        for _ in 0..10 {
+            g.add_card(p, cid("Plains"), Zone::Library); // no one decks out
+        }
+    }
+    g.start_turn(3, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(g.legal_actions().contains(&Action::Cast(card)));
+    act(&mut g, Action::Cast(card));
+    act(&mut g, Action::Target(Target::Object(elves))); // {R} + {5}: can't pay
+    assert_eq!(g.obj(card).zone, Zone::Hand, "rolled back");
+    assert!(!g.obj(mountain).tapped && g.items.is_empty() && g.choosing.is_none());
+    assert_eq!(g.pending, Pending::Priority(0));
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(card)),
+        "not offered again this step"
+    );
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+}

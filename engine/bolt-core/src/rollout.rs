@@ -135,6 +135,7 @@ pub fn choose(g: &Game, legal: &[Action], cfg: &Config, seed: u64) -> Action {
             let score = catch_unwind(AssertUnwindSafe(|| {
                 let mut h = g.clone();
                 h.manual_mana = [false; 2]; // imagined games pay automatically
+                h.cast_guard = false; // a panic here is caught; no snapshot per cast
                 h.determinize(p, w);
                 match h.apply(a) {
                     Ok(_) => playout(h, p, cfg, deadline),
