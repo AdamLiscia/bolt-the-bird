@@ -2701,3 +2701,93 @@ fn creature_only_mana_from_exiling_a_creature_pays_only_for_creature_spells() {
     settle(&mut g);
     assert_eq!(g.obj(k).zone, Zone::Battlefield, "1 plus the Bear's mana value 2");
 }
+
+/// "Ward—Sacrifice a Food." (Ygra, Eater of All): `ManaExt::ward_sacrifice_subtype`.
+mod ward_sacrifice_food {
+    use bolt_cards::set;
+    use bolt_core::{Action, Game, ObjId, Pending, Step, Target, Zone};
+
+    fn cid(name: &str) -> usize {
+        set("CMD").unwrap().index_of(name).unwrap()
+    }
+
+    fn act(g: &mut Game, a: Action) {
+        g.apply(a)
+            .unwrap_or_else(|e| panic!("{e}; legal: {:?}", g.legal_actions()));
+    }
+
+    fn bolt_at(g: &mut Game, target: ObjId) -> ObjId {
+        let bolt = g.add_card(0, cid("Burst Lightning"), Zone::Hand);
+        act(g, Action::Cast(bolt));
+        act(g, Action::Target(Target::Object(target)));
+        for _ in 0..20 {
+            if matches!(g.pending, Pending::Decide(0)) || g.obj(bolt).zone != Zone::Stack {
+                break;
+            }
+            let a = match g.pending {
+                Pending::Decide(_) | Pending::ChooseTarget(_) => *g.legal_actions().last().unwrap(),
+                _ => Action::PassPriority,
+            };
+            g.apply(a).unwrap();
+        }
+        bolt
+    }
+
+    #[test]
+    fn ward_sacrifice_a_food_takes_only_foods() {
+        let mut defs = (*set("CMD").unwrap().defs).clone();
+        let lions = cid("Savannah Lions");
+        defs[lions].ward_sacrifice = 1;
+        defs[lions].mana_ext.ward_sacrifice_subtype = Some("Food");
+        let food = defs
+            .iter()
+            .position(|d| d.token && d.name == "Food")
+            .expect("Food");
+        let plains = vec![cid("Plains"); 99];
+        let mut g = Game::new_commander(
+            std::sync::Arc::new(defs),
+            [&plains, &plains],
+            [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+            7,
+            0,
+        );
+        g.auto_pass = false;
+        for land in ["Plains", "Island", "Swamp", "Mountain", "Forest"] {
+            for _ in 0..5 {
+                g.add_card(0, cid(land), Zone::Battlefield);
+                g.add_card(1, cid(land), Zone::Battlefield);
+            }
+        }
+        g.start_turn(3, 0);
+        while g.step != Step::Main1 {
+            g.apply(Action::PassPriority).unwrap();
+        }
+        let warded = g.add_card(1, lions, Zone::Battlefield);
+        let ring = g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+        // No Food: the ward can't be paid, so the spell is countered.
+        let bolt = bolt_at(&mut g, warded);
+        assert_eq!(g.obj(bolt).zone, Zone::Graveyard);
+        assert_eq!(g.obj(warded).zone, Zone::Battlefield);
+        // With a Food, only the Food is offered.
+        let f = g.add_card(0, food, Zone::Battlefield);
+        let bolt = bolt_at(&mut g, warded);
+        assert!(matches!(g.pending, Pending::Decide(0)));
+        let legal = g.legal_actions();
+        assert!(legal.contains(&Action::Pick(f)));
+        assert!(!legal.contains(&Action::Pick(ring)), "not a Food");
+        act(&mut g, Action::Pick(f));
+        assert_ne!(g.obj(f).zone, Zone::Battlefield, "the Food sacrificed");
+        for _ in 0..20 {
+            if g.obj(bolt).zone != Zone::Stack {
+                break;
+            }
+            g.apply(Action::PassPriority).unwrap();
+        }
+        assert_eq!(g.obj(bolt).zone, Zone::Graveyard);
+        assert_ne!(
+            g.obj(warded).zone,
+            Zone::Battlefield,
+            "the ward was paid: Burst Lightning resolved"
+        );
+    }
+}

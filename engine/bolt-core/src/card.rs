@@ -1211,6 +1211,9 @@ pub struct ManaExt {
     /// addition to its other costs (`Action::CastWith` naming the land; it goes back to the
     /// graveyard as it resolves, not to exile).
     pub retrace: bool,
+    /// `CardDef::ward_sacrifice` counts only permanents with this subtype (Ygra, Eater of All:
+    /// "Ward—Sacrifice a Food.", with `ward_sacrifice: 1`).
+    pub ward_sacrifice_subtype: Option<&'static str>,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana
