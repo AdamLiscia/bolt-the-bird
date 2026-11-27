@@ -1103,8 +1103,8 @@ impl Game {
         }
     }
 
-    /// Evercoat Ursine's combat damage trigger: `p` may cast one of the cards hidden away with `src`,
-    /// free.
+    /// Evercoat Ursine's combat damage trigger: `p` may play one of the cards hidden away with `src`,
+    /// free: a spell cast, or a land as `p`'s land play.
     pub(super) fn open_hideaway_free_cast(&mut self, src: ObjId, p: PlayerId) {
         let zcc = self.obj(src).zcc;
         let mut cards: Vec<ObjId> = self
@@ -1132,6 +1132,7 @@ impl Game {
             self.free_casts.push(c);
         }
         self.free_casts_one = true;
+        self.free_casts_lands = true; // "play one of them": a land as a land play
         self.free_caster = p;
     }
 

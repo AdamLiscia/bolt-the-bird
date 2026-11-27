@@ -2216,6 +2216,9 @@ pub struct Game {
     devour_then: PlayerId,
     /// The turn each player's lands enter tapped (Nahiri's Lithoforming); 0 for none.
     pub lands_enter_tapped_turn: [u32; 2],
+    /// The open free-cast window may also play one of its land cards as the caster's land play,
+    /// during their turn with a land play left (Evercoat Ursine: "you may play one of them"; CR 305.2).
+    pub free_casts_lands: bool,
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2553,6 +2556,7 @@ impl Game {
             devour_pending: Vec::new(),
             devour_then: 0,
             lands_enter_tapped_turn: [0; 2],
+            free_casts_lands: false,
         }
     }
 
@@ -8034,18 +8038,7 @@ impl Game {
                 def.modal_back && !def.types.land && def.back.as_ref().is_some_and(|b| b.types.land);
             if def.types.land || mdfc_land {
                 // CR 305.2: one land per turn, at sorcery timing.
-                let drops = 1
-                    + self.extra_lands_this_turn[p]
-                    + self
-                        .permanents(p)
-                        .map(|x| self.def_of(x).extra_land_drops)
-                        .sum::<u8>()
-                    + self
-                        .battlefield
-                        .iter()
-                        .filter(|&&x| self.def_of(x).extra_land_drop_each_player && !self.lost_abilities(x))
-                        .count() as u8;
-                if sorcery_timing && self.players[p].lands_played < drops {
+                if sorcery_timing && self.land_play_left(p) {
                     v.push(Action::PlayLand(c));
                 }
                 if def.types.land {
@@ -12379,6 +12372,8 @@ impl Game {
             (Pending::Priority(p), Action::PassPriority) => self.pass(p),
             (Pending::Priority(p), Action::TapForMana(id, c)) => self.tap_for_mana(p, id, c),
             (Pending::Priority(p), Action::PlayLand(c)) => {
+                // Evercoat Ursine's window: the land play is the one card it allows.
+                let from_window = matches!(self.pending, Pending::FreeCast(_));
                 if self.obj(c).zone == Zone::Graveyard && !self.siege_graveyard_lands(p) {
                     self.graveyard_types_used[p][3] = true; // Muldrotha's land
                 }
@@ -12391,6 +12386,9 @@ impl Game {
                 self.passes = 0;
                 for q in 0..2 {
                     self.fire(q, When::PlayerPlaysLand, None); // Horn of Greed
+                }
+                if from_window {
+                    self.close_free_casts(); // the rest stay hidden away
                 }
                 // "As this land enters, choose a creature type" (Secluded Courtyard).
                 let options = if self.def_of(c).choose_creature_type {
@@ -12407,7 +12405,9 @@ impl Game {
                     // "As it enters, choose a color" (the Thriving lands).
                     self.ask(p, Decision::ChooseColor { card: c });
                 } else if options.is_empty() {
-                    self.give_priority(p);
+                    if !from_window {
+                        self.give_priority(p);
+                    }
                 } else {
                     self.ask(p, Decision::ChooseCreatureType { card: c, options });
                 }
@@ -13914,7 +13914,24 @@ impl Game {
         }
     }
 
-    /// The casts open in a free-cast window: spells only (no lands), any timing (CR 608.2g).
+    /// Whether `p` has a land play left this turn (CR 305.2: one, plus any extra land drops).
+    fn land_play_left(&self, p: PlayerId) -> bool {
+        let drops = 1
+            + self.extra_lands_this_turn[p]
+            + self
+                .permanents(p)
+                .map(|x| self.def_of(x).extra_land_drops)
+                .sum::<u8>()
+            + self
+                .battlefield
+                .iter()
+                .filter(|&&x| self.def_of(x).extra_land_drop_each_player && !self.lost_abilities(x))
+                .count() as u8;
+        self.players[p].lands_played < drops
+    }
+
+    /// The casts open in a free-cast window: spells only, any timing (CR 608.2g); with
+    /// `free_casts_lands`, an exiled land too, as a land play on `p`'s turn (CR 305.2, 305.3).
     fn free_cast_actions(&self, p: PlayerId) -> Vec<Action> {
         let mut v = Vec::new();
         if self.cant_cast_now(p) {
@@ -13931,7 +13948,16 @@ impl Game {
         }
         for &c in &self.free_casts {
             let def = self.def_of(c);
-            if !free_zone(self.obj(c).zone) || def.types.land || self.cast_zone_blocked(p, self.obj(c).zone) {
+            if def.types.land {
+                // Evercoat Ursine: a hidden land, played (not cast) with a land play left.
+                let zone = self.obj(c).zone;
+                if self.free_casts_lands && zone == Zone::Exile && p == self.active && self.land_play_left(p)
+                {
+                    v.push(Action::PlayLand(c));
+                }
+                continue;
+            }
+            if !free_zone(self.obj(c).zone) || self.cast_zone_blocked(p, self.obj(c).zone) {
                 continue;
             }
             let castable = def.types.is_permanent() || def.spell.is_some() || !def.modes.is_empty();
@@ -13967,6 +13993,7 @@ impl Game {
         let to_hand = std::mem::take(&mut self.free_casts_to_hand);
         let to_bottom = std::mem::take(&mut self.free_casts_to_bottom);
         self.free_casts_one = false;
+        self.free_casts_lands = false;
         self.free_casts_max = 0;
         for c in std::mem::take(&mut self.free_casts_rest_to_graveyard) {
             if self.obj(c).zone == Zone::Exile {

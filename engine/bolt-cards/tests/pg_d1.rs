@@ -5116,3 +5116,79 @@ fn nahiris_lithoforming_sacrifices_draws_and_lands_enter_tapped() {
     resolve_all(&mut g, &[]);
     assert!(g.obj(f).tapped, "lands enter tapped this turn");
 }
+
+// ---- Evercoat Ursine (Bello): its free play includes a hidden land, as the land play ----
+
+/// Evercoat Ursine on the battlefield with a Forest and a Lightning Bolt hidden away, at player 0's
+/// declare-attackers step on turn 5 (after `main1` runs in that turn's first main phase).
+fn ursine_with_forest_and_bolt(main1: impl Fn(&mut Game)) -> (Game, ObjId, ObjId, ObjId) {
+    let mut g = table();
+    let lib = |g: &mut Game, name: &str| g.add_card(0, cid(name), Zone::Library);
+    let forest = lib(&mut g, "Forest");
+    for _ in 0..2 {
+        lib(&mut g, "Plains");
+    }
+    let bolt = lib(&mut g, "Lightning Bolt");
+    for _ in 0..2 {
+        lib(&mut g, "Plains");
+    }
+    let bear = hand(&mut g, 0, "Evercoat Ursine");
+    play(
+        &mut g,
+        bear,
+        false,
+        &[],
+        &[Action::Pick(bolt), Action::Pick(forest)],
+    );
+    assert_eq!((g.obj(forest).zone, g.obj(bolt).zone), (Zone::Exile, Zone::Exile));
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    main1(&mut g);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(bear));
+    act(&mut g, Action::FinishAttacks);
+    while !matches!(g.pending, Pending::FreeCast(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    (g, bear, forest, bolt)
+}
+
+#[test]
+fn evercoat_ursine_plays_a_hidden_land_as_its_land_play() {
+    let (mut g, _, forest, bolt) = ursine_with_forest_and_bolt(|_| {});
+    assert_eq!(g.players[1].life, 34, "6 trample damage");
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::PlayLand(forest)) && legal.contains(&Action::Cast(bolt)));
+    act(&mut g, Action::PlayLand(forest));
+    assert_eq!(g.obj(forest).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].lands_played, 1, "it used the land play");
+    assert!(!matches!(g.pending, Pending::FreeCast(_)), "one of them");
+    assert!(!g.legal_actions().contains(&Action::Cast(bolt)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(bolt).zone, Zone::Exile, "the other stays hidden");
+}
+
+#[test]
+fn evercoat_ursine_casts_a_hidden_spell_and_no_land_without_a_land_play() {
+    let (mut g, _, forest, bolt) = ursine_with_forest_and_bolt(|g| {
+        let land = hand(g, 0, "Mountain");
+        act(g, Action::PlayLand(land));
+    });
+    let legal = g.legal_actions();
+    assert!(
+        !legal.contains(&Action::PlayLand(forest)),
+        "the land play is used"
+    );
+    assert!(legal.contains(&Action::Cast(bolt)));
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    assert!(!matches!(g.pending, Pending::FreeCast(_)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 31, "6 combat, 3 free Bolt");
+    assert_eq!(g.obj(bolt).zone, Zone::Graveyard);
+    assert_eq!(g.obj(forest).zone, Zone::Exile);
+}
