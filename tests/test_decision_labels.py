@@ -268,3 +268,8 @@ def test_karadors_graveyard_cast_is_named():
     assert karador == "Cast Llanowar Elves from your graveyard (Karador)"
     muldrotha = sv._label("CastFromGraveyardAs", ["Llanowar Elves"], (1,), 0, (0, 1, -1))
     assert muldrotha == "Cast Llanowar Elves from your graveyard (option 2)"
+
+
+def test_currency_converter_returns_an_exiled_card():
+    dec = {"kind": "ExiledWithToGraveyard"}
+    assert sv._decision_label(dec, "Pick", 0, "Forest") == "Put into its owner's graveyard: Forest"

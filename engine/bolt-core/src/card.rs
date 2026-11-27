@@ -1320,6 +1320,8 @@ pub enum EntryDoubler {
     Land,
     /// A land or a permanent with this subtype (Traveling Chocobo: Bird).
     LandOrSubtype(&'static str),
+    /// An artifact or a creature, anyone's (Panharmonicon).
+    ArtifactOrCreature,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
