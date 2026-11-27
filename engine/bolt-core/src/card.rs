@@ -367,11 +367,10 @@ pub struct Activated {
     /// one with each subtype (Jarad, Golgari Lich Lord: a Swamp and a Forest); the engine picks,
     /// keeping permanents that have both subtypes when it can.
     pub sacrifice_two_subtypes: Option<[&'static str; 2]>,
-    /// Saddle N (CR 702.171): tap another untapped creature you control with power N or more (one
-    /// creature, as crew here; `Action::ActivateWith`, that creature as the victim). Scripted with
-    /// `sorcery` and `victim_in_extra`, its `Effect::BecomeSaddled` records the rider.
-    /// Saddle currently uses crew's one-creature shortcut; lane B is replacing both with a
-    /// total-power cost.
+    /// Saddle N (CR 702.171): tap any number of other untapped creatures you control with total
+    /// power N or more, as a sorcery: crew's cost (`Action::ActivateWith` names the first,
+    /// `Decision::CrewTap` the rest). Scripted with `sorcery` and `victim_in_extra`;
+    /// `Effect::BecomeSaddled` records the riders.
     pub saddle: u8,
 }
 

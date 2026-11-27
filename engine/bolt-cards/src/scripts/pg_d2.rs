@@ -1143,6 +1143,35 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::SubtypeToGraveyardFromBattlefield("Food"), vec![], vec![Effect::CountersSelf { n: 2 }]);
             },
         ),
+        // ---- Core: triggers, batch 21 (a permanent becomes untapped; the Spirit Cleric, token 107) ----
+        "Mesmeric Orb" => s(&["Whenever a permanent becomes untapped, that permanent's controller mills a card."], |d, _| {
+            let that = Filter { triggering: true, any_permanent: true, ..Filter::default() };
+            on(d, When::PermanentBecomesUntapped, vec![that], vec![Effect::Mill { who: Who::ControllerOf(0), n: 1 }]);
+        }),
+        "Hallowed Haunting" => s(
+            &[
+                "As long as you control seven or more enchantments, creatures you control have flying and vigilance.",
+                "Whenever you cast an enchantment spell, create a white Spirit Cleric creature token with \"This token's power and toughness are each equal to the number of Spirits you control.\"",
+            ],
+            |d, t| {
+                d.statics.push(Static {
+                    scope: Scope::YourCreatures,
+                    your_turn_only: false,
+                    condition: Some(StaticCondition::ControlEnchantmentsAtLeast(7)),
+                    subtype: None,
+                    lose_abilities: false,
+                    base_pt: None,
+                    protection: [false; 5],
+                    scale: None,
+                    power: 0,
+                    toughness: 0,
+                    keywords: Keywords::FLYING.with(Keywords::VIGILANCE),
+                    set_colors: None,
+                    becomes_land: false,
+                });
+                on(d, When::YouCastEnchantment, vec![], vec![Effect::CreateToken { who: Who::You, def: t.spirit_cleric, n: 1 }]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1360,4 +1389,6 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Angel of Destiny",
     "Bonus Round",
     "Ygra, Eater of All",
+    "Mesmeric Orb",
+    "Hallowed Haunting",
 ];
