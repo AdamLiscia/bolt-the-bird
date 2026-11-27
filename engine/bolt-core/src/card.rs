@@ -88,6 +88,8 @@ pub struct Types {
     pub basic: bool,
     /// The snow supertype (CR 205.4g): its mana is {S} when spent.
     pub snow: bool,
+    /// The battle card type (CR 310).
+    pub battle: bool,
 }
 
 impl Types {
@@ -107,6 +109,7 @@ impl Types {
                 "Legendary" => t.legendary = true,
                 "Basic" => t.basic = true,
                 "Snow" => t.snow = true,
+                "Battle" => t.battle = true,
                 _ => {}
             }
         }
@@ -1172,6 +1175,9 @@ pub struct CardDef {
     /// "As this enters, choose a number between `min` and `max`" (Talion, the Kindly Lord: 1 and
     /// 10), as `Decision::ChooseNumber` while the spell resolves; kept as `Object::chosen_number`.
     pub choose_number: Option<(u8, u8)>,
+    /// A battle's printed defense (CR 310): it enters with that many defense counters
+    /// (`Object::defense`). Scryfall's oracle rows don't carry it, so the script sets it.
+    pub defense: Option<i32>,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1821,6 +1827,7 @@ impl CardDef {
             extra_upkeep_for_enchanted: false,
             zones: ZonesExt::default(),
             choose_number: None,
+            defense: None,
         }
     }
 
@@ -2129,6 +2136,7 @@ impl CardDef {
             extra_upkeep_for_enchanted: false,
             zones: ZonesExt::default(),
             choose_number: None,
+            defense: None,
         }
     }
 
@@ -2437,6 +2445,7 @@ impl CardDef {
             extra_upkeep_for_enchanted: false,
             zones: ZonesExt::default(),
             choose_number: None,
+            defense: None,
         }
     }
 }

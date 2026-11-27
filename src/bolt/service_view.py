@@ -50,6 +50,8 @@ def _label(kind: str, cards: list, nums: tuple, me: int, values: tuple) -> str:
     if kind == "CastOmen" and " // " in c:  # an Omen's or a split card's second half, by its name
         return f"Cast {c.split(' // ', 1)[1]}"
     n = nums[0] if nums else None
+    if kind == "AttackPlaneswalker" and c2 in BATTLES:  # a battle is attacked the way a planeswalker is
+        return f"Attack the battle {c2} with {c}"
     if kind == "CastModal" and n == 1 and " // " in c:  # a modal double-faced card's back face
         return f"Cast {c.split(' // ', 1)[1]}"
     if kind == "CastFromGraveyardAs" and n == 5:  # KARADOR_CAST: Karador's once-each-turn creature
@@ -86,6 +88,7 @@ def _oracle_rows() -> list:
 _ROWS = _oracle_rows()
 ORACLE = {c["name"]: c.get("oracle_text") or "" for c in _ROWS}
 BACKS = {c["name"]: c["back"]["name"] for c in _ROWS if c.get("back")}  # double-faced card -> back face name
+BATTLES = {c["name"] for c in _ROWS if c.get("type_line", "").startswith("Battle")}  # attackable like a planeswalker
 
 
 def back_image(card_name: str) -> str:
@@ -250,6 +253,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"NameCardInLibrary": "Name"}.get(d)
         verb = verb or {"ChooseExiledToPlay": "You may play until the end of your next turn:"}.get(d)
         verb = verb or {"SacrificeNontokenCreatureOrLoseLife": "Sacrifice"}.get(d)
+        verb = verb or {"SearchLibraryOrGraveyardInstantOrSorcery": "Put into your hand:"}.get(d)
         if d == "DiscardMayCastFree":
             verb = "Discard (you may cast it free)" if dec.get("free") else "Discard"
         verb = verb or {"MoveAuraTo": "Attach the Aura to"}.get(d)
@@ -349,6 +353,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
     if d in ("DiscardOrLoseLife", "LoseUnless") and not yes:
         life = f"lose {dec['life']} life" if "life" in dec else "lose the life"
         return f"Don't {'sacrifice' if dec.get('sacrifice') else 'discard'} ({life})"
+    if d == "SearchLibraryOrGraveyardInstantOrSorcery" and not yes:
+        return "Find nothing"
     if d == "SacrificeNontokenCreatureOrLoseLife" and not yes:
         return f"Don't sacrifice (lose {dec.get('life', 0)} life)"
     if d == "SacrificeDiscardOrLoseLife" and not yes:
@@ -464,6 +470,7 @@ def state(game, seat: int, version: int, game_id: str) -> dict:
             "tapped": e["tapped"], "creature": e["creature"], "land": e["land"], "power": e.get("power"),
             "toughness": e.get("toughness"), "damage": e["damage"], "counters": e["counters"],
             "loyalty": e["loyalty"], "attached_to": e["attached_to"], "entered_turn": e["entered_turn"],
+            "battle": bool(e.get("battle")), "defense": e.get("defense", 0), "protector": e.get("protector"),
             "entered_this_turn": e["entered_turn"] == obs["turn"],
             "transformed": bool(e.get("transformed")),
             "face_down": bool(e.get("face_down")),

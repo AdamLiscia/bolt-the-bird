@@ -461,3 +461,19 @@ def test_fandaniel_asks_the_opponent_to_sacrifice_or_lose_life():
     dec = {"kind": "SacrificeNontokenCreatureOrLoseLife", "life": 6}
     assert sv._decision_label(dec, "Pick", 0, "Serra Angel") == "Sacrifice Serra Angel"
     assert label(dec, "No", 0) == "Don't sacrifice (lose 6 life)"
+
+
+def test_invasion_of_arcavios_searches_the_library_or_graveyard(monkeypatch):
+    dec = {"kind": "SearchLibraryOrGraveyardInstantOrSorcery"}
+    assert sv._decision_label(dec, "Pick", 0, "Opt") == "Put into your hand: Opt"
+    assert label(dec, "No", 0) == "Find nothing"
+
+
+def test_attacking_a_battle_says_so(monkeypatch):
+    monkeypatch.setattr(sv, "BATTLES", {"Invasion of Arcavios // Invocation of the Founders"})
+    battle = sv._label(
+        "AttackPlaneswalker", ["Serra Angel", "Invasion of Arcavios // Invocation of the Founders"], (), 0, (0, 0, 0)
+    )
+    assert battle == "Attack the battle Invasion of Arcavios // Invocation of the Founders with Serra Angel"
+    walker = sv._label("AttackPlaneswalker", ["Serra Angel", "Chandra, Torch of Defiance"], (), 0, (0, 0, 0))
+    assert walker == "Attack Chandra, Torch of Defiance with Serra Angel"

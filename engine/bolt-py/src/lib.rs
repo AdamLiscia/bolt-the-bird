@@ -780,6 +780,10 @@ impl Game {
             e.set_item("damage", o.damage)?;
             e.set_item("counters", o.counters)?;
             e.set_item("loyalty", o.loyalty)?;
+            // A battle (CR 310): its defense counters and its protector (None if not a battle).
+            e.set_item("battle", t.battle)?;
+            e.set_item("defense", if t.battle { o.defense } else { 0 })?;
+            e.set_item("protector", g.battle_protector(c))?;
             e.set_item("attached_to", o.attached_to.map(|(a, _)| id(a)))?;
             e.set_item("entered_turn", o.since_turn)?;
             // A transformed double-faced permanent shows its back face (`card` stays the card).

@@ -2266,6 +2266,20 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::OpponentCastsChosenNumber, vec![], vec![lose, draw(1)]);
             },
         ),
+        // ---- Core: triggers, batch 49 (battles: Sieges, defense counters, attacking a battle) ----
+        "Invasion of Arcavios // Invocation of the Founders" => s(
+            &[
+                "When this Siege enters, search your library, graveyard, and/or outside the game for an instant or sorcery card you own, reveal it, and put it into your hand. If you search your library this way, shuffle.",
+                "Back: Whenever you cast an instant or sorcery spell from your hand, you may copy that spell. You may choose new targets for the copy.",
+            ],
+            |d, _| {
+                siege_battle(d, 7);
+                // Nothing is outside the game in a Bolt game: the library or the graveyard.
+                on(d, When::Enters, vec![], vec![Effect::SearchLibraryOrGraveyardInstantOrSorcery]);
+                let b = d.back.as_mut().expect("Invocation of the Founders");
+                may(b, When::YouCastInstantOrSorceryFromHand, vec![], vec![Effect::CopySpellNewTargets]);
+            },
+        ),
         _ => None,
     }
 }
@@ -2611,4 +2625,6 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Talion, the Kindly Lord",
     "Passionate Archaeologist",
     "Wizard's Staff",
+    // Core: triggers, batch 49
+    "Invasion of Arcavios // Invocation of the Founders",
 ];

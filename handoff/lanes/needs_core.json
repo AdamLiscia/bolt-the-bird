@@ -5032,7 +5032,8 @@
    "missing": "MDFC/battle; soulbond",
    "lane": "mac-b",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "d2",
+   "status": "done: d2 batch 49 (battles: Types::battle, CardDef::defense, Object::defense, Game::battle_protector, Game::attacking_battle; attacked through Action::AttackPlaneswalker; When::BattleDefeated + Effect::ExileSelfCastTransformed via the siege_battle helper in scripts.rs; Effect/Decision::SearchLibraryOrGraveyardInstantOrSorcery; When::YouCastInstantOrSorceryFromHand). Known limits: 1v1 protector is always the controller's opponent; 'outside the game' finds nothing; the defense isn't in the oracle rows, so each battle's script sets it."
   },
   {
    "card": "Tandem Lookout",

@@ -566,6 +566,7 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         artifact_tokens_plus_one: None,
         begins_game_with_luck_counter: false,
         choose_number: None,
+        defense: None,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;
