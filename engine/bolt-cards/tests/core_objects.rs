@@ -2227,3 +2227,59 @@ fn druids_repository_stores_a_charge_per_attacker_and_spends_them_as_mana() {
     play(&mut g, bolt, false, &[Target::Player(1)], &[]);
     assert_eq!(g.obj(repo).kind_counters, 1);
 }
+
+// ---- Descendants' Path (batch 26) ----
+
+/// To the upkeep's free-cast window (or past the upkeep if none opens).
+fn upkeep_window(g: &mut Game) -> bool {
+    g.start_turn(5, 0);
+    while g.step == Step::Upkeep || !g.items.is_empty() {
+        if matches!(g.pending, Pending::FreeCast(_)) {
+            return true;
+        }
+        act(g, Action::PassPriority);
+    }
+    false
+}
+
+#[test]
+fn descendants_path_casts_a_top_creature_sharing_a_type_free_or_bottoms_it() {
+    let mut g = table();
+    put(&mut g, 0, "Descendants' Path");
+    put(&mut g, 0, "Hungry Ghoul"); // a Zombie
+    let crawler = top(&mut g, "Gravecrawler");
+    assert!(upkeep_window(&mut g), "a Zombie on top: you may cast it");
+    act(&mut g, Action::Cast(crawler));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(crawler).zone, Zone::Battlefield, "cast free");
+    // Declined: it goes to the bottom.
+    let mut g = table();
+    put(&mut g, 0, "Descendants' Path");
+    put(&mut g, 0, "Hungry Ghoul");
+    let crawler = top(&mut g, "Gravecrawler");
+    assert!(upkeep_window(&mut g));
+    act(&mut g, Action::PassPriority);
+    assert_eq!(g.players[0].library.first(), Some(&crawler), "to the bottom");
+    // No shared type: straight to the bottom, no window.
+    let mut g = table();
+    put(&mut g, 0, "Descendants' Path");
+    put(&mut g, 0, "Hungry Ghoul");
+    let elves = top(&mut g, "Llanowar Elves");
+    assert!(!upkeep_window(&mut g));
+    assert_eq!(g.players[0].library.first(), Some(&elves));
+}
+
+#[test]
+fn descendants_path_counts_changeling_as_every_creature_type() {
+    let mut g = table();
+    put(&mut g, 0, "Descendants' Path");
+    let shapeshifter = g
+        .defs
+        .iter()
+        .position(|d| d.token && d.name == "Shapeshifter" && d.changeling)
+        .expect("a changeling token");
+    g.add_card(0, shapeshifter, Zone::Battlefield);
+    let elves = top(&mut g, "Llanowar Elves");
+    assert!(upkeep_window(&mut g), "a changeling shares every creature type");
+    assert!(g.legal_actions().contains(&Action::Cast(elves)));
+}

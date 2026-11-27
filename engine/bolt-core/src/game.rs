@@ -2004,6 +2004,9 @@ pub struct Game {
     /// Forth Eorlingas!: (the turn, the card) on which each player becomes the monarch when their
     /// creatures deal combat damage to a player.
     pub monarch_on_combat_damage: [Option<(u32, ObjId)>; 2],
+    /// The open free-cast window offers its cards from the library (Descendants' Path's top card);
+    /// one not cast goes to the bottom as the window closes.
+    pub free_casts_from_library: bool,
     /// The other creatures a crew cost taps with its named one (from `Decision::CrewTap`).
     crew_extra: Vec<ObjId>,
     /// Saddled Mounts (CR 702.171b) and the creatures that saddled them: (mount, its zcc, rider,
@@ -2375,6 +2378,7 @@ impl Game {
             hideaway_more: Vec::new(),
             monarch: None,
             monarch_on_combat_damage: [None; 2],
+            free_casts_from_library: false,
             saddled: Vec::new(),
             karador_turn: [0; 2],
             any_graveyard_spells_turn: [0; 2],
@@ -12952,7 +12956,12 @@ impl Game {
         }
         // A one-spell window may also offer cards in hand or a graveyard (see `free_casts_one`).
         let one = self.free_casts_one;
-        let free_zone = |z: Zone| z == Zone::Exile || (one && matches!(z, Zone::Hand | Zone::Graveyard));
+        let lib = self.free_casts_from_library; // Descendants' Path
+        let free_zone = |z: Zone| {
+            z == Zone::Exile
+                || (one && matches!(z, Zone::Hand | Zone::Graveyard))
+                || (lib && z == Zone::Library)
+        };
         if self.free_casts_one && self.free_casts.iter().any(|&c| !free_zone(self.obj(c).zone)) {
             return v; // one spell, already cast (Rishkar's Expertise)
         }
@@ -12998,6 +13007,7 @@ impl Game {
         let to_bottom = std::mem::take(&mut self.free_casts_to_bottom);
         self.free_casts_one = false;
         self.free_casts_max = 0;
+        self.library_free_casts_to_bottom(); // Descendants' Path, game/zones.rs
         for c in std::mem::take(&mut self.free_casts_rest_to_graveyard) {
             if self.obj(c).zone == Zone::Exile {
                 self.move_to(c, Zone::Graveyard); // Epic Experiment: those not cast
@@ -25980,6 +25990,7 @@ impl Game {
             Effect::OpponentGainsControlOfSource => self.give_source_to_opponent(src, item.controller),
             Effect::BecomeMonarch => self.monarch = Some((item.controller, src)),
             Effect::VividRevealExileByColor => self.vivid_reveal(item.controller),
+            Effect::RevealTopCastFreeIfSharesCreatureType => self.descendants_path(item.controller),
             Effect::YourNonlandPermanentsBecomeCopyOf(slot) => {
                 if let Some(t) = Game::slot_object(item, legal, slot) {
                     self.nonland_permanents_become_copy(item.controller, t);

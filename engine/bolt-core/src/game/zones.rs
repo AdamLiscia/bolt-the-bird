@@ -1301,4 +1301,61 @@ impl Game {
             self.vivid_next(p, cards, colors);
         }
     }
+
+    /// Whether the card `c` shares a creature type with a creature `p` controls (changeling on
+    /// either side counts as every creature type; `has_subtype` covers the creature's own).
+    pub(super) fn shares_creature_type_with_yours(&self, p: PlayerId, c: ObjId) -> bool {
+        let d = self.def_of(c);
+        self.creatures(p).any(|x| {
+            if d.changeling {
+                self.def_of(x).changeling || !self.def_of(x).subtypes.is_empty()
+            } else {
+                d.subtypes.iter().any(|s| self.has_subtype(x, s))
+            }
+        })
+    }
+
+    /// Descendants' Path's upkeep: the top card, castable free if it's a creature card sharing a
+    /// creature type with one of `p`'s creatures (the window's pass is "you don't cast it"); else, or
+    /// if it isn't cast, to the bottom.
+    pub(super) fn descendants_path(&mut self, p: PlayerId) {
+        let Some(&c) = self.players[p].library.last() else {
+            return;
+        };
+        if self.def_of(c).types.creature && self.shares_creature_type_with_yours(p, c) {
+            self.obj_mut(c).cast_free = true;
+            self.free_casts.push(c);
+            self.free_caster = p;
+            self.free_casts_one = true;
+            self.free_casts_from_library = true;
+        } else {
+            self.put_on_bottom_of_library(c);
+        }
+    }
+
+    /// Moves the library card `c` to the bottom of its owner's library.
+    fn put_on_bottom_of_library(&mut self, c: ObjId) {
+        let owner = self.obj(c).owner;
+        let lib = &mut self.players[owner].library;
+        if let Some(i) = lib.iter().position(|&x| x == c) {
+            lib.remove(i);
+            lib.insert(0, c); // index 0 is the bottom
+        }
+    }
+
+    /// As a free-cast window closes: a library card it offered and that wasn't cast goes to the
+    /// bottom (Descendants' Path).
+    pub(super) fn library_free_casts_to_bottom(&mut self) {
+        if std::mem::take(&mut self.free_casts_from_library) {
+            let left: Vec<ObjId> = self
+                .free_casts
+                .iter()
+                .copied()
+                .filter(|&c| self.obj(c).zone == Zone::Library)
+                .collect();
+            for c in left {
+                self.put_on_bottom_of_library(c);
+            }
+        }
+    }
 }

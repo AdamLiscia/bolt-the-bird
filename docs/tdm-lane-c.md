@@ -1295,3 +1295,18 @@ Both of its triggers are batched ("one or more tokens ... enter"). `When::TokenY
 token (move_to's enter path), and there's no event for tokens entering under an opponent's control. Needs d2:
 the two batched events, with the batch's token list (and "only once each turn" on the first). Lane C's part is
 then small: for each listed token, `token_copy_of(you, it)` and tap it. Logged in needs_core.json (owner d2).
+
+## Batch 26 (unbuilt): Descendants' Path (Vaevictis)
+
+Core (appended; functions in game/zones.rs): `Effect::RevealTopCastFreeIfSharesCreatureType` and
+`Game::free_casts_from_library`. A matching top card opens a one-spell free-cast window over the library card,
+where `Cast` or `PassPriority` is the player's own "you may", not the engine's. `shares_creature_type_with_yours`
+counts changeling on either side as every creature type. A card that doesn't match, or isn't cast, goes to the
+bottom. **Edits in existing functions:**
+- `free_cast_actions`' `free_zone` also takes the library while `free_casts_from_library` is set;
+- `close_free_casts` calls `library_free_casts_to_bottom` (one line).
+The merger asked for a Yes/No decision; the window is used instead because it is that choice, and casting goes
+through the normal cast path (targets, X), as for cascade. Tests in core_objects (95): cast free, declined
+(bottom), no shared type (bottom, no window), changeling.
+Likely failure spots when built: casting from the library through `cast_modes` in the window, the
+`upkeep_window` helper's loop.

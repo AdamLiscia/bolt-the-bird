@@ -2576,6 +2576,14 @@ pub fn script(name: &str) -> Option<Script> {
                 d.mana_ext.counter_mana_no_tap = true;
             },
         ),
+        "Descendants' Path" => s(
+            &["At the beginning of your upkeep, reveal the top card of your library. If it's a creature card that shares a creature type with a creature you control, you may cast it without paying its mana cost. If you don't cast it, put it on the bottom of your library."],
+            |d, _| {
+                // "You may cast it": a one-spell free-cast window over the top card; passing is "you
+                // don't cast it", and the card goes to the bottom as the window closes.
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::RevealTopCastFreeIfSharesCreatureType]);
+            },
+        ),
         "Fortune Teller's Talent" => s(
             &[
                 "You may look at the top card of your library any time.",
@@ -2941,5 +2949,6 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Mirrorform",
     "Sanar, Innovative First-Year",
     "Druids' Repository",
+    "Descendants' Path",
     // Not "Evercoat Ursine" (unclaimed: a hidden land must be playable as a land play).
 ];

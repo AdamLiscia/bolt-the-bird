@@ -2968,6 +2968,10 @@ pub enum Effect {
     /// from among them (`Decision::{VividExile, VividColor}`); then shuffle; you may cast the exiled
     /// cards this turn.
     VividRevealExileByColor,
+    /// Descendants' Path: reveal the top card of your library; if it's a creature card that shares a
+    /// creature type with a creature you control, you may cast it free (a one-spell free-cast window
+    /// over the library card); if you don't cast it, it goes to the bottom.
+    RevealTopCastFreeIfSharesCreatureType,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
