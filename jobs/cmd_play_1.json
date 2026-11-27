@@ -25,9 +25,9 @@
     "--threads",
     "6",
     "--eval-every",
-    "10",
+    "20",
     "--eval-pairs",
-    "36",
+    "100",
     "--batch",
     "1024",
     "--epochs",
@@ -39,6 +39,10 @@
     "--eval-smart-ms",
     "200",
     "--stall-minutes",
-    "60"
+    "60",
+    "--lr",
+    "5e-5",
+    "--lam",
+    "0.95"
   ]
 }
