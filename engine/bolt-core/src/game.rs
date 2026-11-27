@@ -1995,6 +1995,9 @@ pub struct Game {
     /// The spell being cast while `When::YouCast` fires (`fire` and `fire_subsystems` can read it:
     /// "that spell"); `None` otherwise.
     pub firing_spell: Option<ObjId>,
+    /// A mana ability resolving at once (CR 605.3a): who gets priority back when it's done, instead
+    /// of the active player.
+    pub mana_ability_then: Option<PlayerId>,
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2310,6 +2313,7 @@ impl Game {
             type_protection_grants: Vec::new(),
             next_main_colorless: Vec::new(),
             firing_spell: None,
+            mana_ability_then: None,
         }
     }
 
@@ -9256,28 +9260,46 @@ impl Game {
 
     /// `cost` less `n` generic mana unless `a` is a mana ability, never below one mana (Zirda).
     fn ability_discounted(a: &crate::Activated, n: u8, mut cost: ManaCost) -> ManaCost {
-        let mana_ability = a.ability.effects.iter().any(|e| {
-            matches!(
-                e,
-                Effect::AddMana { .. }
-                    | Effect::AddManaAnyColor
-                    | Effect::AddColorless { .. }
-                    | Effect::AddManaEither { .. }
-                    | Effect::AddManaAnyColorsX
-                    | Effect::AddAnyColorsGreatestPower
-                    | Effect::AddRedOrGreenPerCreature
-                    | Effect::AddManaDevotion(_)
-                    | Effect::AddManaPerCount { .. }
-                    | Effect::AddManaSourcePower(_)
-                    | Effect::AddManaPerHandSize { .. }
-            )
-        });
+        let mana_ability = a.ability.effects.iter().any(Game::adds_mana);
         if n == 0 || mana_ability {
             return cost;
         }
         let room = cost.mana_value().saturating_sub(1).min(u8::MAX as u32) as u8;
         cost.generic = cost.generic.saturating_sub(n.min(room));
         cost
+    }
+
+    /// An effect that adds mana: what makes an activated ability a mana ability (CR 605.1a).
+    fn adds_mana(e: &Effect) -> bool {
+        matches!(
+            e,
+            Effect::AddMana { .. }
+                | Effect::AddManaAnyColor
+                | Effect::AddColorless { .. }
+                | Effect::AddManaEither { .. }
+                | Effect::AddManaAnyColorsX
+                | Effect::AddAnyColorsGreatestPower
+                | Effect::AddRedOrGreenPerCreature
+                | Effect::AddManaDevotion(_)
+                | Effect::AddManaPerCount { .. }
+                | Effect::AddManaSourcePower(_)
+                | Effect::AddManaPerHandSize { .. }
+        )
+    }
+
+    /// Whether activated ability `n` of `id` is a mana ability (CR 605.1a): no targets, and it could
+    /// add mana. (Loyalty abilities are kept apart and never are.) It doesn't use the stack.
+    fn is_mana_ability(&self, id: ObjId, n: usize) -> bool {
+        let a = &self.activated_of(id, n).ability;
+        a.targets.is_empty() && a.effects.iter().any(Game::adds_mana)
+    }
+
+    /// Resolves a mana ability at once, without the stack (CR 605.3a), and gives `p` priority
+    /// back. Triggers it causes (a sacrificed creature's "dies") go on the stack as usual.
+    fn resolve_mana_ability(&mut self, p: PlayerId, item: StackItem) {
+        self.passes = 0; // an action, so passes before it don't count (CR 117.4)
+        self.mana_ability_then = Some(p);
+        self.resolve(item);
     }
 
     /// Untapped creatures `p` controls with this subtype, other than `except`.
@@ -9768,6 +9790,11 @@ impl Game {
         if self.activated_of(id, n).victim_in_extra {
             item.extra = victim; // Birthing Pod: the sacrificed creature's mana value
         }
+        if self.is_mana_ability(id, n) {
+            self.pay_activation(p, id, n, victim, 0);
+            self.resolve_mana_ability(p, item);
+            return;
+        }
         self.passes = 0;
         if self.activated_of(id, n).ability.targets.is_empty() {
             self.pay_activation(p, id, n, victim, 0);
@@ -9793,6 +9820,11 @@ impl Game {
             x,
             ..Game::casting(id, p)
         };
+        if self.is_mana_ability(id, n) {
+            self.pay_activation(p, id, n, victim, x);
+            self.resolve_mana_ability(p, item);
+            return;
+        }
         self.passes = 0;
         let a = &self.activated_of(id, n).ability;
         if a.targets.is_empty() || (a.targets_exactly_x && x == 0) {
@@ -12909,6 +12941,8 @@ impl Game {
             let (item, legal) = (r.item.clone(), r.legal.clone());
             self.run_effect(&item, &legal, e);
         }
+        // A mana ability (CR 605.3a): priority goes back to whoever activated it.
+        let then = self.mana_ability_then.take().unwrap_or(self.active);
         let r = self.resolving.take().expect("resolving");
         let source = r.item.source;
         // CR 707.10f: a copy of a permanent spell becomes a token as it resolves.
@@ -13111,7 +13145,7 @@ impl Game {
             self.ward_check(&copy);
             self.push_item(copy);
         }
-        self.give_priority(self.active);
+        self.give_priority(then);
     }
 
     /// CR 724.1: exile every object on the stack, remove creatures from combat, and go to cleanup.
@@ -16505,20 +16539,9 @@ impl Game {
             || d.plaza_mana
             || d.mana_per_creature
             || d.mana_per_enchantment
-            || d.activated.iter().any(|a| {
-                a.ability.effects.iter().any(|e| {
-                    matches!(
-                        e,
-                        Effect::AddMana { .. }
-                            | Effect::AddManaAnyColor
-                            | Effect::AddColorless { .. }
-                            | Effect::AddManaEither { .. }
-                            | Effect::AddManaAnyColorsX
-                            | Effect::AddAnyColorsGreatestPower
-                            | Effect::AddRedOrGreenPerCreature
-                    )
-                })
-            })
+            || d.activated
+                .iter()
+                .any(|a| a.ability.effects.iter().any(Game::adds_mana))
     }
 
     /// The target slots of `items[item]` that could change to `source` (Spellskite).
