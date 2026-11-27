@@ -1837,6 +1837,9 @@ pub struct Game {
     /// Rankle and Torbran: (turn, how many) of "it deals that much damage plus 2" for damage to
     /// players this turn.
     pub plus_two_to_players: (u32, u32),
+    /// Saddled Mounts (CR 702.171b) and the creatures that saddled them: (mount, its zcc, rider,
+    /// its zcc, turn); only this turn's count.
+    pub saddled: Vec<(ObjId, u32, ObjId, u32, u32)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -2125,6 +2128,7 @@ impl Game {
             combat_shield_tokens: Vec::new(),
             player_protected_until: [None; 2],
             plus_two_to_players: (0, 0),
+            saddled: Vec::new(),
         }
     }
 
@@ -9051,6 +9055,13 @@ impl Game {
                             .filter(|&c| self.types_of(c).land && !self.cant_be_sacrificed(c))
                             .map(|c| Action::ActivateWith(id, n, c)),
                     );
+                } else if a.saddle > 0 {
+                    // Saddle: tap another untapped creature with enough power, as a sorcery.
+                    v.extend(
+                        self.creatures(p)
+                            .filter(|&c| c != id && !self.obj(c).tapped && self.power(c) >= a.saddle as i32)
+                            .map(|c| Action::ActivateWith(id, n, c)),
+                    );
                 } else if a.crew > 0 {
                     // Crew: tap an untapped creature with enough power (summoning sickness doesn't matter).
                     v.extend(
@@ -9331,8 +9342,8 @@ impl Game {
                     self.move_to(c, Zone::Graveyard);
                     self.sacrificed(c, p);
                 }
-            } else if a.crew > 0 {
-                self.become_tapped(v); // crew taps, it doesn't sacrifice
+            } else if a.crew > 0 || a.saddle > 0 {
+                self.become_tapped(v); // crew and saddle tap, they don't sacrifice
             } else if a.sacrifice_two_others {
                 if self.obj(v).zone == Zone::Battlefield {
                     self.move_to(v, Zone::Graveyard);
@@ -21473,6 +21484,52 @@ impl Game {
                     self.free_caster = p;
                     self.free_casts_one = true;
                     self.free_casts_to_bottom = true;
+                }
+            }
+            Effect::BecomeSaddled => {
+                if let Some(r) = item.extra {
+                    if self.obj(src).zone == Zone::Battlefield {
+                        let (mz, rz, turn) = (self.obj(src).zcc, self.obj(r).zcc, self.turn);
+                        self.saddled.retain(|e| e.4 == turn);
+                        self.saddled.push((src, mz, r, rz, turn));
+                    }
+                }
+            }
+            Effect::SacrificeSaddlerDrawXLandsX => {
+                let p = item.controller;
+                let (turn, mz) = (self.turn, self.obj(src).zcc);
+                let rider = self
+                    .saddled
+                    .iter()
+                    .filter(|e| e.0 == src && e.1 == mz && e.4 == turn)
+                    .map(|e| (e.2, e.3))
+                    .filter(|&(r, z)| {
+                        let o = self.obj(r);
+                        o.zcc == z
+                            && o.zone == Zone::Battlefield
+                            && o.controller == p
+                            && !self.cant_be_sacrificed(r)
+                    })
+                    .map(|(r, _)| r)
+                    .max_by_key(|&r| self.power(r));
+                if let Some(r) = rider {
+                    let x = self.power(r).max(0) as usize;
+                    self.move_to(r, Zone::Graveyard);
+                    self.sacrificed(r, p);
+                    for _ in 0..x {
+                        self.draw(p);
+                    }
+                    let lands: Vec<ObjId> = self.players[p]
+                        .hand
+                        .iter()
+                        .copied()
+                        .filter(|&c| self.def_of(c).types.land)
+                        .take(x)
+                        .collect();
+                    for l in lands {
+                        self.move_to(l, Zone::Battlefield);
+                        self.obj_mut(l).tapped = true;
+                    }
                 }
             }
             Effect::YourCreaturesBasePtHandSize => {
