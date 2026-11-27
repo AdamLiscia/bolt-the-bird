@@ -27068,6 +27068,12 @@ impl Game {
             Some(Condition::ControlNoCreatureWithDecayed) => !self
                 .creatures(controller)
                 .any(|c| self.def_of(c).decayed || self.obj(c).decayed),
+            Some(Condition::OpponentDealtCombatDamageThisTurn) => {
+                let turn = self.turn;
+                self.combat_damaged_player
+                    .iter()
+                    .any(|&(s, _, t)| t == turn && self.obj(s).controller == controller)
+            }
             Some(Condition::CreatureOnBattlefield) => {
                 self.battlefield.iter().any(|&c| self.types_of(c).creature)
             }
@@ -28236,6 +28242,7 @@ impl Game {
             }
             Step::Main2 => {
                 self.next_main_mana(a);
+                self.fire(a, When::PostcombatMainYourTurn, None); // Tymna the Weaver
                 self.give_priority(a);
             }
         }

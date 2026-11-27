@@ -4346,3 +4346,120 @@ fn rosie_cotton_makes_food_and_counters_another_creature_for_each_token() {
     assert_eq!(g.obj(lions).counters, 1, "the Food was a token you created");
     assert_eq!(g.obj(rosie).counters, 0, "other than Rosie");
 }
+
+// ---- Batch 42 (idea decks, existing pieces) ----
+
+#[test]
+fn starscape_cleric_drains_on_each_life_gain_and_cant_block() {
+    let mut g = table();
+    let cleric = put(&mut g, 0, "Starscape Cleric");
+    assert!(g.def_of(cleric).cant_block);
+    assert!(g.def_of(cleric).offspring.is_some());
+    let hawk = put(&mut g, 0, "Vampire Nighthawk"); // lifelink
+    attack(&mut g, &[hawk]);
+    fight(&mut g);
+    assert_eq!(g.players[0].life, 42);
+    assert_eq!(g.players[1].life, 40 - 2 - 1, "the Nighthawk, then the drain");
+}
+
+#[test]
+fn mai_makes_each_noncreature_caster_lose_two() {
+    let mut g = table();
+    put(&mut g, 0, "Mai, Scornful Striker");
+    let ring = hand(&mut g, 0, "Sol Ring");
+    play(&mut g, ring, false, &[], &[]);
+    assert_eq!(g.players[0].life, 38, "you cast it");
+    let lions = hand(&mut g, 0, "Savannah Lions");
+    play(&mut g, lions, false, &[], &[]);
+    assert_eq!(g.players[0].life, 38, "a creature spell");
+    to_step(&mut g, 4, 1, Step::Main1);
+    let signet = hand(&mut g, 1, "Arcane Signet");
+    play(&mut g, signet, false, &[], &[]);
+    assert_eq!(g.players[1].life, 38, "they cast it");
+}
+
+#[test]
+fn kambal_drains_two_when_the_opponent_casts_a_noncreature_spell() {
+    let mut g = table();
+    put(&mut g, 0, "Kambal, Consul of Allocation");
+    let ring = hand(&mut g, 0, "Sol Ring");
+    play(&mut g, ring, false, &[], &[]);
+    assert_eq!(g.players[0].life, 40, "yours doesn't count");
+    to_step(&mut g, 4, 1, Step::Main1);
+    let signet = hand(&mut g, 1, "Arcane Signet");
+    play(&mut g, signet, false, &[], &[]);
+    assert_eq!((g.players[0].life, g.players[1].life), (42, 38));
+}
+
+#[test]
+fn luminarch_aspirant_counters_a_creature_at_your_combat() {
+    let mut g = table();
+    let aspirant = put(&mut g, 0, "Luminarch Aspirant");
+    to_step(&mut g, 5, 0, Step::Main2);
+    assert_eq!(g.obj(aspirant).counters, 1, "the only creature you control");
+    to_step(&mut g, 6, 1, Step::Main2);
+    assert_eq!(g.obj(aspirant).counters, 1, "only on your turn");
+}
+
+#[test]
+fn tana_makes_a_saproling_per_point_of_combat_damage() {
+    let mut g = table();
+    let tana = put(&mut g, 0, "Tana, the Bloodsower");
+    g.objects[tana.0 as usize].counters = 1; // a 3/3
+    attack(&mut g, &[tana]);
+    fight(&mut g);
+    assert_eq!(g.players[1].life, 37);
+    assert_eq!(tokens(&g, 0, "Saproling").len(), 3);
+}
+
+#[test]
+fn reconnaissance_mission_may_draw_for_each_creature_that_connects() {
+    let mut g = table();
+    put(&mut g, 0, "Reconnaissance Mission");
+    let a = put(&mut g, 0, "Savannah Lions");
+    let b = put(&mut g, 0, "Llanowar Elves");
+    let library = g.players[0].library.len();
+    attack(&mut g, &[a, b]);
+    fight(&mut g);
+    assert_eq!(
+        g.players[0].library.len(),
+        library - 3,
+        "the draw step and two triggers"
+    );
+}
+
+#[test]
+fn lifecrafters_bestiary_scries_and_pays_green_to_draw_on_a_creature_spell() {
+    let mut g = table();
+    put(&mut g, 0, "Lifecrafter's Bestiary");
+    let lions = hand(&mut g, 0, "Savannah Lions");
+    let before = g.players[0].hand.len();
+    act(&mut g, Action::Cast(lions));
+    resolve_all(&mut g, &[Action::Yes]);
+    assert_eq!(g.players[0].hand.len(), before - 1 + 1, "paid {{G}}: drew");
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    let before = g.players[0].hand.len();
+    act(&mut g, Action::Cast(elves));
+    resolve_all(&mut g, &[Action::No]);
+    assert_eq!(g.players[0].hand.len(), before - 1, "declined: no card");
+}
+
+#[test]
+fn tymna_pays_a_life_to_draw_after_combat_damage_to_the_opponent() {
+    let mut g = table();
+    let tymna = put(&mut g, 0, "Tymna the Weaver");
+    to_step(&mut g, 5, 0, Step::Main2);
+    assert_eq!(g.players[0].life, 40, "no combat damage: no trigger");
+    attack(&mut g, &[tymna]);
+    let hand = g.players[0].hand.len();
+    while g.step != Step::Main2 || !g.items.is_empty() || matches!(g.pending, Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::Decide(_) => Action::Yes,
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.players[0].life, 40 + 2 - 1, "lifelink, then paid one");
+    assert_eq!(g.players[0].hand.len(), hand + 1);
+}

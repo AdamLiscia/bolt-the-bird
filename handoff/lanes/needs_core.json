@@ -7565,7 +7565,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "done: d2 batch 41 (Effect::CreateTokensPerTokenYouControl; t.rabbit, uncolored row)"
+   "status": "done: d2 batch 41 (Effect::CreateTokensPerTokenYouControl). Known limit (OK for the demo): t.rabbit is an uncolored row, not white"
   },
   {
    "card": "Cathars' Crusade",
@@ -7610,7 +7610,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "done: d2 batch 41 (When::TokenYouControlEnters for 'whenever you create a token')"
+   "status": "done: d2 batch 41. Known limit (OK for the demo): 'whenever you create a token' is When::TokenYouControlEnters"
   },
   {
    "card": "The Cabbage Merchant",
@@ -7664,7 +7664,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 42 (existing pieces; not Kambal, Profiteering Mayor, which is lane C's)"
   },
   {
    "card": "Mai, Scornful Striker",
@@ -7673,7 +7673,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 42 (YouCastNoncreature + OpponentCastsNoncreature)"
   },
   {
    "card": "Papalymo Totolymo",
@@ -7691,7 +7691,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 42 (existing pieces)"
   },
   {
    "card": "Uncover the Moon-Letters",
@@ -7772,7 +7772,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 42 (existing pieces)"
   },
   {
    "card": "Lifeline",
@@ -7817,7 +7817,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 42 (existing pieces)"
   },
   {
    "card": "Oakhame Adversary",
@@ -7835,7 +7835,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 42 (DealsCombatDamageToPlayer + CreateTokensAmount)"
   },
   {
    "card": "Tymna the Weaver",
@@ -7844,7 +7844,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 42 (When::PostcombatMainYourTurn, Condition::OpponentDealtCombatDamageThisTurn; 1v1 X is 1)"
   },
   {
    "card": "Alela, Artful Provocateur",
@@ -7889,7 +7889,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 42 (existing pieces)"
   },
   {
    "card": "Sharding Sphinx",

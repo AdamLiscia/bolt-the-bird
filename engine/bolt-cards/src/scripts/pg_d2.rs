@@ -2007,8 +2007,72 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::TokenYouControlEnters, vec![other], vec![Effect::Counters { slot: 0, n: 1 }]);
             },
         ),
+        // ---- Batch 42 (idea decks: Rocco, Y'shtola, Tymna + Tana, Alela; existing pieces) ----
+        "Starscape Cleric" => s(
+            &["Offspring {2}{B}", "This creature can't block.", "Whenever you gain life, each opponent loses 1 life."],
+            |d, _| {
+                d.offspring = ManaCost::parse("{2}{B}");
+                d.cant_block = true;
+                on(d, When::YouGainLife, vec![], vec![Effect::LoseLife { who: Who::EachOpponent, n: 1 }]);
+            },
+        ),
+        "Mai, Scornful Striker" => s(&["Whenever a player casts a noncreature spell, they lose 2 life."], |d, _| {
+            on(d, When::YouCastNoncreature, vec![], vec![Effect::LoseLife { who: Who::You, n: 2 }]);
+            on(d, When::OpponentCastsNoncreature, vec![], vec![Effect::LoseLife { who: Who::EachOpponent, n: 2 }]);
+        }),
+        "Kambal, Consul of Allocation" => s(
+            &["Whenever an opponent casts a noncreature spell, that player loses 2 life and you gain 2 life."],
+            |d, _| {
+                let effects = vec![Effect::LoseLife { who: Who::EachOpponent, n: 2 }, Effect::GainLife { who: Who::You, n: 2 }];
+                on(d, When::OpponentCastsNoncreature, vec![], effects);
+            },
+        ),
+        "Luminarch Aspirant" => s(
+            &["At the beginning of combat on your turn, put a +1/+1 counter on target creature you control."],
+            |d, _| on(d, When::BeginCombatYourTurn, vec![YOUR_CREATURE], vec![Effect::Counters { slot: 0, n: 1 }]),
+        ),
+        "Tana, the Bloodsower" => s(
+            &["Whenever Tana deals combat damage to a player, create that many 1/1 green Saproling creature tokens.", "Partner"],
+            |d, t| on(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::CreateTokensAmount { def: t.saproling }]),
+        ),
+        "Reconnaissance Mission" => s(
+            &["Whenever a creature you control deals combat damage to a player, you may draw a card.", "Cycling {2}"],
+            |d, _| {
+                may(d, When::YourCreatureDealsCombatDamageToPlayer, vec![], vec![draw(1)]);
+                cycling(d, "{2}");
+            },
+        ),
+        "Tymna the Weaver" => s(
+            &[
+                "At the beginning of each of your postcombat main phases, you may pay X life, where X is the number of opponents that were dealt combat damage this turn. If you do, draw X cards.",
+                "Partner",
+            ],
+            |d, _| {
+                // 1v1: X is 1 when the opponent was dealt combat damage this turn, else the trigger
+                // does nothing.
+                let dealt = Condition::OpponentDealtCombatDamageThisTurn;
+                conditional(d, When::PostcombatMainYourTurn, dealt, vec![], vec![Effect::MayPayLife(1), draw(1)]);
+            },
+        ),
+        "Lifecrafter's Bestiary" => s(
+            &[
+                "At the beginning of your upkeep, scry 1.",
+                "Whenever you cast a creature spell, you may pay {G}. If you do, draw a card.",
+            ],
+            |d, _| {
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::Scry { n: 1 }]);
+                let pay = Effect::MayPay(ManaCost::parse("{G}").expect("a mana cost"));
+                on(d, When::YouCastCreature, vec![], vec![pay, draw(1)]);
+            },
+        ),
         _ => None,
     }
+}
+
+/// "Cycling {cost}": "{cost}, Discard this card: Draw a card." from your hand.
+fn cycling(d: &mut CardDef, cost: &str) {
+    let n = activated(d, cost, false, vec![], vec![draw(1)]);
+    d.activated[n].from_hand_discard = true;
 }
 
 /// "target opponent"
@@ -2312,4 +2376,13 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Cadira, Caller of the Small",
     "Knuckles the Echidna",
     "Rosie Cotton of South Lane",
+    // Batch 42
+    "Starscape Cleric",
+    "Mai, Scornful Striker",
+    "Kambal, Consul of Allocation",
+    "Luminarch Aspirant",
+    "Tana, the Bloodsower",
+    "Reconnaissance Mission",
+    "Tymna the Weaver",
+    "Lifecrafter's Bestiary",
 ];

@@ -3569,6 +3569,9 @@ pub enum Condition {
     /// A creature is on the battlefield (Lifeline: "if another creature is on the battlefield",
     /// checked after the dying creature has left).
     CreatureOnBattlefield,
+    /// A creature its controller controlled dealt combat damage to a player this turn
+    /// (`Game::combat_damaged_player`; 1v1: the opponent was dealt combat damage; Tymna's X is 1).
+    OpponentDealtCombatDamageThisTurn,
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -4164,6 +4167,8 @@ pub enum When {
     /// "Whenever ... a planeswalker you control dies" (Cruel Celebrant): a noncreature planeswalker
     /// put into a graveyard from the battlefield (a creature one is `CreatureYouControlDies`'s).
     PlaneswalkerYouControlDies,
+    /// "At the beginning of each of your postcombat main phases" (Tymna the Weaver).
+    PostcombatMainYourTurn,
 }
 
 #[derive(Clone, Debug, PartialEq)]

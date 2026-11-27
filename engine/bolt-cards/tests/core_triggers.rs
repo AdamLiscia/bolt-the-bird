@@ -2715,3 +2715,25 @@ fn create_tokens_per_token_you_control_counts_them_first() {
     let rabbits = g.permanents(0).filter(|&x| g.def_of(x).name == "Rabbit").count();
     assert_eq!(rabbits, 2);
 }
+
+// ---- batch 42: postcombat main phases and combat damage dealt this turn ----
+
+#[test]
+fn postcombat_main_your_turn_gated_on_combat_damage_dealt_this_turn() {
+    let mut g = game_with(blood_with(vec![
+        trigger(When::PostcombatMainYourTurn, None, gain(1)),
+        trigger(
+            When::PostcombatMainYourTurn,
+            Some(Condition::OpponentDealtCombatDamageThisTurn),
+            gain(10),
+        ),
+    ]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    attack_through(&mut g, &[]);
+    resolve_all(&mut g, &[]);
+    assert_eq!(life(&g, 0), 41, "no damage dealt: only the plain trigger");
+    attack_through(&mut g, &[lions]);
+    resolve_all(&mut g, &[]);
+    assert_eq!(life(&g, 0), 41 + 2 + 1 + 10, "Exquisite Blood, then both");
+}
