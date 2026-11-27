@@ -2041,3 +2041,56 @@ fn ashiok_makes_nightmares_that_exile_two_and_bounces_then_exiles_from_hand() {
     resolve_all(&mut g, &[]);
     assert_eq!(g.obj(elves).zone, Zone::Exile, "bounced, then exiled from hand");
 }
+
+// ---- Wishclaw Talisman; Midgar, City of Mako (batch 22) ----
+
+#[test]
+fn wishclaw_talisman_tutors_then_goes_to_the_opponent() {
+    let mut g = table();
+    let talisman = hand(&mut g, 0, "Wishclaw Talisman");
+    play(&mut g, talisman, false, &[], &[]);
+    assert_eq!(g.obj(talisman).kind_counters, 3, "three wish counters");
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    act(&mut g, Action::Activate(talisman, 0));
+    resolve_all(&mut g, &[Action::Pick(ring)]);
+    assert_eq!(g.obj(ring).zone, Zone::Hand);
+    assert_eq!(g.obj(talisman).kind_counters, 2);
+    assert_eq!(g.obj(talisman).controller, 1, "an opponent gains control of it");
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(talisman, 0)),
+        "only its controller, during their turn"
+    );
+    to_main1(&mut g, 6, 1);
+    assert!(g.legal_actions().contains(&Action::Activate(talisman, 0)));
+}
+
+#[test]
+fn midgar_is_a_tapped_swamp_or_an_adventure_that_sacrifices_to_draw_two() {
+    let mut g = table();
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let midgar = hand(&mut g, 0, "Midgar, City of Mako // Reactor Raid");
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::PlayLand(midgar)) && legal.contains(&Action::CastOmen(midgar)));
+    assert!(!legal.contains(&Action::Cast(midgar)), "a land isn't cast");
+    let cards = g.players[0].hand.len();
+    act(&mut g, Action::CastOmen(midgar));
+    resolve_all(&mut g, &[Action::Pick(ghoul)]);
+    assert_eq!(g.obj(ghoul).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].hand.len(), cards - 1 + 2, "Midgar left, two drawn");
+    assert_eq!(g.obj(midgar).zone, Zone::Exile, "on an adventure");
+    act(&mut g, Action::PlayLand(midgar));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(midgar).zone, Zone::Battlefield, "played later from exile");
+    assert!(g.obj(midgar).tapped);
+}
+
+#[test]
+fn reactor_raid_declined_draws_nothing() {
+    let mut g = table();
+    put(&mut g, 0, "Hungry Ghoul");
+    let midgar = hand(&mut g, 0, "Midgar, City of Mako // Reactor Raid");
+    let cards = g.players[0].hand.len();
+    act(&mut g, Action::CastOmen(midgar));
+    resolve_all(&mut g, &[Action::No]);
+    assert_eq!(g.players[0].hand.len(), cards - 1);
+}

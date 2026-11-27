@@ -1223,3 +1223,19 @@ Ashiok, Nightmare Muse scripted (+1 the Nightmare, −3 d3's `BounceThenOwnerExi
 test in core_objects (84). Built cold, no fixes needed: 2,412 Rust tests pass (core_objects 84, 4 ignored: 3
 play.rs, 1 rollout), every binary's count equals its `#[test]` count; clippy, fmt, ruff (check and format) clean;
 pytest 201 passed, 2 skipped.
+
+## Batch 22 (unbuilt): Wishclaw Talisman (Kenrith), Midgar, City of Mako (d2's handback)
+
+Core (appended; functions in game/zones.rs):
+- `Effect::OpponentGainsControlOfSource` (`give_source_to_opponent`: controller and `since_turn`, for good).
+- `ZonesExt::enters_with_kind_counters` with one call (`enter_with_kind_counters`) after the vanishing block in the
+  enter path. **An edit in the enter path (merger's): one line.** d1's `remove_counters_self` isn't on tarkir;
+  the wish counter is paid with the existing `Activated::remove_kind_counters`.
+- Midgar: in `priority_actions`' cast list, a land with an Omen/Adventure half no longer `continue`s before the
+  Omen block (`def.types.land && def.omen.is_none()`), and a `continue` after it keeps the land itself from being
+  offered as a `Cast`. After the Adventure the card is `playable` from exile, played as a land.
+- `Effect::MaySacrificeArtifactOrCreature` with `Decision::MaySacrificeArtifactOrCreature` (Pick, or No: the rest
+  stops); labelled in service_view, tested in test_decision_labels.
+Cards (2): Wishclaw Talisman, Midgar, City of Mako // Reactor Raid. Tests in core_objects (87).
+Likely failure spots when built: the Talisman's activation legality for player 1 after `to_main1(6, 1)` (it must
+untap in their untap step), the Midgar hand-count arithmetic.

@@ -2506,6 +2506,33 @@ pub fn script(name: &str) -> Option<Script> {
                 loyalty(d, -7, Ability::new(vec![], vec![Effect::CastFaceUpOpponentExiledFreeUpTo(3)]));
             },
         ),
+        "Wishclaw Talisman" => s(
+            &[
+                "This artifact enters with three wish counters on it.",
+                "{1}, {T}, Remove a wish counter from this artifact: Search your library for a card, put it into your hand, then shuffle. An opponent gains control of this artifact. Activate only during your turn.",
+            ],
+            |d, _| {
+                // Wish counters are the artifact's own kind (`kind_counters`).
+                d.zones.enters_with_kind_counters = 3;
+                let wish = vec![search(SearchFor::Any, SearchTo::Hand), Effect::OpponentGainsControlOfSource];
+                let n = activated(d, "{1}", true, vec![], wish);
+                d.activated[n].remove_kind_counters = 1;
+                d.activated[n].your_turn_only = true;
+            },
+        ),
+        "Midgar, City of Mako // Reactor Raid" => s(
+            &[
+                "This land enters tapped.",
+                "{T}: Add {B}.",
+                "Omen: You may sacrifice an artifact or creature. If you do, draw two cards.",
+            ],
+            |d, _| {
+                d.enters_tapped = true;
+                d.mana = Some(ManaSource::of(&[Color::Black]));
+                omen(d, Ability::new(vec![], vec![Effect::MaySacrificeArtifactOrCreature, draw(2)]));
+                d.adventure = true;
+            },
+        ),
         "Fortune Teller's Talent" => s(
             &[
                 "You may look at the top card of your library any time.",
@@ -2864,5 +2891,7 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Blade of the Bloodchief",
     "Nesting Dragon",
     "Ashiok, Nightmare Muse",
+    "Wishclaw Talisman",
+    "Midgar, City of Mako // Reactor Raid",
     // Not "Evercoat Ursine" (unclaimed: a hidden land must be playable as a land play).
 ];

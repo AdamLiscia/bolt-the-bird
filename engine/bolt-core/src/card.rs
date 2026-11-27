@@ -2402,6 +2402,9 @@ pub struct ZonesExt {
     /// (Fortune Teller's Talent, level 2): while this permanent is at this Class level or higher (1:
     /// always). 0: none.
     pub top_cards_if_cast_spell_at_level: u8,
+    /// "This artifact enters with N [kind] counters on it." (Wishclaw Talisman: three wish counters,
+    /// `Object::kind_counters`).
+    pub enters_with_kind_counters: u8,
 }
 
 #[cfg(test)]

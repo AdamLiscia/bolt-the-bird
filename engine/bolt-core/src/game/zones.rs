@@ -1143,4 +1143,48 @@ impl Game {
             self.add_counters(c, k);
         }
     }
+
+    /// Wishclaw Talisman: "An opponent gains control of this artifact." (for good, CR 613.1b).
+    pub(super) fn give_source_to_opponent(&mut self, src: ObjId, p: PlayerId) {
+        if self.obj(src).zone == Zone::Battlefield && self.obj(src).controller == p {
+            let turn = self.turn;
+            let o = self.obj_mut(src);
+            o.controller = opponent(p);
+            o.since_turn = turn; // CR 302.6
+        }
+    }
+
+    /// "This artifact enters with N [kind] counters on it." (`ZonesExt::enters_with_kind_counters`)
+    pub(super) fn enter_with_kind_counters(&mut self, id: ObjId) {
+        let n = self.def_of(id).zones.enters_with_kind_counters as i32;
+        if n > 0 {
+            self.obj_mut(id).kind_counters += n;
+            let controller = self.obj(id).controller;
+            self.counters_placed(controller, n);
+        }
+    }
+
+    /// Midgar's Reactor Raid: the artifacts and creatures `p` can sacrifice, then `No`.
+    pub(super) fn artifact_or_creature_sacrifice_actions(&self, p: PlayerId) -> Vec<Action> {
+        let mut v: Vec<Action> = self
+            .permanents(p)
+            .filter(|&c| {
+                let t = self.types_of(c);
+                (t.artifact || t.creature) && !self.cant_be_sacrificed(c)
+            })
+            .map(Action::Pick)
+            .collect();
+        v.push(Action::No);
+        v
+    }
+
+    /// The answer to `Decision::MaySacrificeArtifactOrCreature`: sacrifice it, or stop the ability.
+    pub(super) fn artifact_or_creature_sacrifice_decide(&mut self, p: PlayerId, a: Action) {
+        if let Action::Pick(c) = a {
+            self.move_to(c, Zone::Graveyard);
+            self.sacrificed(c, p);
+        } else {
+            self.resolving.as_mut().expect("resolving").remaining.clear();
+        }
+    }
 }
