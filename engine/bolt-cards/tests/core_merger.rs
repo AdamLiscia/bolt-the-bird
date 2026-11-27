@@ -957,3 +957,152 @@ fn harmonize_excludes_its_creature_from_paying_even_a_devotee() {
     let ride = g.add_card(0, cid("Wild Ride"), Zone::Graveyard);
     assert!(!g.legal_actions().contains(&Action::CastHarmonize(ride, devotee)));
 }
+
+// ---- Lane B, 2026-11-26: can't block while you control the source; first combat damage each turn ----
+
+#[test]
+fn a_creature_cant_block_while_you_control_the_source() {
+    // Sol Ring, given There and Back Again's chapter I effect as an enters trigger for this test.
+    let mut defs = (*set("CMD").unwrap().defs).clone();
+    defs[cid("Sol Ring")].triggers.push(bolt_core::Trigger {
+        when: bolt_core::When::Enters,
+        ability: bolt_core::Ability::new(
+            vec![bolt_core::Filter::CREATURE],
+            vec![bolt_core::Effect::TargetCantBlockWhileYouControlSource(0)],
+        ),
+    });
+    let plains = vec![cid("Plains"); 99];
+    let mut g = Game::new_commander(
+        std::sync::Arc::new(defs),
+        [&plains, &plains],
+        [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+        7,
+        0,
+    );
+    g.auto_pass = false;
+    for land in ["Plains", "Island", "Swamp", "Mountain", "Forest"] {
+        put(&mut g, 0, land);
+    }
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let wall = put(&mut g, 1, "Savannah Lions");
+    g.start_turn(3, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let ring = hand(&mut g, 0, "Sol Ring");
+    play(&mut g, ring, false, &[], &[Action::Target(Target::Object(wall))]);
+    // Turn 5: their Lions can't block, so no blockers are declared and the attack connects.
+    let attack = |g: &mut Game, turn: u32| -> bool {
+        g.start_turn(turn, 0);
+        while g.pending != Pending::DeclareAttackers(0) {
+            act(g, Action::PassPriority);
+        }
+        act(g, Action::Attack(lions));
+        act(g, Action::FinishAttacks);
+        while g.step != Step::CombatDamage && g.pending != Pending::DeclareBlockers(1) {
+            act(g, Action::PassPriority);
+        }
+        g.pending == Pending::DeclareBlockers(1)
+            && g.legal_actions().contains(&Action::Block {
+                blocker: wall,
+                attacker: lions,
+            })
+    };
+    assert!(!attack(&mut g, 5), "can't block while you control Sol Ring");
+    g.objects[ring.0 as usize].controller = 1; // you no longer control it
+    assert!(attack(&mut g, 7));
+}
+
+#[test]
+fn an_x_ability_targeting_mana_value_x_is_offered_only_for_that_x() {
+    // Sol Ring, given "{X}, {T}: Destroy target artifact an opponent controls with mana value X." for
+    // this test (The Mycosynth Gardens' shape): X is checked against the targets for each X.
+    let mut defs = (*set("CMD").unwrap().defs).clone();
+    let ring_def = cid("Sol Ring");
+    let n = defs[ring_def].activated.len();
+    let target = bolt_core::Filter {
+        players: false,
+        creatures: false,
+        planeswalkers: false,
+        artifacts: true,
+        mana_value_is_x: true,
+        controller: bolt_core::Controller::Opponent,
+        ..bolt_core::Filter::ANY
+    };
+    defs[ring_def].activated.push(bolt_core::Activated {
+        mana: bolt_core::ManaCost::parse("{X}").expect("cost"),
+        tap: true,
+        ability: bolt_core::Ability::new(vec![target], vec![bolt_core::Effect::Destroy(0)]),
+        ..bolt_core::Activated::default()
+    });
+    let plains = vec![cid("Plains"); 99];
+    let mut g = Game::new_commander(
+        std::sync::Arc::new(defs),
+        [&plains, &plains],
+        [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+        7,
+        0,
+    );
+    g.auto_pass = false;
+    for _ in 0..4 {
+        put(&mut g, 0, "Plains");
+    }
+    let ring = put(&mut g, 0, "Sol Ring");
+    let stone = put(&mut g, 1, "Mind Stone"); // mana value 2
+    g.start_turn(3, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let offered: Vec<u8> = g
+        .legal_actions()
+        .iter()
+        .filter_map(|a| match *a {
+            Action::ActivateX { id, n: k, x, .. } if id == ring && k == n => Some(x),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(offered, vec![2]);
+    act(
+        &mut g,
+        Action::ActivateX {
+            id: ring,
+            n,
+            victim: None,
+            x: 2,
+        },
+    );
+    resolve_all(&mut g, &[Action::Target(Target::Object(stone))]);
+    assert_eq!(g.obj(stone).zone, Zone::Graveyard);
+}
+
+#[test]
+fn the_mycosynth_gardens_filters_one_mana_and_copies_at_the_mana_value_of_your_artifact() {
+    // "{1}, {T}: Add one mana of any color": Plains and the Gardens make {G}.
+    let mut g = game(&["Plains"]);
+    put(&mut g, 0, "The Mycosynth Gardens");
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    assert!(g.legal_actions().contains(&Action::Cast(elves)));
+    play(&mut g, elves, false, &[], &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+
+    let mut g = game(&["Plains", "Plains", "Plains", "Plains"]);
+    let gardens = put(&mut g, 0, "The Mycosynth Gardens");
+    let stone = put(&mut g, 0, "Mind Stone"); // mana value 2
+    let copy = |a: &Action| match *a {
+        Action::ActivateX { id, n: 0, x, .. } if id == gardens => Some(x),
+        _ => None,
+    };
+    let offered: Vec<u8> = g.legal_actions().iter().filter_map(copy).collect();
+    assert_eq!(offered, vec![2]);
+    act(
+        &mut g,
+        Action::ActivateX {
+            id: gardens,
+            n: 0,
+            victim: None,
+            x: 2,
+        },
+    );
+    resolve_all(&mut g, &[Action::Target(Target::Object(stone))]);
+    assert_eq!(g.def_of(gardens).name, "Mind Stone", "a copy of it");
+}

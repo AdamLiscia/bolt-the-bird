@@ -772,9 +772,115 @@ Shortcuts: Light-Paws fizzles if the Aura has left before its trigger resolves. 
   Face-Breaker needed nothing new.
 Touched code owned elsewhere (flag for review): the `give_priority` line, the `Step::End` line, the `cast_modes` guard.
 
+## Objects and zones batch 10 (Bruna's Auras), unbuilt
+
+Steel of the Godhead (d3's `StaticCondition::AttachedIsColor`, no new core), Face of Divinity
+(`StaticCondition::AttachedHasAnotherAura`, an arm appended to the static-condition match), Shielded by Faith (the
+existing `Effect::Attach` from the two "a creature enters" triggers, as optional triggers), Eldrazi Conscription
+(+10/+10 trample and annihilator 2 as a `When::EquippedAttacks` trigger on the Aura, which fires for Auras too).
+Still needing core in Bruna: Daybreak Coronet (a target filter "creature with another Aura attached": d3's
+`Filter`), Super State (base P/T 9/9 from an Aura without losing abilities: `attached_static` treats any
+`base_pt` as Witness Protection's Citizen; d3), Celestial Mantle (an effect doubling a life total: d3), All That
+Glitters, Ethereal Armor, Auramancer's Guise, Sage's Reverie (counts in the scaled-statics block: d3), Unquestioned
+Authority (protection from creatures: d3), Open the Armory (a search for an Aura or Equipment card: d3).
+
+## Objects and zones batch 11 (unbuilt): Gisa, then Tergrid and Vohar
+
+- Gisa, Glorious Resurrector (built, verified at 9dab6d8): lane B's `opponents_creatures_die_exiled` and
+  `Game::exiled_with`; `Effect::ReturnExiledWithSourceDecayed` (`Game::return_exiled_with_decayed`).
+- Casting a nonland modal back face: `Action::CastModal(c, 1)` for a modal double-faced card in hand whose front
+  has no modes (`Game::back_face_castable` lists it: a nonland permanent back, not an Aura, no {X}, at its
+  timing, affordable). The apply arm sets `transformed` and casts it normally, so the spell is the back face;
+  `move_to` clears `transformed` when it leaves the stack for anywhere but the battlefield. The service view
+  labels it "Cast <back name>". Not covered: instant or sorcery backs, Aura backs, X backs, backs with targets
+  beyond what `cast` checks.
+- Tergrid, God of Fright // Tergrid's Lantern: d2's `OpponentSacrificesNontoken` and `OpponentDiscards` as optional
+  triggers with `Reanimate`; the Lantern's `Effect::TargetPlayerLosesUnlessSacrificesOrDiscards` (the existing
+  Torment decision, once) and an untap ability.
+- Vohar, Vodalian Desecrator: `Effect::DiscardThenIfInstantOrSorcery` with `Decision::DiscardThenIfInstantOrSorcery`
+  (labelled), and the sacrifice ability as `GrantFlashback` (Snapcaster's grant: its mana cost, exiled instead).
+
+## Script-only pass: Olivia and Bruna (2026-11-26), batch 1 (unbuilt)
+
+Lavaspur Boots (lane B's `enchanted_ward`), Mother of Runes (d3's `ProtectionChosenColorEot`), Port Razer (the
+existing `AdditionalCombatAfterThisPhase` and `cant_attack_twice_per_turn`), Breath of Fury (new
+`Effect::SacrificeEnchantedMoveAura` with `Decision::MoveAuraTo`, labelled: the Aura moves before state-based
+actions can bin it; with nothing to move to, "If you do" fails).
+Still waiting, by owner:
+- d1: Mystic Gate (filter mana), Bitter Triumph, Cathartic Reunion, Demand Answers, Sazacap's Brew (additional
+  costs), Hoarding Broodlord, Neheb, the Eternal, Ozai, Heliod's back (cost reduction per card drawn).
+- d2: Mesmeric Orb (any permanent untaps), Deep Gnome Terramancer (lands enter for an opponent without being
+  played), Archaeomancer's Map (an opponent's land enters), Lavinia (an opponent casts a spell with no mana
+  spent), Necropolis Regent (a creature-and-amount combat damage trigger), Azra Oddsmaker, Twilight Diviner,
+  Olivia's Attendants (deals-damage amount, and a Blood token).
+- d3: Fabled Passage, All That Glitters, Ethereal Armor, Auramancer's Guise, Sage's Reverie, Celestial Mantle,
+  Daybreak Coronet, Unquestioned Authority, Giver of Runes, Pippin, Open the Armory, Consuming Tide, Single
+  Combat, Gifts Ungiven, Super State, Heliod's front; Exhume, Living Death, Burning Inquiry, Change of Fortune,
+  Dragon Mage, Burning-Rune Demon, Rakdos Charm, Vile Mutilator, Twilight Prophet.
+- d4: Invasion of Theros (battles), Summon: Bahamut (a Saga creature).
+- lane B: Rankle and Torbran ("choose any number" modes, the +2 damage replacement).
+
+## Lane B's decks, Mac C pieces, batch 1 (unbuilt; lane C scripts these, lane B skips them)
+
+Kaalia of the Vast (`Effect::CreatureFromHandAttacking(subtypes)` with `Decision::CreatureFromHandAttacking`,
+labelled; not when Kaalia attacks a planeswalker), Command Beacon (`Effect::CommanderFromCommandZoneToHand`; `move_to`
+no longer sends a commander moving from the command zone to its hand back to the command zone), Mystic Forge
+(`ZonesExt::top_spells_artifact_or_colorless`, one clause in the top-of-library cast check; `Effect::ExileTopCards`).
+Next in this list: Lithoform Engine, Thespian's Stage and The Mycosynth Gardens (copies), then Wandering Archaic.
+Waiting on others: Tendo Ice Bridge and Cavern of Souls (d1 mana), Kozilek, the Great Distortion (d1 cost, d3 draw),
+Flayer of Loyalties (d3: threaten with base P/T and granted annihilator), Rakdos, Patron of Chaos (d3), The One Ring
+(d3: player protection from everything), Prosper (d2: "whenever you play a card from exile").
+
 ## Held back (lane C), with what each needs
 
 Done since: Light-Paws, Sovereigns, Bruna, Olivia, Dragonhawk, Glimpse of Tomorrow (batches 8-9). Routed
 (2026-11-26): Sheltered by Ghosts (Aura-granted ward: lane B, merger work), Smaug the Magnificent (d3), Rankle and
 Torbran and Raphael (lane B), Pippin, Guard of the Citadel (d3: a per-object chosen-card-type protection grant, and a
 card-type choice askable mid-resolution). Waiting on others: Gisa (Mac B), Prosper (d2), Inventors' Fair (d3).
+
+## Lane B's decks, Mac C pieces, batch 2: copies (unbuilt)
+
+Built first: the batch 1 WIP plus the tarkir 0834aa0 merge, verified at d72d923 (pg_c 208, workspace 2118 passed).
+- Lithoform Engine (listed): `Effect::CopyTargetAbilityYouControl(slot)` (targets with `Filter { abilities, spells:
+  false }`; the topmost ability of that source is copied if you control it) and `Effect::CopyTargetSpellYouControl
+  { slot, permanent }` (instant or sorcery by `spell_instant_or_sorcery`; a permanent spell's copy resolves into a
+  token by the existing CR 707.10f code). Both go through `pending_copies`; its loop now also lets an ability's
+  copy choose new targets (unless a slot is `triggering`). Every existing pending copy is a spell copy, so their
+  behaviour is unchanged.
+  Shortcuts, both waiting on d3's `Filter`: "an ability you control" and "a permanent spell" are checked as the
+  ability resolves, not as it targets, so an opponent's ability or an instant can be targeted and nothing happens.
+  Needs d3: a `Filter` for "permanent spell" and a controller check for `abilities`.
+- Thespian's Stage (listed): `Effect::SourceBecomesCopyOfSlot { slot, keep_own }`: `become_copy` for good, with
+  `copy_exceptions = keep_own`. "Except it has this ability" is the copy ability twice: once printed, once
+  `copy_only` (kept by `copy_keeps_abilities`, as Sakashima's).
+- The Mycosynth Gardens: scripted with the same effect (`keep_own: false`); listed by lane B at 496558d with its paid mana. Before that it was not listed: "{1}, {T}: Add one mana
+  of any color." needs d1 (a mana ability with a mana cost). It also needs the merger: the activation listing's
+  `trigger_can_target` pre-check uses X = 0, so a `mana_value_is_x` target rejects every X and the ability is never
+  offered. The merger fixed that on tarkir (X-dependent targets are checked for each X), so its test is back.
+- Wandering Archaic // Explore the Vastlands: not scripted. The copy part needs no new Mac C core:
+  `may(d, When::OpponentCastsInstantOrSorcery, vec![], vec![Effect::UnlessOpponentPays(2), Effect::CopySpellNewTargets])`,
+  as Rhystic Study does. But it needs d2 to set the cast spell as `extra` on `OpponentCastsInstantOrSorcery`
+  triggers (that `fire` passes None, and `CopySpellNewTargets` reads `extra`). The back face needs a sorcery
+  modal back cast (`back_face_castable` covers permanent backs only; Mac C) and an "Each player looks at the top
+  five..." effect (d3).
+Tests: pg_c 212 (4 new), core_objects 39 at 49d2821 (Rogue's Passage; the Mycosynth test is back in batch 3).
+
+## Borrowed d2 pieces (the desktop is offline), batch 3 (unbuilt)
+
+Fast-forwarded to tarkir 53fd106 (the merger's X-dependent activation targets; needs_core borrow notes).
+- `When::OpponentCastsInstantOrSorcery` now carries the cast spell as `extra`: its emit in `finish_cast` is one
+  line, `Game::fire_with_extra` (game/zones.rs: `fire`, then `extra` on the triggers it added). Arasta and
+  Niv-Mizzet, Parun ignore `extra`.
+- `When::YouPlayCardFromExile`, emitted by `Game::played_from_exile(p, card)`: one line in `cast_now` (before the
+  card moves to the stack) and one in the `PlayLand` arm (before it moves to the battlefield); it fires only if the
+  card is in exile then. A spell's trigger goes on the stack above it.
+- Prosper, Tome-Bound (listed): the existing `ExileTopToPlayAll(1)` at your end step ("until the end of your next
+  turn") and Pact Boon's Treasure.
+- Wandering Archaic // Explore the Vastlands: still not scripted. Its front is ready to write
+  (`may(d, When::OpponentCastsInstantOrSorcery, vec![], vec![Effect::UnlessOpponentPays(2), Effect::CopySpellNewTargets])`),
+  but the back needs an effect that doesn't exist yet: each player looks at the top five, may reveal a land
+  and/or an instant or sorcery, takes them, the rest go to the bottom in random order, and everyone gains 3
+  (d3's look-at-five). It also needs `back_face_castable` extended to instant and sorcery backs (Mac C). I'll do
+  that piece when the effect lands, or both if it's handed to me.
+Tests: core_objects 42 (the Mycosynth copy test back, Arasta's trigger carrying the spell, Prosper playing a land
+from exile and not from hand); pg_c 212.

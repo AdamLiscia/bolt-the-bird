@@ -292,3 +292,84 @@ fn opponents_cards_exiled_with_void_and_played_free() {
     assert!(g.obj(theirs).void_counter);
     assert_eq!(g.obj(bolt).zone, Zone::Graveyard, "my own card isn't affected");
 }
+
+// ---- Lane B, 2026-11-26: Class token replacements (Fisher's Talent), Gisa's exile ----
+
+/// The table, with the CMD definitions changed by `edit` first.
+fn table_with(edit: impl Fn(&mut Vec<bolt_core::CardDef>)) -> Game {
+    let mut defs = (*set("CMD").unwrap().defs).clone();
+    edit(&mut defs);
+    let plains = vec![cid("Plains"); 99];
+    let mut g = Game::new_commander(
+        std::sync::Arc::new(defs),
+        [&plains, &plains],
+        [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+        7,
+        0,
+    );
+    g.auto_pass = false;
+    for land in ["Plains", "Island", "Swamp", "Mountain", "Forest"] {
+        for p in 0..2 {
+            for _ in 0..5 {
+                put(&mut g, p, land);
+            }
+        }
+    }
+    g.start_turn(3, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    g
+}
+
+#[test]
+fn fishers_talent_replaces_fish_with_sharks_and_sharks_with_octopuses_by_level() {
+    let t = bolt_cards::scripts::Tokens::starting_at(set("CMD").unwrap().card_count());
+    for (level, made) in [(1, "Fish"), (2, "Shark"), (3, "Octopus")] {
+        let mut g = table_with(|defs| {
+            defs[cid("Fisher's Talent")].class_token_replacements =
+                vec![(2, t.fish, t.shark), (3, t.shark, t.octopus)];
+        });
+        let talent = put(&mut g, 0, "Fisher's Talent");
+        g.objects[talent.0 as usize].class_level = level;
+        let port = put(&mut g, 0, "Fountainport");
+        act(&mut g, Action::Activate(port, 1)); // {3}, {T}, Pay 1 life: a Fish
+        resolve_all(&mut g, &[]);
+        let made_ids: Vec<ObjId> = g
+            .permanents(0)
+            .filter(|&x| g.is_token(x) && g.def_of(x).name == made)
+            .collect();
+        assert_eq!(made_ids.len(), 1, "level {level}: a {made}");
+        assert_eq!(
+            g.colors_of(made_ids[0]),
+            [false, true, false, false, false],
+            "blue"
+        );
+        if made == "Shark" {
+            assert_eq!((g.power(made_ids[0]), g.toughness(made_ids[0])), (3, 3));
+        }
+    }
+}
+
+#[test]
+fn gisa_exiles_opponents_dying_creatures_and_remembers_them() {
+    let mut g =
+        table_with(|defs| defs[cid("Gisa, Glorious Resurrector")].opponents_creatures_die_exiled = true);
+    let gisa = put(&mut g, 0, "Gisa, Glorious Resurrector");
+    let theirs = put(&mut g, 1, "Savannah Lions");
+    let mine = put(&mut g, 0, "Savannah Lions");
+    for target in [theirs, mine] {
+        let bolt = hand(&mut g, 0, "Lightning Bolt");
+        play(&mut g, bolt, false, &[Target::Object(target)], &[]);
+    }
+    assert_eq!(
+        g.obj(theirs).zone,
+        Zone::Exile,
+        "an opponent's creature is exiled instead"
+    );
+    assert_eq!(g.obj(mine).zone, Zone::Graveyard, "yours still dies");
+    assert!(g
+        .exiled_with
+        .iter()
+        .any(|&(s, _, c, z)| s == gisa && c == theirs && z == g.obj(theirs).zcc));
+}

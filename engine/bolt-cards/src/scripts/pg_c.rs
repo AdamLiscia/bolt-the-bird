@@ -1950,6 +1950,247 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].sacrifice_subtype = Some("Treasure");
             },
         ),
+        // ---- Bruna's Auras (Mac C: attachments) ----
+        "Steel of the Godhead" => s(
+            &[
+                "Enchant creature",
+                "As long as enchanted creature is white, it gets +1/+1 and has lifelink.",
+                "As long as enchanted creature is blue, it gets +1/+1 and can't be blocked.",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                attached(d, false, 1, 1, Keywords::LIFELINK);
+                d.statics.last_mut().expect("just added").condition = Some(StaticCondition::AttachedIsColor(0));
+                attached(d, false, 1, 1, Keywords::UNBLOCKABLE);
+                d.statics.last_mut().expect("just added").condition = Some(StaticCondition::AttachedIsColor(1));
+            },
+        ),
+        "Face of Divinity" => s(
+            &[
+                "Enchant creature",
+                "Enchanted creature gets +2/+2.",
+                "As long as another Aura is attached to enchanted creature, it has first strike and lifelink.",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                attached(d, false, 2, 2, Keywords::NONE);
+                attached(d, false, 0, 0, Keywords::FIRST_STRIKE.with(Keywords::LIFELINK));
+                d.statics.last_mut().expect("just added").condition = Some(StaticCondition::AttachedHasAnotherAura);
+            },
+        ),
+        "Shielded by Faith" => s(
+            &[
+                "Enchant creature",
+                "Enchanted creature has indestructible.",
+                "Whenever a creature enters, you may attach this Aura to that creature.",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                attached(d, false, 0, 0, Keywords::INDESTRUCTIBLE);
+                // "A creature": one of yours or one of the opponent's.
+                let it = Filter { triggering: true, controller: Controller::Any, ..CREATURE };
+                for when in [When::AnotherCreatureYouControlEnters, When::CreatureOpponentControlsEnters] {
+                    may(d, when, vec![it], vec![Effect::Attach { slot: 0 }]);
+                }
+            },
+        ),
+        "Eldrazi Conscription" => s(
+            &["Enchant creature", "Enchanted creature gets +10/+10 and has trample and annihilator 2."],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                attached(d, false, 10, 10, Keywords::TRAMPLE);
+                // Annihilator 2 (CR 702.86a), granted: "Whenever this creature attacks, defending
+                // player sacrifices two permanents of their choice."
+                on(d, When::EquippedAttacks, vec![], vec![Effect::SacrificePermanents { who: Who::EachOpponent, n: 2 }]);
+            },
+        ),
+        // ---- Malik: Gisa, on lane B's die-to-exile replacement ----
+        "Gisa, Glorious Resurrector" => s(
+            &[
+                "If a creature an opponent controls would die, exile it instead.",
+                "At the beginning of your upkeep, put all creature cards exiled with Gisa onto the battlefield under your control. They gain decayed.",
+            ],
+            |d, _| {
+                d.opponents_creatures_die_exiled = true;
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::ReturnExiledWithSourceDecayed]);
+            },
+        ),
+        // ---- Mac C: casting a modal double-faced card's nonland back face ----
+        "Tergrid, God of Fright // Tergrid's Lantern" => s(
+            &[
+                "Whenever an opponent sacrifices a nontoken permanent or discards a permanent card, you may put that card from a graveyard onto the battlefield under your control.",
+                "Back: {T}: Target player loses 3 life unless they sacrifice a nonland permanent of their choice or discard a card.",
+                "Back: {3}{B}: Untap Tergrid's Lantern.",
+            ],
+            |d, _| {
+                let sacrificed = Filter { triggering: true, ..graveyard_cards(false, Controller::Any) };
+                may(d, When::OpponentSacrificesNontoken, vec![sacrificed], vec![Effect::Reanimate(0)]);
+                let discarded = Filter { triggering: true, permanent_cards: true, ..graveyard_cards(false, Controller::Any) };
+                may(d, When::OpponentDiscards, vec![discarded], vec![Effect::Reanimate(0)]);
+                d.modal_back = true;
+                let b = d.back.as_mut().expect("Tergrid's Lantern");
+                activated(b, "", true, vec![Filter::PLAYER], vec![Effect::TargetPlayerLosesUnlessSacrificesOrDiscards { slot: 0, life: 3 }]);
+                activated(b, "{3}{B}", false, vec![], vec![Effect::UntapSelf]);
+            },
+        ),
+        "Vohar, Vodalian Desecrator" => s(
+            &[
+                "{T}: Draw a card, then discard a card. If you discarded an instant or sorcery card this way, each opponent loses 1 life and you gain 1 life.",
+                "{2}, Sacrifice Vohar: You may cast target instant or sorcery card from your graveyard this turn. If that spell would be put into your graveyard, exile it instead. Activate only as a sorcery.",
+            ],
+            |d, _| {
+                activated(
+                    d,
+                    "",
+                    true,
+                    vec![],
+                    vec![
+                        draw(1),
+                        Effect::DiscardThenIfInstantOrSorcery,
+                        Effect::LoseLife { who: Who::EachOpponent, n: 1 },
+                        Effect::GainLife { who: Who::You, n: 1 },
+                    ],
+                );
+                // A flashback grant for this turn: cast for its mana cost, exiled instead (Snapcaster's).
+                let spell = Filter { instant_or_sorcery: true, ..graveyard_cards(false, Controller::You) };
+                let n = activated(d, "{2}", false, vec![spell], vec![Effect::GrantFlashback(0)]);
+                d.activated[n].sacrifice_self = true;
+                d.activated[n].sorcery = true;
+            },
+        ),
+        // ---- Script-only pass: Bruna and Olivia ----
+        "Lavaspur Boots" => s(
+            &["Equipped creature gets +1/+0 and has haste and ward {1}.", "Equip {1}"],
+            |d, _| {
+                attached(d, false, 1, 0, Keywords::HASTE);
+                d.enchanted_ward = Some(ManaCost::parse("{1}").expect("cost"));
+                equip(d, "{1}");
+            },
+        ),
+        "Mother of Runes" => s(
+            &["{T}: Target creature you control gains protection from the color of your choice until end of turn."],
+            |d, _| {
+                activated(d, "", true, vec![YOUR_CREATURE], vec![Effect::ProtectionChosenColorEot(Some(0))]);
+            },
+        ),
+        "Port Razer" => s(
+            &[
+                "Whenever this creature deals combat damage to a player, untap each creature you control. After this phase, there is an additional combat phase.",
+                "This creature can't attack a player it has already attacked this turn.",
+            ],
+            |d, _| {
+                on(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::UntapCreaturesYouControl, Effect::AdditionalCombatAfterThisPhase]);
+                d.cant_attack_twice_per_turn = true;
+            },
+        ),
+        "Breath of Fury" => s(
+            &[
+                "Enchant creature you control",
+                "When enchanted creature deals combat damage to a player, sacrifice it and attach this Aura to a creature you control. If you do, untap all creatures you control and after this phase, there is an additional combat phase.",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![YOUR_CREATURE], vec![]));
+                on(
+                    d,
+                    When::EquippedDealsCombatDamageToPlayer,
+                    vec![],
+                    vec![Effect::SacrificeEnchantedMoveAura, Effect::UntapCreaturesYouControl, Effect::AdditionalCombatAfterThisPhase],
+                );
+            },
+        ),
+        // ---- Lane B's decks, Mac C pieces (lane C scripts these) ----
+        "Kaalia of the Vast" => s(
+            &["Whenever Kaalia attacks an opponent, you may put an Angel, Demon, or Dragon creature card from your hand onto the battlefield tapped and attacking that opponent."],
+            |d, _| {
+                on(d, When::Attacks, vec![], vec![Effect::CreatureFromHandAttacking(&["Angel", "Demon", "Dragon"])]);
+            },
+        ),
+        "Command Beacon" => s(
+            &["{T}: Add {C}.", "{T}, Sacrifice this land: Put your commander into your hand from the command zone."],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                let n = activated(d, "", true, vec![], vec![Effect::CommanderFromCommandZoneToHand]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Mystic Forge" => s(
+            &[
+                "You may look at the top card of your library any time.",
+                "You may cast artifact spells and colorless spells from the top of your library.",
+                "{T}, Pay 1 life: Exile the top card of your library.",
+            ],
+            |d, _| {
+                // Looking at the top card any time is information only.
+                d.zones.top_spells_artifact_or_colorless = true;
+                let n = activated(d, "", true, vec![], vec![Effect::ExileTopCards(1)]);
+                d.activated[n].life = 1;
+            },
+        ),
+        "Lithoform Engine" => s(
+            &[
+                "{2}, {T}: Copy target activated or triggered ability you control. You may choose new targets for the copy.",
+                "{3}, {T}: Copy target instant or sorcery spell you control. You may choose new targets for the copy.",
+                "{4}, {T}: Copy target permanent spell you control.",
+            ],
+            |d, _| {
+                // "you control" for an ability is checked as it resolves (`Filter::abilities` has
+                // no controller check), and "permanent spell" too (no filter for it yet).
+                let ability = Filter { spells: false, abilities: true, controller: Controller::You, ..SPELL };
+                activated(d, "{2}", true, vec![ability], vec![Effect::CopyTargetAbilityYouControl(0)]);
+                let instant = Filter { spell_instant_or_sorcery: true, controller: Controller::You, ..SPELL };
+                let copy = |permanent| Effect::CopyTargetSpellYouControl { slot: 0, permanent };
+                activated(d, "{3}", true, vec![instant], vec![copy(false)]);
+                let permanent = Filter { controller: Controller::You, ..SPELL };
+                activated(d, "{4}", true, vec![permanent], vec![copy(true)]);
+            },
+        ),
+        "Thespian's Stage" => s(
+            &["{T}: Add {C}.", "{2}, {T}: This land becomes a copy of target land, except it has this ability."],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                let land = Filter { players: false, creatures: false, planeswalkers: false, lands: true, ..Filter::ANY };
+                let become_copy = Effect::SourceBecomesCopyOfSlot { slot: 0, keep_own: true };
+                activated(d, "{2}", true, vec![land], vec![become_copy]);
+                // The same ability again, which only a copy has (it keeps it): "except it has this
+                // ability".
+                let n = activated(d, "{2}", true, vec![land], vec![become_copy]);
+                d.activated[n].copy_only = true;
+                d.copy_keeps_abilities = true;
+            },
+        ),
+        "The Mycosynth Gardens" => s(
+            &[
+                "{T}: Add {C}.",
+                "{1}, {T}: Add one mana of any color.",
+                "{X}, {T}: This land becomes a copy of target nontoken artifact you control with mana value X.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                // Lane B: a paid mana ability making one mana (the second output is empty).
+                let any = ManaSource::of(&Color::ALL);
+                d.paid_mana = Some((ManaCost::parse("{1}").expect("a mana cost"), [any, ManaSource::default()]));
+                let artifact = Filter { nontoken: true, mana_value_is_x: true, controller: Controller::You, ..ARTIFACT };
+                let become_copy = Effect::SourceBecomesCopyOfSlot { slot: 0, keep_own: false };
+                activated(d, "{X}", true, vec![artifact], vec![become_copy]);
+            },
+        ),
+        // ---- Borrowed d2 pieces (the desktop is offline) ----
+        "Prosper, Tome-Bound" => s(
+            &[
+                "Mystic Arcanum — At the beginning of your end step, exile the top card of your library. Until the end of your next turn, you may play that card.",
+                "Pact Boon — Whenever you play a card from exile, create a Treasure token.",
+            ],
+            |d, t| {
+                on(d, When::EndStep { your_turn_only: true }, vec![], vec![Effect::ExileTopToPlayAll(1)]);
+                let treasure = Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 };
+                on(d, When::YouPlayCardFromExile, vec![], vec![treasure]);
+            },
+        ),
         _ => None,
     }
 }
@@ -2186,4 +2427,22 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Glimpse of Tomorrow",
     "Moria Scavenger",
     "Professional Face-Breaker",
+    "Steel of the Godhead",
+    "Face of Divinity",
+    "Shielded by Faith",
+    "Eldrazi Conscription",
+    "Gisa, Glorious Resurrector",
+    "Tergrid, God of Fright // Tergrid's Lantern",
+    "Vohar, Vodalian Desecrator",
+    "Lavaspur Boots",
+    "Mother of Runes",
+    "Port Razer",
+    "Breath of Fury",
+    "Kaalia of the Vast",
+    "Command Beacon",
+    "Mystic Forge",
+    "Lithoform Engine",
+    "Thespian's Stage",
+    "The Mycosynth Gardens",
+    "Prosper, Tome-Bound",
 ];

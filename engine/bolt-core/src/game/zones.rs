@@ -416,4 +416,195 @@ impl Game {
             }
         }
     }
+
+    /// Gisa, Glorious Resurrector's upkeep: the creature cards exiled with `src` (this object of
+    /// it) that are still those exiled cards come back under `p`'s control with decayed.
+    pub(super) fn return_exiled_with_decayed(&mut self, src: ObjId, p: PlayerId) {
+        let szcc = self.obj(src).zcc;
+        let (mine, rest): (Vec<_>, Vec<_>) = std::mem::take(&mut self.exiled_with)
+            .into_iter()
+            .partition(|e| e.0 == src && e.1 == szcc);
+        self.exiled_with = rest;
+        for (_, _, c, czcc) in mine {
+            let o = self.obj(c);
+            if o.zone != Zone::Exile || o.zcc != czcc || !self.def_of(c).types.creature {
+                continue;
+            }
+            self.obj_mut(c).controller = p;
+            self.move_to(c, Zone::Battlefield);
+            if self.obj(c).zone == Zone::Battlefield {
+                let o = self.obj_mut(c);
+                o.controller = p;
+                o.decayed = true;
+            }
+        }
+    }
+
+    /// Whether `p` may cast the modal double-faced card `c` from hand as its back face now: a
+    /// nonland permanent back (not an Aura) with no {X}, at its timing (`timing_ok` is sorcery timing
+    /// or flash for everything; a back with flash ignores it), with its mana cost affordable. Offered
+    /// as `Action::CastModal(c, 1)` (the front has no modes).
+    pub(super) fn back_face_castable(&self, p: PlayerId, c: ObjId, timing_ok: bool) -> bool {
+        let d = &self.defs[self.obj(c).def];
+        let Some(b) = d.back.as_ref() else {
+            return false;
+        };
+        d.modal_back
+            && d.modes.is_empty()
+            && self.obj(c).zone == Zone::Hand
+            && !self.obj(c).transformed
+            && !b.types.land
+            && b.types.is_permanent()
+            && !b.aura
+            && b.cost.x == 0
+            && (timing_ok || b.keywords.has(Keywords::FLASH))
+            && !self.cant_cast_now(p)
+            && self.can_pay_for(p, &b.cost, None, PayFor::Spell(c))
+    }
+
+    /// `Action::CastModal(c, 1)` means "cast its back face" for a modal double-faced card in hand
+    /// whose front has no modes.
+    pub(super) fn casts_back_face(&self, c: ObjId) -> bool {
+        let d = &self.defs[self.obj(c).def];
+        d.modal_back && d.modes.is_empty() && self.obj(c).zone == Zone::Hand && d.back.is_some()
+    }
+
+    /// The creatures `p` controls that the Aura `aura` could be moved onto (Breath of Fury).
+    pub(super) fn move_aura_options(&self, aura: ObjId, p: PlayerId) -> Vec<ObjId> {
+        let on = self.obj(aura).attached_to.map(|(c, _)| c);
+        self.creatures(p)
+            .filter(|&c| Some(c) != on && self.could_enchant(aura, c, p))
+            .collect()
+    }
+
+    /// Breath of Fury: "sacrifice it and attach this Aura to a creature you control. If you do,
+    /// ..." The Aura is moved before state-based actions could put it into the graveyard; with no
+    /// creature to move it to, the rest doesn't happen.
+    pub(super) fn sacrifice_enchanted_move_aura(&mut self, aura: ObjId, p: PlayerId) {
+        let gone = |g: &mut Game| g.resolving.as_mut().expect("resolving").remaining.clear();
+        if self.obj(aura).zone != Zone::Battlefield {
+            return gone(self);
+        }
+        if let Some((c, z)) = self.obj(aura).attached_to {
+            let o = self.obj(c);
+            if o.zone == Zone::Battlefield && o.zcc == z && o.controller == p && !self.cant_be_sacrificed(c) {
+                self.move_to(c, Zone::Graveyard);
+                self.sacrificed(c, p);
+            }
+        }
+        if self.move_aura_options(aura, p).is_empty() {
+            return gone(self);
+        }
+        self.ask(p, Decision::MoveAuraTo { aura });
+    }
+
+    /// Creature cards in `p`'s hand with one of `subtypes` (Kaalia: Angel, Demon, Dragon).
+    pub(super) fn creatures_in_hand_with(&self, p: PlayerId, subtypes: &[&str]) -> Vec<ObjId> {
+        self.players[p]
+            .hand
+            .iter()
+            .copied()
+            .filter(|&c| {
+                let d = self.def_of(c);
+                d.types.creature
+                    && (d.changeling || d.subtypes.iter().any(|s| subtypes.contains(&s.as_str())))
+            })
+            .collect()
+    }
+
+    /// Put `c` onto the battlefield under `p`'s control tapped and attacking (never declared as an
+    /// attacker, so "attacks" triggers don't fire, CR 506.3a).
+    pub(super) fn put_onto_battlefield_attacking(&mut self, c: ObjId, p: PlayerId) {
+        self.move_to(c, Zone::Battlefield);
+        if self.obj(c).zone != Zone::Battlefield {
+            return;
+        }
+        let o = self.obj_mut(c);
+        o.controller = p;
+        o.tapped = true;
+        if let Some(combat) = self.combat.as_mut() {
+            combat.attackers.push(c);
+        }
+    }
+
+    /// Lithoform Engine's {2}: copy the topmost ability of the targeted source if you control it
+    /// (`Filter::abilities` checks no controller). The copy goes on the stack after this ability
+    /// finishes resolving, choosing new targets (`pending_copies`).
+    pub(super) fn copy_target_ability(&mut self, item: &StackItem, legal: &[bool], slot: u8) {
+        let Some(src) = Game::slot_object(item, legal, slot) else {
+            return;
+        };
+        let Some(n) = self.ability_on_stack(src) else {
+            return;
+        };
+        if self.items[n].controller == item.controller {
+            let copy = self.items[n].clone();
+            self.pending_copies.push(copy);
+        }
+    }
+
+    /// Lithoform Engine's {3} and {4}: copy the targeted spell you control (an instant or sorcery
+    /// by its filter, or with `permanent` a permanent spell, whose copy resolves into a token).
+    pub(super) fn copy_target_spell(&mut self, item: &StackItem, legal: &[bool], slot: u8, permanent: bool) {
+        let Some(card) = Game::slot_object(item, legal, slot) else {
+            return;
+        };
+        if permanent && !self.types_of(card).is_permanent() {
+            return;
+        }
+        let spell = self
+            .items
+            .iter()
+            .rev()
+            .find(|i| i.kind == StackKind::Spell && i.source == card)
+            .cloned();
+        let Some(spell) = spell.filter(|s| s.controller == item.controller) else {
+            return;
+        };
+        self.pending_copies.push(StackItem {
+            kind: StackKind::SpellCopy,
+            ..spell
+        });
+        self.copied_or_cast_instant_sorcery(item.controller, card);
+    }
+
+    /// The source becomes a copy of the permanent in `slot` for good (CR 707.2). With `keep_own`
+    /// it keeps its own card's `copy_only` abilities (Thespian's Stage), as a clone with copy
+    /// exceptions does.
+    pub(super) fn source_becomes_copy_of_slot(
+        &mut self,
+        item: &StackItem,
+        legal: &[bool],
+        slot: u8,
+        keep_own: bool,
+    ) {
+        let src = item.source;
+        let Some(t) = Game::slot_object(item, legal, slot) else {
+            return;
+        };
+        if self.obj(src).zone != Zone::Battlefield || t == src {
+            return;
+        }
+        let of = self.obj(t).def;
+        self.become_copy(src, of);
+        self.obj_mut(src).copy_exceptions = keep_own;
+    }
+
+    /// `fire`, with the triggers it adds carrying `card` as their `extra` ("that spell": Wandering
+    /// Archaic's copy).
+    pub(super) fn fire_with_extra(&mut self, p: PlayerId, when: When, card: ObjId) {
+        let before = self.triggered.len();
+        self.fire(p, when, None);
+        for t in &mut self.triggered[before..] {
+            t.extra = Some(card);
+        }
+    }
+
+    /// "Whenever you play a card from exile" (Prosper): `p` is about to cast `card` or play it as a
+    /// land; called before it moves, so its zone is still the one it's played from.
+    pub(super) fn played_from_exile(&mut self, p: PlayerId, card: ObjId) {
+        if self.obj(card).zone == Zone::Exile {
+            self.fire(p, When::YouPlayCardFromExile, None);
+        }
+    }
 }

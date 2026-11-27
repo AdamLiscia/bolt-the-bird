@@ -282,10 +282,10 @@
   {
    "card": "Cavern of Souls",
    "deck": "Raggadragga, Goreguts Boss",
-   "missing": "chosen-type mana that makes the spell uncounterable",
+   "missing": "chosen-type mana that makes the spell uncounterable [borrowed by mac-b while the desktop is offline, 2026-11-26]",
    "lane": "d1",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "mac-b"
   },
   {
    "card": "Survival of the Fittest",
@@ -4666,10 +4666,10 @@
   {
    "card": "The Mycosynth Gardens",
    "deck": "Zhulodok, Void Gorger (Adam)",
-   "missing": "copies, top-of-library casting, sagas, control",
+   "missing": "copies, top-of-library casting, sagas, control [borrowed by mac-b while the desktop is offline, 2026-11-26]",
    "lane": "mac-b",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "mac-b"
   },
   {
    "card": "Lithoform Engine",
@@ -4722,7 +4722,7 @@
   {
    "card": "Wandering Archaic // Explore the Vastlands",
    "deck": "Zhulodok, Void Gorger (Adam)",
-   "missing": "copies, top-of-library casting, sagas, control",
+   "missing": "copies, top-of-library casting, sagas, control [borrowed by mac-c while the desktop is offline, 2026-11-26]",
    "lane": "mac-b",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -5594,10 +5594,10 @@
   {
    "card": "Goblin Engineer",
    "deck": "Malik, Grim Manipulator (Spr3adsh33)",
-   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report [borrowed by mac-b while the desktop is offline, 2026-11-26]",
    "lane": "mac-c",
    "theme": "effects",
-   "owner": "d3"
+   "owner": "mac-b"
   },
   {
    "card": "Evin, Waterdeep Opportunist",
@@ -5682,7 +5682,7 @@
   {
    "card": "Prosper, Tome-Bound",
    "deck": "Malik, Grim Manipulator (Spr3adsh33)",
-   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report [borrowed by mac-c while the desktop is offline, 2026-11-26]",
    "lane": "mac-c",
    "theme": "objects_zones",
    "owner": "mac-c"
