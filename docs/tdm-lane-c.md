@@ -1138,3 +1138,17 @@ Queued by the merger, **once d3 b30 is on tarkir** (not there at b7d3a48). Write
   toughness: -1, scale: Some(Scale::PerSlimeCounterOnIt) }`, d2's dies trigger (reads `last_slime > 0`, makes the
   Slug, token 109), and "{U}{B}, Sacrifice a Slug: Draw a card" from existing pieces (`sacrifice_subtype`).
 Token 104 is lane B's now; ask the merger for any token. Report to the merger with hashes and totals; never push.
+
+## Merge of tarkir 1eaaf4e; batches 17 and 18 built; Pippin and Toxrill (2026-11-27)
+
+Merge c4735d0: tarkir 1eaaf4e (219ba6e plus d1 b23-b27, d2 b25-b29, d3 b30-b31, lane T) into tarkir-c.
+Conflicts only at the end of `Effect` (tarkir's first, then lane C's) and needs_core.json (three-way union by
+card; Goliath Daydreamer keeps lane C's claim, since d2 didn't script it). Tokens are tarkir's exactly (109
+`slug`, 110 `phyrexian_horror_x`). No duplicate members in any enum or struct.
+Cards (2), on d3 b30's pieces: Pippin, Guard of the Citadel (`ProtectionChosenCardTypeEot(Some(0))`, the type
+asked with `Decision::ProtectionCardType` as it resolves), Toxrill, the Corrosive (end-step slime, the scaled
+static, the slimed-creature-dies Slug, and `sacrifice_subtype = "Slug"` for the draw). Sefris is finished.
+Built cold, two test fixes: Aquitect's Defenses now passes through cleanup (start_turn skips it, so
+`until_eot` was never cleared), and Elspeth Tirel's test sets her loyalty to 4 first. 2,335 Rust tests pass
+(core_objects 73, 4 ignored: 3 play.rs, 1 rollout); every binary's count equals its `#[test]` count; clippy,
+fmt, ruff (check and format) clean; pytest 194 passed, 1 skipped.

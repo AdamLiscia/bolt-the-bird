@@ -1589,6 +1589,7 @@ fn city_of_shadows_stores_exiled_creatures_as_colorless_mana() {
 fn elspeth_tirel_gains_per_creature_makes_soldiers_and_wipes_nontoken_nonlands() {
     let mut g = table();
     let elspeth = put(&mut g, 0, "Elspeth Tirel");
+    g.objects[elspeth.0 as usize].loyalty = 4;
     let ghoul = put(&mut g, 1, "Hungry Ghoul");
     let ring = put(&mut g, 1, "Sol Ring");
     let life = g.players[0].life;
@@ -1627,8 +1628,18 @@ fn aquitects_defenses_grants_hexproof_this_turn_and_plus_one_plus_two() {
     play(&mut g, aura, false, &[obj(ghoul)], &[]);
     assert!(g.keywords(ghoul).has(Keywords::HEXPROOF));
     assert_eq!((g.power(ghoul), g.toughness(ghoul)), (3, 4));
-    to_main1(&mut g, 5, 0);
+    // Through this turn's cleanup (CR 514.2), not a jump to a new turn.
+    let turn = g.turn;
+    while g.turn == turn {
+        let legal = g.legal_actions();
+        let a = [Action::PassPriority, Action::FinishAttacks, Action::FinishBlocks]
+            .into_iter()
+            .find(|a| legal.contains(a))
+            .unwrap_or(legal[0]); // the cleanup discard to hand size
+        act(&mut g, a);
+    }
     assert!(!g.keywords(ghoul).has(Keywords::HEXPROOF), "until end of turn");
+    assert_eq!((g.power(ghoul), g.toughness(ghoul)), (3, 4), "the +1/+2 stays");
 }
 
 #[test]
@@ -1691,4 +1702,48 @@ fn goliath_daydreamer_dream_exiles_hand_spells_and_casts_one_free_on_attack() {
     resolve_all(&mut g, &[]);
     assert_eq!(g.players[1].life, 34, "cast free from exile");
     assert_eq!(g.obj(bolt).zone, Zone::Graveyard, "not cast from hand this time");
+}
+
+// ---- Pippin and Toxrill (d3 batch 30's pieces) ----
+
+#[test]
+fn pippin_gives_another_creature_protection_from_the_chosen_card_type() {
+    let mut g = table();
+    let pippin = put(&mut g, 0, "Pippin, Guard of the Citadel");
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    to_main1(&mut g, 5, 0);
+    act(&mut g, Action::Activate(pippin, 0));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(pippin))),
+        "another creature"
+    );
+    act(&mut g, Action::Target(obj(ghoul)));
+    resolve_all(&mut g, &[Action::Mode(3)]);
+    assert!(g.obj(pippin).tapped);
+    let bolt = hand(&mut g, 1, "Lightning Bolt");
+    let elves = put(&mut g, 1, "Llanowar Elves");
+    assert!(g.type_protected(ghoul, bolt), "protection from instants");
+    assert!(!g.type_protected(ghoul, elves), "not from creatures");
+    to_main1(&mut g, 7, 0);
+    assert!(!g.type_protected(ghoul, bolt), "until end of turn");
+}
+
+#[test]
+fn toxrill_slimes_shrinks_makes_slugs_and_draws_off_them() {
+    let mut g = table();
+    let tox = put(&mut g, 0, "Toxrill, the Corrosive");
+    let elves = put(&mut g, 1, "Llanowar Elves");
+    let ghoul = put(&mut g, 1, "Hungry Ghoul");
+    let (p, t) = (g.power(ghoul), g.toughness(ghoul));
+    pass_to(&mut g, Step::End);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Graveyard, "a 1/1 with a slime counter");
+    assert_eq!((g.power(ghoul), g.toughness(ghoul)), (p - 1, t - 1));
+    let slugs = tokens(&g, 0, "Slug");
+    assert_eq!(slugs.len(), 1, "a Slug for the slimed creature that died");
+    let cards = g.players[0].hand.len();
+    act(&mut g, Action::ActivateWith(tox, 0, slugs[0]));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), cards + 1);
+    assert!(tokens(&g, 0, "Slug").is_empty(), "the Slug was sacrificed");
 }

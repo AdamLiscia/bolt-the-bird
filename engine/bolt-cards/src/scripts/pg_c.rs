@@ -2397,6 +2397,48 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::Attacks, vec![], vec![Effect::MayCastDreamCardFree]);
             },
         ),
+        "Pippin, Guard of the Citadel" => s(
+            &[
+                "Vigilance, ward {1}",
+                "{T}: Another target creature you control gains protection from the card type of your choice until end of turn.",
+            ],
+            |d, _| {
+                d.keywords = d.keywords.with(Keywords::VIGILANCE);
+                d.ward = ManaCost::parse("{1}");
+                // The type is chosen as it resolves (`Decision::ProtectionCardType`).
+                let another = Filter { other: true, ..YOUR_CREATURE };
+                activated(d, "", true, vec![another], vec![Effect::ProtectionChosenCardTypeEot(Some(0))]);
+            },
+        ),
+        "Toxrill, the Corrosive" => s(
+            &[
+                "At the beginning of each end step, put a slime counter on each creature you don't control.",
+                "Creatures you don't control get -1/-1 for each slime counter on them.",
+                "Whenever a creature you don't control with a slime counter on it dies, create a 1/1 black Slug creature token.",
+                "{U}{B}, Sacrifice a Slug: Draw a card.",
+            ],
+            |d, t| {
+                on(d, When::EndStep { your_turn_only: false }, vec![], vec![Effect::SlimeCounterOnEachCreatureYouDontControl]);
+                d.statics.push(Static {
+                    subtype: None,
+                    lose_abilities: false,
+                    base_pt: None,
+                    protection: [false; 5],
+                    scale: Some(Scale::PerSlimeCounterOnIt),
+                    scope: Scope::OpponentsCreatures,
+                    your_turn_only: false,
+                    condition: None,
+                    power: -1,
+                    toughness: -1,
+                    keywords: Keywords::NONE,
+                    set_colors: None,
+                    becomes_land: false,
+                });
+                on(d, When::CreatureYouDontControlWithSlimeDies, vec![], vec![Effect::CreateToken { who: Who::You, def: t.slug, n: 1 }]);
+                let n = activated(d, "{U}{B}", false, vec![], vec![draw(1)]);
+                d.activated[n].sacrifice_subtype = Some("Slug");
+            },
+        ),
         "Deep-Cavern Bat" => s(
             &["When this creature enters, look at target opponent's hand. You may exile a nonland card from it until this creature leaves the battlefield."],
             |d, _| {
@@ -2720,4 +2762,6 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Aquitect's Defenses",
     "Arthur, Marigold Knight",
     "Goliath Daydreamer",
+    "Pippin, Guard of the Citadel",
+    "Toxrill, the Corrosive",
 ];
