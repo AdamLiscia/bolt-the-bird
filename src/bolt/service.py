@@ -32,7 +32,7 @@ IDLE_SECONDS = 6 * 3600
 # The smart pilot's time per decision in Commander, in ms: some 1v1 Commander positions took minutes to
 # search in full. Past it, the pilot plays the best move scored so far. FDN and TDM search in full.
 CASUAL_SIZE_SLACK = 2  # strict=False: decks of 98-102 cards are allowed, with a warning
-CMD_SMART_MS = 2500
+CMD_SMART_MS = 750  # per smart-pilot decision in CMD games: uncapped, a Commander move can take minutes
 BASIC_NAMES = {"W": "Plains", "U": "Island", "B": "Swamp", "R": "Mountain", "G": "Forest"}
 
 
