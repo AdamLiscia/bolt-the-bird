@@ -10,6 +10,7 @@ smart 1 x 2 player; the control is smart 1 x 2 against the rules-based player on
 
 import argparse
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -61,7 +62,7 @@ def main():
         c = torch.load(a.ckpt, map_location="cpu", weights_only=False)
         from bolt.play_net import load_checkpoint
 
-        net = load_checkpoint(c)
+        net = load_checkpoint(c, set_name=os.environ.get("BOLT_PLAY_SET"))
     else:
         torch.manual_seed(0)
         net = PlayNet(len(be.card_names()))
