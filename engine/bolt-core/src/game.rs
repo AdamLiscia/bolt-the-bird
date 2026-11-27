@@ -1356,6 +1356,12 @@ pub enum Decision {
     /// "You may pay {X}, where X is at most `max`. If you do, draw X cards." (Well of Lost Dreams):
     /// `Amount(x)` pays {x} and draws x (offered for each x you can pay); `Amount(0)` declines.
     PayXDrawX { max: u8 },
+    /// Rakdos, Patron of Chaos: `Pick` a nonland, nontoken permanent you control to sacrifice (the
+    /// first of two, then the second); before the first, `No` declines and `controller` draws two.
+    PatronOfChaosSacrifice {
+        controller: PlayerId,
+        first: Option<ObjId>,
+    },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -6643,6 +6649,8 @@ impl Game {
                         || (s.top_spells_creatures && d.types.creature)
                         || (s.zones.top_spells_artifact_or_colorless
                             && (d.types.artifact || !d.colors.iter().any(|&k| k)))
+                        || (s.zones.top_spells_flash_or_flying
+                            && (d.keywords.has(Keywords::FLASH) || d.keywords.has(Keywords::FLYING)))
                 }
             })
         });
@@ -13061,6 +13069,7 @@ impl Game {
             }
             d @ Decision::AttachAura { .. } => self.attach_aura_actions(p, d),
             Decision::DiscardThenIfInstantOrSorcery => hand.iter().copied().map(Action::Pick).collect(),
+            Decision::PatronOfChaosSacrifice { first, .. } => self.patron_of_chaos_actions(p, *first),
             Decision::MoveAuraTo { aura } => self
                 .move_aura_options(*aura, p)
                 .into_iter()
@@ -14659,6 +14668,9 @@ impl Game {
                 if let Action::Pick(c) = a {
                     self.put_onto_battlefield_attacking(c, p);
                 }
+            }
+            (Decision::PatronOfChaosSacrifice { controller, first }, a) => {
+                self.patron_of_chaos_decide(p, controller, first, a)
             }
             (Decision::MoveAuraTo { aura }, Action::Pick(c)) => {
                 let zcc = self.obj(c).zcc;
@@ -22760,6 +22772,11 @@ impl Game {
             }
             Effect::DestroyAllPlaneswalkers => self.destroy_all_planeswalkers(),
             Effect::EachOpponentLosesAllCounters => self.opponent_loses_all_counters(item.controller),
+            Effect::TargetOpponentMaySacrificeTwoOrYouDrawTwo(slot) => {
+                for q in self.players_for(item, legal, Who::TargetPlayer(slot)) {
+                    self.patron_of_chaos_ask(q, item.controller);
+                }
+            }
             Effect::DiscardThenIfInstantOrSorcery => {
                 let p = item.controller;
                 if self.players[p].hand.is_empty() {

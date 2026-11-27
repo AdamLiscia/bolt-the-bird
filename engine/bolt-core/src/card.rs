@@ -2144,6 +2144,9 @@ pub struct ZonesExt {
     /// "You may cast this card from your graveyard or from exile." (Squee, the Immortal): its owner
     /// may cast it from either zone, with its normal timing and cost.
     pub cast_from_graveyard_or_exile: bool,
+    /// "You may cast spells with flash or flying from the top of your library." (Errant and Giada):
+    /// printed flash or flying.
+    pub top_spells_flash_or_flying: bool,
 }
 
 #[cfg(test)]

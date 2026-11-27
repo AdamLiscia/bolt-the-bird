@@ -762,4 +762,76 @@ impl Game {
         q.poison = 0;
         q.energy = 0;
     }
+
+    /// Rakdos, Patron of Chaos: `q`'s nonland, nontoken permanents that can be sacrificed.
+    fn patron_of_chaos_options(&self, q: PlayerId) -> Vec<ObjId> {
+        self.permanents(q)
+            .filter(|&x| !self.types_of(x).land && !self.is_token(x) && !self.cant_be_sacrificed(x))
+            .collect()
+    }
+
+    /// Ask `q` whether to sacrifice two, if they can; otherwise `controller` draws two.
+    pub(super) fn patron_of_chaos_ask(&mut self, q: PlayerId, controller: PlayerId) {
+        if self.patron_of_chaos_options(q).len() >= 2 {
+            self.ask(
+                q,
+                Decision::PatronOfChaosSacrifice {
+                    controller,
+                    first: None,
+                },
+            );
+        } else {
+            for _ in 0..2 {
+                self.draw(controller);
+            }
+        }
+    }
+
+    pub(super) fn patron_of_chaos_actions(&self, q: PlayerId, first: Option<ObjId>) -> Vec<Action> {
+        let mut v: Vec<Action> = self
+            .patron_of_chaos_options(q)
+            .into_iter()
+            .filter(|&x| Some(x) != first)
+            .map(Action::Pick)
+            .collect();
+        if first.is_none() {
+            v.push(Action::No);
+        }
+        v
+    }
+
+    /// The first pick waits for the second; both are then sacrificed together. `No` (before the
+    /// first) means they don't, so `controller` draws two.
+    pub(super) fn patron_of_chaos_decide(
+        &mut self,
+        q: PlayerId,
+        controller: PlayerId,
+        first: Option<ObjId>,
+        a: Action,
+    ) {
+        match (first, a) {
+            (None, Action::Pick(c)) => {
+                self.ask(
+                    q,
+                    Decision::PatronOfChaosSacrifice {
+                        controller,
+                        first: Some(c),
+                    },
+                );
+            }
+            (Some(f), Action::Pick(c)) => {
+                for x in [f, c] {
+                    if self.obj(x).zone == Zone::Battlefield {
+                        self.move_to(x, Zone::Graveyard);
+                        self.sacrificed(x, q);
+                    }
+                }
+            }
+            _ => {
+                for _ in 0..2 {
+                    self.draw(controller);
+                }
+            }
+        }
+    }
 }

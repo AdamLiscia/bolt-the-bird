@@ -997,3 +997,24 @@ ignored), pytest 166, clippy, fmt and ruff clean.
 - Bruna, Light-Paws, Sovereigns of Lost Alara, Olivia, Dragonhawk, Charming Scoundrel, Witch's Mark: all already
   scripted in pg_c (batches 9-11) and built on tarkir; their needs_core entries are now marked done. The rest of
   those two decks is in "Still waiting, by owner" under the script-only pass above.
+
+## Live-validator queue, batch 14 (unbuilt)
+
+Core (appended): `Effect::TargetOpponentMaySacrificeTwoOrYouDrawTwo(slot)` with `Decision::PatronOfChaosSacrifice
+{ controller, first }` (Pick, Pick; `No` before the first: you draw two; offered only with two or more nonland
+nontoken permanents that can be sacrificed, else you just draw), labelled in service_view and
+test_decision_labels; `ZonesExt::top_spells_flash_or_flying` (one more clause in `priority_actions`' `top`).
+Cards (4): Rakdos, Patron of Chaos; Hanweir Battlements (Hanweir Garrison isn't in the pool, so the meld ability
+resolves and does nothing: noted in the script; meld itself isn't built); Errant and Giada. Tests in core_objects
+(55). Tokens 104-106 unused.
+Likely failure spots: the Rakdos test's `to_end_step_target` (expects the end-step trigger to ask for its target),
+and Hanweir's ability indices (mana ability not in `activated`: haste 0, meld 1).
+Left, by blocker:
+- Tendo Ice Bridge, Flitterwing Nuisance, Glen Elendra Guardian: d1 ("remove a counter" as a mana or activation
+  cost, like Walking Ballista). The enters-with-counter part is easy once that lands.
+- Inkshield: Mac B (prevent combat damage, a token per point prevented); needs a 2/1 W/B Inkling flier (104).
+- Skycat Sovereign: d3 (+1/+1 per other flier you control, scaled statics); Cat Bird token would be 105.
+- Mausoleum Wanderer: "counter unless they pay X, X its power" (d3 effect).
+- Deep-Cavern Bat: lane C, next (look at the hand, exile a nonland card until it leaves).
+- The One Ring: burden counters, the upkeep loss and the draw are lane C's; "you gain protection from everything"
+  for a player needs damage prevention (Mac B) and untargetability (d3's target_ok). Next after the Bat, or split.

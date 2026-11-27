@@ -2251,6 +2251,35 @@ pub fn script(name: &str) -> Option<Script> {
         "Squee, the Immortal" => s(&["You may cast this card from your graveyard or from exile."], |d, _| {
             d.zones.cast_from_graveyard_or_exile = true;
         }),
+        "Rakdos, Patron of Chaos" => s(
+            &["At the beginning of your end step, target opponent may sacrifice two nonland, nontoken permanents of their choice. If they don't, you draw two cards."],
+            |d, _| {
+                let opp = Filter::PLAYER.controlled_by(Controller::Opponent);
+                on(d, When::EndStep { your_turn_only: true }, vec![opp], vec![Effect::TargetOpponentMaySacrificeTwoOrYouDrawTwo(0)]);
+            },
+        ),
+        "Hanweir Battlements" => s(
+            &[
+                "{T}: Add {C}.",
+                "{R}, {T}: Target creature gains haste until end of turn.",
+                "{3}{R}{R}, {T}: If you both own and control this land and a creature named Hanweir Garrison, exile them, then meld them into Hanweir, the Writhing Township.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                activated(d, "{R}", true, vec![CREATURE], vec![Effect::Grant { slot: 0, keywords: Keywords::HASTE }]);
+                // Hanweir Garrison isn't in the card pool, so "if you both own and control this land and
+                // a creature named Hanweir Garrison" is never true: the ability resolves and does nothing.
+                // Meld itself isn't in the engine; a pool with the Garrison needs it.
+                activated(d, "{3}{R}{R}", true, vec![], vec![]);
+            },
+        ),
+        "Errant and Giada" => s(
+            &["You may look at the top card of your library any time.", "You may cast spells with flash or flying from the top of your library."],
+            |d, _| {
+                // Looking at the top card any time is information only.
+                d.zones.top_spells_flash_or_flying = true;
+            },
+        ),
         "Final Act" => s(
             &[
                 "Choose one or more —",
@@ -2551,4 +2580,7 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Squee, the Immortal",
     "Mechanized Production",
     "Final Act",
+    "Rakdos, Patron of Chaos",
+    "Hanweir Battlements",
+    "Errant and Giada",
 ];

@@ -1203,3 +1203,68 @@ fn final_act_does_each_chosen_mode_and_only_those() {
     assert_eq!((g.players[1].poison, g.players[1].energy), (0, 0));
     assert_eq!(g.players[0].poison, 1, "only opponents lose their counters");
 }
+
+/// Passes until player 0's end-step trigger asks for its target.
+fn to_end_step_target(g: &mut Game) {
+    while !(g.step == Step::End && matches!(g.pending, Pending::ChooseTarget(_))) {
+        act(g, Action::PassPriority);
+    }
+}
+
+#[test]
+fn rakdos_patron_of_chaos_opponent_sacrifices_two_or_you_draw_two() {
+    let mut g = table();
+    put(&mut g, 0, "Rakdos, Patron of Chaos");
+    let a = put(&mut g, 1, "Sol Ring");
+    let b = put(&mut g, 1, "Mind Stone");
+    let ghoul = put(&mut g, 1, "Hungry Ghoul");
+    let hand0 = g.players[0].hand.len();
+    to_end_step_target(&mut g);
+    act(&mut g, Action::Target(Target::Player(1)));
+    // Lands aren't offered; the opponent picks two of the rest.
+    resolve_all(&mut g, &[Action::Pick(a), Action::Pick(b)]);
+    assert_eq!((g.obj(a).zone, g.obj(b).zone), (Zone::Graveyard, Zone::Graveyard));
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].hand.len(), hand0, "they sacrificed, so no cards");
+    to_main1(&mut g, 5, 0);
+    let ring = put(&mut g, 1, "Sol Ring");
+    let hand0 = g.players[0].hand.len();
+    to_end_step_target(&mut g);
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[Action::No]);
+    assert_eq!(g.obj(ring).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].hand.len(), hand0 + 2, "they didn't, so you draw two");
+}
+
+#[test]
+fn hanweir_battlements_grants_haste_and_its_meld_finds_no_garrison() {
+    let mut g = table();
+    let b = put(&mut g, 0, "Hanweir Battlements");
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    act(&mut g, Action::Activate(b, 0));
+    resolve_all(&mut g, &[Action::Target(obj(ghoul))]);
+    assert!(g.keywords(ghoul).has(Keywords::HASTE));
+    assert!(g.obj(b).tapped);
+    // No Hanweir Garrison in the pool: the meld ability resolves and nothing is exiled.
+    let b2 = put(&mut g, 0, "Hanweir Battlements");
+    act(&mut g, Action::Activate(b2, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(b2).zone, Zone::Battlefield);
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield);
+}
+
+#[test]
+fn errant_and_giada_casts_fliers_and_flash_from_the_top_only() {
+    let mut g = table();
+    put(&mut g, 0, "Errant and Giada");
+    let drake = top(&mut g, "Gilded Drake");
+    assert!(
+        g.legal_actions().contains(&Action::Cast(drake)),
+        "a flier from the top"
+    );
+    let ghoul = top(&mut g, "Hungry Ghoul");
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(ghoul)),
+        "no flash or flying"
+    );
+}

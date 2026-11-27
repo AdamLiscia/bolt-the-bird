@@ -2561,6 +2561,9 @@ pub enum Effect {
     /// Each opponent loses all counters (CR 122.1: a player's poison and energy counters) (Final
     /// Act).
     EachOpponentLosesAllCounters,
+    /// The player in `slot` may sacrifice two nonland, nontoken permanents of their choice; if they
+    /// don't, you draw two cards (Rakdos, Patron of Chaos; `Decision::PatronOfChaosSacrifice`).
+    TargetOpponentMaySacrificeTwoOrYouDrawTwo(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
