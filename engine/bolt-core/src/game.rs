@@ -3092,6 +3092,9 @@ impl Game {
                             Scope::OtherYourNonHumanCreatures => {
                                 mine && creature && src != id && !self.has_base_subtype(id, "Human")
                             }
+                            Scope::OtherYourColorlessCreatures => {
+                                mine && creature && src != id && self.colors_of(id) == [false; 5]
+                            }
                         };
                         let condition_ok = match s.condition {
                             None => true,
@@ -14773,6 +14776,16 @@ impl Game {
                         }
                     }
                     SearchTo::BattlefieldPlusCounter => self.enter_with_plus_counter(c),
+                    SearchTo::BattlefieldTappedUntapIfLands(n) => {
+                        self.move_to(c, Zone::Battlefield);
+                        if self.obj(c).zone == Zone::Battlefield {
+                            self.obj_mut(c).tapped = true;
+                            let lands = self.permanents(p).filter(|&x| self.types_of(x).land).count();
+                            if lands >= n as usize {
+                                self.obj_mut(c).tapped = false;
+                            }
+                        }
+                    }
                     SearchTo::ExileCastFreeThisTurn => {
                         self.move_to(c, Zone::Exile);
                         let turn = self.turn;
@@ -20277,6 +20290,13 @@ impl Game {
             Effect::DrawX => {
                 // A dredge decision may be pending: the rest follows its answer.
                 self.draws_with_dredge(vec![(item.controller, item.x as u32)], false);
+            }
+            Effect::EachPlayerDrawsX => {
+                for p in [item.controller, opponent(item.controller)] {
+                    for _ in 0..item.x {
+                        self.draw(p);
+                    }
+                }
             }
             Effect::AddManaAnyColor => {
                 self.players[item.controller]

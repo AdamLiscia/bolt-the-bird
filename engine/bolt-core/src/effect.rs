@@ -2677,6 +2677,8 @@ pub enum Effect {
     /// Exile each creature that crewed the source this turn; return them to the battlefield tapped
     /// under their owner's control at the beginning of the next end step (Golden Argosy).
     ExileCrewersReturnTappedAtEnd,
+    /// "Each player draws X cards." (Skyscribing), X the spell's X, you first.
+    EachPlayerDrawsX,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -2773,6 +2775,9 @@ pub enum SearchTo {
     BattlefieldTappedUnder(u8),
     /// Onto the battlefield with an additional +1/+1 counter (Neoform).
     BattlefieldPlusCounter,
+    /// Onto the battlefield tapped; then, if you control `n` or more lands, untap it (Fabled
+    /// Passage: 4).
+    BattlefieldTappedUntapIfLands(u8),
 }
 
 /// What a static ability affects.
@@ -2825,6 +2830,8 @@ pub enum Scope {
     /// Other non-Human creatures you control, by printed creature types (Mikaeus, the
     /// Unhallowed); a changeling is a Human, so it's left out.
     OtherYourNonHumanCreatures,
+    /// Other colorless creatures you control (It That Heralds the End).
+    OtherYourColorlessCreatures,
 }
 
 /// What a scaled static ability counts.
