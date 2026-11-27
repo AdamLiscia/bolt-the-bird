@@ -3711,3 +3711,37 @@ fn surrak_dragonclaw_protects_creature_spells_and_tramples_the_team() {
     cast_into_counterspell(&mut g, elves, &[]);
     assert_eq!(g.obj(elves).zone, Zone::Battlefield);
 }
+
+#[test]
+fn rhythm_of_the_wild_gives_riot_to_a_reanimated_creature() {
+    let mut g = table();
+    put(&mut g, 0, "Rhythm of the Wild");
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Graveyard);
+    let reanimate = hand(&mut g, 0, "Reanimate");
+    play(
+        &mut g,
+        reanimate,
+        false,
+        &[Target::Object(lions)],
+        &[Action::Mode(0)],
+    ); // riot: a counter
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield);
+    assert_eq!(g.obj(lions).counters, 1);
+}
+
+#[test]
+fn rhythm_of_the_wild_gives_riot_to_a_flickered_creature() {
+    let mut g = table();
+    let lions = put(&mut g, 0, "Savannah Lions");
+    put(&mut g, 0, "Rhythm of the Wild");
+    let flicker = hand(&mut g, 0, "Ephemerate");
+    play(
+        &mut g,
+        flicker,
+        false,
+        &[Target::Object(lions)],
+        &[Action::Mode(1)],
+    ); // riot: haste
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield);
+    assert!(g.keywords(lions).has(Keywords::HASTE));
+}

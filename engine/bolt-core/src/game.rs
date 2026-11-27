@@ -1798,6 +1798,11 @@ pub struct Game {
     /// number, the ability), so one whose source left (a Food sacrificed for its own granted
     /// ability) still resolves (see `ability_of`).
     pub activated_snapshots: Vec<(ObjId, usize, Activated)>,
+    /// Riot choices waiting for the next priority: nontoken creatures that entered under a player
+    /// with Rhythm of the Wild, as (creature, its zcc) (asked in `give_priority`, as shock lands are).
+    pub riot_pending: Vec<(ObjId, u32)>,
+    /// Who gets priority after a riot choice.
+    riot_then: PlayerId,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -2077,6 +2082,8 @@ impl Game {
             creatures_died: (0, 0),
             drawn_this_turn: Vec::new(),
             activated_snapshots: Vec::new(),
+            riot_pending: Vec::new(),
+            riot_then: 0,
         }
     }
 
@@ -5382,6 +5389,16 @@ impl Game {
                 self.escaped.remove(pos);
                 let n = def.mana_ext.escape.map_or(0, |e| e.2);
                 self.add_counters(id, n);
+            }
+            // Rhythm of the Wild: riot for a nontoken creature entering under its controller, however
+            // it enters; the choice is asked at the next priority (`give_priority`).
+            if def.types.creature
+                && !self.is_token(id)
+                && self
+                    .permanents(self.obj(id).controller)
+                    .any(|x| self.def_of(x).your_nontoken_creatures_have_riot && !self.lost_abilities(x))
+            {
+                self.riot_pending.push((id, zcc));
             }
             // Communal Brewing: "that creature enters with X additional +1/+1 counters on it".
             let extra: i32 = self
@@ -11830,20 +11847,6 @@ impl Game {
                     return;
                 }
             }
-            // Riot from Rhythm of the Wild: a nontoken creature spell you control, as it resolves
-            // onto the battlefield (one put onto the battlefield another way gets no choice).
-            if r.acts
-                && self.obj(source).zone == Zone::Battlefield
-                && self.types_of(source).creature
-                && !self.is_token(source)
-                && self
-                    .permanents(self.obj(source).controller)
-                    .any(|x| self.def_of(x).your_nontoken_creatures_have_riot && !self.lost_abilities(x))
-            {
-                let p = self.obj(source).controller;
-                self.ask(p, Decision::Riot { card: source });
-                return;
-            }
         }
         if self.end_turn {
             self.end_the_turn();
@@ -13281,11 +13284,8 @@ impl Game {
             } else {
                 self.obj_mut(*card).suspend_haste = true; // haste, as Hall of the Bandit Lord gives
             }
-            if self.end_turn {
-                self.end_the_turn();
-            } else {
-                self.give_priority(self.active);
-            }
+            let then = self.riot_then;
+            self.give_priority(then);
             return;
         }
         if let (Decision::ChooseEnterMode { card }, Action::Mode(m)) = (&d, a) {
@@ -23416,6 +23416,16 @@ impl Game {
                 if self.battlefield.iter().any(|&x| x != c && self.copy_option(c, x)) {
                     let owner = self.obj(c).controller;
                     self.ask(owner, Decision::EnterAsCopy { card: c });
+                    return;
+                }
+            }
+            // Riot (Rhythm of the Wild): the counter-or-haste choice, just after the creature entered.
+            while !self.riot_pending.is_empty() {
+                let (c, z) = self.riot_pending.remove(0);
+                if self.obj(c).zone == Zone::Battlefield && self.obj(c).zcc == z {
+                    self.riot_then = p;
+                    let owner = self.obj(c).controller;
+                    self.ask(owner, Decision::Riot { card: c });
                     return;
                 }
             }

@@ -965,8 +965,10 @@ landfall Zombie (a small Condition, about 10 lines).
   read in `Game::uncounterable` through `statically_uncounterable` (a spell on the stack whose
   controller controls one): Rhythm of the Wild, Surrak Dragonclaw. Allosaurus Shepherd waits: its
   Elves activation (base 5/5 and a Dinosaur until end of turn) has no effect yet (d3).
-- Riot from `CardDef::your_nontoken_creatures_have_riot`: `Decision::Riot` (Mode 0 a +1/+1 counter,
-  Mode 1 haste, labelled), asked as a nontoken creature spell you control resolves onto the
-  battlefield, as the Sieges' modes are; a creature put onto the battlefield another way gets no
-  choice (known limit).
+- Riot from `CardDef::your_nontoken_creatures_have_riot`: every nontoken creature entering under
+  your control, however it enters (cast, reanimated, flickered, put onto the battlefield), is queued
+  in `Game::riot_pending` by the enter path, and `Decision::Riot` (Mode 0 a +1/+1 counter, Mode 1
+  haste, labelled) is asked at the next priority, as shock lands' choice is. Timing nuance: the
+  choice lands just after the creature enters, not as it enters, so an enters trigger that reads its
+  power (or counters) sees it without the riot counter.
 - `Condition::ControlLandsWithDifferentNamesAtLeast(n)` (The Necrobloom, Field of the Dead).
