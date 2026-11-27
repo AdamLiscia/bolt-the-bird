@@ -4289,7 +4289,7 @@ fn riverguards_reflexes_pumps_grants_first_strike_and_untaps() {
 #[test]
 fn keep_out_hits_a_tapped_creature_or_destroys_an_enchantment() {
     let mut g = table();
-    let tapped = put(&mut g, 1, "Pippin, Guard of the Citadel");
+    let tapped = put(&mut g, 1, "Savannah Lions");
     let untapped = put(&mut g, 1, "Llanowar Elves");
     g.objects[tapped.0 as usize].tapped = true;
     let k = hand(&mut g, 0, "Keep Out");
@@ -4310,11 +4310,11 @@ fn keep_out_hits_a_tapped_creature_or_destroys_an_enchantment() {
 #[test]
 fn terminate_sear_and_boulder_dash() {
     let mut g = table();
-    let a = put(&mut g, 1, "Pippin, Guard of the Citadel");
+    let a = put(&mut g, 1, "Savannah Lions");
     let t = hand(&mut g, 0, "Terminate");
     play(&mut g, t, false, &[obj(a)], &[]);
     assert_eq!(g.obj(a).zone, Zone::Graveyard);
-    let b = put(&mut g, 1, "Pippin, Guard of the Citadel");
+    let b = put(&mut g, 1, "Savannah Lions");
     let sear = hand(&mut g, 0, "Sear");
     act(&mut g, Action::Cast(sear));
     assert!(
@@ -4324,7 +4324,7 @@ fn terminate_sear_and_boulder_dash() {
     act(&mut g, Action::Target(obj(b)));
     resolve_all(&mut g, &[]);
     assert_eq!(g.obj(b).zone, Zone::Graveyard);
-    let c = put(&mut g, 1, "Pippin, Guard of the Citadel");
+    let c = put(&mut g, 1, "Savannah Lions");
     let life = g.players[1].life;
     let dash = hand(&mut g, 0, "Boulder Dash");
     play(&mut g, dash, false, &[obj(c), Target::Player(1)], &[]);
@@ -4335,7 +4335,7 @@ fn terminate_sear_and_boulder_dash() {
 #[test]
 fn goatnap_steals_untaps_and_hastes() {
     let mut g = table();
-    let theirs = put(&mut g, 1, "Pippin, Guard of the Citadel");
+    let theirs = put(&mut g, 1, "Savannah Lions");
     g.objects[theirs.0 as usize].tapped = true;
     let gn = hand(&mut g, 0, "Goatnap");
     play(&mut g, gn, false, &[obj(theirs)], &[]);
@@ -4347,7 +4347,7 @@ fn goatnap_steals_untaps_and_hastes() {
 #[test]
 fn crib_swap_exiles_and_gives_its_controller_a_changeling() {
     let mut g = table();
-    let theirs = put(&mut g, 1, "Pippin, Guard of the Citadel");
+    let theirs = put(&mut g, 1, "Savannah Lions");
     let cs = hand(&mut g, 0, "Crib Swap");
     assert!(g.def_of(cs).changeling, "every creature type");
     play(&mut g, cs, false, &[obj(theirs)], &[]);
@@ -4578,7 +4578,7 @@ fn spell_pierce_and_dismember() {
     act(&mut g, Action::Target(obj(ring)));
     resolve_all(&mut g, &[Action::No]);
     assert_eq!(g.obj(ring).zone, Zone::Graveyard, "didn't pay");
-    let theirs = put(&mut g, 1, "Pippin, Guard of the Citadel");
+    let theirs = put(&mut g, 1, "Savannah Lions");
     let dm = hand(&mut g, 0, "Dismember");
     play(&mut g, dm, false, &[obj(theirs)], &[]);
     assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
@@ -4598,4 +4598,149 @@ fn opposition_agent_exiles_what_the_opponent_finds_for_you_to_play() {
     resolve_all(&mut g, &[Action::Pick(forest)]);
     assert_eq!(g.obj(forest).zone, Zone::Exile, "exiled instead");
     assert_eq!(g.obj(forest).playable.map(|p| p.0), Some(0), "you may play it");
+}
+
+#[test]
+fn ram_through_tramples_over() {
+    let mut g = table();
+    let big = put(&mut g, 0, "Gigantosaurus"); // 10/10, no trample
+    let theirs = put(&mut g, 1, "Llanowar Elves");
+    let life = g.players[1].life;
+    let r = hand(&mut g, 0, "Ram Through");
+    play(&mut g, r, false, &[obj(big), obj(theirs)], &[]);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+    assert_eq!(g.players[1].life, life, "no trample, no excess");
+    let other = put(&mut g, 1, "Llanowar Elves");
+    let t = hand(&mut g, 0, "Ram Through");
+    g.objects[big.0 as usize].granted = g.objects[big.0 as usize].granted.with(Keywords::TRAMPLE);
+    play(&mut g, t, false, &[obj(big), obj(other)], &[]);
+    assert_eq!(g.obj(other).zone, Zone::Graveyard);
+    assert_eq!(g.players[1].life, life - 9, "trample: 1 to the Elves, 9 over");
+}
+
+#[test]
+fn scale_up_and_its_overload() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Llanowar Elves");
+    let b = put(&mut g, 0, "Savannah Lions");
+    let s = hand(&mut g, 0, "Scale Up");
+    play(&mut g, s, false, &[obj(a)], &[]);
+    assert_eq!((g.power(a), g.toughness(a)), (6, 4));
+    assert!(g.has_subtype(a, "Wurm"));
+    assert_eq!((g.power(b), g.toughness(b)), (2, 1));
+    let s = hand(&mut g, 0, "Scale Up");
+    act(&mut g, Action::CastAlternative(s));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.power(b), g.toughness(b)), (6, 4), "overload: each");
+    g.start_turn(5, 0);
+    assert_eq!(g.power(a), 1, "until end of turn");
+}
+
+#[test]
+fn roiling_regrowth_and_planar_engineering_trade_lands() {
+    let mut g = table();
+    let land = g.permanents(0).find(|&x| g.types_of(x).land).unwrap();
+    let lands = g.permanents(0).filter(|&x| g.types_of(x).land).count();
+    let f1 = g.add_card(0, cid("Forest"), Zone::Library);
+    let f2 = g.add_card(0, cid("Forest"), Zone::Library);
+    let r = hand(&mut g, 0, "Roiling Regrowth");
+    act(&mut g, Action::Cast(r));
+    resolve_all(&mut g, &[Action::Pick(land), Action::Pick(f1), Action::Pick(f2)]);
+    assert_eq!(g.obj(land).zone, Zone::Graveyard);
+    assert!(g.obj(f1).tapped && g.obj(f2).zone == Zone::Battlefield);
+    assert_eq!(g.permanents(0).filter(|&x| g.types_of(x).land).count(), lands + 1);
+}
+
+#[test]
+fn entish_restoration_finds_three_with_a_big_creature() {
+    let mut g = table();
+    put(&mut g, 0, "Gigantosaurus"); // power 10
+    let land = g.permanents(0).find(|&x| g.types_of(x).land).unwrap();
+    let fs: Vec<ObjId> = (0..3)
+        .map(|_| g.add_card(0, cid("Forest"), Zone::Library))
+        .collect();
+    let e = hand(&mut g, 0, "Entish Restoration");
+    act(&mut g, Action::Cast(e));
+    resolve_all(
+        &mut g,
+        &[
+            Action::Pick(land),
+            Action::Pick(fs[0]),
+            Action::Pick(fs[1]),
+            Action::Pick(fs[2]),
+        ],
+    );
+    assert!(fs.iter().all(|&f| g.obj(f).zone == Zone::Battlefield), "three");
+}
+
+#[test]
+fn archdruids_charm_modes() {
+    let mut g = table();
+    let forest = g.add_card(0, cid("Forest"), Zone::Library);
+    let c = hand(&mut g, 0, "Archdruid's Charm");
+    act(&mut g, Action::CastModal(c, 0));
+    resolve_all(&mut g, &[Action::Pick(forest)]);
+    assert!(
+        g.obj(forest).zone == Zone::Battlefield && g.obj(forest).tapped,
+        "a land: tapped"
+    );
+    let mine = put(&mut g, 0, "Savannah Lions");
+    let theirs = put(&mut g, 1, "Savannah Lions"); // no ward
+    for x in g.permanents(0).collect::<Vec<_>>() {
+        g.objects[x.0 as usize].tapped = false; // mana for the next {G}{G}{G}
+    }
+    let c = hand(&mut g, 0, "Archdruid's Charm");
+    act(&mut g, Action::CastModal(c, 1));
+    act(&mut g, Action::Target(obj(mine)));
+    act(&mut g, Action::Target(obj(theirs)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(mine).counters, 1);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard, "3 damage to the 2/1");
+    let tide = put(&mut g, 1, "Inexorable Tide");
+    for x in g.permanents(0).collect::<Vec<_>>() {
+        g.objects[x.0 as usize].tapped = false; // mana for the next {G}{G}{G}
+    }
+    let c = hand(&mut g, 0, "Archdruid's Charm");
+    act(&mut g, Action::CastModal(c, 2));
+    act(&mut g, Action::Target(obj(tide)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(tide).zone, Zone::Exile);
+}
+
+#[test]
+fn ad_nauseam_draws_and_pays_life_until_you_stop() {
+    let mut g = table();
+    let a = g.add_card(0, cid("Lightning Bolt"), Zone::Library);
+    let b = g.add_card(0, cid("Pippin, Guard of the Citadel"), Zone::Library);
+    let life = g.players[0].life;
+    let ad = hand(&mut g, 0, "Ad Nauseam");
+    act(&mut g, Action::Cast(ad));
+    resolve_all(&mut g, &[Action::Yes, Action::No]);
+    assert_eq!((g.obj(b).zone, g.obj(a).zone), (Zone::Hand, Zone::Hand));
+    assert_eq!(g.players[0].life, life - 3, "2 for Pippin, 1 for the Bolt");
+}
+
+#[test]
+fn vraska_betrayals_sting_draws_proliferates_and_makes_a_treasure() {
+    let mut g = table();
+    let v = put(&mut g, 0, "Vraska, Betrayal's Sting");
+    g.objects[v.0 as usize].loyalty = 6;
+    let (life, cards) = (g.players[0].life, g.players[0].hand.len());
+    act(&mut g, Action::Loyalty(v, 0));
+    resolve_all(&mut g, &[Action::Pick(v), Action::Yes]);
+    assert_eq!(
+        (g.players[0].life, g.players[0].hand.len()),
+        (life - 1, cards + 1)
+    );
+    assert_eq!(g.obj(v).loyalty, 7, "proliferated");
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let theirs = put(&mut g, 1, "Llanowar Elves");
+    act(&mut g, Action::Loyalty(v, 1));
+    act(&mut g, Action::Target(obj(theirs)));
+    resolve_all(&mut g, &[]);
+    assert!(g.treasure_form(theirs) && !g.types_of(theirs).creature);
+    assert_eq!(g.obj(v).loyalty, 5);
 }
