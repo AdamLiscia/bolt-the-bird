@@ -2350,3 +2350,82 @@ fn call_of_the_ring_tempts_at_upkeep_and_draws_for_two_life_on_choosing() {
     assert_eq!(g.players[0].life, 38);
     assert_eq!(g.players[0].hand.len(), before + 1);
 }
+
+#[test]
+fn composer_of_spring_puts_a_land_or_with_six_enchantments_a_creature_tapped() {
+    let mut g = table();
+    put(&mut g, 0, "Composer of Spring");
+    let forest = hand(&mut g, 0, "Forest");
+    let lions = hand(&mut g, 0, "Savannah Lions");
+    let blood = hand(&mut g, 0, "Exquisite Blood");
+    act(&mut g, Action::Cast(blood));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(has(&g, Action::Pick(forest)) && has(&g, Action::No));
+    assert!(!has(&g, Action::Pick(lions)), "one enchantment: a land only");
+    act(&mut g, Action::Pick(forest));
+    assert_eq!(g.obj(forest).zone, Zone::Battlefield);
+    assert!(g.obj(forest).tapped);
+    for _ in 0..4 {
+        put(&mut g, 0, "Exquisite Blood"); // five enchantments; the next one cast makes six
+    }
+    let blood2 = hand(&mut g, 0, "Exquisite Blood");
+    act(&mut g, Action::Cast(blood2));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(has(&g, Action::Pick(lions)), "six enchantments: a creature too");
+    act(&mut g, Action::Pick(lions));
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield);
+    assert!(g.obj(lions).tapped);
+}
+
+#[test]
+fn oloro_gains_two_from_the_command_zone_at_your_upkeep() {
+    let mut g = table();
+    let oloro = g.add_card(0, cid("Oloro, Ageless Ascetic"), Zone::Command);
+    assert!(g.command.contains(&oloro));
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[0].life, 42, "the command-zone trigger only");
+    assert_eq!(
+        g.players[1].life, 40,
+        "its gain-life trigger works only on the battlefield"
+    );
+}
+
+#[test]
+fn oloro_on_the_battlefield_gains_two_and_pays_one_to_drain_and_draw() {
+    let mut g = table();
+    put(&mut g, 0, "Oloro, Ageless Ascetic");
+    g.start_turn(5, 0);
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[0].life, 42);
+    let before = g.players[0].hand.len();
+    act(&mut g, Action::Yes); // pay {1}
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 39);
+    assert_eq!(g.players[0].hand.len(), before + 1);
+}
+
+#[test]
+fn angel_of_destiny_shares_the_life_and_wins_at_fifteen_over() {
+    let mut g = table();
+    let angel = put(&mut g, 0, "Angel of Destiny");
+    attack(&mut g, &[angel]);
+    through_combat(&mut g);
+    // Double strike: 2 and 2; each time both players gain that much.
+    assert_eq!(g.players[0].life, 44);
+    assert_eq!(g.players[1].life, 40);
+    assert!(!g.players[1].lost);
+    g.players[0].life = 55; // 15 over the starting 40
+    while g.result.is_none() && g.step != Step::Cleanup {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(g.players[1].lost, "it attacked this turn");
+}

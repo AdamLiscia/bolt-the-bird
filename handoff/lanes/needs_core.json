@@ -162,10 +162,10 @@
   {
    "card": "Ygra, Eater of All",
    "deck": "Ygra, Eater of All",
-   "missing": "d2 batch 16: the Food-to-graveyard trigger is in (When::SubtypeToGraveyardFromBattlefield(\"Food\")). Still needs: ward\u2014sacrifice a Food (d1, costs); other creatures are Food artifacts with the Food ability (d3, types)",
+   "missing": "d2 batch 16: the Food-to-graveyard trigger is in (When::SubtypeToGraveyardFromBattlefield(\"Food\")). Still needs: ward\u2014sacrifice a Food (d1, costs); other creatures are Food artifacts with the Food ability (d3, types) [script: d2, 2026-11-27, on lane B's other_creatures_have + d1's ward + d3's Food types]",
    "lane": "d1",
    "theme": "effects",
-   "owner": "d3"
+   "owner": "d2"
   },
   {
    "card": "Camellia, the Seedmiser",
@@ -4778,7 +4778,7 @@
   {
    "card": "Oloro, Ageless Ascetic",
    "deck": "Oloro, Ageless Ascetic (Adam)",
-   "missing": "upkeep/end-step conditional triggers",
+   "missing": "upkeep/end-step conditional triggers [done by d2 batch 18, scripted in pg_d2]",
    "lane": "mac-b",
    "theme": "triggers",
    "owner": "d2"
@@ -4802,7 +4802,7 @@
   {
    "card": "Angel of Destiny",
    "deck": "Oloro, Ageless Ascetic (Adam)",
-   "missing": "upkeep/end-step conditional triggers",
+   "missing": "upkeep/end-step conditional triggers [done by d2 batch 18, scripted in pg_d2]",
    "lane": "mac-b",
    "theme": "triggers",
    "owner": "d2"
@@ -6678,6 +6678,30 @@
    "missing": "the +2 damage replacement (lane B); its other parts lane C [added from the live validator, 2026-11-27]",
    "lane": "mac-b",
    "theme": "replacements"
+  },
+  {
+   "card": "The Ring: greater-power evasion",
+   "deck": "d4 handback",
+   "missing": "the Ring's first ability, 'can't be blocked by creatures with greater power': can_block returns false when self.ring_evasion_forbids_block(blocker, attacker) (d4 hook, game/d4.rs)",
+   "lane": "d4",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Alchemist's Talent",
+   "deck": "d1 handback",
+   "missing": "d1's pieces are in: ManaExt::treasures_add_two_at_level = 2 (your Treasures make two mana while the Class is level 2+), Game::treasure_mana_spent(spell) and Effect::StopUnlessTreasureManaSpentOnExtra (the cast trigger's spell in extra) for level 3; d4 scripts the Class (two tapped Treasures on enter, the level-ups, the level-3 'whenever you cast a spell' trigger dealing the spell's mana value to each opponent)",
+   "lane": "d1",
+   "theme": "subsystems",
+   "owner": "d4"
+  },
+  {
+   "card": "Fortune Teller's Talent",
+   "deck": "d1 handback",
+   "missing": "d1's cost reduction is in: ManaExt::not_from_hand_discount = Some((3, 2)) (level 3: spells cast from anywhere but your hand cost {2} less); still Mac C's play-from-the-top (level 2) and look at the top card any time, then d4 scripts the Class",
+   "lane": "d1",
+   "theme": "subsystems",
+   "owner": "d4"
   }
  ]
 }

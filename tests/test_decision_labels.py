@@ -201,3 +201,21 @@ def test_riot_names_the_creature_and_the_choice():
     dec = {"kind": "Riot", "card": [7, 1]}
     assert label(dec, "Mode", 0) == "Thriving Heath: riot, a +1/+1 counter"
     assert label(dec, "Mode", 1) == "Thriving Heath: riot, haste"
+
+
+def test_composer_of_spring_puts_a_land_or_creature_tapped():
+    dec = {"kind": "LandOrCreatureFromHandTapped", "creature": True}
+    assert sv._decision_label(dec, "Pick", 0, "Forest") == "Put onto the battlefield tapped: Forest"
+
+
+def test_a_kick_count_names_the_spell_and_the_kicks():
+    dec = {"kind": "ChooseKickCount", "card": [7, 1], "max": 3}
+    assert label(dec, "Amount", 2) == "Kick Thriving Heath 2 times"
+    assert label(dec, "Amount", 1) == "Kick Thriving Heath once"
+    assert label({"kind": "ChooseKickCount"}, "Amount", 0) == "Kick 0 times"
+
+
+def test_fabricate_offers_counters_or_servos():
+    dec = {"kind": "Fabricate", "x": 3, "source": [5, 2]}
+    assert label(dec, "Yes", 0) == "Secluded Courtyard: put 3 +1/+1 counters on it"
+    assert label(dec, "No", 0) == "Secluded Courtyard: create 3 1/1 Servo tokens"
