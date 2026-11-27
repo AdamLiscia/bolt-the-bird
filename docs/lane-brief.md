@@ -147,6 +147,13 @@ Fences:
   (one `if d == "<Name>"` line) and a test for it in `tests/test_decision_labels.py` (no engine needed); if you
   can't, name the decision and what each answer means in your report.
 
+## Script-only decks (2026-11-26)
+
+In five long-tail decks the Mac lanes write the card scripts and the desktop lanes add only core pieces:
+**lane B: Kaalia, Zhulodok, Malik; lane C: Olivia, Bruna.** A desktop lane that builds a piece one of those
+decks' cards needs says so in its report (card plus piece) and doesn't script the card; the Mac lane scripts it
+once the piece is on tarkir. Every other deck is unchanged.
+
 ## Services (the merger's)
 
 The three services (8766 FDN, 8767 TDM, 8768 CMD) run under launchd (docs/launchd.md); deploy with

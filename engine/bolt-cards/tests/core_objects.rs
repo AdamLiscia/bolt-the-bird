@@ -893,3 +893,98 @@ fn an_aura_put_onto_the_battlefield_enters_attached_only_to_what_it_could_enchan
     assert!(g.put_aura_attached(dead, ghoul, zcc, 0), "from a graveyard too");
     assert_eq!(g.obj(dead).attached_to, Some((ghoul, zcc)));
 }
+
+// ---- Copies (Lithoform Engine, Thespian's Stage, The Mycosynth Gardens) ----
+
+#[test]
+fn a_permanent_becomes_a_copy_for_good_without_its_own_abilities() {
+    // The Mycosynth Gardens (not listed yet: its {1} filter mana waits on d1). Mind Stone has
+    // mana value 2, so X = 2.
+    let mut g = table();
+    let gardens = put(&mut g, 0, "The Mycosynth Gardens");
+    let stone = put(&mut g, 0, "Mind Stone");
+    act(
+        &mut g,
+        Action::ActivateX {
+            id: gardens,
+            n: 0,
+            victim: None,
+            x: 2,
+        },
+    );
+    act(&mut g, Action::Target(obj(stone)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.name_of(gardens), "Mind Stone");
+    assert!(g.types_of(gardens).artifact && !g.types_of(gardens).land);
+    assert_eq!(g.def_of(gardens).activated.len(), 1, "Mind Stone's ability only");
+    to_main1(&mut g, 5, 0);
+    assert_eq!(g.name_of(gardens), "Mind Stone", "not just until end of turn");
+}
+
+#[test]
+fn a_copied_ability_that_targets_chooses_new_targets() {
+    // Lithoform Engine copying a targeted activated ability: Rogue's Passage's.
+    let mut g = table();
+    let engine = put(&mut g, 0, "Lithoform Engine");
+    let passage = put(&mut g, 0, "Rogue's Passage");
+    let a = put(&mut g, 0, "Hungry Ghoul");
+    let b = put(&mut g, 0, "Hungry Ghoul");
+    act(&mut g, Action::Activate(passage, 0));
+    act(&mut g, Action::Target(obj(a)));
+    act(&mut g, Action::Activate(engine, 0));
+    act(&mut g, Action::Target(obj(passage)));
+    resolve_all(&mut g, &[Action::Target(obj(b))]);
+    assert!(g.keywords(a).has(Keywords::UNBLOCKABLE));
+    assert!(g.keywords(b).has(Keywords::UNBLOCKABLE), "the copy's new target");
+}
+
+// ---- Borrowed d2 pieces: "that spell" on an opponent's instant or sorcery, playing from exile ----
+
+#[test]
+fn an_opponents_instant_or_sorcery_trigger_carries_that_spell() {
+    let mut g = table();
+    let arasta = put(&mut g, 0, "Arasta of the Endless Web");
+    to_main1(&mut g, 4, 1);
+    let bolt = hand(&mut g, 1, "Lightning Bolt");
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(0)));
+    assert!(
+        g.items
+            .iter()
+            .any(|i| i.source == arasta && i.extra == Some(bolt)),
+        "the trigger knows the spell"
+    );
+}
+
+#[test]
+fn playing_a_card_from_exile_triggers_and_from_hand_does_not() {
+    // Prosper, Tome-Bound: its end-step exile, then Pact Boon.
+    let mut g = table();
+    let prosper = put(&mut g, 0, "Prosper, Tome-Bound");
+    let from_hand = hand(&mut g, 0, "Mountain");
+    act(&mut g, Action::PlayLand(from_hand));
+    resolve_all(&mut g, &[]);
+    assert!(tokens(&g, 0, "Treasure").is_empty(), "not from exile");
+    let exiled = top(&mut g, "Mountain");
+    for _ in 0..200 {
+        if g.obj(exiled).zone == Zone::Exile {
+            break;
+        }
+        let legal = g.legal_actions();
+        let a = [Action::PassPriority, Action::FinishAttacks, Action::FinishBlocks]
+            .into_iter()
+            .find(|a| legal.contains(a))
+            .expect("a pass");
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(exiled).zone, Zone::Exile, "Mystic Arcanum at the end step");
+    assert!(g.obj(prosper).zone == Zone::Battlefield);
+    to_main1(&mut g, 5, 0);
+    assert!(
+        g.legal_actions().contains(&Action::PlayLand(exiled)),
+        "playable until the end of your next turn"
+    );
+    act(&mut g, Action::PlayLand(exiled));
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 1, "played from exile");
+}

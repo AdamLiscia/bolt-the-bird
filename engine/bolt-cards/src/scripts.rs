@@ -45,7 +45,12 @@ pub fn token_defs() -> Vec<CardDef> {
         token("Koma's Coil", "Serpent", 3, 3, Keywords::NONE),
         token("Drake", "Drake", 2, 2, Keywords::FLYING),
         token("Spirit", "Spirit", 1, 1, Keywords::FLYING),
-        token("Fish", "Fish", 1, 1, Keywords::NONE),
+        {
+            // "a 1/1 blue Fish creature token" (Fishing Pole, Fountainport).
+            let mut t = token("Fish", "Fish", 1, 1, Keywords::NONE);
+            t.colors = [false, true, false, false, false];
+            t
+        },
         token("Rat", "Rat", 1, 1, Keywords::NONE),
         token("Zombie", "Zombie", 2, 2, Keywords::NONE),
         token("Ninja", "Ninja", 2, 1, Keywords::NONE),
@@ -139,12 +144,17 @@ pub fn token_defs() -> Vec<CardDef> {
             );
             pest
         },
-        token("Octopus", "Octopus", 8, 8, Keywords::NONE), // Octomancer's gift: a blue 8/8
+        {
+            // Octomancer's gift: "an 8/8 blue Octopus creature token".
+            let mut t = token("Octopus", "Octopus", 8, 8, Keywords::NONE);
+            t.colors = [false, true, false, false, false];
+            t
+        },
         token("Elemental", "Elemental", 4, 4, Keywords::FLYING), // Hoofprints of the Stag: white 4/4
         token("Dinosaur Beast", "Dinosaur Beast", 0, 0, Keywords::TRAMPLE), // Quartzwood Crasher's X/X
-        token("Plant", "Plant", 0, 1, Keywords::NONE),     // Avenger of Zendikar
-        token("Insect", "Insect", 1, 1, Keywords::NONE),   // Scute Swarm's green 1/1
-        token("Badger", "Badger", 3, 3, Keywords::NONE),   // Greensleeves
+        token("Plant", "Plant", 0, 1, Keywords::NONE),           // Avenger of Zendikar
+        token("Insect", "Insect", 1, 1, Keywords::NONE),         // Scute Swarm's green 1/1
+        token("Badger", "Badger", 3, 3, Keywords::NONE),         // Greensleeves
         {
             // Wrenn and Seven: "a green Treefolk creature token with reach and 'This token's power and
             // toughness are each equal to the number of lands you control.'"
@@ -357,8 +367,12 @@ pub fn token_defs() -> Vec<CardDef> {
         wicked_role(), // 97, lane C
         // 98, lane B: Ugin, the Ineffable's colorless 2/2 Spirit.
         token("Spirit", "Spirit", 2, 2, Keywords::NONE),
-        // 99: placeholder until lane B's Shark lands (lane B replaces this line).
-        token("Placeholder 99", "", 0, 0, Keywords::NONE),
+        {
+            // 99, lane B: Fisher's Talent's "3/3 blue Shark creature token".
+            let mut t = token("Shark", "Shark", 3, 3, Keywords::NONE);
+            t.colors = [false, true, false, false, false];
+            t
+        },
         {
             // 100, lane d1: Pride of the Clouds' "1/1 white and blue Bird creature token with flying".
             let mut t = token("Bird", "Bird", 1, 1, Keywords::FLYING);
@@ -572,8 +586,7 @@ pub struct Tokens {
     pub placeholder_96: usize,
     pub wicked_role: usize,
     pub spirit_2: usize,
-    /// 99: placeholder for lane B's Shark (lane B renames it).
-    pub placeholder_99: usize,
+    pub shark: usize,
     /// 100: Pride of the Clouds' 1/1 white and blue Bird with flying.
     pub bird_flying_wu: usize,
 }
@@ -680,7 +693,7 @@ impl Tokens {
             placeholder_96: base + 96,
             wicked_role: base + 97,
             spirit_2: base + 98,
-            placeholder_99: base + 99,
+            shark: base + 99,
             bird_flying_wu: base + 100,
         }
     }

@@ -348,6 +348,9 @@ pub struct Activated {
     /// "Pay life equal to the number of colors in your commanders' color identity" in the cost
     /// (War Room).
     pub life_per_commander_color: bool,
+    /// "Sacrifice an artifact" in the cost: any artifact you control, kept out of the mana payment
+    /// (Goblin Engineer). Activated with `Action::ActivateWith`.
+    pub sacrifice_artifact: bool,
     /// "Exile a creature you control" in the cost (Food Chain): one `Action::ActivateWith` per
     /// creature you control; with `victim_in_extra` the effect sees the exiled card.
     pub exile_creature_you_control: bool,
@@ -974,6 +977,32 @@ pub struct CardDef {
     /// Toxic N (CR 702.164): a player dealt combat damage by it also gets N poison counters
     /// (Bloodroot Apothecary: 2).
     pub toxic: u8,
+    /// An Aura or Equipment: "Enchanted creature has ward {N}." (Sheltered by Ghosts: {2}), in
+    /// `Game::ward_check` with the creature's own ward.
+    pub enchanted_ward: Option<ManaCost>,
+    /// Gisa, Glorious Resurrector: "If a creature an opponent controls would die, exile it
+    /// instead." (in `move_to`; the card is recorded in `Game::exiled_with`).
+    pub opponents_creatures_die_exiled: bool,
+    /// A Class's token replacements, as (the level it needs, the token it replaces, the token made
+    /// instead), each applied once in order (Fisher's Talent: level 2 Fish to Shark, level 3 Shark
+    /// to Octopus), in `Game::create_token`.
+    pub class_token_replacements: Vec<(u8, usize, usize)>,
+    /// The Immortal Sun: "Players can't activate planeswalkers' loyalty abilities." (in
+    /// `Game::loyalty_actions`).
+    pub players_cant_activate_loyalty: bool,
+    /// "Your opponents can't gain life." (Archfiend of Despair), in `Game::gain_life`.
+    pub opponents_cant_gain_life: bool,
+    /// Gisela, Blade of Goldnight: "If a source would deal damage to an opponent or a permanent an
+    /// opponent controls, that source deals double that damage to that player or permanent instead.
+    /// If a source would deal damage to you or a permanent you control, prevent half that damage,
+    /// rounded up." Any source, in `Game::deal_damage` after the other doublers.
+    pub prevents_half_damage_to_you_and_yours: bool,
+    /// Sower of Discord, with both players chosen (two players): "Whenever damage is dealt to one of
+    /// the chosen players, the other chosen player also loses that much life." (its trigger number)
+    pub damage_to_a_player_other_loses: Option<usize>,
+    /// Cavern of Souls, with `any_color_for_chosen_type`: its any-color mana is only for creature
+    /// spells of the chosen type (not abilities), and a spell it pays for can't be countered.
+    pub chosen_type_mana_uncounterable: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1482,6 +1511,14 @@ impl CardDef {
             one_attacker_one_blocker: false,
             colorless_spell_discount: 0,
             toxic: 0,
+            enchanted_ward: None,
+            opponents_creatures_die_exiled: false,
+            class_token_replacements: Vec::new(),
+            players_cant_activate_loyalty: false,
+            opponents_cant_gain_life: false,
+            prevents_half_damage_to_you_and_yours: false,
+            damage_to_a_player_other_loses: None,
+            chosen_type_mana_uncounterable: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1751,6 +1788,14 @@ impl CardDef {
             one_attacker_one_blocker: false,
             colorless_spell_discount: 0,
             toxic: 0,
+            enchanted_ward: None,
+            opponents_creatures_die_exiled: false,
+            class_token_replacements: Vec::new(),
+            players_cant_activate_loyalty: false,
+            opponents_cant_gain_life: false,
+            prevents_half_damage_to_you_and_yours: false,
+            damage_to_a_player_other_loses: None,
+            chosen_type_mana_uncounterable: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2020,6 +2065,14 @@ impl CardDef {
             one_attacker_one_blocker: false,
             colorless_spell_discount: 0,
             toxic: 0,
+            enchanted_ward: None,
+            opponents_creatures_die_exiled: false,
+            class_token_replacements: Vec::new(),
+            players_cant_activate_loyalty: false,
+            opponents_cant_gain_life: false,
+            prevents_half_damage_to_you_and_yours: false,
+            damage_to_a_player_other_loses: None,
+            chosen_type_mana_uncounterable: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2057,6 +2110,9 @@ pub struct ZonesExt {
     /// The card has no mana cost (CR 202.1b): it can't be cast unless something lets it be cast
     /// without paying its mana cost (Glimpse of Tomorrow: suspend).
     pub no_mana_cost: bool,
+    /// "You may cast artifact spells and colorless spells from the top of your library." (Mystic
+    /// Forge)
+    pub top_spells_artifact_or_colorless: bool,
 }
 
 #[cfg(test)]

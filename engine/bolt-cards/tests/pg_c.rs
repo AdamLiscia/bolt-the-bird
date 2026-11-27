@@ -3816,3 +3816,425 @@ fn professional_face_breaker_makes_treasure_on_damage_and_cashes_it_for_a_card()
     assert_eq!(g.obj(card).zone, Zone::Exile);
     assert!(g.legal_actions().contains(&Action::PlayLand(card)));
 }
+
+// ---- Bruna's Auras ----
+
+fn enchant(g: &mut Game, aura: &str, on: ObjId) -> ObjId {
+    let a = hand(g, 0, aura);
+    let z = g.obj(on).zcc;
+    assert!(g.put_aura_attached(a, on, z, 0));
+    a
+}
+
+#[test]
+fn steel_of_the_godhead_checks_the_enchanted_creatures_colors() {
+    let mut g = table();
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let before = g.power(ghoul);
+    enchant(&mut g, "Steel of the Godhead", ghoul);
+    assert_eq!(g.power(ghoul), before, "black: neither");
+    let bruna = put(&mut g, 0, "Bruna, Light of Alabaster");
+    enchant(&mut g, "Steel of the Godhead", bruna);
+    assert_eq!(g.power(bruna), 5 + 2, "white and blue: both");
+    assert!(g.keywords(bruna).has(Keywords::LIFELINK));
+    assert!(g.keywords(bruna).has(Keywords::UNBLOCKABLE));
+}
+
+#[test]
+fn face_of_divinity_adds_first_strike_and_lifelink_with_another_aura() {
+    let mut g = table();
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let before = g.power(ghoul);
+    enchant(&mut g, "Face of Divinity", ghoul);
+    assert_eq!(g.power(ghoul), before + 2);
+    assert!(!g.keywords(ghoul).has(Keywords::FIRST_STRIKE));
+    enchant(&mut g, "Wingspan Stride", ghoul);
+    assert!(g.keywords(ghoul).has(Keywords::FIRST_STRIKE));
+    assert!(g.keywords(ghoul).has(Keywords::LIFELINK));
+}
+
+#[test]
+fn shielded_by_faith_may_move_to_a_creature_that_enters() {
+    let mut g = table();
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let sf = enchant(&mut g, "Shielded by Faith", ghoul);
+    assert!(g.keywords(ghoul).has(Keywords::INDESTRUCTIBLE));
+    let next = hand(&mut g, 0, "Hungry Ghoul");
+    play(&mut g, next, false, &[], &[Action::Yes]);
+    let z = g.obj(next).zcc;
+    assert_eq!(g.obj(sf).attached_to, Some((next, z)));
+    assert!(g.keywords(next).has(Keywords::INDESTRUCTIBLE));
+    assert!(!g.keywords(ghoul).has(Keywords::INDESTRUCTIBLE));
+}
+
+#[test]
+fn eldrazi_conscription_pumps_and_annihilates_two() {
+    let mut g = table();
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let before = g.power(ghoul);
+    enchant(&mut g, "Eldrazi Conscription", ghoul);
+    assert_eq!(g.power(ghoul), before + 10);
+    assert!(g.keywords(ghoul).has(Keywords::TRAMPLE));
+    let theirs = g.permanents(1).count();
+    to_attackers(&mut g);
+    act(&mut g, Action::Attack(ghoul));
+    act(&mut g, Action::FinishAttacks);
+    while g.step == Step::DeclareAttackers {
+        let legal = g.legal_actions();
+        let a = if legal.contains(&Action::PassPriority) {
+            Action::PassPriority
+        } else {
+            legal[0]
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(
+        g.permanents(1).count(),
+        theirs - 2,
+        "defending player sacrificed two"
+    );
+}
+
+#[test]
+fn gisa_exiles_dying_opponent_creatures_and_returns_them_decayed() {
+    let mut g = table();
+    put(&mut g, 0, "Gisa, Glorious Resurrector");
+    let ghoul = put(&mut g, 1, "Hungry Ghoul");
+    let kill = hand(&mut g, 0, "Hero's Downfall");
+    play(&mut g, kill, false, &[obj(ghoul)], &[]);
+    assert_eq!(g.obj(ghoul).zone, Zone::Exile, "exiled instead of dying");
+    g.start_turn(5, 0);
+    while g.step == Step::Upkeep || !g.items.is_empty() {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield);
+    assert_eq!(g.obj(ghoul).controller, 0);
+    assert!(g.obj(ghoul).decayed, "it gains decayed");
+}
+
+// ---- Mac C: modal double-faced back faces cast; Vohar ----
+
+/// Resolves the stack, answering player 0's decisions with `pick` when offered (else Yes, else the
+/// first choice) and the opponent's with their first choice.
+fn resolve_picking(g: &mut Game, pick: ObjId) {
+    while !g.items.is_empty() || matches!(g.pending, Pending::Decide(_) | Pending::ChooseTarget(_)) {
+        let legal = g.legal_actions();
+        let a = match g.pending {
+            Pending::Decide(0) if legal.contains(&Action::Pick(pick)) => Action::Pick(pick),
+            Pending::Decide(0) if legal.contains(&Action::Yes) => Action::Yes,
+            Pending::Decide(_) | Pending::ChooseTarget(_) => legal[0],
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn tergrid_takes_what_an_opponent_sacrifices() {
+    let mut g = table();
+    put(&mut g, 0, "Tergrid, God of Fright // Tergrid's Lantern");
+    let ghoul = put(&mut g, 1, "Hungry Ghoul");
+    let exe = hand(&mut g, 0, "Merciless Executioner");
+    act(&mut g, Action::Cast(exe));
+    resolve_picking(&mut g, exe);
+    assert_eq!(g.obj(exe).zone, Zone::Graveyard);
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield, "back from their graveyard");
+    assert_eq!(g.obj(ghoul).controller, 0);
+}
+
+#[test]
+fn tergrids_lantern_is_cast_as_the_back_face_and_taxes_a_player() {
+    let mut g = table();
+    let t = hand(&mut g, 0, "Tergrid, God of Fright // Tergrid's Lantern");
+    assert!(g.legal_actions().contains(&Action::Cast(t)), "the front");
+    assert!(g.legal_actions().contains(&Action::CastModal(t, 1)), "the back");
+    act(&mut g, Action::CastModal(t, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(t).zone, Zone::Battlefield);
+    assert_eq!(g.def_of(t).name, "Tergrid's Lantern");
+    assert!(!g.types_of(t).creature && g.types_of(t).artifact);
+    let life = g.players[1].life;
+    act(&mut g, Action::Activate(t, 0));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[Action::No]);
+    assert_eq!(g.players[1].life, life - 3, "didn't sacrifice or discard");
+    assert!(g.obj(t).tapped);
+    act(&mut g, Action::Activate(t, 1));
+    resolve_all(&mut g, &[]);
+    assert!(!g.obj(t).tapped, "{{3}}{{B}}: untap");
+}
+
+#[test]
+fn a_back_face_spell_that_is_countered_is_its_front_again() {
+    let mut g = table();
+    let t = hand(&mut g, 0, "Tergrid, God of Fright // Tergrid's Lantern");
+    act(&mut g, Action::CastModal(t, 1));
+    assert_eq!(
+        g.def_of(t).name,
+        "Tergrid's Lantern",
+        "on the stack as its back face"
+    );
+    act(&mut g, Action::PassPriority);
+    let veto = hand(&mut g, 1, "Dovin's Veto");
+    act(&mut g, Action::Cast(veto));
+    act(&mut g, Action::Target(obj(t)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(t).zone, Zone::Graveyard);
+    assert_eq!(g.def_of(t).name, "Tergrid, God of Fright // Tergrid's Lantern");
+}
+
+#[test]
+fn vohar_loots_drains_on_a_discarded_sorcery_and_grants_a_graveyard_cast() {
+    let mut g = table();
+    let v = put(&mut g, 0, "Vohar, Vodalian Desecrator");
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let sorcery = hand(&mut g, 0, "Tranquility");
+    let (mine, theirs) = (g.players[0].life, g.players[1].life);
+    act(&mut g, Action::Activate(v, 0));
+    resolve_all(&mut g, &[Action::Pick(sorcery)]);
+    assert_eq!(g.obj(sorcery).zone, Zone::Graveyard);
+    assert_eq!((g.players[0].life, g.players[1].life), (mine + 1, theirs - 1));
+    act(&mut g, Action::Activate(v, 1));
+    act(&mut g, Action::Target(obj(sorcery)));
+    resolve_all(&mut g, &[]);
+    assert_ne!(g.obj(v).zone, Zone::Battlefield, "sacrificed");
+    assert!(
+        g.legal_actions().contains(&Action::CastFlashback(sorcery)),
+        "castable from the graveyard this turn"
+    );
+}
+
+// ---- Script-only pass: Bruna and Olivia ----
+
+/// Passes (finishing attacks and blocks with none) until `done` holds.
+fn pass_until(g: &mut Game, done: impl Fn(&Game) -> bool) {
+    for _ in 0..200 {
+        if done(g) {
+            return;
+        }
+        let legal = g.legal_actions();
+        let a = [Action::PassPriority, Action::FinishAttacks, Action::FinishBlocks]
+            .into_iter()
+            .find(|a| legal.contains(a))
+            .unwrap_or(legal[0]);
+        act(g, a);
+    }
+    panic!("never got there");
+}
+
+#[test]
+fn lavaspur_boots_gives_plus_one_and_haste() {
+    let mut g = table();
+    let boots = put(&mut g, 0, "Lavaspur Boots");
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let before = g.power(ghoul);
+    act(&mut g, Action::Activate(boots, 0));
+    act(&mut g, Action::Target(obj(ghoul)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.power(ghoul), before + 1);
+    assert!(g.keywords(ghoul).has(Keywords::HASTE));
+    pass_until(&mut g, |g| g.pending == Pending::DeclareAttackers(0));
+    assert!(
+        g.legal_actions().contains(&Action::Attack(ghoul)),
+        "haste: it attacks the turn it came in"
+    );
+}
+
+#[test]
+fn mother_of_runes_gives_protection_from_a_chosen_color() {
+    let mut g = table();
+    let m = put(&mut g, 0, "Mother of Runes");
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    g.start_turn(5, 0);
+    pass_until(&mut g, |g| g.step == Step::Main1);
+    act(&mut g, Action::Activate(m, 0));
+    act(&mut g, Action::Target(obj(ghoul)));
+    resolve_all(&mut g, &[Action::Mode(2)]);
+    assert!(g.protection(ghoul)[2], "protection from black");
+    assert!(g.obj(m).tapped);
+}
+
+#[test]
+fn port_razer_untaps_and_adds_a_combat_it_cannot_attack_in() {
+    let mut g = table();
+    let razer = put(&mut g, 0, "Port Razer");
+    let _other = put(&mut g, 0, "Hungry Ghoul"); // stays home, so the extra combat asks for attackers
+    to_attackers(&mut g);
+    act(&mut g, Action::Attack(razer));
+    act(&mut g, Action::FinishAttacks);
+    let life = g.players[1].life;
+    pass_until(&mut g, |g| g.players[1].life < life && g.items.is_empty());
+    pass_until(&mut g, |g| g.pending == Pending::DeclareAttackers(0));
+    assert!(!g.obj(razer).tapped, "untapped");
+    assert!(
+        !g.legal_actions().contains(&Action::Attack(razer)),
+        "it already attacked that player"
+    );
+}
+
+#[test]
+fn breath_of_fury_trades_its_creature_for_another_and_an_extra_combat() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Hungry Ghoul");
+    let b = put(&mut g, 0, "Hungry Ghoul");
+    let breath = hand(&mut g, 0, "Breath of Fury");
+    let z = g.obj(a).zcc;
+    assert!(g.put_aura_attached(breath, a, z, 0));
+    to_attackers(&mut g);
+    act(&mut g, Action::Attack(a));
+    act(&mut g, Action::FinishAttacks);
+    pass_until(&mut g, |g| matches!(g.pending, Pending::Decide(0)));
+    assert!(g.legal_actions().contains(&Action::Pick(b)));
+    act(&mut g, Action::Pick(b));
+    assert_eq!(g.obj(a).zone, Zone::Graveyard, "sacrificed");
+    let zb = g.obj(b).zcc;
+    assert_eq!(g.obj(breath).attached_to, Some((b, zb)));
+    pass_until(&mut g, |g| g.pending == Pending::DeclareAttackers(0));
+    assert!(
+        g.legal_actions().contains(&Action::Attack(b)),
+        "an additional combat"
+    );
+}
+
+// ---- Lane B's decks, Mac C pieces ----
+
+#[test]
+fn kaalia_puts_a_dragon_from_hand_onto_the_battlefield_attacking() {
+    let mut g = table();
+    let kaalia = put(&mut g, 0, "Kaalia of the Vast");
+    to_attackers(&mut g);
+    let dragon = hand(&mut g, 0, "Terror of the Peaks");
+    let ghoul = hand(&mut g, 0, "Hungry Ghoul");
+    act(&mut g, Action::Attack(kaalia));
+    act(&mut g, Action::FinishAttacks);
+    pass_until(&mut g, |g| matches!(g.pending, Pending::Decide(0)));
+    assert!(
+        !g.legal_actions().contains(&Action::Pick(ghoul)),
+        "a Zombie isn't offered"
+    );
+    act(&mut g, Action::Pick(dragon));
+    assert_eq!(g.obj(dragon).zone, Zone::Battlefield);
+    assert!(g.obj(dragon).tapped);
+    assert!(
+        g.combat.as_ref().unwrap().attackers.contains(&dragon),
+        "tapped and attacking"
+    );
+}
+
+#[test]
+fn command_beacon_puts_your_commander_into_your_hand() {
+    let mut g = table();
+    let beacon = put(&mut g, 0, "Command Beacon");
+    let bello = g
+        .command
+        .iter()
+        .copied()
+        .find(|&c| g.obj(c).owner == 0)
+        .expect("the commander");
+    act(&mut g, Action::Activate(beacon, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(bello).zone, Zone::Hand);
+    assert_eq!(g.obj(beacon).zone, Zone::Graveyard);
+}
+
+#[test]
+fn mystic_forge_casts_artifacts_from_the_top_and_exiles_the_top_for_life() {
+    let mut g = table();
+    let forge = put(&mut g, 0, "Mystic Forge");
+    let ring = top(&mut g, "Sol Ring");
+    assert!(
+        g.legal_actions().contains(&Action::Cast(ring)),
+        "an artifact from the top"
+    );
+    let ghoul = top(&mut g, "Hungry Ghoul");
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(ghoul)),
+        "not a black creature"
+    );
+    let life = g.players[0].life;
+    act(&mut g, Action::Activate(forge, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ghoul).zone, Zone::Exile);
+    assert_eq!(g.players[0].life, life - 1);
+}
+
+#[test]
+fn lithoform_engine_copies_an_ability_you_control() {
+    let mut g = table();
+    let engine = put(&mut g, 0, "Lithoform Engine");
+    let forge = put(&mut g, 0, "Mystic Forge");
+    let a = top(&mut g, "Hungry Ghoul");
+    let b = top(&mut g, "Hungry Ghoul");
+    let life = g.players[0].life;
+    act(&mut g, Action::Activate(forge, 0));
+    act(&mut g, Action::Activate(engine, 0));
+    act(&mut g, Action::Target(obj(forge)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(a).zone, Zone::Exile, "the copy");
+    assert_eq!(g.obj(b).zone, Zone::Exile, "the original");
+    assert_eq!(g.players[0].life, life - 1, "the copy's cost isn't paid again");
+}
+
+#[test]
+fn lithoform_engine_copies_an_instant_with_new_targets() {
+    let mut g = table();
+    let engine = put(&mut g, 0, "Lithoform Engine");
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    let ghoul = put(&mut g, 1, "Hungry Ghoul");
+    let life = g.players[1].life;
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    act(&mut g, Action::Activate(engine, 1));
+    act(&mut g, Action::Target(obj(bolt)));
+    resolve_all(&mut g, &[Action::Target(obj(ghoul))]);
+    assert_eq!(g.obj(ghoul).zone, Zone::Graveyard, "the copy's new target");
+    assert_eq!(g.players[1].life, life - 3, "the original");
+}
+
+#[test]
+fn lithoform_engine_copies_a_permanent_spell_as_a_token() {
+    let mut g = table();
+    let engine = put(&mut g, 0, "Lithoform Engine");
+    let ghoul = hand(&mut g, 0, "Hungry Ghoul");
+    act(&mut g, Action::Cast(ghoul));
+    act(&mut g, Action::Activate(engine, 2));
+    act(&mut g, Action::Target(obj(ghoul)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield);
+    let copies: Vec<ObjId> = g
+        .creatures(0)
+        .filter(|&c| c != ghoul && g.def_of(c).name == "Hungry Ghoul")
+        .collect();
+    assert_eq!(copies.len(), 1, "the copy");
+    assert!(g.is_token(copies[0]), "it became a token");
+}
+
+#[test]
+fn thespians_stage_becomes_a_copy_of_a_land_and_keeps_its_ability() {
+    let mut g = table();
+    let stage = put(&mut g, 0, "Thespian's Stage");
+    let beacon = put(&mut g, 1, "Command Beacon");
+    assert_eq!(g.def_of(stage).activated.len(), 2);
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(stage, 1)),
+        "the copy-only duplicate isn't the card's own"
+    );
+    act(&mut g, Action::Activate(stage, 0));
+    act(&mut g, Action::Target(obj(beacon)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.name_of(stage), "Command Beacon");
+    g.start_turn(5, 0);
+    pass_until(&mut g, |g| g.step == Step::Main1);
+    let legal = g.legal_actions();
+    assert!(
+        legal.contains(&Action::Activate(stage, 0)),
+        "Command Beacon's ability"
+    );
+    assert!(
+        legal.contains(&Action::Activate(stage, 1)),
+        "and its own copy ability"
+    );
+}

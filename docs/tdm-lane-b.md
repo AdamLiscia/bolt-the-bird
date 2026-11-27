@@ -824,3 +824,59 @@ Ajani, Strength of the Pride (`Effect::GainLifePerCreatureAndPlaneswalkerYouCont
 Their tokens 70 (Horse 5/5) and 72 (Ajani's Pridemate) are colorless in `token_defs`, though the
 cards say white: the merger's to fix in the token block.
 Built 2026-11-26: Insatiable Frugivore's `No` gets its own answer arm (it was offered but unhandled).
+
+### Merger pieces, 2026-11-26 (second list)
+
+- Granted ward: `CardDef::enchanted_ward` on an Aura or Equipment, read in `Game::ward_check` next to the
+  creature's own ward (Sheltered by Ghosts, scripted in pg_b).
+- Rankle, Master of Pranks: "choose any number" as one mode per set of the three modes (7, then the
+  empty set last) through `on_modal`; no new core.
+- Raphael, Tag Team Tough: `When::DealsCombatDamageToPlayerFirstTimeEachTurn` with
+  `Game::combat_damaged_player`, then the existing untap-attackers and additional-combat effects.
+- Fisher's Talent's token replacements: `CardDef::class_token_replacements` (level, from, to),
+  applied once each in order at the top of `create_token` (`Game::class_token_replacement`). Token
+  99: a blue 3/3 Shark (`Tokens::shark`); Fish (18) and Octopus (49) are now blue, as every card
+  that makes them says. The card itself (its reveal-a-land Fish) waits on d3.
+- There and Back Again, chapter I: `Effect::TargetCantBlockWhileYouControlSource` with
+  `Game::cant_block_while_controlled`, checked first in `can_block`. The Saga itself is d4's.
+- Gisa, Glorious Resurrector: `CardDef::opponents_creatures_die_exiled`, a replacement in `move_to`
+  (an opponent's creature going from the battlefield to a graveyard is exiled), recorded in
+  `Game::exiled_with` as (Gisa, its zcc, the card, its zcc in exile) for lane C's upkeep return.
+- The Immortal Sun: `CardDef::players_cant_activate_loyalty`, checked at the top of `loyalty_actions`;
+  its draw, discount and anthem were already in.
+- Archfiend of Despair: `CardDef::opponents_cant_gain_life`, checked in `gain_life`; its end step is
+  the existing `LoseLifeLostThisTurn`.
+
+### Script-only decks: Kaalia, Zhulodok, Malik (2026-11-26)
+
+Scripted: Brightclimb Pathway, Gisela, Blade of Goldnight, Sower of Discord, Eiganjo Castle, Bennie
+Bracks (pg_b). Pieces (lane B's replacement theme, plus one condition):
+- Gisela: `CardDef::prevents_half_damage_to_you_and_yours`; any source's damage to an opponent of
+  hers or their permanents is doubled after the other doublers, and damage to you or yours has half
+  prevented, rounded up (`Game::prevent_damage_replacements`).
+- `Effect::PreventNextDamageToTargetThisTurn` with `Game::damage_shields_on` (Eiganjo Castle).
+- Sower of Discord: `CardDef::damage_to_a_player_other_loses` (two players: both chosen), a
+  `When::Never` trigger put on the stack from `deal_damage` with the other player in a triggering
+  slot and the damage as the amount.
+- `Condition::YouCreatedTokenThisTurn` (Bennie Bracks), from `Game::token_created_turn`.
+- Malik, more: Inventors' Fair (`SearchFor::Artifact`), Smaug the Magnificent
+  (`Effect::SourceDamagePerSubtypeYouControl`), Mahadi (`Effect::CreateTokenPerCreatureDiedThisTurn`
+  with `Game::creatures_died`, tokens included). Small d3-style pieces nobody else was on.
+- Activation listing, {X} abilities (found by lane C): targets were checked once with X = 0 before
+  the per-X loop, so a `mana_value_is_x` target (The Mycosynth Gardens) was never offered. Now an
+  {X} ability's targets are checked for each X inside the loop ("X target creatures" keeps its count
+  check and the old up-front check). Test: core_merger `an_x_ability_targeting_mana_value_x_...`.
+
+### Borrowed from d1 while the desktop is offline (2026-11-26)
+
+- A paid mana ability that makes one mana: `paid_mana` with an empty second output (nothing is added
+  for it, in `paid_mana_plan`). The Mycosynth Gardens' "{1}, {T}: Add one mana of any color." (lane
+  C's script, finished and listed).
+- `Activated::sacrifice_artifact` ("Sacrifice an artifact", kept out of the mana payment): Goblin
+  Engineer.
+- Cavern of Souls: `CardDef::chosen_type_mana_uncounterable` with Secluded Courtyard's
+  `any_color_for_chosen_type`; its any-color mana pays only for creature spells of the chosen type,
+  and `note_haste_mana` makes such a spell uncounterable.
+- Cavern of Souls simplification: any of Cavern's mana that pays for a creature spell of the chosen
+  type makes it uncounterable, {C} included. Choosing the any-color ability for that same generic mana
+  is always possible, so the outcome is the same.
