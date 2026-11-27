@@ -1,5 +1,5 @@
 {
- "engine": "6cb92a6",
+ "engine": "56d2944",
  "note": "pending_on = lane branches on origin that already script the card (not merged yet)",
  "decks": [
   {
@@ -56,33 +56,11 @@
    "list": "31",
    "missing": [
     {
-     "card": "Allosaurus Shepherd",
-     "pending_on": []
-    },
-    {
-     "card": "Cradle Clearcutter",
-     "pending_on": []
-    },
-    {
-     "card": "Finale of Devastation",
-     "pending_on": []
-    },
-    {
-     "card": "Inkmoth Nexus",
-     "pending_on": [
-      "lane-d1"
-     ]
-    },
-    {
      "card": "Invasion of Ikoria // Zilortha, Apex of Ikoria",
      "pending_on": []
     },
     {
      "card": "Panglacial Wurm",
-     "pending_on": []
-    },
-    {
-     "card": "Song of Totentanz",
      "pending_on": []
     },
     {
@@ -107,10 +85,6 @@
      "pending_on": [
       "tarkir-c"
      ]
-    },
-    {
-     "card": "Veil of Summer",
-     "pending_on": []
     }
    ]
   },
@@ -130,12 +104,6 @@
     {
      "card": "Gisa's Favorite Shovel",
      "pending_on": []
-    },
-    {
-     "card": "Goldspan Dragon",
-     "pending_on": [
-      "lane-d2"
-     ]
     },
     {
      "card": "Ingenious Artillerist",
@@ -187,16 +155,6 @@
    "list": "31",
    "missing": [
     {
-     "card": "Dinosaur Egg",
-     "pending_on": [
-      "lane-d1",
-      "lane-d2",
-      "lane-d3",
-      "tarkir-b",
-      "tarkir-s"
-     ]
-    },
-    {
      "card": "Irregular Cohort",
      "pending_on": []
     },
@@ -211,12 +169,6 @@
    "commander": "Henrika Domnathi // Henrika, Infernal Seer",
    "list": "31",
    "missing": [
-    {
-     "card": "Crypt of Agadeem",
-     "pending_on": [
-      "lane-d1"
-     ]
-    },
     {
      "card": "Emperor of Bones",
      "pending_on": []
@@ -410,12 +362,6 @@
      "pending_on": []
     },
     {
-     "card": "Urza's Incubator",
-     "pending_on": [
-      "lane-d1"
-     ]
-    },
-    {
      "card": "Urza's Workshop",
      "pending_on": []
     },
@@ -443,14 +389,7 @@
    "owner": "RuricMo",
    "commander": "Korvold, Fae-Cursed King",
    "list": "31",
-   "missing": [
-    {
-     "card": "The Earth Crystal",
-     "pending_on": [
-      "tarkir-b"
-     ]
-    }
-   ]
+   "missing": []
   },
   {
    "owner": "Adam",
@@ -553,22 +492,13 @@
    "owner": "Spr3adsh33t",
    "commander": "Ghyrson Starn, Kelermorph",
    "list": "31",
-   "missing": [
-    {
-     "card": "Invasion of Arcavios // Invocation of the Founders",
-     "pending_on": []
-    }
-   ]
+   "missing": []
   },
   {
    "owner": "Time",
    "commander": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
    "list": "31",
    "missing": [
-    {
-     "card": "Invasion of Arcavios // Invocation of the Founders",
-     "pending_on": []
-    },
     {
      "card": "Jin-Gitaxias // The Great Synthesis",
      "pending_on": [
@@ -582,20 +512,8 @@
      ]
     },
     {
-     "card": "Nesting Grounds",
-     "pending_on": [
-      "lane-d1"
-     ]
-    },
-    {
      "card": "Pink Horror",
      "pending_on": []
-    },
-    {
-     "card": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
-     "pending_on": [
-      "lane-d1"
-     ]
     },
     {
      "card": "Rings of Brighthearth",
@@ -624,7 +542,9 @@
    "missing": [
     {
      "card": "Ichormoon Gauntlet",
-     "pending_on": []
+     "pending_on": [
+      "tarkir-b"
+     ]
     }
    ]
   },
@@ -634,78 +554,9 @@
    "list": "31",
    "missing": [
     {
-     "card": "Atarka, World Render",
-     "pending_on": [
-      "lane-d3"
-     ]
-    },
-    {
-     "card": "Broodcaller Scourge",
-     "pending_on": []
-    },
-    {
      "card": "Descendants' Path",
      "pending_on": [
       "tarkir-c"
-     ]
-    },
-    {
-     "card": "Dragon Broodmother",
-     "pending_on": []
-    },
-    {
-     "card": "Gluttonous Hellkite",
-     "pending_on": [
-      "lane-d1",
-      "tarkir-b"
-     ]
-    },
-    {
-     "card": "Goldspan Dragon",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Haven of the Spirit Dragon",
-     "pending_on": [
-      "lane-d1"
-     ]
-    },
-    {
-     "card": "Klauth, Unrivaled Ancient",
-     "pending_on": [
-      "lane-d1"
-     ]
-    },
-    {
-     "card": "Lathliss, Dragon Queen",
-     "pending_on": [
-      "lane-d3"
-     ]
-    },
-    {
-     "card": "Nogi, Draco-Zealot",
-     "pending_on": [
-      "lane-d1"
-     ]
-    },
-    {
-     "card": "Scourge of Valkas",
-     "pending_on": [
-      "lane-d3"
-     ]
-    },
-    {
-     "card": "Scourge of the Throne",
-     "pending_on": [
-      "lane-d3"
-     ]
-    },
-    {
-     "card": "Urza's Incubator",
-     "pending_on": [
-      "lane-d1"
      ]
     }
    ]
@@ -732,12 +583,7 @@
    "owner": "Spr3adsh33t",
    "commander": "Lonis, Cryptozoologist",
    "list": "31",
-   "missing": [
-    {
-     "card": "Urza, Lord High Artificer",
-     "pending_on": []
-    }
-   ]
+   "missing": []
   },
   {
    "owner": "DonSpider",
@@ -749,20 +595,7 @@
    "owner": "Spr3adsh33t",
    "commander": "Bello, Bard of the Brambles",
    "list": "idea",
-   "missing": [
-    {
-     "card": "Evercoat Ursine",
-     "pending_on": [
-      "lane-d1",
-      "lane-d2",
-      "lane-d3",
-      "tarkir-b",
-      "tarkir-c",
-      "tarkir-s",
-      "tarkir-t"
-     ]
-    }
-   ]
+   "missing": []
   },
   {
    "owner": "Adam",
@@ -777,10 +610,6 @@
    "missing": [
     {
      "card": "Hearthhull, the Worldseed",
-     "pending_on": []
-    },
-    {
-     "card": "Nahiri's Lithoforming",
      "pending_on": []
     },
     {
@@ -805,12 +634,6 @@
      "pending_on": []
     },
     {
-     "card": "Blossombind",
-     "pending_on": [
-      "tarkir-b"
-     ]
-    },
-    {
      "card": "Mirrorform",
      "pending_on": [
       "tarkir-c"
@@ -830,12 +653,6 @@
    "list": "idea",
    "missing": [
     {
-     "card": "Gravecrawler",
-     "pending_on": [
-      "lane-d1"
-     ]
-    },
-    {
      "card": "Hoarding Broodlord",
      "pending_on": []
     },
@@ -848,12 +665,6 @@
     {
      "card": "Saw in Half",
      "pending_on": []
-    },
-    {
-     "card": "Timeline Culler",
-     "pending_on": [
-      "lane-d1"
-     ]
     },
     {
      "card": "Wishclaw Talisman",
@@ -879,17 +690,7 @@
      "pending_on": []
     },
     {
-     "card": "Gemstone Caverns",
-     "pending_on": [
-      "lane-d1"
-     ]
-    },
-    {
      "card": "Underworld Breach",
-     "pending_on": []
-    },
-    {
-     "card": "Veil of Summer",
      "pending_on": []
     }
    ]
@@ -920,12 +721,6 @@
      "pending_on": []
     },
     {
-     "card": "Darksteel Mutation",
-     "pending_on": [
-      "lane-d3"
-     ]
-    },
-    {
      "card": "Gauntlets of Light",
      "pending_on": []
     },
@@ -934,26 +729,8 @@
      "pending_on": []
     },
     {
-     "card": "Gleaming Splendor",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Hushwood Verge",
-     "pending_on": [
-      "lane-d1"
-     ]
-    },
-    {
      "card": "Katilda, Dawnhart Martyr // Katilda's Rising Dawn",
      "pending_on": []
-    },
-    {
-     "card": "Kenrith's Transformation",
-     "pending_on": [
-      "lane-d3"
-     ]
     },
     {
      "card": "Linvala, Keeper of Silence",
@@ -966,12 +743,6 @@
     {
      "card": "Secret Arcade // Dusty Parlor",
      "pending_on": []
-    },
-    {
-     "card": "Soaring Lightbringer",
-     "pending_on": [
-      "lane-d2"
-     ]
     }
    ]
   },
@@ -981,28 +752,12 @@
    "list": "idea",
    "missing": [
     {
-     "card": "Ayara, First of Locthwain",
-     "pending_on": []
-    },
-    {
      "card": "Bartolomé del Presidio",
      "pending_on": []
     },
     {
      "card": "Bloodflow Connoisseur",
      "pending_on": []
-    },
-    {
-     "card": "Boromir, Warden of the Tower",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Cruel Celebrant",
-     "pending_on": [
-      "lane-d2"
-     ]
     },
     {
      "card": "Gandalf the White",
@@ -1019,26 +774,8 @@
      ]
     },
     {
-     "card": "Loran's Escape",
-     "pending_on": [
-      "lane-d3"
-     ]
-    },
-    {
-     "card": "Lotho, Corrupt Shirriff",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
      "card": "Nasty End",
      "pending_on": []
-    },
-    {
-     "card": "Nazgûl",
-     "pending_on": [
-      "lane-d2"
-     ]
     },
     {
      "card": "Ratadrabik of Urborg",
@@ -1057,24 +794,12 @@
      "pending_on": []
     },
     {
-     "card": "Tainted Field",
-     "pending_on": [
-      "lane-d1"
-     ]
-    },
-    {
      "card": "Teysa Karlov",
      "pending_on": []
     },
     {
      "card": "The Celestus",
      "pending_on": []
-    },
-    {
-     "card": "Urza's Ruinous Blast",
-     "pending_on": [
-      "tarkir-b"
-     ]
     },
     {
      "card": "War of the Last Alliance",
@@ -1104,18 +829,6 @@
      "pending_on": []
     },
     {
-     "card": "Cadira, Caller of the Small",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Charismatic Conqueror",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
      "card": "Farmer Cotton",
      "pending_on": []
     },
@@ -1138,21 +851,9 @@
      "pending_on": []
     },
     {
-     "card": "Knuckles the Echidna",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
      "card": "Ocelot Pride",
      "pending_on": [
       "tarkir-c"
-     ]
-    },
-    {
-     "card": "Rosie Cotton of South Lane",
-     "pending_on": [
-      "lane-d2"
      ]
     },
     {
@@ -1170,12 +871,6 @@
     {
      "card": "Tender Wildguide",
      "pending_on": []
-    },
-    {
-     "card": "The Battle of Bywater",
-     "pending_on": [
-      "lane-d3"
-     ]
     },
     {
      "card": "The Cabbage Merchant",
@@ -1217,10 +912,6 @@
      "pending_on": []
     },
     {
-     "card": "Finale of Devastation",
-     "pending_on": []
-    },
-    {
      "card": "Kitchen Finks",
      "pending_on": []
     },
@@ -1251,10 +942,6 @@
     {
      "card": "Sanctum Prelate",
      "pending_on": []
-    },
-    {
-     "card": "Veil of Summer",
-     "pending_on": []
     }
    ]
   },
@@ -1263,24 +950,6 @@
    "commander": "Toski, Bearer of Secrets",
    "list": "idea",
    "missing": [
-    {
-     "card": "Allosaurus Shepherd",
-     "pending_on": []
-    },
-    {
-     "card": "Ashaya, Soul of the Wild",
-     "pending_on": [
-      "lane-d3"
-     ]
-    },
-    {
-     "card": "Autumn's Veil",
-     "pending_on": []
-    },
-    {
-     "card": "Bala Ged Recovery // Bala Ged Sanctuary",
-     "pending_on": []
-    },
     {
      "card": "Carpet of Flowers",
      "pending_on": []
@@ -1294,10 +963,6 @@
      "pending_on": []
     },
     {
-     "card": "Finale of Devastation",
-     "pending_on": []
-    },
-    {
      "card": "Heritage Druid",
      "pending_on": []
     },
@@ -1307,14 +972,6 @@
     },
     {
      "card": "Manglehorn",
-     "pending_on": []
-    },
-    {
-     "card": "Regrowth",
-     "pending_on": []
-    },
-    {
-     "card": "Veil of Summer",
      "pending_on": []
     }
    ]
@@ -1345,20 +1002,6 @@
      "pending_on": []
     },
     {
-     "card": "Fandaniel, Telophoroi Ascian",
-     "pending_on": []
-    },
-    {
-     "card": "G'raha Tia, Scion Reborn",
-     "pending_on": []
-    },
-    {
-     "card": "Hermes, Overseer of Elpis",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
      "card": "Irenicus's Vile Duplication",
      "pending_on": []
     },
@@ -1375,23 +1018,7 @@
      ]
     },
     {
-     "card": "Kambal, Consul of Allocation",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
      "card": "Lyse Hext",
-     "pending_on": []
-    },
-    {
-     "card": "Mai, Scornful Striker",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Papalymo Totolymo",
      "pending_on": []
     },
     {
@@ -1403,12 +1030,6 @@
      "pending_on": []
     },
     {
-     "card": "Starscape Cleric",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
      "card": "The Destined Black Mage",
      "pending_on": []
     },
@@ -1417,28 +1038,8 @@
      "pending_on": []
     },
     {
-     "card": "Uncover the Moon-Letters",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Valeria Richards, Precocious",
-     "pending_on": []
-    },
-    {
-     "card": "Wizard's Staff",
-     "pending_on": []
-    },
-    {
      "card": "Y'shtola Rhul",
      "pending_on": []
-    },
-    {
-     "card": "Y'shtola, Night's Blessed",
-     "pending_on": [
-      "lane-d2"
-     ]
     }
    ]
   },
@@ -1452,26 +1053,12 @@
      "pending_on": []
     },
     {
-     "card": "Angelic Renewal",
-     "pending_on": []
-    },
-    {
      "card": "Enduring Renewal",
-     "pending_on": []
-    },
-    {
-     "card": "Fecundity",
      "pending_on": []
     },
     {
      "card": "Fiend Hunter",
      "pending_on": []
-    },
-    {
-     "card": "Garruk, Primal Hunter",
-     "pending_on": [
-      "lane-d3"
-     ]
     },
     {
      "card": "Gift of Immortality",
@@ -1490,28 +1077,12 @@
      "pending_on": []
     },
     {
-     "card": "Liege of the Hollows",
-     "pending_on": []
-    },
-    {
      "card": "Life's Legacy",
      "pending_on": []
     },
     {
-     "card": "Lifecrafter's Bestiary",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
      "card": "Melira, Sylvok Outcast",
      "pending_on": []
-    },
-    {
-     "card": "Nim Deathmantle",
-     "pending_on": [
-      "lane-d3"
-     ]
     },
     {
      "card": "Oblivion Ring",
@@ -1528,12 +1099,6 @@
     {
      "card": "Spawning Pit",
      "pending_on": []
-    },
-    {
-     "card": "Twilight Drover",
-     "pending_on": [
-      "lane-d2"
-     ]
     },
     {
      "card": "Woodfall Primus",
@@ -1563,12 +1128,6 @@
      "pending_on": []
     },
     {
-     "card": "Gaea's Cradle",
-     "pending_on": [
-      "lane-d1"
-     ]
-    },
-    {
      "card": "Giver of Runes",
      "pending_on": []
     },
@@ -1593,18 +1152,6 @@
      "pending_on": []
     },
     {
-     "card": "Luminarch Aspirant",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Oakhame Adversary",
-     "pending_on": [
-      "lane-d1"
-     ]
-    },
-    {
      "card": "Ranger-Captain of Eos",
      "pending_on": []
     },
@@ -1621,30 +1168,12 @@
      "pending_on": []
     },
     {
-     "card": "Tana, the Bloodsower",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Thalia, Guardian of Thraben",
-     "pending_on": [
-      "lane-d1"
-     ]
-    },
-    {
      "card": "Tithe Taker",
      "pending_on": []
     },
     {
      "card": "Torpor Orb",
      "pending_on": []
-    },
-    {
-     "card": "Tymna the Weaver",
-     "pending_on": [
-      "lane-d2"
-     ]
     },
     {
      "card": "Vindicate",
@@ -1669,10 +1198,6 @@
    "commander": "Alela, Artful Provocateur",
    "list": "idea",
    "missing": [
-    {
-     "card": "Archon of Cruelty",
-     "pending_on": []
-    },
     {
      "card": "Baleful Strix",
      "pending_on": []
@@ -1724,10 +1249,6 @@
      "pending_on": []
     },
     {
-     "card": "Medomai the Ageless",
-     "pending_on": []
-    },
-    {
      "card": "Norn's Annex",
      "pending_on": []
     },
@@ -1744,20 +1265,8 @@
      "pending_on": []
     },
     {
-     "card": "Reconnaissance Mission",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
      "card": "Render Silent",
      "pending_on": []
-    },
-    {
-     "card": "Scion of Oona",
-     "pending_on": [
-      "lane-d3"
-     ]
     },
     {
      "card": "Sharuum the Hegemon",
@@ -1772,26 +1281,8 @@
      "pending_on": []
     },
     {
-     "card": "Sword of Light and Shadow",
-     "pending_on": [
-      "lane-d3"
-     ]
-    },
-    {
-     "card": "Thopter Assembly",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
      "card": "Vindicate",
      "pending_on": []
-    },
-    {
-     "card": "Zur the Enchanter",
-     "pending_on": [
-      "lane-d3"
-     ]
     }
    ]
   },
@@ -1817,12 +1308,6 @@
      "pending_on": []
     },
     {
-     "card": "Crime Novelist",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
      "card": "Decadent Dragon // Expensive Taste",
      "pending_on": []
     },
@@ -1837,12 +1322,6 @@
     {
      "card": "Fevered Suspicion",
      "pending_on": []
-    },
-    {
-     "card": "Goldspan Dragon",
-     "pending_on": [
-      "lane-d2"
-     ]
     },
     {
      "card": "Grim Hireling",
@@ -1869,17 +1348,7 @@
      "pending_on": []
     },
     {
-     "card": "Laelia, the Blade Reforged",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
      "card": "Light Up the Stage",
-     "pending_on": []
-    },
-    {
-     "card": "Passionate Archaeologist",
      "pending_on": []
     },
     {
@@ -1887,27 +1356,11 @@
      "pending_on": []
     },
     {
-     "card": "Reckless Endeavor",
-     "pending_on": [
-      "lane-d3"
-     ]
-    },
-    {
      "card": "Reckless Impulse",
      "pending_on": []
     },
     {
-     "card": "Smaug, Wicked Worm",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
      "card": "Theater of Horrors",
-     "pending_on": []
-    },
-    {
-     "card": "Weftstalker Ardent",
      "pending_on": []
     },
     {
@@ -1950,12 +1403,6 @@
      "pending_on": []
     },
     {
-     "card": "Dakkon Blackblade",
-     "pending_on": [
-      "lane-d3"
-     ]
-    },
-    {
      "card": "Delay",
      "pending_on": []
     },
@@ -1964,20 +1411,8 @@
      "pending_on": []
     },
     {
-     "card": "Herald of Leshrac",
-     "pending_on": [
-      "lane-d1"
-     ]
-    },
-    {
      "card": "March of Swirling Mist",
      "pending_on": []
-    },
-    {
-     "card": "Nihil Spellbomb",
-     "pending_on": [
-      "lane-d2"
-     ]
     },
     {
      "card": "Notion Thief",
@@ -1997,10 +1432,6 @@
     },
     {
      "card": "Spellseeker",
-     "pending_on": []
-    },
-    {
-     "card": "Talion, the Kindly Lord",
      "pending_on": []
     },
     {
@@ -2069,12 +1500,6 @@
      "pending_on": []
     },
     {
-     "card": "Nihil Spellbomb",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
      "card": "Reprieve (not in the CMD pool)",
      "pending_on": []
     },
@@ -2089,12 +1514,6 @@
     {
      "card": "Torpor Orb",
      "pending_on": []
-    },
-    {
-     "card": "Tymna the Weaver",
-     "pending_on": [
-      "lane-d2"
-     ]
     },
     {
      "card": "Winter Orb (not in the CMD pool)",
@@ -2235,10 +1654,6 @@
      "pending_on": []
     },
     {
-     "card": "Bala Ged Recovery // Bala Ged Sanctuary",
-     "pending_on": []
-    },
-    {
      "card": "Bonehoard Dracosaur",
      "pending_on": []
     },
@@ -2272,10 +1687,6 @@
     },
     {
      "card": "Final Showdown (not in the CMD pool)",
-     "pending_on": []
-    },
-    {
-     "card": "Finale of Devastation",
      "pending_on": []
     },
     {
@@ -2565,12 +1976,6 @@
      "pending_on": []
     },
     {
-     "card": "Gemstone Caverns",
-     "pending_on": [
-      "lane-d1"
-     ]
-    },
-    {
      "card": "Hall of Heliod's Generosity",
      "pending_on": []
     },
@@ -2670,10 +2075,6 @@
    "list": "idea",
    "missing": [
     {
-     "card": "Archon of Cruelty",
-     "pending_on": []
-    },
-    {
      "card": "Belbe, Corrupted Observer (not in the CMD pool)",
      "pending_on": []
     },
@@ -2712,12 +2113,6 @@
     {
      "card": "God-Pharaoh's Statue (not in the CMD pool)",
      "pending_on": []
-    },
-    {
-     "card": "Herald of Leshrac",
-     "pending_on": [
-      "lane-d1"
-     ]
     },
     {
      "card": "In Garruk's Wake",
@@ -2917,12 +2312,6 @@
     {
      "card": "Infectious Inquiry",
      "pending_on": []
-    },
-    {
-     "card": "Inkmoth Nexus",
-     "pending_on": [
-      "lane-d1"
-     ]
     },
     {
      "card": "Ixhel, Scion of Atraxa",
@@ -3136,24 +2525,12 @@
      "pending_on": []
     },
     {
-     "card": "Reconnaissance Mission",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
      "card": "Reflections of Littjara",
      "pending_on": []
     },
     {
      "card": "Repulse (not in the CMD pool)",
      "pending_on": []
-    },
-    {
-     "card": "Scion of Oona",
-     "pending_on": [
-      "lane-d3"
-     ]
     },
     {
      "card": "Secluded Glen (not in the CMD pool)",
@@ -3601,12 +2978,6 @@
      "pending_on": []
     },
     {
-     "card": "Goldspan Dragon",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
      "card": "Grafdigger's Cage",
      "pending_on": []
     },
@@ -3884,12 +3255,6 @@
      "pending_on": []
     },
     {
-     "card": "Urza's Incubator",
-     "pending_on": [
-      "lane-d1"
-     ]
-    },
-    {
      "card": "Valkyrie Harbinger (not in the CMD pool)",
      "pending_on": []
     }
@@ -3915,12 +3280,6 @@
     {
      "card": "Crawling Sensation (not in the CMD pool)",
      "pending_on": []
-    },
-    {
-     "card": "Crypt of Agadeem",
-     "pending_on": [
-      "lane-d1"
-     ]
     },
     {
      "card": "Diviner of Mist (not in the CMD pool)",
@@ -3953,12 +3312,6 @@
     {
      "card": "Grapple with the Past (not in the CMD pool)",
      "pending_on": []
-    },
-    {
-     "card": "Gravecrawler",
-     "pending_on": [
-      "lane-d1"
-     ]
     },
     {
      "card": "Grisly Salvage (not in the CMD pool)",
@@ -4108,12 +3461,6 @@
      "pending_on": []
     },
     {
-     "card": "Crypt of Agadeem",
-     "pending_on": [
-      "lane-d1"
-     ]
-    },
-    {
      "card": "Diviner of Mist (not in the CMD pool)",
      "pending_on": []
     },
@@ -4144,12 +3491,6 @@
     {
      "card": "Grapple with the Past (not in the CMD pool)",
      "pending_on": []
-    },
-    {
-     "card": "Gravecrawler",
-     "pending_on": [
-      "lane-d1"
-     ]
     },
     {
      "card": "Grisly Salvage (not in the CMD pool)",
@@ -4415,12 +3756,6 @@
      "pending_on": []
     },
     {
-     "card": "Scourge of the Throne",
-     "pending_on": [
-      "lane-d3"
-     ]
-    },
-    {
      "card": "Shelob, Dread Weaver (not in the CMD pool)",
      "pending_on": []
     },
@@ -4679,12 +4014,6 @@
    "list": "idea",
    "missing": [
     {
-     "card": "Atarka, World Render",
-     "pending_on": [
-      "lane-d3"
-     ]
-    },
-    {
      "card": "Atsushi, the Blazing Sky (not in the CMD pool)",
      "pending_on": []
     },
@@ -4694,10 +4023,6 @@
     },
     {
      "card": "Bountiful Landscape (not in the CMD pool)",
-     "pending_on": []
-    },
-    {
-     "card": "Broodcaller Scourge",
      "pending_on": []
     },
     {
@@ -4749,30 +4074,12 @@
      "pending_on": []
     },
     {
-     "card": "Haven of the Spirit Dragon",
-     "pending_on": [
-      "lane-d1"
-     ]
-    },
-    {
      "card": "Keiga, the Tide Star (not in the CMD pool)",
      "pending_on": []
     },
     {
-     "card": "Lathliss, Dragon Queen",
-     "pending_on": [
-      "lane-d3"
-     ]
-    },
-    {
      "card": "Leyline Tyrant (not in the CMD pool)",
      "pending_on": []
-    },
-    {
-     "card": "Nogi, Draco-Zealot",
-     "pending_on": [
-      "lane-d1"
-     ]
     },
     {
      "card": "Opportunistic Dragon (not in the CMD pool)",
@@ -4801,12 +4108,6 @@
     {
      "card": "Sarkhan, Soul Aflame (not in the CMD pool)",
      "pending_on": []
-    },
-    {
-     "card": "Scourge of the Throne",
-     "pending_on": [
-      "lane-d3"
-     ]
     },
     {
      "card": "Selvala's Stampede",
@@ -5677,12 +4978,6 @@
      "pending_on": []
     },
     {
-     "card": "Tainted Field",
-     "pending_on": [
-      "lane-d1"
-     ]
-    },
-    {
      "card": "Temple of Silence",
      "pending_on": []
     },
@@ -6527,20 +5822,8 @@
      "pending_on": []
     },
     {
-     "card": "Luminarch Aspirant",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
      "card": "Midnight Clock (not in the CMD pool)",
      "pending_on": []
-    },
-    {
-     "card": "Nesting Grounds",
-     "pending_on": [
-      "lane-d1"
-     ]
     },
     {
      "card": "Oblivion Stone (not in the CMD pool)",
@@ -6907,7 +6190,8 @@
       "lane-d2",
       "lane-d3",
       "tarkir-b",
-      "tarkir-s"
+      "tarkir-s",
+      "tarkir-t"
      ]
     },
     {
@@ -7184,12 +6468,6 @@
     {
      "card": "Danitha Capashen, Paragon (not in the CMD pool)",
      "pending_on": []
-    },
-    {
-     "card": "Darksteel Mutation",
-     "pending_on": [
-      "lane-d3"
-     ]
     },
     {
      "card": "Daxos the Returned (not in the CMD pool)",
@@ -7802,12 +7080,6 @@
      "pending_on": []
     },
     {
-     "card": "Reconnaissance Mission",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
      "card": "Relic of Legends",
      "pending_on": []
     },
@@ -7908,10 +7180,6 @@
     },
     {
      "card": "Aquamoeba (not in the CMD pool)",
-     "pending_on": []
-    },
-    {
-     "card": "Archon of Cruelty",
      "pending_on": []
     },
     {
@@ -8021,12 +7289,6 @@
     {
      "card": "Hashaton, Scarab's Fist (not in the CMD pool)",
      "pending_on": []
-    },
-    {
-     "card": "Herald of Leshrac",
-     "pending_on": [
-      "lane-d1"
-     ]
     },
     {
      "card": "Highcliff Felidar (not in the CMD pool)",
