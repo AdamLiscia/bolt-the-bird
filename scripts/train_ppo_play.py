@@ -138,6 +138,9 @@ def parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser()
     ap.add_argument("--name", default="ppo1")
     ap.add_argument("--init", default="checkpoints/play/distill2/step_17353.pt")
+    ap.add_argument("--ref", default=None,
+                    help="the KL leash's reference net (default --init); kept in the run's state, so a resume without "
+                         "--ref keeps the one it had")  # fmt: skip
     ap.add_argument("--iters", type=int, default=1000)
     ap.add_argument("--games", type=int, default=320)
     ap.add_argument("--workers", type=int, default=4)
@@ -192,9 +195,6 @@ def main():
     if not play_runner.HANG_LOG:  # games whose engine call never returned: one JSON line each, for lane S
         play_runner.HANG_LOG = str(ROOT / "results" / f"hangs_{a.name}.jsonl")
     net = load_net(ROOT / a.init)
-    ref = load_net(ROOT / a.init).eval()
-    for p in ref.parameters():
-        p.requires_grad_(False)
     opt = torch.optim.AdamW(net.parameters(), lr=a.lr, weight_decay=0.0)
     state = {"iter": 0, "history": [], "evals": [], "past": [], "best": None}
     if a.resume and (ck / "state.pt").exists():
@@ -220,6 +220,12 @@ def main():
             state["past"] = [f for f in state["past"] if (ck / f).exists()]
             print(f"resumed from S3 at iteration {state['iter']}", flush=True)
     decks = deck_sets()[0]
+    # The KL leash's reference: --ref, else the one this run had (resume), else --init; loaded on today's pool
+    state["ref"] = a.ref or state.get("ref") or a.init
+    ref = load_net(ROOT / state["ref"]).eval()
+    for p in ref.parameters():
+        p.requires_grad_(False)
+    print(f"KL reference: {state['ref']}", flush=True)
 
     def stopping() -> bool:
         return job is not None and job.stop_requested

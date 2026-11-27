@@ -153,3 +153,41 @@ def test_an_errored_past_checkpoint_game_is_counted_in_the_row(trainer, monkeypa
     r = rows[1]
     assert r["errors"] == 1
     assert r["dropped_error"] == 3, "the net seat's 3 decisions before the panic"
+
+
+def test_ref_sets_the_kl_reference_and_a_resume_keeps_it(trainer, monkeypatch, capsys):
+    t, made, s3, tmp_path = trainer
+    torch.manual_seed(7)
+    other = PlayNet(n_cards=8, dim=16, layers=1, heads=2)
+    ref_path = tmp_path / "ref.pt"
+    torch.save({"config": other.config, "model": other.state_dict()}, ref_path)
+    loaded, refs_used = [], []
+    real_load, real_step = t.load_net, t.ppo_step
+
+    def load_net(path):
+        loaded.append(str(path))
+        return real_load(path)  # load_checkpoint on today's pool (BOLT_PLAY_SET), like --init
+
+    def ppo_step(net, ref_net, *args, **kw):
+        refs_used.append(ref_net)
+        return real_step(net, ref_net, *args, **kw)
+
+    monkeypatch.setattr(t, "load_net", load_net)
+    monkeypatch.setattr(t, "ppo_step", ppo_step)
+    argv = [*sys.argv[:7], "1", *sys.argv[8:], "--ref", str(ref_path)]
+    monkeypatch.setattr(sys, "argv", argv)
+    t.main()
+    assert str(ref_path) in loaded and f"KL reference: {ref_path}" in capsys.readouterr().out
+    assert refs_used and all(torch.equal(r.value.weight, other.value.weight) for r in refs_used)
+    # the same run resumed without --ref keeps it
+    loaded.clear()
+    monkeypatch.setattr(sys, "argv", [*sys.argv[:7], "1", *sys.argv[8:-2]])
+    t.main()
+    assert str(ref_path) in loaded and f"KL reference: {ref_path}" in capsys.readouterr().out
+
+
+def test_without_ref_the_kl_reference_is_init(trainer, monkeypatch, capsys):
+    t, made, s3, tmp_path = trainer
+    monkeypatch.setattr(sys, "argv", [*sys.argv[:7], "1", *sys.argv[8:]])
+    t.main()
+    assert f"KL reference: {tmp_path / 'init.pt'}" in capsys.readouterr().out
