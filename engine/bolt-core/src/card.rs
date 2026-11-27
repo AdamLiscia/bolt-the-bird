@@ -404,6 +404,9 @@ pub struct Activated {
     /// `Action::ActivateWith` per artifact or creature you control (the player's pick), kept out of
     /// the mana payment.
     pub sacrifice_artifact_or_creature: bool,
+    /// Activated from your hand, exiling this card as a cost (Elvish Spirit Guide: "Exile this
+    /// card from your hand: Add {G}.").
+    pub from_hand_exile: bool,
 }
 
 /// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,
@@ -1333,6 +1336,16 @@ pub struct ManaExt {
     /// "Creatures you control with power 2 or less can't be blocked by creatures with power 3 or
     /// greater." (Delney, Streetwise Lookout)
     pub small_creatures_evade_big: bool,
+    /// "{T}: Add one mana of any of the exiled card's colors." (Chrome Mox): its `mana` is limited
+    /// to the colors of its imprinted card (`Object::hideaway`); none: no mana.
+    pub mana_imprinted_colors: bool,
+    /// "If this artifact would enter, you may discard a land card instead. If you do, put this
+    /// artifact onto the battlefield. If you don't, put it into its owner's graveyard." (Mox
+    /// Diamond): asked as it enters, before anyone gets priority, as
+    /// `Decision::DiscardLandOrGraveyard`.
+    pub enters_discard_land_or_graveyard: bool,
+    /// "Enchanted creature can attack as though it had haste." (Instill Energy)
+    pub enchanted_attacks_as_haste: bool,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana

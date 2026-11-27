@@ -3807,3 +3807,118 @@ fn tifas_limit_break_pumps_doubles_or_triples_by_tier() {
         "7 lands: no Final Heaven"
     );
 }
+
+/// The mana in player 0's pool.
+fn pool_len(g: &Game) -> usize {
+    g.players[0].pool.len()
+}
+
+#[test]
+fn chrome_mox_imprints_a_card_and_taps_for_its_colors() {
+    let mut g = game(&[]);
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    let mox = hand(&mut g, 0, "Chrome Mox");
+    act(&mut g, Action::Cast(mox));
+    resolve_all(&mut g, &[Action::Pick(bolt)]);
+    assert_eq!(g.obj(bolt).zone, Zone::Exile, "imprinted");
+    let shock = hand(&mut g, 0, "Lightning Bolt");
+    assert!(
+        g.legal_actions().contains(&Action::Cast(shock)),
+        "red mana from the Mox"
+    );
+    let giant = hand(&mut g, 0, "Giant Growth");
+    assert!(!g.legal_actions().contains(&Action::Cast(giant)), "no green");
+
+    let mut g = game(&[]);
+    let mox = hand(&mut g, 0, "Chrome Mox");
+    hand(&mut g, 0, "Lightning Bolt");
+    act(&mut g, Action::Cast(mox));
+    resolve_all(&mut g, &[Action::No]);
+    let shock = hand(&mut g, 0, "Lightning Bolt");
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(shock)),
+        "nothing imprinted: no mana"
+    );
+}
+
+#[test]
+fn mox_diamond_stays_only_if_you_discard_a_land() {
+    let mut g = game(&[]);
+    let forest = hand(&mut g, 0, "Forest");
+    let mox = hand(&mut g, 0, "Mox Diamond");
+    act(&mut g, Action::Cast(mox));
+    resolve_all(&mut g, &[Action::Pick(forest)]);
+    assert_eq!(g.obj(forest).zone, Zone::Graveyard, "discarded");
+    assert_eq!(g.obj(mox).zone, Zone::Battlefield);
+
+    let mut g = game(&[]);
+    hand(&mut g, 0, "Forest");
+    let mox = hand(&mut g, 0, "Mox Diamond");
+    act(&mut g, Action::Cast(mox));
+    resolve_all(&mut g, &[Action::No]);
+    assert_eq!(g.obj(mox).zone, Zone::Graveyard, "no land discarded");
+}
+
+#[test]
+fn elvish_spirit_guide_exiles_from_hand_for_green() {
+    let mut g = game(&[]);
+    let esg = hand(&mut g, 0, "Elvish Spirit Guide");
+    act(&mut g, Action::Activate(esg, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(esg).zone, Zone::Exile);
+    assert_eq!(pool_len(&g), 1);
+    let giant = hand(&mut g, 0, "Giant Growth");
+    put(&mut g, 0, "Llanowar Elves");
+    assert!(
+        g.legal_actions().contains(&Action::Cast(giant)),
+        "{{G}} in the pool"
+    );
+}
+
+#[test]
+fn lions_eye_diamond_discards_the_hand_for_three_of_one_color() {
+    let mut g = game(&[]);
+    let led = put(&mut g, 0, "Lion's Eye Diamond");
+    let cards = g.players[0].hand.len();
+    assert!(cards > 0);
+    let yard = g.players[0].graveyard.len();
+    act(&mut g, Action::Activate(led, 0));
+    resolve_all(&mut g, &[Action::Mode(3)]);
+    assert!(g.players[0].hand.is_empty(), "hand discarded");
+    assert_eq!(
+        g.players[0].graveyard.len(),
+        yard + cards + 1,
+        "the hand and the Diamond"
+    );
+    assert_eq!(pool_len(&g), 3);
+    assert!(g.players[0]
+        .pool
+        .iter()
+        .all(|m| m.colors == [false, false, false, true, false]));
+}
+
+#[test]
+fn instill_energy_lets_a_new_creature_attack_and_untaps_it_once() {
+    let mut g = table();
+    let elf = put(&mut g, 0, "Llanowar Elves");
+    let ie = hand(&mut g, 0, "Instill Energy");
+    act(&mut g, Action::Cast(ie));
+    act(&mut g, Action::Target(Target::Object(elf)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ie).attached_to, Some((elf, g.obj(elf).zcc)));
+    g.objects[elf.0 as usize].tapped = true;
+    act(&mut g, Action::Activate(ie, 0));
+    resolve_all(&mut g, &[]);
+    assert!(!g.obj(elf).tapped, "untapped");
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(ie, 0)),
+        "once each turn"
+    );
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(
+        g.legal_actions().contains(&Action::Attack(elf)),
+        "attacks as though it had haste"
+    );
+}

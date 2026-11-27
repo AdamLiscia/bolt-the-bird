@@ -154,6 +154,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
             faces = (src or "").split(" // ")
             face = faces[value] if len(faces) == 2 else ("its front", "its back")[value]
             return f"Play it as {face}"
+        if d == "ManaOfOneColor" and 0 <= value < 5:
+            return f"Add {dec.get('n', 1)} {COLORS[value].lower()} mana"
         if d == "ProtectionColor" and 0 <= value < 5:
             return f"Protection from {COLORS[value].lower()}"
         if d == "ChooseCardType" and 0 <= value < 7:
@@ -205,6 +207,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"SacrificeSaddler": "Sacrifice (it saddled the Mount):"}.get(d)
         verb = verb or {"GitrogLandPick": "Put onto the battlefield tapped:"}.get(d)
         verb = verb or {"RemoveCountersFromOthers": "Remove a counter from"}.get(d)
+        verb = verb or {"ImprintNonartifactNonland": "Exile (imprint):", "DiscardLandOrGraveyard": "Discard (it stays):"}.get(d)  # fmt: skip
         if d == "IterationPick":
             verb = "Put into your hand:" if dec.get("to_hand") else "Put on the bottom:"
         verb = verb or {"ChooseRingBearer": "Choose as your Ring-bearer:"}.get(d)
@@ -248,6 +251,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         "MirrormindCopies": ("Make copies of the equipped creature instead", "Make the tokens"),
         "SacrificeSaddler": ("Sacrifice a creature that saddled it", "Don't sacrifice"),
         "RemoveCountersFromOthers": ("Remove a counter", "Don't activate it"),
+        "ImprintNonartifactNonland": ("Exile a card", "Don't exile a card"),
+        "DiscardLandOrGraveyard": ("Discard a land", f"Don't discard ({subject or 'it'} goes to the graveyard)"),
         "SylvanPayOrTop": (f"Pay 4 life to keep {subject or 'it'}", f"Put {subject or 'it'} on top of your library"),
         "ExpropriateVote": ("Vote time (an extra turn)", "Vote money (a permanent)"),
         "PayUpkeep": (f"Pay the upkeep {dec.get('cost', '')}", f"Don't pay (sacrifice {subject or src})"),

@@ -1869,6 +1869,60 @@ pub fn script(name: &str) -> Option<Script> {
                 ];
             },
         ),
+        // ---- idea decks: Kenrith ----
+        "Chrome Mox" => s(
+            &[
+                "Imprint — When this artifact enters, you may exile a nonartifact, nonland card from your hand.",
+                "{T}: Add one mana of any of the exiled card's colors.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::ImprintNonartifactNonlandFromHand]);
+                d.mana = Some(ManaSource::of(&Color::ALL));
+                d.mana_ext.mana_imprinted_colors = true;
+            },
+        ),
+        "Mox Diamond" => s(
+            &[
+                "If this artifact would enter, you may discard a land card instead. If you do, put this artifact onto the battlefield. If you don't, put it into its owner's graveyard.",
+                "{T}: Add one mana of any color.",
+            ],
+            |d, _| {
+                // Simplification: it's on the battlefield while the choice is asked (before anyone
+                // gets priority), so "whenever an artifact enters" abilities see it.
+                d.mana_ext.enters_discard_land_or_graveyard = true;
+                d.mana = Some(ManaSource::of(&Color::ALL));
+            },
+        ),
+        "Elvish Spirit Guide" => s(&["Exile this card from your hand: Add {G}."], |d, _| {
+            // On the stack, like Phyrexian Altar.
+            let n = activated(d, "", false, vec![], vec![Effect::AddMana { color: Color::Green, n: 1 }]);
+            d.activated[n].from_hand_exile = true;
+        }),
+        "Lion's Eye Diamond" => s(
+            &["Discard your hand, Sacrifice this artifact: Add three mana of any one color. Activate only as an instant."],
+            |d, _| {
+                // On the stack, like Phyrexian Altar.
+                let n = activated(d, "", false, vec![], vec![Effect::AddManaOneColor(3)]);
+                d.activated[n].sacrifice_self = true;
+                d.activated[n].discard_hand = true;
+            },
+        ),
+        // ---- Atla Palani ----
+        "Instill Energy" => s(
+            &[
+                "Enchant creature",
+                "Enchanted creature can attack as though it had haste.",
+                "{0}: Untap enchanted creature. Activate only during your turn and only once each turn.",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                d.mana_ext.enchanted_attacks_as_haste = true;
+                let n = activated(d, "{0}", false, vec![], vec![Effect::UntapAttached]);
+                d.activated[n].your_turn_only = true;
+                d.activated[n].once_each_turn = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -2097,4 +2151,9 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Invigorate",
     "Pyrrhic Strike",
     "Tifa's Limit Break",
+    "Chrome Mox",
+    "Mox Diamond",
+    "Elvish Spirit Guide",
+    "Lion's Eye Diamond",
+    "Instill Energy",
 ];

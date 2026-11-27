@@ -2755,6 +2755,11 @@ pub enum Effect {
     /// "Triple the power and toughness of" the creature in `slot` until end of turn (Tifa's Limit
     /// Break): +2X/+2Y.
     TriplePowerToughness(u8),
+    /// Imprint (Chrome Mox): you may exile a nonartifact, nonland card from your hand, as
+    /// `Decision::ImprintNonartifactNonland`; it's the source's `hideaway`.
+    ImprintNonartifactNonlandFromHand,
+    /// "Add N mana of any one color." (Lion's Eye Diamond: 3), as `Decision::ManaOfOneColor`.
+    AddManaOneColor(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

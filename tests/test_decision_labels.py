@@ -296,3 +296,14 @@ def test_tekuthal_picks_each_counter_to_remove():
     dec = {"kind": "RemoveCountersFromOthers", "left": 3}
     assert sv._decision_label(dec, "Pick", 0, "Sol Ring") == "Remove a counter from Sol Ring"
     assert label(dec, "No", 0) == "Don't activate it"
+
+
+def test_the_moxen_and_lions_eye_diamond_ask_their_choices():
+    imprint = {"kind": "ImprintNonartifactNonland", "source": [3, 1]}
+    assert sv._decision_label(imprint, "Pick", 0, "Forest") == "Exile (imprint): Forest"
+    assert label(imprint, "No", 0) == "Don't exile a card"
+    mox = {"kind": "DiscardLandOrGraveyard", "card": [3, 1]}
+    assert sv._decision_label(mox, "Pick", 0, "Forest") == "Discard (it stays): Forest"
+    assert label(mox, "No", 0) == "Don't discard (Thriving Heath goes to the graveyard)"
+    led = {"kind": "ManaOfOneColor", "source": [3, 1], "n": 3}
+    assert label(led, "Mode", 3) == "Add 3 red mana"

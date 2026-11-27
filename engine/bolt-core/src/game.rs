@@ -1439,6 +1439,13 @@ pub enum Decision {
     /// Tekuthal: `Pick` another artifact, creature or planeswalker you control to remove a counter
     /// from (`left` including this one) for the cost of `source`'s ability `n`, or `No` to cancel.
     RemoveCountersFromOthers { source: ObjId, n: usize, left: u8 },
+    /// Chrome Mox: `Pick` a nonartifact, nonland card in your hand to exile (imprint), or `No`.
+    ImprintNonartifactNonland { source: ObjId },
+    /// Mox Diamond entering: `Pick` a land card in your hand to discard (it stays), or `No` (it
+    /// goes to its owner's graveyard instead).
+    DiscardLandOrGraveyard { card: ObjId },
+    /// Lion's Eye Diamond: `Mode` 0-4 (WUBRG), the color of the `n` mana it adds.
+    ManaOfOneColor { source: ObjId, n: u8 },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -5638,6 +5645,9 @@ impl Game {
             if def.shock_land && !untapped {
                 self.obj_mut(id).shock_pending = true;
             }
+            if def.mana_ext.enters_discard_land_or_graveyard {
+                self.obj_mut(id).shock_pending = true; // Mox Diamond: asked like a shock land
+            }
             if def.zones.enters_as_land_copy_tapped {
                 self.obj_mut(id).land_copy_pending = true; // Vesuva
             }
@@ -9155,7 +9165,7 @@ impl Game {
                 {
                     continue;
                 }
-                if (a.from_hand_discard || a.plot || a.foretell || a.forecast) != in_hand
+                if (a.from_hand_discard || a.plot || a.foretell || a.forecast || a.from_hand_exile) != in_hand
                     || (!in_hand && a.from_graveyard != in_graveyard)
                     || (!in_graveyard && self.lost_abilities(id))
                     || self.activation_stopped(id)
@@ -9914,6 +9924,9 @@ impl Game {
         } else if a.exile_self && self.obj(id).zone == Zone::Battlefield {
             self.move_to(id, Zone::Exile); // "Exile this creature"
         }
+        if a.from_hand_exile && self.obj(id).zone == Zone::Hand {
+            self.move_to(id, Zone::Exile); // Elvish Spirit Guide: "Exile this card from your hand"
+        }
         if a.from_hand_discard && self.obj(id).zone == Zone::Hand {
             self.move_to(id, Zone::Graveyard); // cycling: "Discard this card"
             self.fire_source(id, When::YouCycleThis);
@@ -10219,6 +10232,18 @@ impl Game {
                     });
                 }
                 let d = self.def_of(id);
+                if d.mana_ext.mana_imprinted_colors {
+                    // Chrome Mox: the imprinted card's colors.
+                    let card = self
+                        .obj(id)
+                        .hideaway
+                        .filter(|&c| self.obj(c).zone == Zone::Exile)?;
+                    let colors: Vec<crate::Color> = crate::Color::ALL
+                        .into_iter()
+                        .filter(|&c| self.def_of(card).colors[c as usize])
+                        .collect();
+                    return (!colors.is_empty()).then(|| (id, ManaSource::of(&colors)));
+                }
                 let need = d.mana_only_with_lands as usize;
                 if need > 0 && self.permanents(p).filter(|&x| self.types_of(x).land).count() < need {
                     return None; // Temple of the False God
@@ -10428,7 +10453,7 @@ impl Game {
             let k = self.keywords(id);
             !o.tapped
                 && (!k.has(Keywords::DEFENDER) || o.defender_ignored_turn == self.turn)
-                && (o.since_turn < self.turn || k.has(Keywords::HASTE))
+                && (o.since_turn < self.turn || k.has(Keywords::HASTE) || self.attacks_as_though_haste(id))
                 && !declared.contains(&id)
                 // Master of Cruelties: "This creature can only attack alone."
                 && (!self.def_of(id).mana_ext.attacks_only_alone || declared.is_empty())
@@ -10803,6 +10828,16 @@ impl Game {
 
     /// The d1 theme's other block restrictions (see [`crate::card::ManaExt`]): shadow, attacking
     /// alone (Yuan-Ti Malison), only legendary blockers (Midnight Pathlighter).
+    /// Instill Energy: "Enchanted creature can attack as though it had haste."
+    fn attacks_as_though_haste(&self, id: ObjId) -> bool {
+        let zcc = self.obj(id).zcc;
+        self.battlefield.iter().any(|&a| {
+            self.def_of(a).mana_ext.enchanted_attacks_as_haste
+                && !self.lost_abilities(a)
+                && self.obj(a).attached_to == Some((id, zcc))
+        })
+    }
+
     fn mana_ext_block_ok(&self, blocker: ObjId, attacker: ObjId) -> bool {
         // The Ring's first ability (d4): the Ring-bearer can't be blocked by greater power.
         if self.ring_evasion_forbids_block(blocker, attacker) {
@@ -13748,6 +13783,30 @@ impl Game {
                 v.push(Action::No);
                 v
             }
+            Decision::ImprintNonartifactNonland { .. } => {
+                let mut v: Vec<Action> = hand
+                    .iter()
+                    .copied()
+                    .filter(|&x| {
+                        let t = self.def_of(x).types;
+                        !t.artifact && !t.land
+                    })
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::DiscardLandOrGraveyard { .. } => {
+                let mut v: Vec<Action> = hand
+                    .iter()
+                    .copied()
+                    .filter(|&x| self.def_of(x).types.land)
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::ManaOfOneColor { .. } => (0..5).map(Action::Mode).collect(),
             Decision::ImprintInstant { .. } => {
                 let mut v: Vec<Action> = hand
                     .iter()
@@ -14653,6 +14712,15 @@ impl Game {
             }
             return;
         }
+        if let Decision::DiscardLandOrGraveyard { card } = d {
+            match a {
+                Action::Pick(land) => self.move_to(land, Zone::Graveyard), // discarded; it stays
+                _ => self.move_to(card, Zone::Graveyard),
+            }
+            let then = self.shock_then;
+            self.give_priority(then);
+            return;
+        }
         if let Decision::ShockLand { card } = d {
             if a == Action::Yes {
                 let life = self.def_of(card).zones.shock_life;
@@ -15446,6 +15514,18 @@ impl Game {
             (Decision::ScrollRackExile { exiled }, Action::No) => self.scroll_rack_finish(p, exiled),
             (Decision::LandFromHand, Action::Pick(c)) => self.move_to(c, Zone::Battlefield),
             (Decision::LandFromHand, Action::No) => {}
+            (Decision::ImprintNonartifactNonland { source }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Exile);
+                self.obj_mut(source).hideaway = Some(c); // the imprinted card
+            }
+            (Decision::ImprintNonartifactNonland { .. }, Action::No) => {}
+            (Decision::ManaOfOneColor { n, .. }, Action::Mode(i)) => {
+                for _ in 0..n {
+                    self.players[p]
+                        .pool
+                        .push(ManaSource::of(&[crate::Color::ALL[i as usize]]));
+                }
+            }
             (Decision::ImprintInstant { source }, Action::Pick(c)) => {
                 self.move_to(c, Zone::Exile);
                 self.obj_mut(source).hideaway = Some(c); // the linked exiled card
@@ -24554,6 +24634,20 @@ impl Game {
                     });
                 }
             }
+            Effect::ImprintNonartifactNonlandFromHand => {
+                let p = item.controller;
+                self.obj_mut(src).hideaway = None; // a new object: nothing imprinted yet
+                let any = self.players[p].hand.iter().any(|&x| {
+                    let t = self.def_of(x).types;
+                    !t.artifact && !t.land
+                });
+                if any && self.obj(src).zone == Zone::Battlefield {
+                    self.ask(p, Decision::ImprintNonartifactNonland { source: src });
+                }
+            }
+            Effect::AddManaOneColor(n) => {
+                self.ask(item.controller, Decision::ManaOfOneColor { source: src, n });
+            }
             Effect::ConniveDiedThisTurn(slot) => {
                 if let Some(id) = Game::slot_object(item, legal, slot) {
                     let (t, n) = self.creatures_died;
@@ -25396,6 +25490,10 @@ impl Game {
                 self.obj_mut(c).shock_pending = false;
                 self.shock_then = p;
                 let owner = self.obj(c).controller;
+                if self.def_of(c).mana_ext.enters_discard_land_or_graveyard {
+                    self.ask(owner, Decision::DiscardLandOrGraveyard { card: c }); // Mox Diamond
+                    return;
+                }
                 self.ask(owner, Decision::ShockLand { card: c });
                 return;
             }
