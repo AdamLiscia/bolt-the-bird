@@ -598,6 +598,14 @@ pub fn token_defs() -> Vec<CardDef> {
             t.colors = [false, false, false, false, true];
             t
         },
+        // 136, lane d3: Song of Totentanz's "1/1 black Rat creature token with 'This token can't
+        // block.'"
+        {
+            let mut t = token("Rat", "Rat", 1, 1, Keywords::NONE);
+            t.colors = [false, false, true, false, false];
+            t.cant_block = true;
+            t
+        },
     ]
 }
 
@@ -877,6 +885,8 @@ pub struct Tokens {
     pub placeholder_134: usize,
     /// 135, lane d3: Garruk, Primal Hunter's 6/6 green Wurm.
     pub wurm_6: usize,
+    /// 136, lane d3: Song of Totentanz's 1/1 black Rat with "This token can't block."
+    pub rat_cant_block: usize,
 }
 
 impl Tokens {
@@ -1018,6 +1028,7 @@ impl Tokens {
             placeholder_133: base + 133,
             placeholder_134: base + 134,
             wurm_6: base + 135,
+            rat_cant_block: base + 136,
         }
     }
 }

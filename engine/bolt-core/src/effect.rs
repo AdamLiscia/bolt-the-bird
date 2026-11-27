@@ -3063,6 +3063,38 @@ pub enum Effect {
     /// hand onto the battlefield" (Broodcaller Scourge): the limit is the item's `amount`, and
     /// nothing happens when it's 0 or less. As `Decision::PermanentFromHandMvAtMost`.
     MayPutPermanentFromHandMvAtMostAmount,
+    /// Draw `n` cards if an opponent has cast a spell of one of `colors` this turn (Veil of Summer:
+    /// blue or black), from `Game::color_cast_turn`.
+    DrawIfOpponentCastColorThisTurn {
+        colors: [bool; 5],
+        n: u8,
+    },
+    /// "Spells you control can't be countered this turn." (Veil of Summer): spells already on the
+    /// stack too (`Game::spells_uncounterable_turn`).
+    YourSpellsUncounterableEot,
+    /// "You and permanents you control gain hexproof from [colors] until end of turn." (Veil of
+    /// Summer): the permanents are the ones you control as it resolves (CR 611.2c).
+    YouAndYourPermanentsHexproofFromColorsEot([bool; 5]),
+    /// "Until end of turn, each [sub] creature you control has base power and toughness P/T and
+    /// becomes [subtypes] in addition to its other creature types." (Allosaurus Shepherd: Elves,
+    /// 5/5 Dinosaurs)
+    YourSubtypeBecomeBaseEot {
+        sub: &'static str,
+        power: i32,
+        toughness: i32,
+        subtypes: &'static [&'static str],
+    },
+    /// "Search your library and/or graveyard for a creature card with mana value X or less and put
+    /// it onto the battlefield. If you search your library this way, shuffle." (Finale of
+    /// Devastation): one `Decision::LookPick` over both zones, after the library is shuffled.
+    CreatureFromLibraryOrGraveyardMvAtMostX,
+    /// Creatures `who` controls get +X/+X until end of turn, X the spell's X (Finale of Devastation).
+    PumpAllX {
+        who: Who,
+    },
+    /// "Shuffle your library, then exile the top card. Until end of turn, you may play that card
+    /// without paying its mana cost." (Urza, Lord High Artificer)
+    ShuffleExileTopPlayFreeThisTurn,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

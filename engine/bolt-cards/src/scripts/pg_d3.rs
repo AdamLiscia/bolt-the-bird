@@ -2491,6 +2491,55 @@ pub fn script(name: &str) -> Option<Script> {
             let it = Filter { triggering: true, ..CREATURE };
             on(d, When::SubtypeYouControlAttacks("Dragon"), vec![it], vec![Effect::Grant { slot: 0, keywords: Keywords::DOUBLE_STRIKE }]);
         }),
+        // ---- d3 batch 45: Najeela, Raggadragga ----
+        "Veil of Summer" => s(
+            &["Draw a card if an opponent has cast a blue or black spell this turn. Spells you control can't be countered this turn. You and permanents you control gain hexproof from blue and from black until end of turn."],
+            |d, _| {
+                let ub = [false, true, true, false, false];
+                let effects = vec![
+                    Effect::DrawIfOpponentCastColorThisTurn { colors: ub, n: 1 },
+                    Effect::YourSpellsUncounterableEot,
+                    Effect::YouAndYourPermanentsHexproofFromColorsEot(ub),
+                ];
+                spell(d, vec![], effects);
+            },
+        ),
+        "Allosaurus Shepherd" => s(
+            &[
+                "This spell can't be countered.",
+                "Green spells you control can't be countered.",
+                "{4}{G}{G}: Until end of turn, each Elf creature you control has base power and toughness 5/5 and becomes a Dinosaur in addition to its other creature types.",
+            ],
+            |d, _| {
+                d.uncounterable = true;
+                d.your_color_spells_uncounterable = Some(4);
+                let dino = Effect::YourSubtypeBecomeBaseEot { sub: "Elf", power: 5, toughness: 5, subtypes: &["Dinosaur"] };
+                activated(d, "{4}{G}{G}", false, vec![], vec![dino]);
+            },
+        ),
+        "Finale of Devastation" => s(
+            &["Search your library and/or graveyard for a creature card with mana value X or less and put it onto the battlefield. If you search your library this way, shuffle. If X is 10 or more, creatures you control get +X/+X and gain haste until end of turn."],
+            |d, _| {
+                let mut a = Ability::new(
+                    vec![],
+                    vec![
+                        Effect::CreatureFromLibraryOrGraveyardMvAtMostX,
+                        Effect::StopUnlessCondition,
+                        Effect::PumpAllX { who: Who::You },
+                        Effect::GrantAll { who: Who::You, keywords: Keywords::HASTE },
+                    ],
+                );
+                a.condition = Some(Condition::XAtLeast(10));
+                d.spell = Some(a);
+            },
+        ),
+        "Song of Totentanz" => s(
+            &["Create X 1/1 black Rat creature tokens with \"This token can't block.\" Creatures you control gain haste until end of turn."],
+            |d, t| {
+                let haste = Effect::GrantAll { who: Who::You, keywords: Keywords::HASTE };
+                spell(d, vec![], vec![Effect::CreateTokensX { def: t.rat_cant_block }, haste]);
+            },
+        ),
         "Lathliss, Dragon Queen" => s(
             &[
                 "Whenever another nontoken Dragon you control enters, create a 5/5 red Dragon creature token with flying.",
@@ -2849,4 +2898,8 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Atarka, World Render",
     "Lathliss, Dragon Queen",
     "Scourge of the Throne",
+    "Veil of Summer",
+    "Allosaurus Shepherd",
+    "Finale of Devastation",
+    "Song of Totentanz",
 ];

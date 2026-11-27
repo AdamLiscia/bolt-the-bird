@@ -5407,3 +5407,233 @@ fn broodcaller_may_decline_and_asks_nothing_without_damage() {
     assert!(!matches!(g.pending, Pending::Decide(_)));
     assert_eq!(g.obj(elves).zone, Zone::Hand);
 }
+
+// ---- d3 batch 45: Veil of Summer, Allosaurus Shepherd, Finale of Devastation, Song of Totentanz,
+// Urza's {5} ----
+
+/// Player 0 casts `first` (with Veil of Summer resolved first if `veil`) and passes; player 1 then
+/// casts `answer`. Returns the game with player 1 choosing a target.
+fn veil_then_opponent_answers(veil: bool, first: &str, answer: &str) -> (Game, ObjId) {
+    let mut g = table();
+    if veil {
+        let v = hand(&mut g, 0, "Veil of Summer");
+        play(&mut g, v, false, &[], &[]);
+    }
+    let f = hand(&mut g, 0, first);
+    act(&mut g, Action::Cast(f));
+    while g.pending != Pending::Priority(1) {
+        act(&mut g, Action::PassPriority);
+    }
+    let a = hand(&mut g, 1, answer);
+    act(&mut g, Action::Cast(a));
+    (g, f)
+}
+
+#[test]
+fn veil_of_summer_gives_you_and_yours_hexproof_from_blue_and_black() {
+    for veil in [false, true] {
+        let mut g = table();
+        let lions = put(&mut g, 0, "Savannah Lions");
+        if veil {
+            let v = hand(&mut g, 0, "Veil of Summer");
+            play(&mut g, v, false, &[], &[]);
+        }
+        let div = hand(&mut g, 0, "Night's Whisper");
+        act(&mut g, Action::Cast(div));
+        while g.pending != Pending::Priority(1) {
+            act(&mut g, Action::PassPriority);
+        }
+        let db = hand(&mut g, 1, "Doom Blade");
+        // Doom Blade is black: with Veil it has no legal target, so it can't be cast.
+        assert_eq!(
+            g.legal_actions().contains(&Action::Cast(db)),
+            !veil,
+            "veil: {veil}"
+        );
+        if !veil {
+            act(&mut g, Action::Cast(db));
+            assert!(can_target(&g, lions));
+        }
+    }
+    let mut g = table();
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let v = hand(&mut g, 0, "Veil of Summer");
+    play(&mut g, v, false, &[], &[]);
+    let div = hand(&mut g, 0, "Night's Whisper");
+    act(&mut g, Action::Cast(div));
+    while g.pending != Pending::Priority(1) {
+        act(&mut g, Action::PassPriority);
+    }
+    let bolt = hand(&mut g, 1, "Lightning Bolt");
+    act(&mut g, Action::Cast(bolt));
+    assert!(can_target(&g, lions), "a red spell still can");
+}
+
+#[test]
+fn veil_of_summer_spells_you_control_cant_be_countered() {
+    for veil in [false, true] {
+        let (mut g, div) = veil_then_opponent_answers(veil, "Night's Whisper", "Counterspell");
+        let before = g.players[0].hand.len();
+        act(&mut g, Action::Target(obj(div)));
+        resolve_all(&mut g, &[]);
+        let drawn = g.players[0].hand.len() - before;
+        assert_eq!(drawn, if veil { 2 } else { 0 }, "veil: {veil}");
+    }
+}
+
+#[test]
+fn veil_of_summer_draws_only_if_an_opponent_cast_blue_or_black() {
+    for (color, draws) in [(None, 0), (Some(0), 0), (Some(1), 1), (Some(2), 1)] {
+        let mut g = table();
+        if let Some(k) = color {
+            g.color_cast_turn[1][k] = g.turn;
+        }
+        let v = hand(&mut g, 0, "Veil of Summer");
+        let before = g.players[0].hand.len();
+        play(&mut g, v, false, &[], &[]);
+        assert_eq!(g.players[0].hand.len() + 1 - before, draws, "color {color:?}");
+    }
+    // The cast path records each spell's colors.
+    let mut g = table();
+    let div = hand(&mut g, 0, "Night's Whisper");
+    play(&mut g, div, false, &[], &[]);
+    assert_eq!(g.color_cast_turn[0][2], g.turn);
+    assert_eq!(g.color_cast_turn[0][1], 0);
+}
+
+#[test]
+fn allosaurus_shepherd_makes_elves_5_5_dinosaurs_until_end_of_turn() {
+    let mut g = table();
+    let shep = put(&mut g, 0, "Allosaurus Shepherd");
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    act(&mut g, Action::Activate(shep, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.power(elves), g.toughness(elves)), (5, 5));
+    assert_eq!((g.power(shep), g.toughness(shep)), (5, 5), "it's an Elf too");
+    assert!(g.has_subtype(elves, "Dinosaur") && g.has_subtype(elves, "Elf"));
+    assert_eq!((g.power(lions), g.toughness(lions)), (2, 1), "not an Elf");
+    g.start_turn(5, 0);
+    assert_eq!((g.power(elves), g.toughness(elves)), (1, 1));
+    assert!(!g.has_subtype(elves, "Dinosaur"));
+}
+
+#[test]
+fn allosaurus_shepherd_green_spells_cant_be_countered() {
+    let mut g = table();
+    put(&mut g, 0, "Allosaurus Shepherd");
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    act(&mut g, Action::Cast(elves));
+    while g.pending != Pending::Priority(1) {
+        act(&mut g, Action::PassPriority);
+    }
+    let cs = hand(&mut g, 1, "Counterspell");
+    act(&mut g, Action::Cast(cs));
+    act(&mut g, Action::Target(obj(elves)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+}
+
+fn finale(x: u8) -> (Game, [ObjId; 4]) {
+    let mut g = table();
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Library);
+    let kodama = g.add_card(0, cid("Kodama of the East Tree"), Zone::Library);
+    let pippin = g.add_card(0, cid("Pippin, Guard of the Citadel"), Zone::Graveyard);
+    let f = hand(&mut g, 0, "Finale of Devastation");
+    act(&mut g, Action::CastX(f, x));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    (g, [lions, kodama, pippin, f])
+}
+
+#[test]
+fn finale_of_devastation_searches_library_and_graveyard() {
+    let (mut g, [lions, kodama, pippin, _]) = finale(2);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(lions)) && legal.contains(&Action::Pick(pippin)));
+    assert!(!legal.contains(&Action::Pick(kodama)), "mana value 5");
+    resolve_all(&mut g, &[Action::Pick(pippin)]);
+    assert_eq!(g.obj(pippin).zone, Zone::Battlefield);
+    assert_eq!(g.obj(lions).zone, Zone::Library);
+    assert!(!g.keywords(pippin).has(Keywords::HASTE), "X is under 10");
+}
+
+#[test]
+fn finale_of_devastation_with_x_10_pumps_and_hastes() {
+    let (mut g, [lions, ..]) = finale(10);
+    resolve_all(&mut g, &[Action::Pick(lions)]);
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield);
+    assert_eq!((g.power(lions), g.toughness(lions)), (12, 11));
+    assert!(g.keywords(lions).has(Keywords::HASTE));
+}
+
+#[test]
+fn song_of_totentanz_makes_x_rats_that_cant_block_and_hastes() {
+    let mut g = table();
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let song = hand(&mut g, 0, "Song of Totentanz");
+    act(&mut g, Action::CastX(song, 3));
+    resolve_all(&mut g, &[]);
+    let rats = tokens(&g, 0, "Rat");
+    assert_eq!(rats.len(), 3);
+    for &r in &rats {
+        assert!(g.def_of(r).cant_block);
+        assert_eq!(g.colors_of(r), [false, false, true, false, false]);
+        assert_eq!((g.power(r), g.toughness(r)), (1, 1));
+        assert!(g.keywords(r).has(Keywords::HASTE));
+    }
+    assert!(g.keywords(lions).has(Keywords::HASTE));
+}
+
+/// Resolves `effect` from a stand-in trigger on a Savannah Lions of player 0's.
+fn stand_in(g: &mut Game, effect: bolt_core::effect::Effect) {
+    use bolt_core::effect::{Ability, Trigger, When};
+    use bolt_core::game::{StackItem, StackKind};
+    use std::sync::Arc;
+    let carrier = put(g, 0, "Savannah Lions");
+    let def = g.obj(carrier).def;
+    Arc::make_mut(&mut g.defs)[def].triggers.insert(
+        0,
+        Trigger {
+            when: When::Never,
+            ability: Ability::new(vec![], vec![effect]),
+        },
+    );
+    g.triggered.push(StackItem {
+        source: carrier,
+        controller: 0,
+        kind: StackKind::Trigger(0),
+        targets: Vec::new(),
+        kicked: false,
+        flashback: false,
+        extra: None,
+        mode: None,
+        amount: 0,
+        alt: false,
+        x: 0,
+        division: Vec::new(),
+        source_zcc: None,
+    });
+    for _ in 0..6 {
+        if matches!(g.pending, Pending::Decide(_)) || g.triggered.is_empty() && g.items.is_empty() {
+            break;
+        }
+        act(g, Action::PassPriority);
+    }
+}
+
+#[test]
+fn urzas_five_exiles_the_top_card_to_play_free_this_turn() {
+    let mut g = table();
+    g.players[0].library.clear();
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Library);
+    stand_in(&mut g, bolt_core::effect::Effect::ShuffleExileTopPlayFreeThisTurn);
+    assert_eq!(g.obj(elves).zone, Zone::Exile);
+    assert_eq!(g.obj(elves).playable, Some((0, g.turn)));
+    assert!(g.obj(elves).cast_free);
+    while g.pending != Pending::Priority(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(g.legal_actions().contains(&Action::Cast(elves)));
+}

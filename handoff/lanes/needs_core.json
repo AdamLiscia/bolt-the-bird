@@ -298,10 +298,10 @@
   {
    "card": "Finale of Devastation",
    "deck": "Raggadragga, Goreguts Boss",
-   "missing": "search library and/or graveyard; if X is 10 or more, pump and haste",
+   "missing": "search library and/or graveyard; if X is 10 or more, pump and haste [d3 batch 45: Effect::CreatureFromLibraryOrGraveyardMvAtMostX, PumpAllX, scripted (pg_d3) [known limit: the library is always shuffled, even when the creature comes from the graveyard]]",
    "lane": "d1",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "d3"
   },
   {
    "card": "Natural Order",
@@ -410,10 +410,10 @@
   {
    "card": "Allosaurus Shepherd",
    "deck": "Raggadragga, Goreguts Boss",
-   "missing": "green spells you control can't be countered; Elves become 5/5 Dinosaurs",
+   "missing": "green spells you control can't be countered; Elves become 5/5 Dinosaurs [d3 batch 45: Effect::YourSubtypeBecomeBaseEot, scripted (pg_d3)]",
    "lane": "d1",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "d3"
   },
   {
    "card": "Benefactor's Draught",
@@ -458,10 +458,10 @@
   {
    "card": "Cradle Clearcutter",
    "deck": "Raggadragga, Goreguts Boss",
-   "missing": "prototype",
+   "missing": "prototype [d1's (2026-11-27): prototype, and '{T}: Add an amount of {G} equal to this creature's power']",
    "lane": "d1",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "d1"
   },
   {
    "card": "Enduring Courage",
@@ -514,10 +514,10 @@
   {
    "card": "Panglacial Wurm",
    "deck": "Raggadragga, Goreguts Boss",
-   "missing": "cast from your library while searching",
+   "missing": "cast from your library while searching [routed to lane B, post-demo (2026-11-27): a casting window during a search]",
    "lane": "d1",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "mac-b"
   },
   {
    "card": "Priest of Titania",
@@ -554,10 +554,10 @@
   {
    "card": "Song of Totentanz",
    "deck": "Raggadragga, Goreguts Boss",
-   "missing": "a 1/1 black Rat creature token with 'This token can't block.'",
+   "missing": "a 1/1 black Rat creature token with 'This token can't block.' [d3 batch 45: token 136 t.rat_cant_block, scripted (pg_d3)]",
    "lane": "d1",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "d3"
   },
   {
    "card": "Sword of the Paruns",
@@ -3218,10 +3218,10 @@
   {
    "card": "Veil of Summer",
    "deck": "Najeela, the Blade-Blossom",
-   "missing": "needs core: draw if an opponent cast a blue or black spell this turn, your spells can't be countered, hexproof from blue and black",
+   "missing": "needs core: draw if an opponent cast a blue or black spell this turn, your spells can't be countered, hexproof from blue and black [d3 batch 45: Effect::DrawIfOpponentCastColorThisTurn, YourSpellsUncounterableEot, YouAndYourPermanentsHexproofFromColorsEot (Game::color_cast_turn, spells_uncounterable_turn, player_hexproof_from_colors, hexproof_from_colors_eot), scripted (pg_d3)]",
    "lane": "d3",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "d3"
   },
   {
    "card": "Alesha, Who Smiles at Death",
@@ -3906,10 +3906,10 @@
   {
    "card": "Urza, Lord High Artificer",
    "deck": "Lonis, Cryptozoologist",
-   "missing": "needs core: a 0/0 colorless Construct artifact creature token (+1/+1 per artifact), tapping an artifact for mana, and a free play from the top",
+   "missing": "needs core: a 0/0 colorless Construct artifact creature token (+1/+1 per artifact), tapping an artifact for mana, and a free play from the top [d3 batch 45: Effect::ShuffleExileTopPlayFreeThisTurn (the {5}); the Construct is t.saga_construct. Waiting on d1's tap_named_permanent(Filter) for 'Tap an untapped artifact you control: Add {U}'; d3 scripts it after that reaches tarkir]",
    "lane": "d3",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "d3"
   },
   {
    "card": "Altar of the Brood",
@@ -6322,10 +6322,10 @@
   {
    "card": "Broodcaller Scourge",
    "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
-   "missing": "lane C's routing (2026-11-26) [d3 handback: needs d2 (triggers): the damage amount on When::YourSubtypeDealCombatDamageToPlayer; then a put-from-hand with mana value at most that (d3)]",
+   "missing": "lane C's routing (2026-11-26) [d3 handback: needs d2 (triggers): the damage amount on When::YourSubtypeDealCombatDamageToPlayer; then a put-from-hand with mana value at most that (d3)] [d3 owns the script: Effect::MayPutPermanentFromHandMvAtMostAmount (d3 b44, reads item.amount as 'that damage'); waiting on d2 b45 + d3 b44 on tarkir]",
    "lane": "mac-c",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d3"
   },
   {
    "card": "Scourge of the Throne",

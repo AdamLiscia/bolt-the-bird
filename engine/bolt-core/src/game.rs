@@ -2099,6 +2099,14 @@ pub struct Game {
     /// The turn each player's permanents lose hexproof and indestructible until end of turn
     /// (Shadowspear's activation, on its controller's opponents); 0 for none.
     pub lose_hexproof_indestructible_turn: [u32; 2],
+    /// The turn each player last cast a spell of each color, WUBRG (Veil of Summer).
+    pub color_cast_turn: [[u32; 5]; 2],
+    /// The turn each player's spells can't be countered (Veil of Summer); 0 for none.
+    pub spells_uncounterable_turn: [u32; 2],
+    /// Each player's hexproof from colors: (turn, colors) (Veil of Summer).
+    pub player_hexproof_from_colors: [(u32, [bool; 5]); 2],
+    /// Permanents with hexproof from colors until end of turn: (object, zcc, turn, colors).
+    pub hexproof_from_colors_eot: Vec<(ObjId, u32, u32, [bool; 5])>,
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2426,6 +2434,10 @@ impl Game {
             mana_ability_then: None,
             trigger_snapshots: Vec::new(),
             lose_hexproof_indestructible_turn: [0; 2],
+            color_cast_turn: [[0; 5]; 2],
+            spells_uncounterable_turn: [0; 2],
+            player_hexproof_from_colors: [(0, [false; 5]); 2],
+            hexproof_from_colors_eot: Vec::new(),
         }
     }
 
@@ -4585,7 +4597,40 @@ impl Game {
 
     /// "Can't be countered": printed, or from an effect as it was cast.
     fn uncounterable(&self, id: ObjId) -> bool {
-        self.def_of(id).uncounterable || self.obj(id).cast_uncounterable || self.statically_uncounterable(id)
+        self.def_of(id).uncounterable
+            || self.obj(id).cast_uncounterable
+            || self.statically_uncounterable(id)
+            || self.uncounterable_this_turn(id)
+    }
+
+    /// Veil of Summer: "Spells you control can't be countered this turn."
+    fn uncounterable_this_turn(&self, id: ObjId) -> bool {
+        let o = self.obj(id);
+        o.zone == Zone::Stack && self.turn > 0 && self.spells_uncounterable_turn[o.controller] == self.turn
+    }
+
+    /// Veil of Summer: player `q` has hexproof from a color of `item`'s source this turn, against an
+    /// opponent's spell or ability.
+    fn player_hexproof_from_colors_blocks(&self, q: PlayerId, item: &StackItem) -> bool {
+        let (turn, h) = self.player_hexproof_from_colors[q];
+        if q == item.controller || self.turn == 0 || turn != self.turn {
+            return false;
+        }
+        let c = self.colors_of(item.source);
+        (0..5).any(|k| h[k] && c[k])
+    }
+
+    /// Veil of Summer: permanent `x` has hexproof from a color of `item`'s source until end of
+    /// turn, against an opponent's spell or ability.
+    fn hexproof_from_colors_blocks(&self, x: ObjId, item: &StackItem) -> bool {
+        let o = self.obj(x);
+        if o.zone != Zone::Battlefield || o.controller == item.controller || self.turn == 0 {
+            return false;
+        }
+        let c = self.colors_of(item.source);
+        self.hexproof_from_colors_eot
+            .iter()
+            .any(|&(e, z, t, h)| e == x && z == o.zcc && t == self.turn && (0..5).any(|k| h[k] && c[k]))
     }
 
     /// "[Creature / color] spells you control can't be countered." (Rhythm of the Wild, Surrak
@@ -7529,10 +7574,16 @@ impl Game {
             if self.protects_from_chosen_type(q, item.source) {
                 return false; // Serra's Emissary: "You ... have protection"
             }
+            if self.player_hexproof_from_colors_blocks(q, item) {
+                return false; // Veil of Summer
+            }
         }
         let Target::Object(x) = t else { return true };
         if self.protected_from(x, item.source) {
             return false; // CR 702.16c
+        }
+        if self.hexproof_from_colors_blocks(x, item) {
+            return false; // Veil of Summer
         }
         let from_instant = matches!(item.kind, StackKind::Spell | StackKind::SpellCopy)
             && self.types_of(item.source).instant;
@@ -13118,6 +13169,11 @@ impl Game {
             self.multicolored_cast_turn[p] = self.turn;
             self.fire(p, When::YouCastFirstMulticolored, None);
             self.fire(opponent(p), When::OpponentCastsFirstMulticolored, None);
+        }
+        for (k, &c) in colors.iter().enumerate() {
+            if c {
+                self.color_cast_turn[p][k] = self.turn; // Veil of Summer
+            }
         }
         if noncreature && self.noncreature_casts[p] == (self.turn, 1) {
             self.fire(opponent(p), When::OpponentCastsFirstNoncreature, None);
@@ -25521,6 +25577,92 @@ impl Game {
                     if !self.hand_cards_mv_at_most(p, max, false).is_empty() {
                         self.ask(p, Decision::PermanentFromHandMvAtMost { max });
                     }
+                }
+            }
+            Effect::DrawIfOpponentCastColorThisTurn { colors, n } => {
+                let o = opponent(item.controller);
+                let turn = self.turn;
+                if turn > 0 && (0..5).any(|k| colors[k] && self.color_cast_turn[o][k] == turn) {
+                    self.run_effect(item, legal, Effect::Draw { who: Who::You, n });
+                }
+            }
+            Effect::YourSpellsUncounterableEot => self.spells_uncounterable_turn[item.controller] = self.turn,
+            Effect::YouAndYourPermanentsHexproofFromColorsEot(colors) => {
+                let p = item.controller;
+                let turn = self.turn;
+                let (t, had) = self.player_hexproof_from_colors[p];
+                let mut h = if t == turn { had } else { [false; 5] };
+                for (a, b) in h.iter_mut().zip(colors) {
+                    *a |= b;
+                }
+                self.player_hexproof_from_colors[p] = (turn, h);
+                for x in self.permanents(p).collect::<Vec<_>>() {
+                    let zcc = self.obj(x).zcc;
+                    self.hexproof_from_colors_eot.push((x, zcc, turn, colors));
+                }
+            }
+            Effect::YourSubtypeBecomeBaseEot {
+                sub,
+                power,
+                toughness,
+                subtypes,
+            } => {
+                let turn = self.turn;
+                let ids: Vec<ObjId> = self
+                    .creatures(item.controller)
+                    .filter(|&c| self.has_subtype(c, sub))
+                    .collect();
+                for c in ids {
+                    let change = TypeChange {
+                        turn,
+                        base_pt: Some((power, toughness)),
+                        subtypes,
+                        ..TypeChange::default()
+                    };
+                    self.add_type_change(c, change);
+                }
+            }
+            Effect::CreatureFromLibraryOrGraveyardMvAtMostX => {
+                let p = item.controller;
+                let pick = Pick::CreatureManaValueAtMost(item.x as u32);
+                self.shuffle_library(p);
+                let cards: Vec<ObjId> = self.players[p]
+                    .library
+                    .iter()
+                    .chain(&self.players[p].graveyard)
+                    .copied()
+                    .filter(|&c| self.picks(c, pick))
+                    .collect();
+                if !cards.is_empty() {
+                    self.ask(
+                        p,
+                        Decision::LookPick {
+                            cards,
+                            pick,
+                            to: LookTo::Battlefield,
+                            rest: None,
+                        },
+                    );
+                }
+            }
+            Effect::PumpAllX { who } => {
+                let x = item.x as i32;
+                let all = Effect::PumpAll {
+                    who,
+                    power: x,
+                    toughness: x,
+                };
+                self.run_effect(item, legal, all);
+            }
+            Effect::ShuffleExileTopPlayFreeThisTurn => {
+                let p = item.controller;
+                self.shuffle_library(p);
+                if let Some(&c) = self.players[p].library.last() {
+                    self.move_to(c, Zone::Exile);
+                    let turn = self.turn;
+                    let o = self.obj_mut(c);
+                    o.playable = Some((p, turn));
+                    o.cast_free = true;
                 }
             }
             Effect::BounceThenOwnerExilesFromHand(slot) => {
