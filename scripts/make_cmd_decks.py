@@ -3,8 +3,8 @@
     PYTHONPATH=src python scripts/make_cmd_decks.py [--out handoff/cmd/playable_decks.txt]
 
 Reads ~/bolt-handoff/playgroup_all.json (the playgroup's 31) and lowgame_all.json (the idea decks), the same
-lists and the same support test as scripts/debug/soak_cmd.py, plus the engine's Commander deck rules
-(be.commander_deck_problems; a wrong card count is allowed). Safe to re-run whenever more cards become
+lists (decks_qty with quantities, commanders_by_deck) and support test as scripts/debug/soak_cmd.py, plus the
+engine's Commander deck rules (be.commander_deck_problems) apart from size, and 98-102 cards with the commander. Safe to re-run whenever more cards become
 playable: the file is rewritten whole (write then rename), in the source files' order, so the same engine
 gives the same file. The network's card table is the whole CMD pool already, so new decks need no re-padding.
 """
@@ -44,6 +44,27 @@ def expand(entries) -> list[str]:
     return out
 
 
+SIZES = (98, 102)  # a deck's cards with its commanders: real lists run a card or two either way of 100
+
+
+def deck_cards(d: dict, x: dict) -> tuple[list[str], list[str]]:
+    """(commanders, the other cards, one name per copy) of deck-order entry `x` in export `d`. The export's
+    decks_qty (main zone with quantities) and commanders_by_deck (command zone) when it has them; otherwise
+    the older one-name-per-card list, which starts with the commanders."""
+    k = str(x["deck_id"])
+    if "decks_qty" in d and k in d["decks_qty"]:
+        cmd = list(d.get("commanders_by_deck", {}).get(k) or [])
+        if not cmd:
+            cmd = [x["commander"]] + ([x["partner"]] if x.get("partner") else [])
+        return cmd, expand(d["decks_qty"][k])
+    cmd = [x["commander"]] + ([x["partner"]] if x.get("partner") else [])
+    cards = expand(d["decks"][k])
+    for c in cmd:  # take each commander out once
+        if c in cards:
+            cards.remove(c)
+    return cmd, cards
+
+
 SIZE = re.compile(r"^\d+ cards with the commanders?, not 100$")
 
 
@@ -74,12 +95,12 @@ def playable(set_name: str = "CMD", hand: Path = HAND) -> tuple[list[tuple[list[
     for fname, cap in SOURCES:
         d = json.loads((hand / fname).read_text())
         for x in d["deck_order"][:cap]:
-            cmd = [x["commander"]] + ([x["partner"]] if x.get("partner") else [])
+            cmd, cards = deck_cards(d, x)
             name = f"{x['owner']}: {cmd[0].split(',')[0]}"
-            cards = expand(d["decks"][str(x["deck_id"])])
-            for c in cmd:  # the list starts with the commander(s): take each out once
-                if c in cards:
-                    cards.remove(c)
+            size = len(cmd) + len(cards)
+            if not SIZES[0] <= size <= SIZES[1]:
+                skipped.append(f"{name}: {size} cards with the commander (outside {SIZES[0]}-{SIZES[1]})")
+                continue
             ids_c = [card_id(c) for c in cmd]
             ids = [card_id(c) for c in cards]
             unknown = [n for n, i in zip(cmd + cards, ids_c + ids, strict=True) if i is None]

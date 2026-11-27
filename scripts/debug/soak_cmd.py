@@ -3,8 +3,8 @@ seats, and reports engine panics, positions with no legal actions, and games tha
 
     PYTHONPATH=src ~/bolt-cmd-venv/bin/python scripts/debug/soak_cmd.py [games_per_pair] [max_steps]
 
-Decks come from ~/bolt-handoff/playgroup_all.json (the 31) and lowgame_all.json (the idea decks); only decks
-whose every card the engine supports are used. Seat 0 uses the smart player, seat 1 the rules player, and the
+Decks come from ~/bolt-handoff/playgroup_all.json (the 31) and lowgame_all.json (the idea decks), with their
+quantities, filtered as scripts/make_cmd_decks.py filters them. Seat 0 uses the smart player, seat 1 the rules player, and the
 pairing is played both ways round. Writes results/soak_cmd.json.
 """
 
@@ -32,22 +32,13 @@ def card_id(n: str) -> int | None:
 
 
 def decks() -> list[dict]:
-    out = []
-    for path, cap in [(HAND / "playgroup_all.json", 31), (HAND / "lowgame_all.json", None)]:
-        d = json.loads(path.read_text())
-        for x in d["deck_order"][:cap]:
-            cmd = [x["commander"]] + ([x["partner"]] if x.get("partner") else [])
-            cards = list(d["decks"][str(x["deck_id"])])
-            for c in cmd:  # the list starts with the commander(s): take each out once
-                if c in cards:
-                    cards.remove(c)
-            ids_c = [card_id(c) for c in cmd]
-            ids = [card_id(c) for c in cards]
-            if None in ids_c or None in ids:
-                continue
-            if all(i < len(supported) and supported[i] for i in ids_c + ids):
-                out.append({"name": f"{x['owner']}: {cmd[0].split(',')[0]}", "cmd": ids_c, "deck": ids})
-    return out
+    """The playable decks, built as scripts/make_cmd_decks.py builds the training file: quantities from the
+    export's decks_qty, commanders from commanders_by_deck, every card supported, the Commander rules met
+    apart from size, 98-102 cards."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from make_cmd_decks import playable
+
+    return [{"name": n, "cmd": c, "deck": d} for c, d, n in playable(SET, HAND)[0]]
 
 
 KINDS = collections.Counter()  # every pending decision kind the bots met (the command-zone choice among them)
