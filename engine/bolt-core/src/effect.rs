@@ -144,6 +144,9 @@ pub struct Filter {
     pub up_to_x: bool,
     /// Tapped permanents only (Far Traveler: "up to one target tapped creature you control").
     pub tapped_only: bool,
+    /// Only permanents with one of these subtypes (Seasoned Dungeoneer: "Cleric, Rogue, Warrior, or
+    /// Wizard"); empty: no restriction.
+    pub subtypes_any: &'static [&'static str],
 }
 
 impl Filter {
@@ -212,6 +215,7 @@ impl Filter {
         mana_value_at_most_x: false,
         up_to_x: false,
         tapped_only: false,
+        subtypes_any: &[],
     };
 
     pub const CREATURE: Filter = Filter {
@@ -2717,6 +2721,22 @@ pub enum Effect {
     /// Rain of Riches: stop unless the spell in `extra` was paid for with Treasure mana and is the
     /// first such spell this turn for the source (`Game::treasure_spell_turn`).
     StopUnlessFirstTreasureSpellThisTurn,
+    /// The creature in `slot` (the source, with `None`) gains protection from card type `kind`
+    /// until end of turn (`Decision::ChooseCardType`'s order: 0 artifact, 1 creature, 2
+    /// enchantment, 3 instant, 4 land, 5 planeswalker, 6 sorcery), in
+    /// `Game::type_protection_grants` (Seasoned Dungeoneer: "gains protection from creatures",
+    /// `kind: 1`).
+    ProtectionFromCardTypeEot {
+        slot: Option<u8>,
+        kind: u8,
+    },
+    /// The creature in `slot` (the source, with `None`) gains protection from the card type of
+    /// your choice until end of turn, as `Decision::ProtectionCardType` (Pippin, Guard of the
+    /// Citadel).
+    ProtectionChosenCardTypeEot(Option<u8>),
+    /// Put a slime counter (`Object::slime`) on each creature you don't control (Toxrill, the
+    /// Corrosive's end step trigger).
+    SlimeCounterOnEachCreatureYouDontControl,
     /// Adapt `n` (CR 701.46): if the source has no +1/+1 counters on it, put `n` on it (Basking
     /// Broodscale).
     AdaptSelf(i32),
@@ -2731,6 +2751,20 @@ pub enum Effect {
     /// Mana Drain: counter the spell in `slot`; at the beginning of your next main phase, add {C}
     /// equal to its mana value (`Game::next_main_colorless`).
     CounterThenColorlessAtYourNextMain(u8),
+    /// Beza, the Bounding Spring: a `treasure` token if an opponent controls more lands than you;
+    /// gain 4 life if an opponent has more life; two `fish` tokens if an opponent controls more
+    /// creatures; draw a card if an opponent has more cards in hand (each checked as it resolves).
+    BezaCatchUp {
+        treasure: usize,
+        fish: usize,
+    },
+    /// Rose Room Treasurer: a `treasure` token the first and second time this resolves this turn
+    /// (`Object::resolved_this_turn`); otherwise you may pay {X} and the source deals X damage to
+    /// the target in `slot` (`Decision::PayXDamage`).
+    TreasureTwiceThenPayXDamage {
+        treasure: usize,
+        slot: u8,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -2916,6 +2950,9 @@ pub enum Scale {
     PerCardInAllHands,
     /// The number of cards in all graveyards (Lord of Extinction).
     PerCardInAllGraveyards,
+    /// Slime counters on the affected permanent itself (`Object::slime`; Toxrill, the Corrosive:
+    /// "Creatures you don't control get -1/-1 for each slime counter on them").
+    PerSlimeCounterOnIt,
 }
 
 /// A condition on a static ability ("as long as ...").
@@ -3714,6 +3751,14 @@ pub enum When {
     /// Path of Ancestry: its mana was spent on a creature spell that shares a creature type with
     /// your commander (fired on the land by the payment).
     ManaSpentOnCommanderTypeCreature,
+    /// Tandem Lookout's granted "whenever this creature deals damage to an opponent": fired on the
+    /// card with `CardDef::soulbond_damage_draw` when it or the creature paired with it deals
+    /// damage to an opponent (controlled by the damaging creature's controller).
+    PairedDealsDamageToOpponent,
+    /// "Whenever a creature you don't control with a slime counter on it dies" (Toxrill, the
+    /// Corrosive), from d3's `Object::last_slime` as it left the battlefield; slot 0 (if
+    /// `triggering`) is the creature card.
+    CreatureYouDontControlWithSlimeDies,
 }
 
 #[derive(Clone, Debug, PartialEq)]

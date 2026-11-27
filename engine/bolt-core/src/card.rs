@@ -1093,6 +1093,9 @@ pub struct CardDef {
     /// "[This] can't attack or block unless a creature died under your control this turn." (Bontu
     /// the Glorified), from `Game::creature_died_under`.
     pub fights_only_if_creature_died: bool,
+    /// Tandem Lookout: while paired (soulbond), each of the pair has "Whenever this creature deals
+    /// damage to an opponent, draw a card.": this card's `When::PairedDealsDamageToOpponent` trigger.
+    pub soulbond_damage_draw: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1664,6 +1667,7 @@ impl CardDef {
             lands_in_graveyard_have_dredge: None,
             first_tokens_copy_equipped: false,
             fights_only_if_creature_died: false,
+            soulbond_damage_draw: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1959,6 +1963,7 @@ impl CardDef {
             lands_in_graveyard_have_dredge: None,
             first_tokens_copy_equipped: false,
             fights_only_if_creature_died: false,
+            soulbond_damage_draw: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2254,6 +2259,7 @@ impl CardDef {
             lands_in_graveyard_have_dredge: None,
             first_tokens_copy_equipped: false,
             fights_only_if_creature_died: false,
+            soulbond_damage_draw: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

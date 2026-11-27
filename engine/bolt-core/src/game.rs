@@ -328,6 +328,11 @@ pub struct Object {
     /// Whether it was an artifact when it last left the battlefield, statics included (last known
     /// information, CR 603.10a: Ygra's "other creatures are Food artifacts" for Marionette Master).
     pub left_as_artifact: bool,
+    /// Slime counters on it (Toxrill, the Corrosive): reset as it leaves the battlefield.
+    pub slime: i32,
+    /// The slime counters it had as it last left the battlefield (last known information, CR
+    /// 603.10a: Toxrill's "a creature you don't control with a slime counter on it dies").
+    pub last_slime: i32,
 }
 
 /// One resolved effect's change to a permanent's characteristics (lane d3's type-changing store):
@@ -1436,6 +1441,13 @@ pub enum Decision {
     /// The Gitrog: `Pick` a land card in your hand to put onto the battlefield tapped; `left` picks
     /// including this one.
     GitrogLandPick { left: u8 },
+    /// `Mode(t)`: `target` gains protection from card type `t` (`ChooseCardType`'s order: 0
+    /// artifact, 1 creature, 2 enchantment, 3 instant, 4 land, 5 planeswalker, 6 sorcery) until end
+    /// of turn (Pippin, Guard of the Citadel).
+    ProtectionCardType { target: ObjId },
+    /// Rose Room Treasurer: `Amount(x)` pays {x} and `source` deals x damage to `target` (offered
+    /// for each x you can pay, up to `max`); `Amount(0)` declines.
+    PayXDamage { source: ObjId, target: Target, max: u8 },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1949,6 +1961,10 @@ pub struct Game {
     /// Compleated permanent spells cast with life for their Phyrexian pips: (card, its zcc on the
     /// battlefield, pips paid with life).
     pub compleated_life: Vec<(ObjId, u32, u8)>,
+    /// Protection from card types granted until end of turn: (object, its zone change count, the
+    /// card types as bits in `Decision::ChooseCardType`'s order, 1 << 0 artifact ... 1 << 6
+    /// sorcery, the turn) (Pippin, Guard of the Citadel; Seasoned Dungeoneer: creatures).
+    pub type_protection_grants: Vec<(ObjId, u32, u8, u32)>,
     /// Mana Drain: {C} to add at the beginning of a player's next main phase, as (player, amount,
     /// the turn and step it was set up in, so a main phase it was cast in doesn't count).
     pub next_main_colorless: Vec<(PlayerId, u32, u32, Step)>,
@@ -2264,6 +2280,7 @@ impl Game {
             karador_turn: [0; 2],
             any_graveyard_spells_turn: [0; 2],
             any_graveyard_casts: Vec::new(),
+            type_protection_grants: Vec::new(),
             next_main_colorless: Vec::new(),
             firing_spell: None,
         }
@@ -2536,6 +2553,8 @@ impl Game {
             any_color_mana: false,
             corpse_counter: false,
             left_as_artifact: false,
+            slime: 0,
+            last_slime: 0,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -2711,7 +2730,20 @@ impl Game {
         if t.creature && !t.artifact && self.ygra_food(id) {
             t.artifact = true; // Ygra: "Food artifacts in addition to their other types"
         }
+        if t.creature && !t.legendary && self.ring_bearer_now(id) {
+            t.legendary = true; // the Ring: "Your Ring-bearer is legendary"
+        }
         t
+    }
+
+    /// `Game::ring_makes_legendary` (d4) for the type pass, read from the Ring's state directly:
+    /// `ring_bearer` checks `types_of`, so calling it here would recurse. The caller has already
+    /// checked that `id` is a creature.
+    fn ring_bearer_now(&self, id: ObjId) -> bool {
+        let o = self.obj(id);
+        o.zone == Zone::Battlefield
+            && self.ring_level[o.controller] >= 1
+            && self.ring_bearer[o.controller] == Some((id, o.zcc))
     }
 
     /// Ygra, Eater of All: a creature on the battlefield while another permanent with
@@ -3308,6 +3340,7 @@ impl Game {
                             Some(Scale::PerCardInAllGraveyards) => {
                                 Some(self.players.iter().map(|pl| pl.graveyard.len()).sum())
                             }
+                            Some(Scale::PerSlimeCounterOnIt) => Some(o.slime.max(0) as usize),
                             _ => None,
                         };
                         if let Some(n) = scaled {
@@ -3380,8 +3413,47 @@ impl Game {
         {
             return true; // Serra's Emissary: "creatures you control"
         }
+        if self.type_protected(id, source) {
+            return true; // Pippin, Seasoned Dungeoneer: protection from a card type
+        }
         let p = self.protection(id);
         self.colors_of(source).iter().zip(p).any(|(c, pr)| *c && pr)
+    }
+
+    /// Whether a card-type protection grant on `id` this turn (`Game::type_protection_grants`)
+    /// covers one of `source`'s card types.
+    pub fn type_protected(&self, id: ObjId, source: ObjId) -> bool {
+        let zcc = self.obj(id).zcc;
+        let mask = self
+            .type_protection_grants
+            .iter()
+            .filter(|g| g.0 == id && g.1 == zcc && g.3 == self.turn)
+            .fold(0u8, |m, g| m | g.2);
+        if mask == 0 {
+            return false;
+        }
+        let t = self.types_of(source);
+        let kinds = [
+            t.artifact,
+            t.creature,
+            t.enchantment,
+            t.instant,
+            t.land,
+            t.planeswalker,
+            t.sorcery,
+        ];
+        kinds
+            .iter()
+            .enumerate()
+            .any(|(k, &has)| has && mask & (1 << k) != 0)
+    }
+
+    /// `id` gains protection from the card types in `mask` (`Game::type_protection_grants`'s bits)
+    /// until end of turn.
+    fn grant_type_protection(&mut self, id: ObjId, mask: u8) {
+        let (zcc, turn) = (self.obj(id).zcc, self.turn);
+        self.type_protection_grants.retain(|g| g.3 == turn);
+        self.type_protection_grants.push((id, zcc, mask, turn));
     }
 
     fn keywords_inner(&self, id: ObjId) -> Keywords {
@@ -4992,6 +5064,8 @@ impl Game {
         }
         if from == Zone::Battlefield {
             o.last_counters = (o.counters, o.stun, o.keyword_counters);
+            o.last_slime = o.slime;
+            o.slime = 0;
             o.corpse_counter = false;
             o.stun = 0;
             o.skip_untap = false;
@@ -5388,6 +5462,16 @@ impl Game {
             }
             self.creature_died_this_turn = true;
             self.creature_died_under[last_controller] = true;
+            // Toxrill: "a creature you don't control with a slime counter on it", as it last existed.
+            if self.obj(id).last_slime > 0 {
+                let before = self.triggered.len();
+                self.fire(
+                    opponent(last_controller),
+                    When::CreatureYouDontControlWithSlimeDies,
+                    None,
+                );
+                self.fill_triggering(before, id);
+            }
             let (t, n) = self.creatures_died;
             self.creatures_died = (self.turn, if t == self.turn { n + 1 } else { 1 });
             if !self.is_token(id) {
@@ -6488,8 +6572,9 @@ impl Game {
                         })
                         && f.spell_creature.is_none_or(|c| c == ty.creature)
                         && (!f.spell_artifact_or_creature || ty.artifact || ty.creature)
+                        // A split spell has only its cast half's mana value (CR 709.3b).
                         && f.max_mana_value
-                            .is_none_or(|m| self.def_of(id).cost.mana_value() <= m);
+                            .is_none_or(|m| self.stack_mana_cost(id).mana_value() <= m);
                 }
                 if let Some(creature_only) = f.graveyard {
                     let d = self.def_of(id);
@@ -6631,6 +6716,9 @@ impl Game {
             return false;
         }
         if f.tapped_only && !self.obj(id).tapped {
+            return false;
+        }
+        if !f.subtypes_any.is_empty() && !f.subtypes_any.iter().any(|s| self.has_subtype(id, s)) {
             return false;
         }
         if f.single_target {
@@ -13637,6 +13725,16 @@ impl Game {
                 let max = self.obj(*source).loyalty.clamp(0, 60) as u8;
                 (0..=max).map(Action::Amount).collect()
             }
+            Decision::PayXDamage { max, .. } => (0..=*max)
+                .filter(|&x| {
+                    let cost = ManaCost {
+                        generic: x,
+                        ..ManaCost::default()
+                    };
+                    x == 0 || self.can_pay(p, &cost, None)
+                })
+                .map(Action::Amount)
+                .collect(),
             Decision::PayXDrawX { max } => (0..=*max)
                 .filter(|&x| {
                     let cost = ManaCost {
@@ -14108,6 +14206,7 @@ impl Game {
             }
             Decision::TaintedPact { .. } => vec![Action::Yes, Action::No],
             Decision::ProtectionColor { .. } => (0..5).map(Action::Mode).collect(),
+            Decision::ProtectionCardType { .. } => (0..7).map(Action::Mode).collect(),
             Decision::ChooseCardType { .. } => (0..7).map(Action::Mode).collect(),
             Decision::ConniveDiscard { .. } => hand.iter().copied().map(Action::Pick).collect(),
             Decision::VowCreature { .. } => self.creatures(p).map(Action::Pick).collect(),
@@ -14524,6 +14623,16 @@ impl Game {
                 self.sacrificed(c, p);
             }
             (Decision::MayPay { cost }, Action::Yes) => self.pay_mana(p, &cost, None),
+            (Decision::PayXDamage { source, target, .. }, Action::Amount(x)) => {
+                if x > 0 {
+                    let cost = ManaCost {
+                        generic: x,
+                        ..ManaCost::default()
+                    };
+                    self.pay_mana(p, &cost, None);
+                    self.deal_damage(source, target, x as i32);
+                }
+            }
             (Decision::PayXDrawX { .. }, Action::Amount(x)) => {
                 if x > 0 {
                     let cost = ManaCost {
@@ -15835,6 +15944,11 @@ impl Game {
                 self.move_to(c, Zone::Graveyard);
                 self.connive_next(p, creature, left - 1, nonland);
             }
+            (Decision::ProtectionCardType { target }, Action::Mode(t)) => {
+                if self.obj(target).zone == Zone::Battlefield {
+                    self.grant_type_protection(target, 1 << (t % 7));
+                }
+            }
             (Decision::ProtectionColor { target }, Action::Mode(c)) => {
                 let mut colors = [false; 5];
                 colors[c as usize % 5] = true;
@@ -16987,6 +17101,47 @@ impl Game {
                     t => t,
                 };
                 self.ask(item.controller, Decision::Search { what, to, left: n });
+            }
+            Effect::TreasureTwiceThenPayXDamage { treasure, slot } => {
+                let count = self.bump_resolutions(src);
+                if count <= 2 {
+                    self.create_token(item.controller, treasure);
+                } else {
+                    let target = match item.targets.get(slot as usize) {
+                        Some(&Chosen::Player(q)) => Some(Target::Player(q)),
+                        Some(&Chosen::Object(x, _)) => Some(Target::Object(x)),
+                        None => None,
+                    };
+                    let ok = legal.get(slot as usize).copied().unwrap_or(false);
+                    if let (Some(target), true) = (target, ok) {
+                        self.ask(
+                            item.controller,
+                            Decision::PayXDamage {
+                                source: src,
+                                target,
+                                max: 20,
+                            },
+                        );
+                    }
+                }
+            }
+            Effect::BezaCatchUp { treasure, fish } => {
+                let p = item.controller;
+                let o = opponent(p);
+                let lands = |g: &Game, q: PlayerId| g.permanents(q).filter(|&x| g.types_of(x).land).count();
+                if lands(self, o) > lands(self, p) {
+                    self.create_token(p, treasure);
+                }
+                if self.players[o].life > self.players[p].life {
+                    self.gain_life(p, 4);
+                }
+                if self.creatures(o).count() > self.creatures(p).count() {
+                    self.create_token(p, fish);
+                    self.create_token(p, fish);
+                }
+                if self.players[o].hand.len() > self.players[p].hand.len() {
+                    self.draw(p);
+                }
             }
             Effect::CounterThenColorlessAtYourNextMain(n) => {
                 if let Some(id) = Game::slot_object(item, legal, n) {
@@ -23436,6 +23591,39 @@ impl Game {
                     self.ask(item.controller, Decision::ProtectionColor { target: t });
                 }
             }
+            Effect::ProtectionFromCardTypeEot { slot, kind } => {
+                let target = match slot {
+                    Some(n) => Game::slot_object(item, legal, n),
+                    None => Some(src),
+                };
+                if let Some(t) = target.filter(|&t| self.obj(t).zone == Zone::Battlefield) {
+                    self.grant_type_protection(t, 1 << (kind % 7));
+                }
+            }
+            Effect::ProtectionChosenCardTypeEot(slot) => {
+                let target = match slot {
+                    Some(n) => Game::slot_object(item, legal, n),
+                    None => Some(src),
+                };
+                if let Some(t) = target.filter(|&t| self.obj(t).zone == Zone::Battlefield) {
+                    self.ask(item.controller, Decision::ProtectionCardType { target: t });
+                }
+            }
+            Effect::SlimeCounterOnEachCreatureYouDontControl => {
+                let p = item.controller;
+                let theirs: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.obj(c).controller != p && self.types_of(c).creature)
+                    .collect();
+                for c in theirs {
+                    let n = self.doubling(self.obj(c).controller);
+                    self.obj_mut(c).slime += n;
+                    self.counters_placed(p, n);
+                    self.counter_put_on(c);
+                }
+            }
             Effect::YourCreaturesProtectionEachColorEot => {
                 let turn = self.turn;
                 self.protection_grants.retain(|g| g.3 == turn);
@@ -25820,6 +26008,18 @@ impl Game {
         }
     }
 
+    /// One more resolution this turn of `id`'s counted ability (`Object::resolved_this_turn`, as
+    /// Ms. Bumbleflower's; Rose Room Treasurer); the count, this one included.
+    fn bump_resolutions(&mut self, id: ObjId) -> u32 {
+        let turn = self.turn;
+        let o = self.obj_mut(id);
+        if o.resolved_this_turn.0 != turn {
+            o.resolved_this_turn = (turn, 0);
+        }
+        o.resolved_this_turn.1 = o.resolved_this_turn.1.saturating_add(1);
+        o.resolved_this_turn.1
+    }
+
     /// Mana Drain: as `a`'s main phase begins, the {C} set up before it (`next_main_colorless`).
     fn next_main_mana(&mut self, a: PlayerId) {
         let (turn, step) = (self.turn, self.step);
@@ -26557,6 +26757,29 @@ impl Game {
                     self.fill_triggering(before, source);
                     if controller != p {
                         self.fire_source(source, When::DealsDamageToOpponent);
+                        // Tandem Lookout: "each of those creatures has 'Whenever this creature deals
+                        // damage to an opponent, draw a card.'"
+                        if let Some(x) = self.paired_partner(source) {
+                            for holder in [source, x] {
+                                let d = self.def_of(holder);
+                                if !d.soulbond_damage_draw
+                                    || self.lost_abilities(holder)
+                                    || self.obj(holder).lost_soulbond
+                                {
+                                    continue;
+                                }
+                                let n = d
+                                    .triggers
+                                    .iter()
+                                    .position(|t| t.when == When::PairedDealsDamageToOpponent);
+                                if let Some(n) = n {
+                                    self.triggered.push(StackItem {
+                                        kind: StackKind::Trigger(n),
+                                        ..Game::casting(holder, controller)
+                                    });
+                                }
+                            }
+                        }
                     }
                     if !self.in_combat_damage {
                         self.fire(opponent(p), When::OpponentDealtNoncombatDamage, None);

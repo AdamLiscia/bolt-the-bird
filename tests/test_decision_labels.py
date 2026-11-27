@@ -290,3 +290,14 @@ def test_the_gitrog_asks_for_a_rider_and_how_many_lands():
     assert label(count, "Amount", 2) == "Put 2 lands from your hand onto the battlefield tapped"
     pick = {"kind": "GitrogLandPick", "left": 1}
     assert sv._decision_label(pick, "Pick", 0, "Forest") == "Put onto the battlefield tapped: Forest"
+
+
+def test_pippin_protection_from_a_card_type():
+    assert label({"kind": "ProtectionCardType"}, "Mode", 1) == "Protection from creatures"
+    assert label({"kind": "ProtectionCardType"}, "Mode", 6) == "Protection from sorceries"
+
+
+def test_rose_room_treasurer_pays_x_for_x_damage():
+    dec = {"kind": "PayXDamage", "max": 4}
+    assert label(dec, "Amount", 0) == "Don't pay"
+    assert label(dec, "Amount", 3) == "Pay {3}: 3 damage"

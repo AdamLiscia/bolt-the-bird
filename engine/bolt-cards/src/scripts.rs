@@ -458,6 +458,8 @@ pub fn token_defs() -> Vec<CardDef> {
         },
         // 108, lane d2: Currency Converter's "2/2 black Rogue creature token".
         black(token("Rogue", "Rogue", 2, 2, Keywords::NONE)),
+        // 109, lane d2: Toxrill, the Corrosive's "1/1 black Slug creature token".
+        black(token("Slug", "Slug", 1, 1, Keywords::NONE)),
     ]
 }
 
@@ -682,6 +684,8 @@ pub struct Tokens {
     pub spirit_cleric: usize,
     /// 108: d2's Currency Converter Rogue, a 2/2 black.
     pub rogue_2: usize,
+    /// 109: d2's Toxrill Slug, a 1/1 black.
+    pub slug: usize,
 }
 
 impl Tokens {
@@ -796,6 +800,7 @@ impl Tokens {
             warrior_white: base + 106,
             spirit_cleric: base + 107,
             rogue_2: base + 108,
+            slug: base + 109,
         }
     }
 }

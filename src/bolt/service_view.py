@@ -128,6 +128,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
             return f"Cast {card} with X = {value}" if card else f"X = {value}"
         if d == "ChooseLoyaltyX":
             return f"{src}: \u2212X with X = {value}" if src else f"X = {value}"
+        if d == "PayXDamage":
+            return "Don't pay" if value == 0 else f"Pay {{{value}}}: {value} damage" + (f" ({src})" if src else "")
         if d == "PayXDrawX":
             if value == 0:
                 return "Don't pay"
@@ -159,6 +161,9 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         if d == "ChooseCardType" and 0 <= value < 7:
             kinds = ("artifacts", "creatures", "enchantments", "instants", "lands", "planeswalkers", "sorceries")
             return f"{src or 'It'}: protection from {kinds[value]}"
+        if d == "ProtectionCardType" and 0 <= value < 7:
+            kinds = ("artifacts", "creatures", "enchantments", "instants", "lands", "planeswalkers", "sorceries")
+            return f"Protection from {kinds[value]}"
         if d == "Riot" and value in (0, 1):
             return f"{card or 'It'}: riot, " + ("a +1/+1 counter" if value == 0 else "haste")
         if d == "TargetToSource":
