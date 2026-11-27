@@ -355,6 +355,9 @@ pub struct Activated {
     /// "Sacrifice an artifact" in the cost: any artifact you control, kept out of the mana payment
     /// (Goblin Engineer). Activated with `Action::ActivateWith`.
     pub sacrifice_artifact: bool,
+    /// "Exile a creature you control" in the cost (Food Chain): one `Action::ActivateWith` per
+    /// creature you control; with `victim_in_extra` the effect sees the exiled card.
+    pub exile_creature_you_control: bool,
 }
 
 /// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,
@@ -1194,6 +1197,23 @@ pub struct ManaExt {
     /// "Colorless spells you cast with mana value N or greater cost {M} less to cast." as (N, M)
     /// (It That Heralds the End: (7, 1)).
     pub colorless_big_spell_discount: Option<(u8, u8)>,
+    /// "Treasures you control have '{T}, Sacrifice this artifact: Add two mana of any one color.'"
+    /// (Alchemist's Talent, level 2): while this permanent is at this Class level or higher (1:
+    /// always), each Treasure you control makes two mana instead of one. 0: none.
+    pub treasures_add_two_at_level: u8,
+    /// "Spells you cast from anywhere other than your hand cost {N} less to cast." (Fortune
+    /// Teller's Talent, level 3): (Class level needed, 1 for always; N).
+    pub not_from_hand_discount: Option<(u8, u8)>,
+    /// "Once each turn, you may pay {0} rather than pay the mana cost for a colorless spell you
+    /// cast from your hand." (Darksteel Monolith): cast with `Action::CastAlternative`.
+    pub colorless_free_once_each_turn: bool,
+    /// Retrace (CR 702.81): cast this card from your graveyard by discarding a land card in
+    /// addition to its other costs (`Action::CastWith` naming the land; it goes back to the
+    /// graveyard as it resolves, not to exile).
+    pub retrace: bool,
+    /// `CardDef::ward_sacrifice` counts only permanents with this subtype (Ygra, Eater of All:
+    /// "Ward—Sacrifice a Food.", with `ward_sacrifice: 1`).
+    pub ward_sacrifice_subtype: Option<&'static str>,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana

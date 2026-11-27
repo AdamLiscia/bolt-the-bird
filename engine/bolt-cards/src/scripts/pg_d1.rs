@@ -1246,6 +1246,73 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].life_per_commander_color = true;
             },
         ),
+        // ---- d1 core, batch 14: kick count with {X}, fabricate, Treasure and Talent mana, retrace,
+        // creature-only mana, Darksteel Monolith ----
+        "Pride of the Clouds" => s(
+            &[
+                "This creature gets +1/+1 for each other creature on the battlefield with flying.",
+                "Forecast — {2}{W}{U}, Reveal this creature from your hand: Create a 1/1 white and blue Bird creature token with flying.",
+            ],
+            |d, t| {
+                static_on(d, Scope::This, false, Keywords::NONE);
+                let st = d.statics.last_mut().expect("just added");
+                (st.power, st.toughness, st.scale) = (1, 1, Some(Scale::PerOtherCreatureWithFlying));
+                let bird = Effect::CreateToken { who: Who::You, def: t.bird_flying_wu, n: 1 };
+                let n = activated(d, "{2}{W}{U}", false, vec![], vec![bird]);
+                d.activated[n].forecast = true;
+                d.activated[n].once_each_turn = true;
+            },
+        ),
+        "Marionette Apprentice" => s(
+            &[
+                "Fabricate 1",
+                "Whenever another creature or artifact you control is put into a graveyard from the battlefield, each opponent loses 1 life.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::Fabricate { n: 1, servo: t.servo }]);
+                let drain = Effect::LoseLife { who: Who::EachOpponent, n: 1 };
+                on(d, When::AnotherCreatureOrArtifactYouControlToGraveyardFromBattlefield, vec![], vec![drain]);
+            },
+        ),
+        "Marionette Master" => s(
+            &[
+                "Fabricate 3",
+                "Whenever an artifact you control is put into a graveyard from the battlefield, target opponent loses life equal to this creature's power.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::Fabricate { n: 3, servo: t.servo }]);
+                let opp = Filter::PLAYER.controlled_by(Controller::Opponent);
+                on(
+                    d,
+                    When::ArtifactYouControlToGraveyardFromBattlefield,
+                    vec![opp],
+                    vec![Effect::LoseLifeSourcePower(Who::TargetPlayer(0))],
+                );
+            },
+        ),
+        "Food Chain" => s(
+            &["Exile a creature you control: Add X mana of any one color, where X is 1 plus the exiled creature's mana value. Spend this mana only to cast creature spells."],
+            |d, _| {
+                // On the stack, like Ashnod's Altar's.
+                let n = activated(d, "", false, vec![], vec![Effect::AddCreatureSpellManaExtraMvPlusOne]);
+                d.activated[n].exile_creature_you_control = true;
+                d.activated[n].victim_in_extra = true;
+            },
+        ),
+        "Waves of Aggression" => s(
+            &[
+                "Untap all creatures that attacked this turn. After this main phase, there is an additional combat phase followed by an additional main phase.",
+                "Retrace",
+            ],
+            |d, _| {
+                spell(d, vec![], vec![Effect::UntapCreaturesAttackedThisTurn, Effect::AdditionalCombatAndMain]);
+                d.mana_ext.retrace = true;
+            },
+        ),
+        "Darksteel Monolith" => s(
+            &["Once each turn, you may pay {0} rather than pay the mana cost for a colorless spell you cast from your hand."],
+            |d, _| d.mana_ext.colorless_free_once_each_turn = true,
+        ),
         _ => None,
     }
 }
@@ -1412,4 +1479,10 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Behold the Multiverse",
     "Eye of Ugin",
     "War Room",
+    "Pride of the Clouds",
+    "Marionette Apprentice",
+    "Marionette Master",
+    "Food Chain",
+    "Waves of Aggression",
+    "Darksteel Monolith",
 ];
