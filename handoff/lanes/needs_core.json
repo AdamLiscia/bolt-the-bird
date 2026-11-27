@@ -2834,7 +2834,7 @@
   {
    "card": "Toxrill, the Corrosive",
    "deck": "Sefris of the Hidden Ways",
-   "missing": "needs core: slime counters with a -1/-1 per counter static, and a 1/1 black Slug creature token [d3 batch 30: the slime store is in: Object::slime, Object::last_slime (last known, as it left the battlefield), Effect::SlimeCounterOnEachCreatureYouDontControl (the end step trigger, When::EndStep { your_turn_only: false }), the static as Scope::OpponentsCreatures -1/-1 with scale Scale::PerSlimeCounterOnIt. Still: the dies trigger (d2) and the card (lane C)]",
+   "missing": "needs core: slime counters with a -1/-1 per counter static, and a 1/1 black Slug creature token [d3 batch 30: the slime store is in: Object::slime, Object::last_slime (last known, as it left the battlefield), Effect::SlimeCounterOnEachCreatureYouDontControl (the end step trigger, When::EndStep { your_turn_only: false }), the static as Scope::OpponentsCreatures -1/-1 with scale Scale::PerSlimeCounterOnIt. Still: the dies trigger (d2) and the card (lane C)] [d2 batch 29: When::CreatureYouDontControlWithSlimeDies (reads Object::last_slime), token 109 Tokens::slug; lane C scripts the card]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -3090,7 +3090,7 @@
   {
    "card": "Seasoned Dungeoneer",
    "deck": "Sefris of the Hidden Ways",
-   "missing": "needs core: take the initiative, protection from creatures, and explore on a 'whenever you attack' target [d3 batch 30: protection from creatures is in: Effect::ProtectionFromCardTypeEot { slot: Some(0), kind: 1 } (Game::type_protection_grants)]",
+   "missing": "needs core: take the initiative, protection from creatures, and explore on a 'whenever you attack' target [d3 batch 30: protection from creatures is in: Effect::ProtectionFromCardTypeEot { slot: Some(0), kind: 1 } (Game::type_protection_grants)] [done by d2 batch 29: d3 batch 30 ProtectionFromCardTypeEot, Filter::subtypes_any, scripted in pg_d2]",
    "lane": "d3",
    "theme": "triggers",
    "owner": "d2"

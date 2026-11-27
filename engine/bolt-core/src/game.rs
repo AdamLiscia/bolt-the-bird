@@ -5412,6 +5412,16 @@ impl Game {
             }
             self.creature_died_this_turn = true;
             self.creature_died_under[last_controller] = true;
+            // Toxrill: "a creature you don't control with a slime counter on it", as it last existed.
+            if self.obj(id).last_slime > 0 {
+                let before = self.triggered.len();
+                self.fire(
+                    opponent(last_controller),
+                    When::CreatureYouDontControlWithSlimeDies,
+                    None,
+                );
+                self.fill_triggering(before, id);
+            }
             let (t, n) = self.creatures_died;
             self.creatures_died = (self.turn, if t == self.turn { n + 1 } else { 1 });
             if !self.is_token(id) {
@@ -6649,6 +6659,9 @@ impl Game {
             return false;
         }
         if f.tapped_only && !self.obj(id).tapped {
+            return false;
+        }
+        if !f.subtypes_any.is_empty() && !f.subtypes_any.iter().any(|s| self.has_subtype(id, s)) {
             return false;
         }
         if f.single_target {

@@ -3031,3 +3031,65 @@ fn sabotender_and_tannuk_burn_on_landfall_and_tannuk_draws_the_second_time() {
         "Tannuk's second resolution draws"
     );
 }
+
+#[test]
+fn seasoned_dungeoneer_takes_the_initiative_and_protects_an_attacking_warrior() {
+    let mut g = table();
+    let dungeoneer = hand(&mut g, 0, "Seasoned Dungeoneer");
+    act(&mut g, Action::Cast(dungeoneer));
+    // The initiative ventures into Undercity: answer its room choices.
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) | Pending::Decide(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.initiative.map(|(p, _)| p), Some(0), "you take the initiative");
+    let angel = put(&mut g, 1, "Serra Angel");
+    let lions = put(&mut g, 0, "Savannah Lions"); // a Cat Soldier: not a party member
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        match g.pending {
+            Pending::Decide(_) | Pending::ChooseTarget(_) => {
+                let a = g.legal_actions()[0];
+                act(&mut g, a);
+            }
+            _ => {
+                act(&mut g, Action::PassPriority);
+            }
+        }
+    }
+    act(&mut g, Action::Attack(dungeoneer));
+    act(&mut g, Action::Attack(lions));
+    act(&mut g, Action::FinishAttacks);
+    assert!(
+        !has(&g, Action::Target(Target::Object(lions))),
+        "a Cleric, Rogue, Warrior or Wizard only"
+    );
+    while !matches!(g.pending, Pending::DeclareBlockers(_)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) => Action::Target(Target::Object(dungeoneer)),
+            Pending::Decide(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert!(
+        !has(
+            &g,
+            Action::Block {
+                blocker: angel,
+                attacker: dungeoneer
+            }
+        ),
+        "protection from creatures"
+    );
+    assert!(has(
+        &g,
+        Action::Block {
+            blocker: angel,
+            attacker: lions
+        }
+    ));
+}

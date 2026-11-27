@@ -1370,6 +1370,18 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::LandYouControlEnters, vec![], vec![damage(1, Recipient::EachOpponent), Effect::DrawIfSecondResolutionThisTurn(1)]);
             },
         ),
+        // ---- Sefris (d3's batch 30 pieces) ----
+        "Seasoned Dungeoneer" => s(
+            &[
+                "When this creature enters, you take the initiative.",
+                "Whenever you attack, target attacking Cleric, Rogue, Warrior, or Wizard gains protection from creatures until end of turn. It explores.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::Subsystem(bolt_core::effect::SubsystemEffect::TakeInitiative)]);
+                let party = Filter { attacking: true, subtypes_any: &["Cleric", "Rogue", "Warrior", "Wizard"], ..CREATURE };
+                on(d, When::YouAttack, vec![party], vec![Effect::ProtectionFromCardTypeEot { slot: Some(0), kind: 1 }, Effect::Explore(0)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1608,4 +1620,5 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Rose Room Treasurer",
     "Sabotender",
     "Tannuk, Memorial Ensign",
+    "Seasoned Dungeoneer",
 ];

@@ -2032,3 +2032,36 @@ fn you_cast_triggers_carry_the_spell_and_the_game_knows_it_while_firing() {
     }
     assert_eq!(life(&g, 1), 34, "the Bolt and the copy of that spell");
 }
+
+#[test]
+fn a_creature_you_dont_control_with_slime_dies() {
+    // Sol Ring, given Toxrill's "Whenever a creature you don't control with a slime counter on it
+    // dies, create a 1/1 black Slug creature token." for this test.
+    let slug = token_def("Slug");
+    let t = trigger(
+        When::CreatureYouDontControlWithSlimeDies,
+        None,
+        vec![Effect::CreateToken {
+            who: Who::You,
+            def: slug,
+            n: 1,
+        }],
+    );
+    let mut g = game_with(ring_with(t));
+    g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    let slimed = g.add_card(1, cid("Serra Angel"), Zone::Battlefield);
+    let plain = g.add_card(1, cid("Serra Angel"), Zone::Battlefield);
+    let mine = g.add_card(0, cid("Serra Angel"), Zone::Battlefield);
+    g.objects[slimed.0 as usize].slime = 1;
+    g.objects[mine.0 as usize].slime = 1;
+    let slugs = |g: &Game| g.permanents(0).filter(|&x| g.def_of(x).name == "Slug").count();
+    kill(&mut g, plain);
+    resolve_all(&mut g, &[]);
+    assert_eq!(slugs(&g), 0, "no slime counter");
+    kill(&mut g, mine);
+    resolve_all(&mut g, &[]);
+    assert_eq!(slugs(&g), 0, "one you control");
+    kill(&mut g, slimed);
+    resolve_all(&mut g, &[]);
+    assert_eq!(slugs(&g), 1, "slime counter, as it last existed");
+}

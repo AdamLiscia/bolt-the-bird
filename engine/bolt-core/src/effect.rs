@@ -144,6 +144,9 @@ pub struct Filter {
     pub up_to_x: bool,
     /// Tapped permanents only (Far Traveler: "up to one target tapped creature you control").
     pub tapped_only: bool,
+    /// Only permanents with one of these subtypes (Seasoned Dungeoneer: "Cleric, Rogue, Warrior, or
+    /// Wizard"); empty: no restriction.
+    pub subtypes_any: &'static [&'static str],
 }
 
 impl Filter {
@@ -212,6 +215,7 @@ impl Filter {
         mana_value_at_most_x: false,
         up_to_x: false,
         tapped_only: false,
+        subtypes_any: &[],
     };
 
     pub const CREATURE: Filter = Filter {
@@ -3706,6 +3710,10 @@ pub enum When {
     /// card with `CardDef::soulbond_damage_draw` when it or the creature paired with it deals
     /// damage to an opponent (controlled by the damaging creature's controller).
     PairedDealsDamageToOpponent,
+    /// "Whenever a creature you don't control with a slime counter on it dies" (Toxrill, the
+    /// Corrosive), from d3's `Object::last_slime` as it left the battlefield; slot 0 (if
+    /// `triggering`) is the creature card.
+    CreatureYouDontControlWithSlimeDies,
 }
 
 #[derive(Clone, Debug, PartialEq)]
