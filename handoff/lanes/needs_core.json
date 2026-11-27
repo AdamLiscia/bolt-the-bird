@@ -1250,7 +1250,7 @@
   {
    "card": "Hallowed Haunting",
    "deck": "Zacama, Primal Calamity",
-   "missing": "a 'whenever you cast an enchantment spell' trigger; a white Spirit Cleric creature token with P/T equal to Spirits you control; seven-enchantments static",
+   "missing": "a 'whenever you cast an enchantment spell' trigger; a white Spirit Cleric creature token with P/T equal to Spirits you control; seven-enchantments static [done by d2 batch 21: token 107 spirit_cleric, StaticCondition::ControlEnchantmentsAtLeast, scripted in pg_d2]",
    "lane": "d1",
    "theme": "triggers",
    "owner": "d2"
@@ -5850,7 +5850,7 @@
   {
    "card": "Mesmeric Orb",
    "deck": "Bruna, Light of Alabaster (DonSpider)",
-   "missing": "lane C's Bruna routing (2026-11-26)",
+   "missing": "lane C's Bruna routing (2026-11-26) [done by d2 batch 21: When::PermanentBecomesUntapped, scripted in pg_d2]",
    "lane": "mac-c",
    "theme": "triggers",
    "owner": "d2"

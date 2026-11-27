@@ -2867,6 +2867,9 @@ pub enum StaticCondition {
     /// This color (WUBRG index) isn't in the source's controller's commander's color identity
     /// (with a partner, either's); with no commander, no color is (Commander's Plate).
     OutsideCommanderIdentity(u8),
+    /// Its controller controls at least this many enchantments (Hallowed Haunting: seven), printed
+    /// card types counted, as `ControlArtifactsAtLeast` does.
+    ControlEnchantmentsAtLeast(u8),
 }
 
 /// A static ability that changes characteristics (CR 604, 613 layers 6 and 7c).
@@ -3602,6 +3605,9 @@ pub enum When {
     /// With `Effect::DelayedThisTurn`: "until end of turn, whenever a player casts an instant or
     /// sorcery spell" (Bonus Round), controlled by that player, with the spell in `extra`.
     PlayerCastsInstantOrSorceryThisTurn,
+    /// "Whenever a permanent becomes untapped" (Mesmeric Orb), anyone's, this one included; slot 0
+    /// (if `triggering`) is that permanent.
+    PermanentBecomesUntapped,
 }
 
 #[derive(Clone, Debug, PartialEq)]

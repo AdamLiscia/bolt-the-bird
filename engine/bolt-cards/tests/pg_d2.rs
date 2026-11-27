@@ -2553,3 +2553,59 @@ fn ygra_grows_on_any_food_to_a_graveyard_but_not_other_artifacts() {
     play(&mut g, d, false, &[obj(theirs)], &[]);
     assert_eq!(g.obj(ygra).counters, 4, "the opponent's creature was a Food");
 }
+
+#[test]
+fn mesmeric_orb_mills_the_controller_of_each_permanent_that_untaps() {
+    let mut g = table();
+    put(&mut g, 0, "Mesmeric Orb");
+    let mine: Vec<ObjId> = (0..2).map(|_| put(&mut g, 0, "Forest")).collect();
+    let theirs = put(&mut g, 1, "Forest");
+    for &x in mine.iter().chain([&theirs]) {
+        g.objects[x.0 as usize].tapped = true;
+    }
+    let (gy0, gy1) = (g.players[0].graveyard.len(), g.players[1].graveyard.len());
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[0].graveyard.len(), gy0 + 2, "two of yours untapped");
+    assert_eq!(
+        g.players[1].graveyard.len(),
+        gy1,
+        "theirs stays tapped on your turn"
+    );
+    g.start_turn(6, 1);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[1].graveyard.len(), gy1 + 1, "its controller mills");
+}
+
+#[test]
+fn hallowed_haunting_makes_spirit_clerics_that_count_spirits_and_flies_at_seven() {
+    let mut g = table();
+    put(&mut g, 0, "Hallowed Haunting");
+    for n in 1..=2 {
+        let blood = hand(&mut g, 0, "Exquisite Blood");
+        play(&mut g, blood, false, &[], &[]);
+        let spirits = tokens(&g, 0, "Spirit Cleric");
+        assert_eq!(spirits.len(), n);
+        for &s in &spirits {
+            assert_eq!(
+                (g.power(s), g.toughness(s)),
+                (n as i32, n as i32),
+                "the Spirits you control"
+            );
+            assert!(!g.keywords(s).has(Keywords::FLYING), "{n}: three enchantments");
+        }
+    }
+    for _ in 0..4 {
+        put(&mut g, 0, "Exquisite Blood"); // seven enchantments
+    }
+    let lions = put(&mut g, 0, "Savannah Lions");
+    for c in [lions, tokens(&g, 0, "Spirit Cleric")[0]] {
+        assert!(g.keywords(c).has(Keywords::FLYING) && g.keywords(c).has(Keywords::VIGILANCE));
+    }
+    let theirs = put(&mut g, 1, "Savannah Lions");
+    assert!(!g.keywords(theirs).has(Keywords::FLYING), "creatures you control");
+}
