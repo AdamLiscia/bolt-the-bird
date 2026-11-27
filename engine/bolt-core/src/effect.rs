@@ -2581,6 +2581,9 @@ pub enum Effect {
     /// with a corpse counter (`Object::corpse_counter`: exiled if it would leave) (From the
     /// Catacombs).
     ReanimateWithCorpseCounter(u8),
+    /// "If a source would deal damage to a player or battle this turn, it deals that much damage
+    /// plus 2 instead." (Rankle and Torbran), see `Game::plus_two_to_players`.
+    DamageToPlayersPlusTwoThisTurn,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

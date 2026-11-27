@@ -977,7 +977,8 @@ landfall Zombie (a small Condition, about 10 lines).
 
 Scripted (pg_b): Plague Drone (`opponents_life_gain_becomes_loss`, in `gain_life`), Narset, Parter of
 Veils (`opponents_draw_at_most_one`, at the top of `draw`; `Pick::NoncreatureNonland`), Kami of
-Whispered Hopes (the existing `counters_plus_one`; its X mana may be any colors each, not one),
+Whispered Hopes (the existing `counters_plus_one`; X mana of one color, one ability per color as
+Heronblade Elite),
 Dauthi Voidwalker (shadow and its void pieces were in), Damn (overload: `CardDef::overload_spell`
 with `alt_cost` needing no creatures, in the castability check, target choice and `ability_of`),
 Metallic Mimic (`others_of_chosen_type_enter_with_counter`, in the enter path and
@@ -987,8 +988,11 @@ player's attacker, `Effect::ExtrasControllerCreatesAttackingToken`, `Activated::
 token 106 white Warrior), From the Catacombs (`Effect::ReanimateWithCorpseCounter`,
 `Object::corpse_counter` in `move_to`; d4's initiative, d1's escape).
 
-Pieces for lane C's cards (tested on edited definitions in core_replace): Torbran
-(`red_sources_deal_two_more`: +2 after the doublers, to an opponent or their permanents), Inkshield
+Rankle and Torbran (pg_b): "choose any number" as Rankle, Master of Pranks; its third mode is
+`Effect::DamageToPlayersPlusTwoThisTurn` (`Game::plus_two_to_players`: +2 to damage to players this
+turn, from any source, after the doublers; no battles exist).
+
+Pieces for lane C's cards (tested on edited definitions in core_replace): Inkshield
 (`Effect::PreventCombatDamageToYouMakingTokens`, `Game::combat_shield_tokens`; token 105 Inkling),
 The One Ring (`Effect::YouGainProtectionUntilYourNextTurn`, `Game::player_protected_until`: damage to
 you prevented and you can't be targeted; "can't be enchanted" isn't modelled).

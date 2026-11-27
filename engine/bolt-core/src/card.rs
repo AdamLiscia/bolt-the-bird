@@ -1051,9 +1051,6 @@ pub struct CardDef {
     /// Ojer Taq: "If one or more creature tokens would be created under your control, three times
     /// that many of those tokens are created instead." (`Game::creature_token_tripling`)
     pub triples_creature_tokens: bool,
-    /// Torbran, Thane of Red Fell: "If a red source you control would deal damage to an opponent or
-    /// a permanent an opponent controls, it deals that much damage plus 2 instead." (`deal_damage`)
-    pub red_sources_deal_two_more: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1571,7 +1568,6 @@ impl CardDef {
             overload_spell: None,
             others_of_chosen_type_enter_with_counter: false,
             triples_creature_tokens: false,
-            red_sources_deal_two_more: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1864,7 +1860,6 @@ impl CardDef {
             overload_spell: None,
             others_of_chosen_type_enter_with_counter: false,
             triples_creature_tokens: false,
-            red_sources_deal_two_more: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2157,7 +2152,6 @@ impl CardDef {
             overload_spell: None,
             others_of_chosen_type_enter_with_counter: false,
             triples_creature_tokens: false,
-            red_sources_deal_two_more: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

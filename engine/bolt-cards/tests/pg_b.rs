@@ -3786,12 +3786,23 @@ fn narset_parter_of_veils_caps_their_draws_and_digs_for_a_noncreature_nonland() 
 }
 
 #[test]
-fn kami_of_whispered_hopes_taps_for_its_power() {
-    let mut g = game(&[]);
+fn kami_of_whispered_hopes_taps_for_x_of_one_color() {
+    let mut g = table();
     let kami = put(&mut g, 0, "Kami of Whispered Hopes");
-    assert_eq!(colors_of(&g, kami).len(), 1);
     g.objects[kami.0 as usize].counters = 2; // a 3/3
-    assert_eq!(colors_of(&g, kami).len(), 3);
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let pool = g.players[0].pool.len();
+    act(&mut g, Action::Activate(kami, 4)); // green
+    resolve_all(&mut g, &[]);
+    let green = bolt_core::ManaSource::of(&[bolt_core::Color::Green]);
+    assert_eq!(g.players[0].pool.len(), pool + 3);
+    assert!(
+        g.players[0].pool[pool..].iter().all(|m| *m == green),
+        "all one color"
+    );
 }
 
 #[test]
@@ -3930,4 +3941,41 @@ fn from_the_catacombs_reanimates_with_a_corpse_counter_and_the_initiative() {
     let bolt = hand(&mut g, 0, "Lightning Bolt");
     play(&mut g, bolt, false, &[Target::Object(lions)], &[]);
     assert_eq!(g.obj(lions).zone, Zone::Exile, "exiled instead of dying");
+}
+
+#[test]
+fn rankle_and_torbran_shares_treasure_and_adds_two_to_damage_to_players() {
+    let mut g = table();
+    let rt = put(&mut g, 0, "Rankle and Torbran");
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(rt));
+    act(&mut g, Action::FinishAttacks);
+    let mut moded = false;
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ if !moded && g.legal_actions().contains(&Action::Mode(4)) => {
+                moded = true;
+                Action::Mode(4) // Treasures and "plus 2"
+            }
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert!(moded);
+    assert_eq!(g.players[1].life, 37);
+    assert_eq!(
+        (tokens(&g, 0, "Treasure").len(), tokens(&g, 1, "Treasure").len()),
+        (1, 1)
+    );
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[Target::Player(1)], &[]);
+    assert_eq!(g.players[1].life, 32, "3 plus 2 this turn");
+    let elves = put(&mut g, 1, "Llanowar Elves");
+    let shock = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, shock, false, &[Target::Object(elves)], &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Graveyard, "creatures take the usual 3");
 }

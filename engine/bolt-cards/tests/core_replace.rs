@@ -374,23 +374,7 @@ fn gisa_exiles_opponents_dying_creatures_and_remembers_them() {
         .any(|&(s, _, c, z)| s == gisa && c == theirs && z == g.obj(theirs).zcc));
 }
 
-// ---- Pieces for lane C's cards: Torbran, Inkshield, The One Ring (2026-11-27) ----
-
-#[test]
-fn torbrans_red_sources_deal_two_more_to_opponents() {
-    let mut g = table_with(|defs| defs[cid("Savannah Lions")].red_sources_deal_two_more = true);
-    put(&mut g, 0, "Savannah Lions"); // standing in for Torbran
-    let bolt = hand(&mut g, 0, "Lightning Bolt");
-    play(&mut g, bolt, false, &[Target::Player(1)], &[]);
-    assert_eq!(g.players[1].life, 35, "3 plus 2");
-    let elves = put(&mut g, 0, "Llanowar Elves");
-    let shock = hand(&mut g, 0, "Lightning Bolt");
-    play(&mut g, shock, false, &[Target::Object(elves)], &[]);
-    assert_eq!(g.obj(elves).zone, Zone::Graveyard);
-    let bolt = hand(&mut g, 0, "Lightning Bolt");
-    play(&mut g, bolt, false, &[Target::Player(0)], &[]);
-    assert_eq!(g.players[0].life, 37, "not to you");
-}
+// ---- Pieces for lane C's cards: Inkshield, The One Ring (2026-11-27) ----
 
 #[test]
 fn inkshield_prevents_combat_damage_to_you_and_makes_inklings() {

@@ -2140,10 +2140,11 @@ pub fn script(name: &str) -> Option<Script> {
                 "{T}: Add X mana of any one color, where X is this creature's power.",
             ],
             |d, _| {
-                // Each of the X mana may be any color (the engine doesn't hold them to one color).
                 d.counters_plus_one = true;
-                d.mana = Some(ManaSource::of(&Color::ALL));
-                d.mana_equal_power = true;
+                // One ability per color, all X of it that color (as Heronblade Elite).
+                for c in Color::ALL {
+                    activated(d, "", true, vec![], vec![Effect::AddManaSourcePower(c)]);
+                }
             },
         ),
         "Dauthi Voidwalker" => s(
@@ -2217,6 +2218,31 @@ pub fn script(name: &str) -> Option<Script> {
                 let initiative = Effect::Subsystem(bolt_core::SubsystemEffect::TakeInitiative);
                 spell(d, vec![card], vec![Effect::ReanimateWithCorpseCounter(0), initiative]);
                 d.mana_ext.escape = Some((ManaCost::parse("{3}{B}{B}").expect("cost"), 5, 0));
+            },
+        ),
+        "Rankle and Torbran" => s(
+            &[
+                "Whenever Rankle and Torbran deals combat damage to a player or battle, choose any number \u{2014}",
+                "\u{2022} Each player creates a Treasure token.",
+                "\u{2022} Each player sacrifices a creature of their choice.",
+                "\u{2022} If a source would deal damage to a player or battle this turn, it deals that much damage plus 2 instead.",
+            ],
+            |d, t| {
+                // "Choose any number": each set of the three modes is one mode (bit i: mode i), the
+                // empty set last, as Rankle, Master of Pranks. There are no battles.
+                let part = |i: usize| -> Vec<Effect> {
+                    let both = [Who::You, Who::EachOpponent];
+                    match i {
+                        0 => both.iter().map(|&who| Effect::CreateToken { who, def: t.treasure, n: 1 }).collect(),
+                        1 => both.iter().map(|&who| Effect::SacrificeCreatures { who, n: 1 }).collect(),
+                        _ => vec![Effect::DamageToPlayersPlusTwoThisTurn],
+                    }
+                };
+                let mut sets: Vec<Ability> = (1u32..8)
+                    .map(|m| Ability::new(vec![], (0..3).filter(|i| m & (1 << i) != 0).flat_map(part).collect()))
+                    .collect();
+                sets.push(Ability::new(vec![], vec![]));
+                on_modal(d, When::DealsCombatDamageToPlayer, None, sets);
             },
         ),
         _ => None,
@@ -2474,6 +2500,7 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Ojer Taq, Deepest Foundation // Temple of Civilization",
     "Najeela, the Blade-Blossom",
     "From the Catacombs",
+    "Rankle and Torbran",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",

@@ -1810,6 +1810,9 @@ pub struct Game {
     pub combat_shield_tokens: Vec<(PlayerId, u32, usize)>,
     /// The One Ring: the turn before which each player has protection from everything.
     pub player_protected_until: [Option<u32>; 2],
+    /// Rankle and Torbran: (turn, how many) of "it deals that much damage plus 2" for damage to
+    /// players this turn.
+    pub plus_two_to_players: (u32, u32),
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -2093,6 +2096,7 @@ impl Game {
             riot_then: 0,
             combat_shield_tokens: Vec::new(),
             player_protected_until: [None; 2],
+            plus_two_to_players: (0, 0),
         }
     }
 
@@ -19123,6 +19127,10 @@ impl Game {
                     }
                 }
             }
+            Effect::DamageToPlayersPlusTwoThisTurn => {
+                let (t, n) = self.plus_two_to_players;
+                self.plus_two_to_players = (self.turn, if t == self.turn { n + 1 } else { 1 });
+            }
             Effect::ReanimateWithCorpseCounter(n) => {
                 if let Some(id) = Game::slot_object(item, legal, n) {
                     if self.obj(id).zone == Zone::Graveyard {
@@ -24779,22 +24787,11 @@ impl Game {
             }
         }
         let amount = amount * self.damage_doubling(source, target);
-        // Torbran: a red source you control deals 2 more to an opponent or their permanents.
-        let amount = {
-            let c = self.obj(source).controller;
-            let to_opponent = match target {
-                Target::Player(q) => q != c,
-                Target::Object(x) => self.obj(x).controller != c,
-            };
-            let torbrans = self
-                .permanents(c)
-                .filter(|&x| self.def_of(x).red_sources_deal_two_more && !self.lost_abilities(x))
-                .count() as i32;
-            if amount > 0 && to_opponent && self.colors_of(source)[3] {
-                amount + 2 * torbrans
-            } else {
-                amount
-            }
+        // Rankle and Torbran: "If a source would deal damage to a player ... this turn, it deals
+        // that much damage plus 2 instead." (each resolved mode adds 2), after the doublers.
+        let amount = match (target, self.plus_two_to_players) {
+            (Target::Player(_), (t, n)) if amount > 0 && t == self.turn => amount + 2 * n,
+            _ => amount,
         };
         // Gisela: any source's damage to her controller's opponent or their permanents is doubled.
         let owner = match target {
