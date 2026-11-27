@@ -3581,3 +3581,26 @@ fn valgavoth_exiles_their_dying_cards_and_casts_them_for_life_on_your_turn() {
         "no lands tapped"
     );
 }
+
+#[test]
+fn sigarda_doesnt_stop_your_own_animate_dead_sacrificing_its_creature() {
+    // Your Animate Dead leaves during the opponent's spell: its own ability (yours) sacrifices.
+    let mut g = table();
+    put(&mut g, 0, "Sigarda, Host of Herons");
+    let dead = g.add_card(0, cid("Savannah Lions"), Zone::Graveyard);
+    let aura = hand(&mut g, 0, "Animate Dead");
+    play(&mut g, aura, false, &[Target::Object(dead)], &[]);
+    assert_eq!(g.obj(dead).zone, Zone::Battlefield);
+    g.start_turn(4, 1);
+    while g.pending != Pending::Priority(1) || g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let decay = hand(&mut g, 1, "Abrupt Decay");
+    play(&mut g, decay, false, &[Target::Object(aura)], &[]);
+    assert_eq!(g.obj(aura).zone, Zone::Graveyard);
+    assert_eq!(
+        g.obj(dead).zone,
+        Zone::Graveyard,
+        "Animate Dead's own sacrifice still happens"
+    );
+}

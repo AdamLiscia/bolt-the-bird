@@ -4035,6 +4035,12 @@ impl Game {
         if self.forced_sacrifice_blocked(p) {
             return true; // Sigarda, Host of Herons
         }
+        self.unsacrificeable(id)
+    }
+
+    /// Permanents that can't be sacrificed at all right now, whoever asks (Zurgo, Thunder's Decree's Warrior tokens).
+    fn unsacrificeable(&self, id: ObjId) -> bool {
+        let p = self.obj(id).controller;
         self.step == Step::End
             && self.active == p
             && self.is_token(id)
@@ -4042,6 +4048,20 @@ impl Game {
             && self
                 .permanents(p)
                 .any(|x| self.def_of(x).warrior_tokens_unsacrificeable_end_step)
+    }
+
+    /// `cant_be_sacrificed`, for a sacrifice made by an ability of a permanent `by` controls: Sigarda
+    /// stops it only if `by` is an opponent, whatever is resolving.
+    fn cant_be_sacrificed_by(&self, id: ObjId, by: PlayerId) -> bool {
+        let p = self.obj(id).controller;
+        let sigarda = by != p
+            && self
+                .permanents(p)
+                .any(|x| self.def_of(x).opponents_cant_make_you_sacrifice && !self.lost_abilities(x));
+        if sigarda {
+            return true;
+        }
+        self.unsacrificeable(id)
     }
 
     /// Sigarda, Host of Herons: an opponent's spell or ability is resolving, so it can't make `p`
@@ -4538,7 +4558,9 @@ impl Game {
         if let (Some((c, z)), true) = (reanimated, to != Zone::Battlefield) {
             // "When this Aura leaves the battlefield, that creature's controller sacrifices it."
             let o = self.obj(c);
-            if o.zcc == z && o.zone == Zone::Battlefield && !self.cant_be_sacrificed(c) {
+            // The Aura's own ability does the sacrificing (Sigarda looks at its controller, not at
+            // a spell that's resolving).
+            if o.zcc == z && o.zone == Zone::Battlefield && !self.cant_be_sacrificed_by(c, last_controller) {
                 self.move_to(c, Zone::Graveyard);
             }
         }

@@ -900,8 +900,9 @@ shield). Sigarda and Valgavoth not started.
   `sacrifice_permanents`, the greatest-power, nontoken, creature-or-planeswalker and vow sacrifices,
   Torment-style "unless", ward—sacrifice); two gaps were closed: `Decision::LoseOrDiscard`'s
   sacrifice options and the Ring's blocker sacrifice (d4). Your own costs and mana abilities are
-  unaffected. Known edge: Animate Dead's "that creature's controller sacrifices it", when an
-  opponent's spell removes the Aura, is blocked too.
+  unaffected. Animate Dead's "that creature's controller sacrifices it" asks
+  `cant_be_sacrificed_by(creature, the Aura's controller)`: Sigarda stops it only when the Aura is an
+  opponent's, whatever spell is resolving.
 - Valgavoth: ward was in; `CardDef::exiles_opponents_cards_to_play` (in `move_to`: a nontoken card its
   controller didn't control, headed for an opponent's graveyard, is exiled and recorded in
   `exiled_with`), playable from exile during your turn (`Game::valgavoth_exiled`, offered with life
