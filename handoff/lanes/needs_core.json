@@ -7574,7 +7574,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 40 (scripted, pg_d2)"
   },
   {
    "card": "Charismatic Conqueror",
@@ -7646,7 +7646,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 40 (When::EnchantedOfColorDealsDamageToOpponent)"
   },
   {
    "card": "Hermes, Overseer of Elpis",
@@ -7754,7 +7754,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 40 (scripted, pg_d2)"
   },
   {
    "card": "Liege of the Hollows",
@@ -7781,7 +7781,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 40 (When::AnotherCreatureDiesIt, Condition::CreatureOnBattlefield, Effect::ReturnSlotAtNextEndStep)"
   },
   {
    "card": "Nim Deathmantle",
@@ -7808,7 +7808,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 40 (Effect::CreateTokensTappedAndAttacking; t.human)"
   },
   {
    "card": "Luminarch Aspirant",
@@ -7853,7 +7853,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 40 (When::YouCastArtifactOrEnchantment; t.faerie, no new token)"
   },
   {
    "card": "Archon of Cruelty",
@@ -7898,7 +7898,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 40 (When::YourArtifactCreatureDealsCombatDamageToPlayer; t.thopter)"
   },
   {
    "card": "Sword of Light and Shadow",
@@ -7925,7 +7925,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 40 (When::YourArtifactCreaturesDealCombatDamageToPlayer)"
   },
   {
    "card": "Zur the Enchanter",
@@ -7934,7 +7934,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "needs core (d3, searches with filters): SearchFor an enchantment card with mana value 3 or less; the attack trigger exists (When::Attacks + may)"
   },
   {
    "card": "Crime Novelist",

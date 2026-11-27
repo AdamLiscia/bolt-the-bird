@@ -2517,3 +2517,126 @@ fn delayed_when_that_creature_dies_this_turn_only_for_it() {
     cast_now(&mut g, 0, "Hero's Downfall", &[obj(lions)]);
     assert_eq!(life(&g, 0), 42, "the power it died with");
 }
+
+// ---- batch 40: artifact or enchantment spells, artifact combat damage, color-gated Aura grants, deaths ----
+
+#[test]
+fn you_cast_artifact_or_enchantment_triggers_once_for_an_artifact_enchantment() {
+    let mut g = game_with(|defs: &mut Vec<CardDef>| {
+        blood_with(vec![trigger(When::YouCastArtifactOrEnchantment, None, gain(1))])(defs);
+        defs[cid("Sol Ring")].types.enchantment = true;
+    });
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Hand);
+    play(&mut g, ring, false, &[], &[]);
+    assert_eq!(life(&g, 0), 41, "once, though it's both");
+    let signet = g.add_card(0, cid("Arcane Signet"), Zone::Hand);
+    play(&mut g, signet, false, &[], &[]);
+    assert_eq!(life(&g, 0), 42);
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Hand);
+    play(&mut g, lions, false, &[], &[]);
+    assert_eq!(life(&g, 0), 42, "a creature spell");
+}
+
+#[test]
+fn artifact_creatures_dealing_combat_damage_each_and_batched() {
+    let mut g = game_with(blood_with(vec![
+        trigger(When::YourArtifactCreatureDealsCombatDamageToPlayer, None, gain(1)),
+        trigger(
+            When::YourArtifactCreaturesDealCombatDamageToPlayer,
+            None,
+            gain(10),
+        ),
+    ]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let golem = g.add_card(0, cid("Solemn Simulacrum"), Zone::Battlefield);
+    let strix = g.add_card(0, cid("Baleful Strix"), Zone::Battlefield);
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    attack_through(&mut g, &[golem, strix, lions]);
+    assert_eq!(life(&g, 1), 40 - 5);
+    assert_eq!(
+        life(&g, 0),
+        40 + 5 + 2 + 10,
+        "Exquisite Blood; two artifacts; one batch"
+    );
+}
+
+#[test]
+fn enchanted_of_color_triggers_only_for_the_creatures_colors() {
+    let mut g = game_with(|defs: &mut Vec<CardDef>| {
+        let d = &mut defs[cid("Curiosity")];
+        d.triggers.clear();
+        d.triggers.push(trigger(
+            When::EnchantedOfColorDealsDamageToOpponent(0),
+            None,
+            gain(1),
+        ));
+        d.triggers.push(trigger(
+            When::EnchantedOfColorDealsDamageToOpponent(1),
+            None,
+            gain(10),
+        ));
+    });
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield); // white
+    let c = g.add_card(0, cid("Curiosity"), Zone::Hand);
+    play(&mut g, c, false, &[obj(lions)], &[]);
+    attack_through(&mut g, &[lions]);
+    assert_eq!(life(&g, 1), 38);
+    assert_eq!(life(&g, 0), 41, "white only");
+}
+
+#[test]
+fn another_creature_dies_it_returns_the_card_at_the_next_end_step_if_a_creature_remains() {
+    let it = Filter {
+        triggering: true,
+        graveyard: Some(true),
+        players: false,
+        creatures: false,
+        planeswalkers: false,
+        ..Filter::ANY
+    };
+    let mut back = trigger(
+        When::AnotherCreatureDiesIt,
+        Some(Condition::CreatureOnBattlefield),
+        vec![Effect::ReturnSlotAtNextEndStep(0)],
+    );
+    back.ability.targets = vec![it];
+    let mut g = game_with(blood_with(vec![back]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let elves = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+    kill(&mut g, lions);
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard, "not yet");
+    into_end_step(&mut g);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield, "the next end step");
+    assert_eq!(g.obj(lions).controller, 0, "under its owner's control");
+    g.start_turn(5, 0);
+    to_main(&mut g);
+    kill(&mut g, lions);
+    kill(&mut g, elves);
+    into_end_step(&mut g);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Graveyard, "no creature left as it died");
+    assert_eq!(
+        g.obj(lions).zone,
+        Zone::Battlefield,
+        "the Elves were out when it died"
+    );
+}
+
+#[test]
+fn create_tokens_tapped_and_attacking_joins_the_attack() {
+    let mut g = game_with(blood_with(vec![trigger(
+        When::YouAttack,
+        None,
+        vec![Effect::CreateTokensTappedAndAttacking {
+            def: token_def("Human"),
+            n: 2,
+        }],
+    )]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    attack_through(&mut g, &[lions]);
+    assert_eq!(life(&g, 1), 40 - 2 - 2, "two attacking 1/1s");
+}

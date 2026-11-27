@@ -5828,6 +5828,12 @@ impl Game {
             }
             self.fire(0, When::AnotherCreatureDies, Some(id));
             self.fire(1, When::AnotherCreatureDies, Some(id));
+            // Lifeline: "whenever a creature dies, ... return the first card".
+            for q in 0..2 {
+                let before = self.triggered.len();
+                self.fire(q, When::AnotherCreatureDiesIt, Some(id));
+                self.fill_triggering(before, id);
+            }
             let before = self.triggered.len();
             self.fire(0, When::OtherCreaturesDieOnceEachTurn, Some(id));
             self.fire(1, When::OtherCreaturesDieOnceEachTurn, Some(id));
@@ -12996,6 +13002,9 @@ impl Game {
         }
         if self.types_of(card).artifact {
             self.fire(p, When::YouCastArtifact, None);
+        }
+        if self.types_of(card).artifact || self.types_of(card).enchantment {
+            self.fire(p, When::YouCastArtifactOrEnchantment, None); // once for an artifact enchantment
         }
         let spell_cost = self.cast_mana_cost(&item);
         let spell_mv = spell_cost.mana_value() + spell_cost.x as u32 * item.x as u32;
@@ -26310,6 +26319,25 @@ impl Game {
                     self.ask(p, Decision::ChooseExiledToPlay { cards });
                 }
             }
+            Effect::CreateTokensTappedAndAttacking { def, n } => {
+                for _ in 0..n {
+                    self.create_token(item.controller, def);
+                    for id in self.last_created.clone() {
+                        self.obj_mut(id).tapped = true;
+                        if let Some(c) = self.combat.as_mut() {
+                            c.attackers.push(id); // CR 506.3a: attacking without being declared
+                        }
+                    }
+                }
+            }
+            Effect::ReturnSlotAtNextEndStep(slot) => {
+                if let Some(c) = Game::slot_object(item, legal, slot) {
+                    let o = self.obj(c);
+                    if matches!(o.zone, Zone::Graveyard | Zone::Exile) && !self.is_token(c) {
+                        self.delayed_returns.push((c, o.zcc, 0));
+                    }
+                }
+            }
             Effect::SolveCase => {
                 if self.obj(src).zone == Zone::Battlefield {
                     self.obj_mut(src).class_level = 2;
@@ -27020,6 +27048,9 @@ impl Game {
             Some(Condition::ControlNoCreatureWithDecayed) => !self
                 .creatures(controller)
                 .any(|c| self.def_of(c).decayed || self.obj(c).decayed),
+            Some(Condition::CreatureOnBattlefield) => {
+                self.battlefield.iter().any(|&c| self.types_of(c).creature)
+            }
         }
     }
 
@@ -28477,6 +28508,17 @@ impl Game {
         for p in hitters {
             self.fire(p, When::YourCreaturesDealCombatDamageToPlayer, None);
         }
+        // Thopter Spy Network: "one or more artifact creatures you control", once per step.
+        let mut artifact_hitters: Vec<PlayerId> = hit_player
+            .iter()
+            .filter(|&&(a, _)| self.types_of(a).artifact)
+            .map(|&(a, _)| self.obj(a).controller)
+            .collect();
+        artifact_hitters.sort_unstable();
+        artifact_hitters.dedup();
+        for p in artifact_hitters {
+            self.fire(p, When::YourArtifactCreaturesDealCombatDamageToPlayer, None);
+        }
         for p in 0..2 {
             let theirs: Vec<ObjId> = hit_player
                 .iter()
@@ -28496,6 +28538,13 @@ impl Game {
             self.fire(controller, When::YourCreatureDealsCombatDamageToPlayer, None);
             if self.is_token(a) {
                 self.fire(controller, When::YourCreatureTokenDealsCombatDamageToPlayer, None);
+            }
+            if self.types_of(a).artifact {
+                self.fire(
+                    controller,
+                    When::YourArtifactCreatureDealsCombatDamageToPlayer,
+                    None,
+                );
             }
             // The Ring's "whenever your Ring-bearer deals combat damage to a player" (d4's).
             self.ring_bearer_dealt_combat_damage(a);
@@ -29021,6 +29070,26 @@ impl Game {
                         .collect();
                     for a in auras {
                         self.fire_source(a, When::EnchantedDealsDamageToOpponent);
+                    }
+                    // Helm of the Ghastlord: the creature's granted ability (by its colors), so
+                    // the creature's controller controls the trigger.
+                    if controller != p {
+                        let colors = self.colors_of(source);
+                        let helms: Vec<ObjId> = self
+                            .battlefield
+                            .iter()
+                            .copied()
+                            .filter(|&a| self.obj(a).attached_to == Some((source, zcc)))
+                            .collect();
+                        for a in helms {
+                            for c in (0..5u8).filter(|&c| colors[c as usize]) {
+                                let before = self.triggered.len();
+                                self.fire_source(a, When::EnchantedOfColorDealsDamageToOpponent(c));
+                                for t in &mut self.triggered[before..] {
+                                    t.controller = controller;
+                                }
+                            }
+                        }
                     }
                     if !self.in_combat_damage {
                         // Combat damage batches these in `combat_damage`.

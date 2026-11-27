@@ -3040,6 +3040,15 @@ pub enum Effect {
     /// (`Decision::ChooseExiledToPlay`); until the end of your next turn, you may play it
     /// (End-Blaze Epiphany).
     ExileTopAmountChooseOnePlayableUntilYourNextTurn,
+    /// Create `n` `def` tokens that are tapped and attacking (CR 506.3a), not sacrificed later
+    /// (Adeline, Resplendent Cathar: one for each opponent).
+    CreateTokensTappedAndAttacking {
+        def: usize,
+        n: u8,
+    },
+    /// Return the card in `slot` (in a graveyard or exile) to the battlefield under its owner's
+    /// control at the beginning of the next end step (`Game::delayed_returns`; Lifeline).
+    ReturnSlotAtNextEndStep(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -3552,6 +3561,9 @@ pub enum Condition {
     /// With `When::YouCast`: at least this much mana was spent to cast that spell
     /// (`Object::mana_spent`; Raggadragga: seven), checked as it triggers.
     ManaSpentToCastAtLeast(u32),
+    /// A creature is on the battlefield (Lifeline: "if another creature is on the battlefield",
+    /// checked after the dying creature has left).
+    CreatureOnBattlefield,
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -4121,6 +4133,23 @@ pub enum When {
     /// "Whenever a creature you control with a mana ability attacks" (Raggadragga): once for each
     /// such attacker, which is the trigger's `extra` (`Effect::UntapExtra`: "untap it").
     CreatureYouControlWithManaAbilityAttacks,
+    /// "Whenever you cast an artifact or enchantment spell" (Alela, Artful Provocateur): once for
+    /// each such spell, an artifact enchantment included.
+    YouCastArtifactOrEnchantment,
+    /// "Whenever an artifact creature you control deals combat damage to a player" (Sharding
+    /// Sphinx): once for each such creature.
+    YourArtifactCreatureDealsCombatDamageToPlayer,
+    /// "Whenever one or more artifact creatures you control deal combat damage to a player"
+    /// (Thopter Spy Network): once for each combat damage step.
+    YourArtifactCreaturesDealCombatDamageToPlayer,
+    /// An Aura's grant "as long as enchanted creature is <color> (WUBRG index), it has 'Whenever
+    /// this creature deals damage to an opponent, ...'" (Helm of the Ghastlord). The ability is the
+    /// creature's, so the creature's controller controls the trigger; "that player" is the
+    /// opponent it damaged.
+    EnchantedOfColorDealsDamageToOpponent(u8),
+    /// "Whenever a creature dies" (Lifeline): any creature other than the source, with the card that
+    /// died in slot 0 when the first target filter is `triggering`.
+    AnotherCreatureDiesIt,
 }
 
 #[derive(Clone, Debug, PartialEq)]

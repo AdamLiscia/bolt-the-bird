@@ -4024,3 +4024,180 @@ fn end_blaze_epiphany_exiles_by_the_dead_creatures_power_and_plays_one() {
     resolve_all(&mut g, &[]);
     assert_eq!(g.players[0].library.len(), library);
 }
+
+// ---- Core: triggers, batch 40 (idea decks) ----
+
+/// Passes through combat damage to the second main phase, answering every question with its first
+/// legal choice and declaring no blockers.
+fn fight(g: &mut Game) {
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) | Pending::Decide(_) => g.legal_actions()[0],
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn cathars_crusade_counters_each_of_your_creatures_as_one_enters() {
+    let mut g = table();
+    put(&mut g, 0, "Cathars' Crusade");
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let lions = hand(&mut g, 0, "Savannah Lions");
+    play(&mut g, lions, false, &[], &[]);
+    assert_eq!((g.obj(lions).counters, g.obj(elves).counters), (1, 1));
+    let more = hand(&mut g, 0, "Llanowar Elves");
+    play(&mut g, more, false, &[], &[]);
+    assert_eq!(
+        (g.obj(lions).counters, g.obj(elves).counters, g.obj(more).counters),
+        (2, 2, 1)
+    );
+}
+
+#[test]
+fn juniper_order_ranger_counters_the_newcomer_and_itself() {
+    let mut g = table();
+    let ranger = hand(&mut g, 0, "Juniper Order Ranger");
+    play(&mut g, ranger, false, &[], &[]);
+    assert_eq!(g.obj(ranger).counters, 0, "only another creature");
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let lions = hand(&mut g, 0, "Savannah Lions");
+    play(&mut g, lions, false, &[], &[]);
+    assert_eq!(
+        (
+            g.obj(lions).counters,
+            g.obj(ranger).counters,
+            g.obj(elves).counters
+        ),
+        (1, 1, 0)
+    );
+}
+
+#[test]
+fn adeline_counts_your_creatures_and_makes_an_attacking_human_when_you_attack() {
+    let mut g = table();
+    let adeline = put(&mut g, 0, "Adeline, Resplendent Cathar");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    put(&mut g, 0, "Llanowar Elves");
+    assert_eq!(g.power(adeline), 3);
+    attack(&mut g, &[lions]);
+    drain(&mut g);
+    let humans = tokens(&g, 0, "Human");
+    assert_eq!(humans.len(), 1);
+    assert!(g.obj(humans[0]).tapped);
+    assert!(g
+        .combat
+        .as_ref()
+        .expect("in combat")
+        .attackers
+        .contains(&humans[0]));
+    assert_eq!(g.power(adeline), 4);
+    fight(&mut g);
+    assert_eq!(g.players[1].life, 40 - 2 - 1);
+    assert_eq!(tokens(&g, 0, "Human").len(), 1, "it stays");
+}
+
+#[test]
+fn alela_makes_a_faerie_for_artifact_and_enchantment_spells_and_pumps_fliers() {
+    let mut g = table();
+    let alela = put(&mut g, 0, "Alela, Artful Provocateur");
+    let ring = hand(&mut g, 0, "Sol Ring");
+    play(&mut g, ring, false, &[], &[]);
+    let faeries = tokens(&g, 0, "Faerie");
+    assert_eq!(faeries.len(), 1);
+    assert_eq!(g.power(faeries[0]), 2, "+1/+0 for another flier");
+    assert_eq!(g.power(alela), 2, "not Alela herself");
+    let blood = hand(&mut g, 0, "Exquisite Blood");
+    play(&mut g, blood, false, &[], &[]);
+    assert_eq!(tokens(&g, 0, "Faerie").len(), 2);
+    put(&mut g, 0, "Plains");
+    let lions = hand(&mut g, 0, "Savannah Lions");
+    play(&mut g, lions, false, &[], &[]);
+    assert_eq!(tokens(&g, 0, "Faerie").len(), 2, "a creature spell");
+    assert_eq!(g.power(lions), 2, "no flying: no pump");
+}
+
+#[test]
+fn sharding_sphinx_makes_a_thopter_for_each_artifact_creature_that_connects() {
+    let mut g = table();
+    put(&mut g, 0, "Sharding Sphinx");
+    let golem = put(&mut g, 0, "Solemn Simulacrum");
+    let strix = put(&mut g, 0, "Baleful Strix");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    attack(&mut g, &[golem, strix, lions]);
+    fight(&mut g);
+    assert_eq!(g.players[1].life, 40 - 5);
+    assert_eq!(
+        tokens(&g, 0, "Thopter").len(),
+        2,
+        "two artifact creatures, not the Cat"
+    );
+}
+
+#[test]
+fn thopter_spy_network_makes_thopters_with_an_artifact_and_draws_once_per_combat() {
+    let mut g = table();
+    put(&mut g, 0, "Thopter Spy Network");
+    to_step(&mut g, 5, 0, Step::Main1);
+    assert!(tokens(&g, 0, "Thopter").is_empty(), "no artifact");
+    put(&mut g, 0, "Sol Ring");
+    to_step(&mut g, 7, 0, Step::Main1);
+    assert_eq!(tokens(&g, 0, "Thopter").len(), 1);
+    let golem = put(&mut g, 0, "Solemn Simulacrum");
+    let strix = put(&mut g, 0, "Baleful Strix");
+    let n = g.players[0].hand.len();
+    attack(&mut g, &[golem, strix]);
+    fight(&mut g);
+    assert_eq!(tokens(&g, 0, "Thopter").len(), 2, "the upkeep Thopter");
+    assert_eq!(
+        g.players[0].hand.len(),
+        n + 2,
+        "the draw step, then one card for both"
+    );
+}
+
+#[test]
+fn helm_of_the_ghastlord_draws_for_blue_and_discards_for_black() {
+    let mut g = table();
+    let strix = put(&mut g, 0, "Baleful Strix"); // blue and black
+    let helm = hand(&mut g, 0, "Helm of the Ghastlord");
+    play(&mut g, helm, false, &[obj(strix)], &[]);
+    assert_eq!((g.power(strix), g.toughness(strix)), (3, 3), "+1/+1 twice");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let white = hand(&mut g, 0, "Helm of the Ghastlord");
+    play(&mut g, white, false, &[obj(lions)], &[]);
+    assert_eq!(g.power(lions), 2, "white: nothing");
+    let (library, theirs) = (g.players[0].library.len(), g.players[1].hand.len());
+    attack(&mut g, &[strix, lions]);
+    fight(&mut g);
+    assert_eq!(g.players[1].life, 40 - 5);
+    assert_eq!(
+        g.players[0].library.len(),
+        library - 2,
+        "the draw step and the blue trigger"
+    );
+    assert_eq!(g.players[1].hand.len(), theirs - 1, "the black trigger");
+}
+
+#[test]
+fn lifeline_returns_a_dead_creature_at_the_end_step_if_another_creature_is_out() {
+    let mut g = table();
+    put(&mut g, 0, "Lifeline");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    put(&mut g, 1, "Llanowar Elves");
+    kill(&mut g, lions);
+    into_end_step(&mut g);
+    drain(&mut g);
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield, "back at the end step");
+    assert_eq!(g.obj(lions).controller, 0);
+    // Alone on the battlefield: nothing comes back.
+    let mut g = table();
+    put(&mut g, 0, "Lifeline");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    kill(&mut g, lions);
+    into_end_step(&mut g);
+    drain(&mut g);
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard);
+}
