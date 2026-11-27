@@ -1380,7 +1380,7 @@ pub fn script(name: &str) -> Option<Script> {
                 d.enters_with_x_counters = true;
                 activated(d, "{4}", false, vec![], vec![Effect::CountersSelf { n: 1 }]);
                 let n = activated(d, "", false, vec![Filter::ANY], vec![damage(1, Recipient::Target(0))]);
-                d.activated[n].remove_plus_counter = true;
+                d.activated[n].remove_plus_counters = 1;
             },
         ),
         "Somberwald Sage" => s(
@@ -1403,6 +1403,73 @@ pub fn script(name: &str) -> Option<Script> {
                 d.top_spells_creatures = true;
                 d.mana_ext.creature_spells_any_type_mana = true;
             },
+        ),
+        // ---- Lonis, Genetics Expert ----
+        "Argent Sphinx" => s(
+            &["Metalcraft — {U}: Exile this creature. Return it to the battlefield under your control at the beginning of the next end step. Activate only if you control three or more artifacts."],
+            |d, _| {
+                let n = activated(d, "{U}", false, vec![], vec![Effect::FlickerSelf]);
+                d.activated[n].min_artifacts = 3;
+            },
+        ),
+        // ---- Oloro, Ageless Ascetic ----
+        "Mystic Gate" => s(&["{T}: Add {C}.", "{W/U}, {T}: Add {W}{W}, {W}{U}, or {U}{U}."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            let wu = [Color::White, Color::Blue];
+            d.paid_mana = Some((ManaCost::parse("{W/U}").expect("a mana cost"), [ManaSource::of(&wu), ManaSource::of(&wu)]));
+        }),
+        "Karlov of the Ghost Council" => s(
+            &[
+                "Whenever you gain life, put two +1/+1 counters on Karlov.",
+                "{W}{B}, Remove six +1/+1 counters from Karlov: Exile target creature.",
+            ],
+            |d, _| {
+                on(d, When::YouGainLife, vec![], vec![Effect::CountersSelf { n: 2 }]);
+                let n = activated(d, "{W}{B}", false, vec![CREATURE], vec![Effect::Exile(0)]);
+                d.activated[n].remove_plus_counters = 6;
+            },
+        ),
+        // ---- Korvold, Fae-Cursed King ----
+        "Miren, the Moaning Well" => s(
+            &["{T}: Add {C}.", "{3}, {T}, Sacrifice a creature: You gain life equal to the sacrificed creature's toughness."],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                let n = activated(d, "{3}", true, vec![], vec![Effect::GainLifeAmount]);
+                d.activated[n].sacrifice_other_creature = true;
+                d.activated[n].amount_from_victim_toughness = true;
+            },
+        ),
+        // ---- Raggadragga, Goreguts Boss ----
+        "Topiary Lecturer" => s(
+            &["Increment", "{T}: Add an amount of {G} equal to this creature's power."],
+            |d, _| {
+                on(d, When::YouCast, vec![], vec![Effect::IncrementSelf]);
+                activated(d, "", true, vec![], vec![Effect::AddManaSourcePower(Color::Green)]);
+            },
+        ),
+        // ---- Najeela, the Blade-Blossom ----
+        "Champion of Lambholt" => s(
+            &[
+                "Creatures with power less than this creature's power can't block creatures you control.",
+                "Whenever another creature you control enters, put a +1/+1 counter on this creature.",
+            ],
+            |d, _| {
+                d.mana_ext.smaller_cant_block_yours = true;
+                on(d, When::AnotherCreatureYouControlEnters, vec![], vec![Effect::CountersSelf { n: 1 }]);
+            },
+        ),
+        // ---- Oloro, Ageless Ascetic ----
+        "Will, Scion of Peace" => s(
+            &["{T}: Spells you cast this turn that are white and/or blue cost {X} less to cast, where X is the amount of life you gained this turn. Activate only as a sorcery."],
+            |d, _| {
+                let n = activated(d, "", true, vec![], vec![Effect::WhiteBlueSpellsCostLessLifeGainedThisTurn]);
+                d.activated[n].sorcery = true;
+            },
+        ),
+        // ---- Ral, Monsoon Mage ----
+        "High Tide" => s(
+            &["Until end of turn, whenever a player taps an Island for mana, that player adds an additional {U}."],
+            |d, _| spell(d, vec![], vec![Effect::IslandsAddExtraBlueThisTurn]),
         ),
         _ => None,
     }
@@ -1584,4 +1651,12 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Walking Ballista",
     "Somberwald Sage",
     "Vizier of the Menagerie",
+    "Argent Sphinx",
+    "Mystic Gate",
+    "Karlov of the Ghost Council",
+    "Miren, the Moaning Well",
+    "Topiary Lecturer",
+    "Champion of Lambholt",
+    "Will, Scion of Peace",
+    "High Tide",
 ];

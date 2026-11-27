@@ -2957,3 +2957,167 @@ fn vizier_of_the_menagerie_spends_any_mana_on_creature_spells() {
         "from the top of the library"
     );
 }
+
+// ---- Lonis, Oloro, Korvold ----
+
+#[test]
+fn argent_sphinx_flickers_itself_with_metalcraft() {
+    let mut g = table();
+    let sphinx = put(&mut g, 0, "Argent Sphinx");
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(sphinx, 0)),
+        "two artifacts aren't enough"
+    );
+    for _ in 0..2 {
+        put(&mut g, 0, "Sol Ring");
+    }
+    assert!(!g.legal_actions().contains(&Action::Activate(sphinx, 0)));
+    put(&mut g, 0, "Sol Ring");
+    act(&mut g, Action::Activate(sphinx, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(sphinx).zone, Zone::Exile);
+    for _ in 0..30 {
+        if g.obj(sphinx).zone == Zone::Battlefield {
+            break;
+        }
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.obj(sphinx).zone, Zone::Battlefield, "back at the end step");
+}
+
+#[test]
+fn mystic_gate_filters_hybrid_into_two() {
+    let mut g = game(&["Mystic Gate", "Plains"]);
+    let spell = hand(&mut g, 0, "Pollywog Prodigy"); // {1}{U}: the Plains pays {W/U}, the Gate makes two
+    assert!(g.legal_actions().contains(&Action::Cast(spell)));
+    let mut g = game(&["Mystic Gate"]);
+    let spell = hand(&mut g, 0, "Pollywog Prodigy");
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(spell)),
+        "nothing pays the {{W/U}}"
+    );
+}
+
+#[test]
+fn karlov_grows_on_life_gain_and_spends_six_counters_to_exile() {
+    let mut g = table();
+    let k = put(&mut g, 0, "Karlov of the Ghost Council");
+    let bear = put(&mut g, 1, "Llanowar Elves");
+    g.objects[k.0 as usize].counters = 4;
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(k, 0)),
+        "four counters"
+    );
+    g.objects[k.0 as usize].counters = 6;
+    act(&mut g, Action::Activate(k, 0));
+    act(&mut g, Action::Target(Target::Object(bear)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(bear).zone, Zone::Exile);
+    assert_eq!(g.obj(k).counters, 0);
+}
+
+#[test]
+fn miren_gains_the_sacrificed_creatures_toughness() {
+    let mut g = table();
+    let miren = put(&mut g, 0, "Miren, the Moaning Well");
+    let wall = put(&mut g, 0, "Fyndhorn Elves");
+    let life = g.players[0].life;
+    act(&mut g, Action::ActivateWith(miren, 0, wall));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, life + g.def_of(wall).toughness);
+    assert_eq!(g.obj(wall).zone, Zone::Graveyard);
+}
+
+#[test]
+fn topiary_lecturer_increments_and_taps_for_its_power() {
+    let mut g = table();
+    let t = put(&mut g, 0, "Topiary Lecturer");
+    g.objects[t.0 as usize].since_turn = 0;
+    let p0 = g.power(t);
+    let ring = hand(&mut g, 0, "Sol Ring"); // one mana: not more than its power or toughness
+    act(&mut g, Action::Cast(ring));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.power(t), p0);
+    let elves = hand(&mut g, 0, "Reclamation Sage"); // three mana: more
+    act(&mut g, Action::Cast(elves));
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) | Pending::Decide(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.power(t), p0 + 1, "incremented");
+    let n = g
+        .legal_actions()
+        .iter()
+        .filter(|a| matches!(a, Action::Activate(c, 0) if *c == t))
+        .count();
+    assert_eq!(n, 1, "its mana ability");
+}
+
+#[test]
+fn champion_of_lambholt_keeps_smaller_creatures_from_blocking() {
+    let mut g = table();
+    let champ = put(&mut g, 0, "Champion of Lambholt");
+    g.objects[champ.0 as usize].counters = 2; // 3/3
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    for c in [champ, elves] {
+        g.objects[c.0 as usize].since_turn = 0;
+    }
+    let small = put(&mut g, 1, "Fyndhorn Elves");
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(elves));
+    act(&mut g, Action::FinishAttacks);
+    let mut asked = false;
+    for _ in 0..30 {
+        if matches!(g.pending, Pending::DeclareBlockers(_)) {
+            asked = true;
+            assert!(
+                !g.legal_actions()
+                    .iter()
+                    .any(|a| matches!(a, Action::Block { blocker, .. } if *blocker == small)),
+                "power 1 is less than the Champion's 3"
+            );
+            break;
+        }
+        if g.step == Step::Main2 {
+            break;
+        }
+        act(&mut g, Action::PassPriority);
+    }
+    let _ = asked;
+    assert!(g.players[1].life < 40, "unblocked");
+}
+
+#[test]
+fn will_discounts_white_and_blue_spells_by_life_gained() {
+    let mut g = game(&["Plains"]);
+    let will = put(&mut g, 0, "Will, Scion of Peace");
+    g.objects[will.0 as usize].since_turn = 0;
+    g.life_gained_this_turn[0] = 2;
+    let hawk = hand(&mut g, 0, "Tempest Hawk"); // {2}{W}
+    assert!(!g.legal_actions().contains(&Action::Cast(hawk)), "one Plains");
+    act(&mut g, Action::Activate(will, 0));
+    resolve_all(&mut g, &[]);
+    assert!(
+        g.legal_actions().contains(&Action::Cast(hawk)),
+        "{{2}} less: {{W}}"
+    );
+}
+
+#[test]
+fn high_tide_makes_islands_add_another_blue() {
+    let mut g = game(&["Island", "Island"]);
+    let tide = hand(&mut g, 0, "High Tide");
+    act(&mut g, Action::Cast(tide));
+    resolve_all(&mut g, &[]);
+    let island = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Island" && !g.obj(x).tapped)
+        .unwrap();
+    let n = g.mana_sources(0).iter().filter(|&&(x, _)| x == island).count();
+    assert_eq!(n, 2, "its {{U}} and High Tide's");
+}

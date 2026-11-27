@@ -2671,6 +2671,18 @@ pub enum Effect {
     /// Sage: 3, one ability per color): N mana of that color held for creature spells
     /// (`Game::creature_color_mana`); it pays that color's pips, hybrid pips with it, and generic.
     AddCreatureSpellMana(u8, crate::Color),
+    /// Exile the source; return it to the battlefield under its owner's control at the beginning
+    /// of the next end step (Argent Sphinx), as `Flicker`.
+    FlickerSelf,
+    /// Increment (Topiary Lecturer): if the mana spent on the spell in `extra` is greater than the
+    /// source's power or toughness, put a +1/+1 counter on the source.
+    IncrementSelf,
+    /// Will, Scion of Peace: white and/or blue spells you cast this turn cost {X} less, X the life
+    /// you've gained this turn (`Game::wu_discount_turn`).
+    WhiteBlueSpellsCostLessLifeGainedThisTurn,
+    /// High Tide: until end of turn, each Island tapped for mana adds an additional {U}
+    /// (`Game::high_tide`, counted per resolution).
+    IslandsAddExtraBlueThisTurn,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

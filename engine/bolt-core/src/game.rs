@@ -1902,6 +1902,11 @@ pub struct Game {
     /// The turn each player last cast a creature spell from their graveyard with Karador's
     /// permission (`ManaExt::creature_from_graveyard_once_each_turn`).
     pub karador_turn: [u32; 2],
+    /// Will, Scion of Peace: the turn each player's white and/or blue spells cost less by the life
+    /// they gained this turn.
+    pub wu_discount_turn: [u32; 2],
+    /// High Tide: (turn, how many resolved this turn): each Island adds that many more {U}.
+    pub high_tide: (u32, u32),
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2191,6 +2196,8 @@ impl Game {
             treasure_spent: Vec::new(),
             creature_spell_mana: [(0, 0, Step::PreGame); 2],
             creature_color_mana: [([0; 5], 0, Step::PreGame); 2],
+            wu_discount_turn: [0; 2],
+            high_tide: (0, 0),
             monolith_used: Vec::new(),
             combat_shield_tokens: Vec::new(),
             player_protected_until: [None; 2],
@@ -7943,6 +7950,10 @@ impl Game {
                 }
             }
         }
+        // Will, Scion of Peace: white and/or blue spells, {X} less, X the life gained this turn.
+        if self.wu_discount_turn[p] == self.turn && self.turn > 0 && (def.colors[0] || def.colors[1]) {
+            n += self.life_gained_this_turn[p].max(0) as usize;
+        }
         n.min(255) as u8
     }
 
@@ -8975,7 +8986,7 @@ impl Game {
                     || (a.once && self.obj(id).used_once)
                     || (a.once_each_turn && self.obj(id).activated_turn == Some(self.turn))
                     || self.obj(id).kind_counters < a.remove_kind_counters
-                    || (a.remove_plus_counter && self.obj(id).counters < 1)
+                    || (a.remove_plus_counters > 0 && self.obj(id).counters < a.remove_plus_counters as i32)
                     || (a.tap_attached
                         && !self
                             .obj(id)
@@ -9387,6 +9398,9 @@ impl Game {
             division: Vec::new(),
         };
         let mut item = item;
+        if let (true, Some(v)) = (self.activated_of(id, n).amount_from_victim_toughness, victim) {
+            item.amount = self.toughness(v); // Miren: the toughness as it was sacrificed
+        }
         if let (true, Some(v)) = (self.activated_of(id, n).amount_from_victim_power, victim) {
             item.amount = self.power(v); // Greater Good: the power as it was sacrificed
         }
@@ -9649,9 +9663,7 @@ impl Game {
             self.obj_mut(id).activated_turn = Some(self.turn);
         }
         self.obj_mut(id).kind_counters -= a.remove_kind_counters;
-        if a.remove_plus_counter {
-            self.obj_mut(id).counters -= 1; // Walking Ballista
-        }
+        self.obj_mut(id).counters -= a.remove_plus_counters as i32; // Walking Ballista, Karlov
         if a.tap_attached {
             if let Some((c, _)) = self.obj(id).attached_to {
                 self.become_tapped(c);
@@ -9787,6 +9799,11 @@ impl Game {
                 .iter()
                 .all(|sub| self.permanents(p).any(|x| self.has_subtype(x, sub)));
         let treasures_two = self.treasures_make_two(p);
+        let tide = if self.high_tide.0 == self.turn {
+            self.high_tide.1 as usize
+        } else {
+            0
+        };
         for (id, m) in base {
             let life_cost = self.def_of(id).mana_ext.mana_life_cost;
             if life_cost > 0 && self.players[p].life < life_cost {
@@ -9799,6 +9816,13 @@ impl Game {
                 for &c in &creature_adders {
                     out.push((id, ManaSource::of(&[c]))); // Leyline of Abundance
                 }
+            }
+            if tide > 0 && self.types_of(id).land && self.has_subtype(id, "Island") {
+                // High Tide: an additional {U} for each one this turn.
+                out.extend(std::iter::repeat_n(
+                    (id, ManaSource::of(&[crate::Color::Blue])),
+                    tide,
+                ));
             }
             if self.types_of(id).land && (!auras.is_empty() || !adders.is_empty()) {
                 let zcc = self.obj(id).zcc;
@@ -10547,6 +10571,15 @@ impl Game {
             && self.def_of(attacker).mana_ext.unblockable_attacking_alone
             && !self.lost_abilities(attacker)
         {
+            return false;
+        }
+        // Champion of Lambholt: creatures with less power than it can't block yours.
+        let champion = self.permanents(self.obj(attacker).controller).any(|x| {
+            self.def_of(x).mana_ext.smaller_cant_block_yours
+                && !self.lost_abilities(x)
+                && self.power(blocker) < self.power(x)
+        });
+        if champion {
             return false;
         }
         let only_legendary = self.permanents(self.obj(attacker).controller).any(|x| {
@@ -20869,6 +20902,35 @@ impl Game {
                 };
                 if n > 0 {
                     self.lose_life(opponent(item.controller), n);
+                }
+            }
+            Effect::IncrementSelf => {
+                if let Some(spell) = item.extra {
+                    let spent = self.obj(spell).mana_spent as i32;
+                    if self.obj(src).zone == Zone::Battlefield
+                        && (spent > self.power(src) || spent > self.toughness(src))
+                    {
+                        self.add_counters(src, 1);
+                    }
+                }
+            }
+            Effect::WhiteBlueSpellsCostLessLifeGainedThisTurn => {
+                self.wu_discount_turn[item.controller] = self.turn;
+            }
+            Effect::IslandsAddExtraBlueThisTurn => {
+                let turn = self.turn;
+                let n = if self.high_tide.0 == turn {
+                    self.high_tide.1
+                } else {
+                    0
+                };
+                self.high_tide = (turn, n + 1);
+            }
+            Effect::FlickerSelf => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    self.move_to(src, Zone::Exile);
+                    let zcc = self.obj(src).zcc;
+                    self.delayed_returns.push((src, zcc, 0));
                 }
             }
             Effect::Flicker(n) => {

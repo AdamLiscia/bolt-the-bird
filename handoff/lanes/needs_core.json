@@ -570,7 +570,7 @@
   {
    "card": "Topiary Lecturer",
    "deck": "Raggadragga, Goreguts Boss",
-   "missing": "increment",
+   "missing": "increment [done by d1 batch 23: Effect::IncrementSelf; scripted in pg_d1]",
    "lane": "d1",
    "theme": "effects",
    "owner": "d1"
@@ -1026,7 +1026,7 @@
   {
    "card": "High Tide",
    "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
-   "missing": "extra {U} when a player taps an Island this turn",
+   "missing": "extra {U} when a player taps an Island this turn [done by d1 batch 23: Effect::IslandsAddExtraBlueThisTurn; scripted in pg_d1]",
    "lane": "d1",
    "theme": "effects",
    "owner": "d1"
@@ -2386,7 +2386,7 @@
   {
    "card": "Miren, the Moaning Well",
    "deck": "Korvold, Fae-Cursed King",
-   "missing": "needs core: gain life equal to the sacrificed creature's toughness",
+   "missing": "needs core: gain life equal to the sacrificed creature's toughness [done by d1 batch 23: Activated::amount_from_victim_toughness; scripted in pg_d1]",
    "lane": "d2",
    "theme": "mana",
    "owner": "d1"
@@ -3186,7 +3186,7 @@
   {
    "card": "Champion of Lambholt",
    "deck": "Najeela, the Blade-Blossom",
-   "missing": "needs core: creatures with power less than this one's can't block creatures you control (for all your creatures)",
+   "missing": "needs core: creatures with power less than this one's can't block creatures you control (for all your creatures) [done by d1 batch 23: ManaExt::smaller_cant_block_yours; scripted in pg_d1]",
    "lane": "d3",
    "theme": "mana",
    "owner": "d1"
@@ -3922,7 +3922,7 @@
   {
    "card": "Argent Sphinx",
    "deck": "Lonis, Cryptozoologist",
-   "missing": "needs core: metalcraft (an 'if you control three or more artifacts' activation condition)",
+   "missing": "needs core: metalcraft (an 'if you control three or more artifacts' activation condition) [done by d1 batch 23: Effect::FlickerSelf; scripted in pg_d1]",
    "lane": "d3",
    "theme": "effects",
    "owner": "d1"
@@ -4818,7 +4818,7 @@
   {
    "card": "Karlov of the Ghost Council",
    "deck": "Oloro, Ageless Ascetic (Adam)",
-   "missing": "pay-life mana; counter-removal cost; cost reduction",
+   "missing": "pay-life mana; counter-removal cost; cost reduction [done by d1 batch 23: Activated::remove_plus_counters; scripted in pg_d1]",
    "lane": "mac-b",
    "theme": "mana",
    "owner": "d1"
@@ -4826,7 +4826,7 @@
   {
    "card": "Will, Scion of Peace",
    "deck": "Oloro, Ageless Ascetic (Adam)",
-   "missing": "pay-life mana; counter-removal cost; cost reduction",
+   "missing": "pay-life mana; counter-removal cost; cost reduction [done by d1 batch 23: Effect::WhiteBlueSpellsCostLessLifeGainedThisTurn; scripted in pg_d1]",
    "lane": "mac-b",
    "theme": "mana",
    "owner": "d1"
@@ -5890,7 +5890,7 @@
   {
    "card": "Mystic Gate",
    "deck": "Bruna, Light of Alabaster (DonSpider)",
-   "missing": "lane C's Bruna routing (2026-11-26)",
+   "missing": "lane C's Bruna routing (2026-11-26) [done by d1 batch 23: scripted in pg_d1 (paid_mana)]",
    "lane": "mac-c",
    "theme": "mana",
    "owner": "d1"
