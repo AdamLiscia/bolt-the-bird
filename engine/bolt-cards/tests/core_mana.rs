@@ -3189,3 +3189,177 @@ mod untapped_lands_and_spell_discount {
         );
     }
 }
+
+/// `AltCostExt::if_you_control` and `AltCostExt::opponent_gains` (Snuff Out, Invigorate), and
+/// `ManaExt::blight_chooses_last_mode` (Pyrrhic Strike).
+mod conditional_alt_costs_and_blight_modes {
+    use bolt_cards::set;
+    use bolt_core::card::AltCostExt;
+    use bolt_core::{Action, Game, Step, Target, Zone};
+
+    fn cid(name: &str) -> usize {
+        set("CMD").unwrap().index_of(name).unwrap()
+    }
+
+    fn start(defs: Vec<bolt_core::card::CardDef>) -> Game {
+        let plains = vec![cid("Plains"); 99];
+        let mut g = Game::new_commander(
+            std::sync::Arc::new(defs),
+            [&plains, &plains],
+            [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+            7,
+            0,
+        );
+        g.auto_pass = false;
+        g.start_turn(3, 0);
+        while g.step != Step::Main1 {
+            g.apply(Action::PassPriority).unwrap();
+        }
+        g
+    }
+
+    #[test]
+    fn the_alternative_cost_needs_the_subtype_and_gives_the_opponent_life() {
+        let mut defs = (*set("CMD").unwrap().defs).clone();
+        let bolt = cid("Lightning Bolt");
+        defs[bolt].mana_ext.alt_cost_ext = Some(AltCostExt {
+            if_you_control: Some("Forest"),
+            opponent_gains: 2,
+            ..Default::default()
+        });
+        let mut g = start(defs);
+        let b = g.add_card(0, bolt, Zone::Hand);
+        assert!(
+            !g.legal_actions().contains(&Action::CastAlternative(b)),
+            "no Forest"
+        );
+        g.add_card(0, cid("Forest"), Zone::Battlefield);
+        assert!(g.legal_actions().contains(&Action::CastAlternative(b)));
+        g.apply(Action::CastAlternative(b)).unwrap();
+        g.apply(Action::Target(Target::Player(1))).unwrap();
+        while !g.items.is_empty() {
+            g.apply(Action::PassPriority).unwrap();
+        }
+        assert_eq!(g.players[1].life, 39, "gained 2, then 3 damage");
+    }
+
+    #[test]
+    fn blighting_casts_the_last_mode() {
+        let mut defs = (*set("CMD").unwrap().defs).clone();
+        let strike = cid("Pyrrhic Strike");
+        assert!(defs[strike].mana_ext.blight_chooses_last_mode);
+        defs[strike].mana_ext.blight_chooses_last_mode = false;
+        let mut g = start(defs);
+        for _ in 0..3 {
+            g.add_card(0, cid("Plains"), Zone::Battlefield);
+        }
+        g.add_card(1, cid("Sol Ring"), Zone::Battlefield);
+        g.add_card(1, cid("Eternal Witness"), Zone::Battlefield);
+        let mine = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+        let s = g.add_card(0, strike, Zone::Hand);
+        let legal = g.legal_actions();
+        assert!(
+            !legal.contains(&Action::CastWith(s, mine)),
+            "without the flag: no blight cast"
+        );
+        assert!(
+            legal.contains(&Action::CastModal(s, 2)),
+            "without the flag: both is a plain mode"
+        );
+    }
+}
+
+/// `ManaExt::small_creatures_evade_big` (Delney, Streetwise Lookout) and
+/// `Activated::sacrifice_artifact_or_creature` (Ravenous Squirrel).
+mod delney_blocks_and_artifact_or_creature_sacrifice {
+    use bolt_cards::set;
+    use bolt_core::{Action, Game, Pending, Step, Zone};
+
+    fn cid(name: &str) -> usize {
+        set("CMD").unwrap().index_of(name).unwrap()
+    }
+
+    fn start(defs: Vec<bolt_core::card::CardDef>) -> Game {
+        let plains = vec![cid("Plains"); 99];
+        let mut g = Game::new_commander(
+            std::sync::Arc::new(defs),
+            [&plains, &plains],
+            [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+            7,
+            0,
+        );
+        g.auto_pass = false;
+        g.start_turn(3, 0);
+        while g.step != Step::Main1 {
+            g.apply(Action::PassPriority).unwrap();
+        }
+        g
+    }
+
+    #[test]
+    fn small_attackers_cant_be_blocked_by_power_3_or_greater() {
+        let mut defs = (*set("CMD").unwrap().defs).clone();
+        let lookout = cid("Ornithopter");
+        defs[lookout].mana_ext.small_creatures_evade_big = true;
+        let mut g = start(defs);
+        g.add_card(0, lookout, Zone::Battlefield);
+        let elf = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+        g.objects[elf.0 as usize].since_turn = 0;
+        let big = g.add_card(1, cid("Eternal Witness"), Zone::Battlefield);
+        g.until_eot.push(bolt_core::Modifier {
+            obj: big,
+            zcc: g.obj(big).zcc,
+            power: 1,
+            toughness: 0,
+            keywords: bolt_core::Keywords::NONE,
+            dies: None,
+        }); // a 3/1
+        let small = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+        while g.pending != Pending::DeclareAttackers(0) {
+            g.apply(Action::PassPriority).unwrap();
+        }
+        g.apply(Action::Attack(elf)).unwrap();
+        g.apply(Action::FinishAttacks).unwrap();
+        while !matches!(g.pending, Pending::DeclareBlockers(_)) {
+            g.apply(Action::PassPriority).unwrap();
+        }
+        let legal = g.legal_actions();
+        assert!(
+            !legal.contains(&Action::Block {
+                blocker: big,
+                attacker: elf
+            }),
+            "power 3 can't block"
+        );
+        assert!(
+            legal.contains(&Action::Block {
+                blocker: small,
+                attacker: elf
+            }),
+            "power 1 can"
+        );
+    }
+
+    #[test]
+    fn sacrifice_an_artifact_or_creature_is_the_players_pick() {
+        let mut defs = (*set("CMD").unwrap().defs).clone();
+        let engine = cid("Goblin Engineer");
+        let n = defs[engine]
+            .activated
+            .iter()
+            .position(|a| a.sacrifice_artifact)
+            .expect("its sacrifice ability");
+        defs[engine].activated[n].sacrifice_artifact = false;
+        defs[engine].activated[n].sacrifice_artifact_or_creature = true;
+        let mut g = start(defs);
+        let e = g.add_card(0, engine, Zone::Battlefield);
+        g.objects[e.0 as usize].since_turn = 0;
+        g.add_card(0, cid("Mountain"), Zone::Battlefield);
+        g.add_card(0, cid("Sol Ring"), Zone::Graveyard);
+        let ring = g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+        let elf = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+        let legal = g.legal_actions();
+        assert!(legal.contains(&Action::ActivateWith(e, n, ring)), "an artifact");
+        assert!(legal.contains(&Action::ActivateWith(e, n, elf)), "or a creature");
+    }
+}
