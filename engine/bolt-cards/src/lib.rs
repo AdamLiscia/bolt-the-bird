@@ -525,6 +525,7 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         triples_mana_tapped: false,
         opponents_cant_make_you_sacrifice: false,
         exiles_opponents_cards_to_play: false,
+        loyalty_at_instant_speed: false,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;

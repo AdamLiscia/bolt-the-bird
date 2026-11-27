@@ -907,3 +907,9 @@ shield). Sigarda and Valgavoth not started.
   controller didn't control, headed for an opponent's graveyard, is exiled and recorded in
   `exiled_with`), playable from exile during your turn (`Game::valgavoth_exiled`, offered with life
   for its mana value), cast for life through Bolas's Citadel's path (`citadel_top`).
+- Teferi, Master of Time: `CardDef::loyalty_at_instant_speed`, in `loyalty_actions` (offered without
+  sorcery timing, on any player's turn, still once each turn); its −3 is the existing
+  `PhaseOutSlot`, its −10 two `ExtraTurn`s.
+- The Necrobloom waits: dredge is a "may" draw replacement, and `draw` can't pause for a decision
+  (every draw replacement so far is automatic); its landfall Zombie also needs a "seven or more lands
+  with different names" condition.

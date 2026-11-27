@@ -3604,3 +3604,39 @@ fn sigarda_doesnt_stop_your_own_animate_dead_sacrificing_its_creature() {
         "Animate Dead's own sacrifice still happens"
     );
 }
+
+#[test]
+fn teferi_master_of_time_activates_on_the_opponents_turn_at_instant_speed() {
+    let mut g = table();
+    let teferi = put(&mut g, 0, "Teferi, Master of Time");
+    g.objects[teferi.0 as usize].loyalty = 3;
+    let lions = put(&mut g, 1, "Savannah Lions");
+    g.start_turn(4, 1);
+    while g.pending != Pending::Priority(0) {
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.active, 1, "the opponent's turn");
+    assert!(g.legal_actions().contains(&Action::Loyalty(teferi, 1)));
+    act(&mut g, Action::Loyalty(teferi, 1)); // −3: their Lions phase out
+    resolve_all(&mut g, &[Action::Target(Target::Object(lions))]);
+    assert_eq!(g.obj(teferi).loyalty, 0);
+    assert!(!g.permanents(1).any(|x| x == lions), "phased out");
+    // Still once each turn.
+    let mut g = table();
+    let teferi = put(&mut g, 0, "Teferi, Master of Time");
+    g.objects[teferi.0 as usize].loyalty = 3;
+    act(&mut g, Action::Loyalty(teferi, 0)); // +1 on your own turn
+    while !g.items.is_empty() || matches!(g.pending, Pending::Decide(_) | Pending::Discard(_)) {
+        let a = match g.pending {
+            Pending::Decide(_) | Pending::Discard(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a); // the loot's discard
+    }
+    assert!(!g.legal_actions().iter().any(|a| matches!(a, Action::Loyalty(..))));
+}

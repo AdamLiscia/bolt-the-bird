@@ -1011,6 +1011,9 @@ pub struct CardDef {
     /// Valgavoth. If you cast a spell this way, pay life equal to its mana value rather than pay its
     /// mana cost." (`move_to`, `Game::exiled_with`, `Game::valgavoth_exiled`).
     pub exiles_opponents_cards_to_play: bool,
+    /// "You may activate loyalty abilities of [this] on any player's turn any time you could cast an
+    /// instant." (Teferi, Master of Time), in `Game::loyalty_actions`.
+    pub loyalty_at_instant_speed: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1516,6 +1519,7 @@ impl CardDef {
             triples_mana_tapped: false,
             opponents_cant_make_you_sacrifice: false,
             exiles_opponents_cards_to_play: false,
+            loyalty_at_instant_speed: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1796,6 +1800,7 @@ impl CardDef {
             triples_mana_tapped: false,
             opponents_cant_make_you_sacrifice: false,
             exiles_opponents_cards_to_play: false,
+            loyalty_at_instant_speed: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2076,6 +2081,7 @@ impl CardDef {
             triples_mana_tapped: false,
             opponents_cant_make_you_sacrifice: false,
             exiles_opponents_cards_to_play: false,
+            loyalty_at_instant_speed: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

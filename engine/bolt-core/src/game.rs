@@ -8233,7 +8233,12 @@ impl Game {
     /// below zero loyalty (CR 606.3-606.6).
     fn loyalty_actions(&self, p: PlayerId, sorcery_timing: bool) -> Vec<Action> {
         let mut v = Vec::new();
-        if !sorcery_timing {
+        // Teferi, Master of Time: its loyalty abilities any time you could cast an instant.
+        if !sorcery_timing
+            && !self
+                .permanents(p)
+                .any(|x| self.def_of(x).loyalty_at_instant_speed && !self.lost_abilities(x))
+        {
             return v;
         }
         // The Immortal Sun: "Players can't activate planeswalkers' loyalty abilities."
@@ -8247,6 +8252,9 @@ impl Game {
         for id in self.permanents(p) {
             let o = self.obj(id);
             if (o.loyalty_turn == self.turn && self.turn > 0) || self.activation_stopped(id) {
+                continue;
+            }
+            if !sorcery_timing && !(self.def_of(id).loyalty_at_instant_speed && !self.lost_abilities(id)) {
                 continue;
             }
             for (n, (cost, ability)) in self.def_of(id).loyalty_abilities.iter().enumerate() {
