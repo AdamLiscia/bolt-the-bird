@@ -538,6 +538,7 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         others_of_chosen_type_enter_with_counter: false,
         triples_creature_tokens: false,
         lands_in_graveyard_have_dredge: None,
+        fights_only_if_creature_died: false,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;

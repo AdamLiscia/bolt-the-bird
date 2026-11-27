@@ -1074,6 +1074,9 @@ pub struct CardDef {
     pub triples_creature_tokens: bool,
     /// The Necrobloom: "Land cards in your graveyard have dredge N." (2), see `Game::dredge_options`.
     pub lands_in_graveyard_have_dredge: Option<u8>,
+    /// "[This] can't attack or block unless a creature died under your control this turn." (Bontu
+    /// the Glorified), from `Game::creature_died_under`.
+    pub fights_only_if_creature_died: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1627,6 +1630,7 @@ impl CardDef {
             others_of_chosen_type_enter_with_counter: false,
             triples_creature_tokens: false,
             lands_in_graveyard_have_dredge: None,
+            fights_only_if_creature_died: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1920,6 +1924,7 @@ impl CardDef {
             others_of_chosen_type_enter_with_counter: false,
             triples_creature_tokens: false,
             lands_in_graveyard_have_dredge: None,
+            fights_only_if_creature_died: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2213,6 +2218,7 @@ impl CardDef {
             others_of_chosen_type_enter_with_counter: false,
             triples_creature_tokens: false,
             lands_in_graveyard_have_dredge: None,
+            fights_only_if_creature_died: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

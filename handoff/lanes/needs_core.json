@@ -466,7 +466,7 @@
   {
    "card": "Enduring Courage",
    "deck": "Raggadragga, Goreguts Boss",
-   "missing": "pump and haste the entering creature; return as a non-creature enchantment when it dies",
+   "missing": "pump and haste the entering creature; return as a non-creature enchantment when it dies [done by d2 batch 27, scripted in pg_d2]",
    "lane": "d1",
    "theme": "triggers",
    "owner": "d2"
@@ -1106,7 +1106,7 @@
   {
    "card": "Mystic Sanctuary",
    "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
-   "missing": "enters tapped unless three or more other Islands; an 'enters untapped' trigger",
+   "missing": "enters tapped unless three or more other Islands; an 'enters untapped' trigger [done by d2 batch 27, scripted in pg_d2]",
    "lane": "d1",
    "theme": "triggers",
    "owner": "d2"
@@ -2106,7 +2106,7 @@
   {
    "card": "Enduring Tenacity",
    "deck": "Henrika Domnathi // Henrika, Infernal Seer",
-   "missing": "needs core: a gain-life trigger with the amount, and returning as a noncreature enchantment",
+   "missing": "needs core: a gain-life trigger with the amount, and returning as a noncreature enchantment [done by d2 batch 27, scripted in pg_d2]",
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2"
@@ -2194,7 +2194,7 @@
   {
    "card": "Bontu the Glorified",
    "deck": "Henrika Domnathi // Henrika, Infernal Seer",
-   "missing": "needs core: can't attack or block unless a creature died under your control this turn",
+   "missing": "needs core: can't attack or block unless a creature died under your control this turn [done by d2 batch 27, scripted in pg_d2]",
    "lane": "d2",
    "theme": "effects",
    "owner": "d1"
@@ -3154,7 +3154,7 @@
   {
    "card": "Mana Drain",
    "deck": "Najeela, the Blade-Blossom",
-   "missing": "needs core: add {C} equal to the countered spell's mana value at your next main phase (a delayed mana effect)",
+   "missing": "needs core: add {C} equal to the countered spell's mana value at your next main phase (a delayed mana effect) [done by d2 batch 27, scripted in pg_d2]",
    "lane": "d3",
    "theme": "triggers",
    "owner": "d2"
@@ -5466,7 +5466,7 @@
   {
    "card": "Field of the Dead",
    "deck": "Malik, Grim Manipulator (Spr3adsh33)",
-   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report [done by d2 batch 27, scripted in pg_d2]",
    "lane": "mac-c",
    "theme": "triggers",
    "owner": "d2"
