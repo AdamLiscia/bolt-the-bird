@@ -1169,6 +1169,9 @@ pub struct CardDef {
     /// you do, exile a card from your hand." Asked in `Game::pregame_actions`
     /// (`Decision::GemstoneCaverns`); the luck counter is `Object::kind_counters`.
     pub begins_game_with_luck_counter: bool,
+    /// "As this enters, choose a number between `min` and `max`" (Talion, the Kindly Lord: 1 and
+    /// 10), as `Decision::ChooseNumber` while the spell resolves; kept as `Object::chosen_number`.
+    pub choose_number: Option<(u8, u8)>,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1472,6 +1475,10 @@ pub enum TriggerDoubler {
     ShamanOrOtherWizard,
     /// "a creature you control with power N or less" (Delney).
     CreaturePowerAtMost(i32),
+    /// "If a triggered ability of equipped creature triggers, that ability triggers an additional
+    /// time." (Wizard's Staff): the creature it's attached to, and its own granted prowess trigger
+    /// while attached (standing in for the creature's).
+    EquippedCreature,
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -1813,6 +1820,7 @@ impl CardDef {
             win_on_empty_draw: false,
             extra_upkeep_for_enchanted: false,
             zones: ZonesExt::default(),
+            choose_number: None,
         }
     }
 
@@ -2120,6 +2128,7 @@ impl CardDef {
             win_on_empty_draw: false,
             extra_upkeep_for_enchanted: false,
             zones: ZonesExt::default(),
+            choose_number: None,
         }
     }
 
@@ -2427,6 +2436,7 @@ impl CardDef {
             win_on_empty_draw: false,
             extra_upkeep_for_enchanted: false,
             zones: ZonesExt::default(),
+            choose_number: None,
         }
     }
 }

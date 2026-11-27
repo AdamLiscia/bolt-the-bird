@@ -3118,6 +3118,22 @@ pub enum Effect {
     /// The controller of the creature in the item's `extra` (one that died, a token included) may
     /// draw a card (`Decision::MayDrawCard`; Fecundity).
     ExtrasControllerMayDraw,
+    /// Discover N (CR 701.57): exile from the top until a nonland card with mana value N or less; you
+    /// may cast it without paying its mana cost (the free-cast window), or else it goes to your hand;
+    /// the rest go to the bottom in a random order.
+    Discover(u32),
+    /// Discover X, X the source's toughness (last known information if it left: Dinosaur Egg's
+    /// "When this creature dies, you may discover X, where X is its toughness").
+    DiscoverSourceToughness,
+    /// "Each opponent may sacrifice a nontoken creature of their choice. Each opponent who doesn't
+    /// loses `per` life for each instant and sorcery card in your graveyard." (Fandaniel), as
+    /// `Decision::SacrificeNontokenCreatureOrLoseLife`; with no nontoken creature, they just lose it.
+    OpponentMaySacrificeNontokenCreatureElseLose {
+        per: i32,
+    },
+    /// The source deals damage equal to the mana value of the spell in the item's `extra` (X
+    /// included while it's on the stack) to the target in `slot` (Passionate Archaeologist).
+    DamageEqualExtrasManaValue(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -4274,6 +4290,14 @@ pub enum When {
     /// "Whenever a creature is put into your graveyard from the battlefield" (Angelic Renewal): a
     /// creature you own, with the card in slot 0 when the first target filter is `triggering`.
     CreatureToYourGraveyardFromBattlefieldIt,
+    /// "Whenever a creature deals combat damage to you": that creature in slot 0, the damage as the
+    /// amount (The Cabbage Merchant). Combat damage only; `CreatureDealsDamageToYou` is any damage.
+    CreatureDealsCombatDamageToYou,
+    /// "Whenever an opponent casts a spell with mana value, power, or toughness equal to the chosen
+    /// number" (Talion, the Kindly Lord: `Object::chosen_number`), the spell in `extra`.
+    OpponentCastsChosenNumber,
+    /// "Whenever you cast a spell from exile", the spell in `extra` (Passionate Archaeologist).
+    YouCastSpellFromExile,
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -2208,6 +2208,64 @@ pub fn script(name: &str) -> Option<Script> {
                 may(d, When::CreatureToYourGraveyardFromBattlefieldIt, vec![it], vec![Effect::SacrificeSource, Effect::Reanimate(0)]);
             },
         ),
+        // ---- Core: triggers, batch 47 (discover) ----
+        "Dinosaur Egg" => s(
+            &[
+                "Evolve",
+                "When this creature dies, you may discover X, where X is its toughness.",
+            ],
+            |d, _| {
+                let that = Filter { triggering: true, ..CREATURE };
+                on(d, When::AnotherCreatureYouControlEnters, vec![that], vec![Effect::Evolve(0)]);
+                may(d, When::Dies, vec![], vec![Effect::DiscoverSourceToughness]);
+            },
+        ),
+        "Fandaniel, Telophoroi Ascian" => s(
+            &[
+                "Whenever you cast an instant or sorcery spell, surveil 1.",
+                "At the beginning of your end step, each opponent may sacrifice a nontoken creature of their choice. Each opponent who doesn't loses 2 life for each instant and sorcery card in your graveyard.",
+            ],
+            |d, _| {
+                on(d, When::YouCastInstantOrSorcery, vec![], vec![Effect::Surveil { n: 1 }]);
+                let end = When::EndStep { your_turn_only: true };
+                on(d, end, vec![], vec![Effect::OpponentMaySacrificeNontokenCreatureElseLose { per: 2 }]);
+            },
+        ),
+        "Passionate Archaeologist" => s(
+            &["Commander creatures you own have \"Whenever you cast a spell from exile, this creature deals damage equal to that spell's mana value to target opponent.\""],
+            |d, _| {
+                on(d, When::YouCastSpellFromExile, vec![opponent_player()], vec![Effect::DamageEqualExtrasManaValue(0)]);
+                d.subsystems.commanders_have_trigger = Some(d.triggers.len() - 1);
+            },
+        ),
+        "Wizard's Staff" => s(
+            &[
+                "Equipped creature has prowess.",
+                "If a triggered ability of equipped creature triggers, that ability triggers an additional time.",
+                "Equip Wizard {1}",
+                "Equip {3}",
+            ],
+            |d, _| {
+                // Prowess as the Equipment's trigger on the attached creature (a no-op unattached).
+                on(d, When::YouCastNoncreature, vec![], vec![Effect::PumpAttached { power: 1, toughness: 1 }]);
+                d.doubles_triggers_of = Some(TriggerDoubler::EquippedCreature);
+                let wizard = Filter { subtype: Some("Wizard"), ..YOUR_CREATURE };
+                let n = activated(d, "{1}", false, vec![wizard], vec![Effect::Attach { slot: 0 }]);
+                d.activated[n].sorcery = true;
+                equip(d, "{3}");
+            },
+        ),
+        "Talion, the Kindly Lord" => s(
+            &[
+                "As Talion enters, choose a number between 1 and 10.",
+                "Whenever an opponent casts a spell with mana value, power, or toughness equal to the chosen number, that player loses 2 life and you draw a card.",
+            ],
+            |d, _| {
+                d.choose_number = Some((1, 10));
+                let lose = Effect::LoseLife { who: Who::EachOpponent, n: 2 };
+                on(d, When::OpponentCastsChosenNumber, vec![], vec![lose, draw(1)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -2547,4 +2605,10 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "G'raha Tia, Scion Reborn",
     "Fecundity",
     "Angelic Renewal",
+    // Core: triggers, batch 47
+    "Dinosaur Egg",
+    "Fandaniel, Telophoroi Ascian",
+    "Talion, the Kindly Lord",
+    "Passionate Archaeologist",
+    "Wizard's Staff",
 ];

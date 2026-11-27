@@ -688,7 +688,8 @@
    "missing": "discover X",
    "lane": "d1",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "mac-c",
+   "status": "done: d2 batch 47, routed to d2 by the coordinator (Effect::DiscoverSourceToughness on Game::discover; Effect::Discover(n) for discover N)"
   },
   {
    "card": "Drumbellower",
@@ -7691,7 +7692,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "handed back by d2, routed to d1: 'Tap two untapped Foods you control: Add one mana'"
+   "status": "handed back by d2, routed to d1: 'Tap two untapped Foods you control: Add one mana'; d2 batch 47 adds When::CreatureDealsCombatDamageToYou (combat only, the creature in slot 0, the damage as amount) for d1 to script it"
   },
   {
    "card": "Fandaniel, Telophoroi Ascian",
@@ -7700,7 +7701,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 47 (Effect::OpponentMaySacrificeNontokenCreatureElseLose, Decision::SacrificeNontokenCreatureOrLoseLife)"
   },
   {
    "card": "G'raha Tia, Scion Reborn",
@@ -7790,7 +7791,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 47 (TriggerDoubler::EquippedCreature; prowess as the Equipment's PumpAttached trigger)"
   },
   {
    "card": "Y'shtola, Night's Blessed",
@@ -8042,7 +8043,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 47 (When::YouCastSpellFromExile, Effect::DamageEqualExtrasManaValue, on d4's SubsystemExt::commanders_have_trigger)"
   },
   {
    "card": "Smaug, Wicked Worm",
@@ -8069,7 +8070,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 47 (CardDef::choose_number, Decision::ChooseNumber, Object::chosen_number, When::OpponentCastsChosenNumber)"
   },
   {
    "card": "Nihil Spellbomb",

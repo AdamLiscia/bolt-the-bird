@@ -4734,3 +4734,183 @@ fn angelic_renewal_trades_itself_for_your_dead_creature() {
     assert_eq!(g.obj(lions).zone, Zone::Battlefield, "returned");
     assert!(in_graveyard(&g, 0, renewal), "sacrificed");
 }
+
+// ---- Core: triggers, batch 47 (discover) ----
+
+/// Kills `victim` with Hero's Downfall (three Swamps added) and says yes to the "may" trigger.
+fn downfall_and_discover(g: &mut Game, victim: ObjId) {
+    for _ in 0..3 {
+        put(g, 0, "Swamp");
+    }
+    let d = hand(g, 0, "Hero's Downfall");
+    act(g, Action::Cast(d));
+    act(g, Action::Target(obj(victim)));
+    resolve_all(g, &[Action::Yes]);
+}
+
+#[test]
+fn dinosaur_egg_discovers_its_toughness_when_it_dies() {
+    let mut g = table();
+    let egg = put(&mut g, 0, "Dinosaur Egg");
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Library);
+    let plains = g.add_card(0, cid("Plains"), Zone::Library);
+    let pact = g.add_card(0, cid("Grave Pact"), Zone::Library); // on top: mana value 4 > 3
+    downfall_and_discover(&mut g, egg);
+    assert_eq!(
+        g.pending,
+        Pending::FreeCast(0),
+        "discover 3 offers Savannah Lions"
+    );
+    assert_eq!(g.obj(lions).zone, Zone::Exile);
+    let lib = &g.players[0].library;
+    assert!(
+        lib[..2].contains(&pact) && lib[..2].contains(&plains),
+        "the rest on the bottom"
+    );
+    act(&mut g, Action::Cast(lions));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.obj(lions).zone,
+        Zone::Battlefield,
+        "cast without paying its mana cost"
+    );
+}
+
+#[test]
+fn dinosaur_egg_puts_the_discovered_card_into_your_hand_if_not_cast() {
+    let mut g = table();
+    let egg = put(&mut g, 0, "Dinosaur Egg");
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Library);
+    downfall_and_discover(&mut g, egg);
+    assert_eq!(g.pending, Pending::FreeCast(0));
+    act(&mut g, Action::PassPriority);
+    assert_eq!(g.obj(lions).zone, Zone::Hand, "not cast: into your hand");
+}
+
+#[test]
+fn dinosaur_egg_discovers_with_its_evolved_toughness() {
+    let mut g = table();
+    let egg = put(&mut g, 0, "Dinosaur Egg");
+    let lions = hand(&mut g, 0, "Savannah Lions");
+    act(&mut g, Action::Cast(lions));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.toughness(egg), 4, "evolved");
+    let pact = g.add_card(0, cid("Grave Pact"), Zone::Library);
+    downfall_and_discover(&mut g, egg);
+    assert_eq!(
+        g.pending,
+        Pending::FreeCast(0),
+        "discover 4 (last known toughness) hits Grave Pact"
+    );
+    assert_eq!(g.obj(pact).zone, Zone::Exile);
+}
+
+/// Player 0's turn `turn` up to the first decision (passing, attacking with nothing).
+fn to_decision(g: &mut Game, turn: u32) {
+    g.start_turn(turn, 0);
+    while !matches!(g.pending, Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn fandaniel_makes_the_opponent_sacrifice_or_lose_two_per_spell_card() {
+    let mut g = table();
+    put(&mut g, 0, "Fandaniel, Telophoroi Ascian");
+    for name in ["Hero's Downfall", "Demonic Tutor", "Vampiric Tutor"] {
+        g.add_card(0, cid(name), Zone::Graveyard);
+    }
+    g.add_card(0, cid("Savannah Lions"), Zone::Graveyard); // not an instant or sorcery
+    let lions = put(&mut g, 1, "Savannah Lions");
+    to_decision(&mut g, 5);
+    assert_eq!(g.step, Step::End);
+    assert!(g.legal_actions().contains(&Action::Pick(lions)));
+    act(&mut g, Action::No);
+    assert_eq!(g.players[1].life, 40 - 6, "2 for each of three spell cards");
+    to_decision(&mut g, 7);
+    act(&mut g, Action::Pick(lions));
+    assert!(in_graveyard(&g, 1, lions), "sacrificed instead");
+    assert_eq!(g.players[1].life, 34);
+    to_step(&mut g, 9, 0, Step::Cleanup);
+    assert_eq!(
+        g.players[1].life, 28,
+        "no nontoken creature: they just lose the life"
+    );
+}
+
+#[test]
+fn talion_punishes_spells_matching_the_chosen_number() {
+    let mut g = table();
+    let talion = hand(&mut g, 0, "Talion, the Kindly Lord");
+    act(&mut g, Action::Cast(talion));
+    resolve_all(&mut g, &[Action::Amount(1)]);
+    assert_eq!(g.obj(talion).chosen_number, Some(1));
+    g.start_turn(4, 1);
+    while !(g.step == Step::Main1 && g.active == 1) {
+        act(&mut g, Action::PassPriority);
+    }
+    let cards = g.players[0].hand.len();
+    let lions = hand(&mut g, 1, "Savannah Lions"); // mana value 1
+    act(&mut g, Action::Cast(lions));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 38);
+    assert_eq!(g.players[0].hand.len(), cards + 1);
+    let pact = hand(&mut g, 1, "Grave Pact"); // mana value 4
+    act(&mut g, Action::Cast(pact));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 38, "no match");
+}
+
+#[test]
+fn passionate_archaeologist_gives_your_commander_damage_for_spells_cast_from_exile() {
+    let mut g = table();
+    put(&mut g, 0, "Passionate Archaeologist");
+    let egg = put(&mut g, 0, "Dinosaur Egg");
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Library);
+    downfall_and_discover(&mut g, egg);
+    act(&mut g, Action::Cast(lions));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 40, "no commander creature: no trigger");
+
+    let mut g = table();
+    put(&mut g, 0, "Passionate Archaeologist");
+    commander_on_field(&mut g, "Bello, Bard of the Brambles");
+    let egg = put(&mut g, 0, "Dinosaur Egg");
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Library);
+    downfall_and_discover(&mut g, egg);
+    act(&mut g, Action::Cast(lions));
+    resolve_all(&mut g, &[Action::Target(Target::Player(1))]);
+    assert_eq!(g.players[1].life, 39, "Savannah Lions' mana value, 1");
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield);
+}
+
+#[test]
+fn wizards_staff_gives_prowess_and_doubles_the_equipped_creatures_triggers() {
+    let mut g = table();
+    let staff = put(&mut g, 0, "Wizard's Staff");
+    let cyclops = put(&mut g, 0, "Crackling Cyclops"); // a Wizard: +3/+0 on noncreature spells
+    let lions = put(&mut g, 0, "Savannah Lions");
+    act(&mut g, Action::Activate(staff, 0));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(lions))),
+        "Equip Wizard: Wizards only"
+    );
+    act(&mut g, Action::Target(obj(cyclops)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(staff).attached_to.map(|a| a.0), Some(cyclops));
+    let base = g.power(cyclops);
+    let ring = hand(&mut g, 0, "Sol Ring");
+    act(&mut g, Action::Cast(ring));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.power(cyclops),
+        base + 6 + 2,
+        "its trigger and prowess, each twice"
+    );
+    assert_eq!(g.power(lions), 2, "not equipped");
+}

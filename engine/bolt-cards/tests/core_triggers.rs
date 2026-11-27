@@ -3023,3 +3023,22 @@ fn creature_to_your_graveyard_is_by_owner_and_once_each_turn_effects() {
     kill(&mut g, more);
     assert_eq!(life(&g, 0), 41, "done once this turn");
 }
+
+// ---- batch 47: combat damage dealt to you by a creature ----
+
+#[test]
+fn creature_deals_combat_damage_to_you_carries_the_creature_and_the_damage() {
+    let it = Filter {
+        triggering: true,
+        ..Filter::CREATURE
+    };
+    let mut g = game_with(blood_with(vec![Trigger {
+        when: When::CreatureDealsCombatDamageToYou,
+        ability: Ability::new(vec![it], vec![Effect::GainLifeAmount, Effect::Destroy(0)]),
+    }]));
+    g.add_card(1, cid("Exquisite Blood"), Zone::Battlefield);
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    attack_through(&mut g, &[lions]);
+    assert_eq!(life(&g, 1), 40, "lost 2 in combat, gained the 2 back");
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard, "the creature in slot 0");
+}

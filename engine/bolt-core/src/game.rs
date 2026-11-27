@@ -354,6 +354,10 @@ pub struct Object {
     /// Put onto the battlefield by Kodama of the East Tree's ability (so its entering doesn't
     /// trigger that ability again); cleared as it leaves.
     pub put_by_kodama: bool,
+    /// Toughness when it last left the battlefield (last known information, CR 608.2h).
+    pub last_toughness: i32,
+    /// The number chosen as it entered (`CardDef::choose_number`; Talion), reset as it leaves.
+    pub chosen_number: Option<u8>,
 }
 
 /// One resolved effect's change to a permanent's characteristics (lane d3's type-changing store):
@@ -1585,6 +1589,10 @@ pub enum Decision {
     MayTapElseOpponentToken { card: ObjId, def: usize },
     /// `Yes` draws a card, `No` doesn't (Fecundity: the dead creature's controller decides).
     MayDrawCard { source: ObjId },
+    /// "As this enters, choose a number": `Amount(n)` chooses n, `min` to `max` (Talion).
+    ChooseNumber { card: ObjId, min: u8, max: u8 },
+    /// `Pick` a nontoken creature to sacrifice, or `No` to lose `life` life (Fandaniel).
+    SacrificeNontokenCreatureOrLoseLife { life: i32 },
 }
 
 /// One batch of a "one or more tokens ... enter" trigger (`Game::token_enter_batches`): (source,
@@ -2789,6 +2797,8 @@ impl Game {
             last_slime: 0,
             damage_by: (0, [0; 2]),
             put_by_kodama: false,
+            last_toughness: 0,
+            chosen_number: None,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -4961,6 +4971,32 @@ impl Game {
         }
     }
 
+    /// Discover `x` (CR 701.57): exile from the top until a nonland card with mana value `x` or less,
+    /// offered as a free cast (the player casts it or passes, and a card not cast goes to their
+    /// hand); the others go to the bottom in a random order.
+    fn discover(&mut self, p: PlayerId, x: u32) {
+        let mut rest = Vec::new();
+        let mut hit = None;
+        while let Some(&c) = self.players[p].library.last() {
+            self.move_to(c, Zone::Exile);
+            if !self.def_of(c).types.land && self.def_of(c).cost.mana_value() <= x {
+                hit = Some(c);
+                break;
+            }
+            rest.push(c);
+        }
+        for &c in &rest {
+            self.move_to(c, Zone::Library);
+        }
+        self.put_among_rest(p, rest, false);
+        if let Some(c) = hit {
+            self.obj_mut(c).cast_free = true;
+            self.free_casts.push(c);
+            self.free_caster = p;
+            self.free_casts_to_hand = true;
+        }
+    }
+
     /// Decayed, printed or from a decayed counter (CR 702.147).
     fn is_decayed(&self, id: ObjId) -> bool {
         self.obj(id).zone == Zone::Battlefield && (self.def_of(id).decayed || self.obj(id).decayed)
@@ -5604,6 +5640,8 @@ impl Game {
         if from == Zone::Battlefield {
             let p = self.power(id);
             self.obj_mut(id).last_power = p;
+            let t = self.toughness(id);
+            self.obj_mut(id).last_toughness = t;
         }
         let last_controller = self.obj(id).controller;
         // Undying as a keyword (printed, or granted by a static like Mikaeus's), as it last existed
@@ -5766,6 +5804,7 @@ impl Game {
             o.last_revival = o.revival;
             o.revival = 0;
             o.chosen_color = None;
+            o.chosen_number = None;
             o.chosen_type = None;
             o.animated = None;
             o.stage = 0;
@@ -13032,6 +13071,9 @@ impl Game {
             self.commander_casts[owner] = self.commander_casts[owner].saturating_add(1);
         }
         self.played_from_exile(p, card); // Prosper's Pact Boon
+        if self.obj(card).zone == Zone::Exile {
+            self.fire_with_extra(p, When::YouCastSpellFromExile, card); // Passionate Archaeologist
+        }
         let any_graveyard = !mode.flashback && self.casts_from_any_graveyard(p, card); // The Great Work
         self.move_to(card, Zone::Stack);
         if any_graveyard {
@@ -13371,6 +13413,23 @@ impl Game {
         if self.types_of(card).instant || self.types_of(card).sorcery {
             self.fire_with_extra(opponent(p), When::OpponentCastsInstantOrSorcery, card);
             // "that spell"
+        }
+        {
+            // Talion: "a spell with mana value, power, or toughness equal to the chosen number".
+            let cost = self.cast_mana_cost(&item);
+            let mv = (cost.mana_value() + cost.x as u32 * item.x as u32) as i32;
+            let creature = self.types_of(card).creature;
+            let (power, toughness) = (self.def_of(card).power, self.def_of(card).toughness);
+            let before = self.triggered.len();
+            self.fire_with_extra(opponent(p), When::OpponentCastsChosenNumber, card);
+            let new = self.triggered.split_off(before);
+            for t in new {
+                if let Some(n) = self.obj(t.source).chosen_number.map(i32::from) {
+                    if mv == n || (creature && (power == n || toughness == n)) {
+                        self.triggered.push(t);
+                    }
+                }
+            }
         }
         for (owner, kind, card) in self.emblems.clone() {
             if let EmblemKind::OnAnySpellCast { trigger } = kind {
@@ -14484,6 +14543,20 @@ impl Game {
                 self.ask(r.item.controller, Decision::ChooseColor { card: source });
                 return;
             }
+            // "As this enters, choose a number" (CR 614.12; Talion, the Kindly Lord).
+            if let Some((min, max)) = self.def_of(source).choose_number {
+                if r.acts && self.obj(source).zone == Zone::Battlefield {
+                    self.ask(
+                        r.item.controller,
+                        Decision::ChooseNumber {
+                            card: source,
+                            min,
+                            max,
+                        },
+                    );
+                    return;
+                }
+            }
             if r.acts
                 && self.def_of(source).choose_creature_type
                 && self.obj(source).zone == Zone::Battlefield
@@ -15585,6 +15658,16 @@ impl Game {
             Decision::ChooseExiledToPlay { cards } => cards.iter().copied().map(Action::Pick).collect(),
             Decision::MayTapElseOpponentToken { .. } => vec![Action::Yes, Action::No],
             Decision::MayDrawCard { .. } => vec![Action::Yes, Action::No],
+            Decision::ChooseNumber { min, max, .. } => (*min..=*max).map(Action::Amount).collect(),
+            Decision::SacrificeNontokenCreatureOrLoseLife { .. } => {
+                let mut v: Vec<Action> = self
+                    .nontoken_sacrifice_options(p)
+                    .into_iter()
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::NameCardInLibrary { .. } => {
                 let mut seen: Vec<&str> = Vec::new();
                 let mut v = Vec::new();
@@ -16453,6 +16536,15 @@ impl Game {
             }
             return;
         }
+        if let (Decision::ChooseNumber { card, .. }, Action::Amount(n)) = (&d, a) {
+            self.obj_mut(*card).chosen_number = Some(n);
+            if self.end_turn {
+                self.end_the_turn();
+            } else {
+                self.give_priority(self.active);
+            }
+            return;
+        }
         if let (Decision::ChooseColor { card }, Action::Mode(c)) = (&d, a) {
             self.obj_mut(*card).chosen_color = Some(c);
             if self.end_turn {
@@ -16499,6 +16591,11 @@ impl Game {
                 self.draws_with_dredge(vec![(p, 1)], false);
             }
             (Decision::MayDrawCard { .. }, _) => {}
+            (Decision::SacrificeNontokenCreatureOrLoseLife { .. }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Graveyard);
+                self.sacrificed(c, p);
+            }
+            (Decision::SacrificeNontokenCreatureOrLoseLife { life }, _) => self.lose_life(p, life),
             (Decision::MayTapElseOpponentToken { card, .. }, Action::Yes) => {
                 if self.obj(card).zone == Zone::Battlefield {
                     self.obj_mut(card).tapped = true;
@@ -27016,6 +27113,49 @@ impl Game {
                 let (zcc, turn) = (self.obj(src).zcc, self.turn);
                 self.done_once_turn.push((src, zcc, turn));
             }
+            Effect::Discover(x) => self.discover(item.controller, x),
+            Effect::OpponentMaySacrificeNontokenCreatureElseLose { per } => {
+                let p = item.controller;
+                let cards = self.players[p]
+                    .graveyard
+                    .iter()
+                    .filter(|&&c| self.def_of(c).types.instant || self.def_of(c).types.sorcery)
+                    .count() as i32;
+                let (q, life) = (opponent(p), per * cards);
+                if self.nontoken_sacrifice_options(q).is_empty() {
+                    self.lose_life(q, life);
+                } else {
+                    self.ask(q, Decision::SacrificeNontokenCreatureOrLoseLife { life });
+                }
+            }
+            Effect::DamageEqualExtrasManaValue(slot) => {
+                let Some(spell) = item.extra else {
+                    return;
+                };
+                let x = self
+                    .items
+                    .iter()
+                    .rfind(|i| i.source == spell && i.kind == StackKind::Spell)
+                    .map_or(0, |i| i.x as u32);
+                let cost = self.stack_mana_cost(spell);
+                let mv = (cost.mana_value() + cost.x as u32 * x) as i32;
+                let target = match item.targets.get(slot as usize) {
+                    Some(&Chosen::Object(b, _)) if legal[slot as usize] => Target::Object(b),
+                    Some(&Chosen::Player(q)) if legal[slot as usize] => Target::Player(q),
+                    _ => return,
+                };
+                if mv > 0 {
+                    self.deal_damage(src, target, mv);
+                }
+            }
+            Effect::DiscoverSourceToughness => {
+                let t = if self.obj(src).zone == Zone::Battlefield {
+                    self.toughness(src)
+                } else {
+                    self.obj(src).last_toughness // CR 608.2h: last known information
+                };
+                self.discover(item.controller, t.max(0) as u32);
+            }
             Effect::ExtrasControllerMayDraw => {
                 if let Some(c) = item.extra {
                     let q = self.obj(c).controller;
@@ -28220,6 +28360,9 @@ impl Game {
                                 self.has_subtype(s, "Shaman") || (s != d && self.has_subtype(s, "Wizard"))
                             }
                             TriggerDoubler::CreaturePowerAtMost(n) => creature && power <= n,
+                            TriggerDoubler::EquippedCreature => {
+                                self.obj(d).attached_to.is_some_and(|(a, _)| a == s || s == d)
+                            }
                         }
                 })
                 .count();
@@ -29829,6 +29972,14 @@ impl Game {
                         let before = self.triggered.len();
                         self.fire(p, When::CreatureDealsDamageToYou, None);
                         self.fill_triggering(before, source); // "destroy it"
+                        if self.in_combat_damage {
+                            let before = self.triggered.len();
+                            self.fire(p, When::CreatureDealsCombatDamageToYou, None);
+                            self.fill_triggering(before, source);
+                            for t in &mut self.triggered[before..] {
+                                t.amount = amount;
+                            }
+                        }
                     }
                     // "Whenever a [subtype] deals damage to you" (Mikaeus: a Human).
                     let before = self.triggered.len();
