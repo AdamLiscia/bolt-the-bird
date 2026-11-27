@@ -1288,3 +1288,10 @@ On d1's `ManaExt::counter_mana_no_tap` (lane-d1 e4ce66a, **doesn't compile until
 `ManaSource`, `mana_per_kind_counter`, `counter_mana_no_tap`; charge counters are `kind_counters`, one per
 attacking creature you control (`When::CreatureYouControlAttacks`, `KindCounterSelf(1)`). Test in core_objects
 (93): two attackers, two counters; a landless Bolt paid by removing one.
+
+### Kambal, Profiteering Mayor: held, needs d2
+
+Both of its triggers are batched ("one or more tokens ... enter"). `When::TokenYouControlEnters` fires once per
+token (move_to's enter path), and there's no event for tokens entering under an opponent's control. Needs d2:
+the two batched events, with the batch's token list (and "only once each turn" on the first). Lane C's part is
+then small: for each listed token, `token_copy_of(you, it)` and tap it. Logged in needs_core.json (owner d2).

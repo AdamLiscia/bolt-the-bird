@@ -7350,6 +7350,14 @@
    "lane": "mac-c",
    "theme": "objects_zones",
    "owner": "mac-c"
+  },
+  {
+   "card": "Kambal, Profiteering Mayor",
+   "deck": "idea",
+   "missing": "d2: two batched token-enter triggers that fire once per event, not once per token. 'Whenever one or more tokens your opponents control enter' (no opponent-side event exists; once each turn) and 'Whenever one or more tokens you control enter' (today's When::TokenYouControlEnters fires once per token). Both need the event's token list. Then lane C adds 'for each of them, create a tapped token that's a copy of it' over that list, with the existing token_copy_of. Looked at by lane C 2026-11-27.",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
   }
  ]
 }
