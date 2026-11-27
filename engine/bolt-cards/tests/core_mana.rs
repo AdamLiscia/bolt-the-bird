@@ -3508,7 +3508,6 @@ fn tap_a_named_artifact_for_blue() {
 
 #[test]
 fn tap_two_named_foods_for_mana() {
-    use batch3::*;
     use bolt_core::effect::{Controller, Filter};
     let food = Filter {
         players: false,
