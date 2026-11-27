@@ -2553,6 +2553,9 @@ pub enum Effect {
     /// control eight or more artifacts with the same name as one another, you win the game
     /// (Mechanized Production).
     CopyAttachedThenEightSameNameWins,
+    /// "You may pay {X}, where X is less than or equal to the amount of life you gained. If you do,
+    /// draw X cards." (Well of Lost Dreams): the trigger's amount caps X, as `Decision::PayXDrawX`.
+    MayPayXUpToAmountDrawX,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -3475,6 +3478,22 @@ pub enum When {
     /// "Whenever you play a card from exile" (Prosper, Tome-Bound): a land played or a spell cast
     /// from exile, fired by `Game::played_from_exile` (game/zones.rs).
     YouPlayCardFromExile,
+    /// "Whenever a [subtype] you control attacks" (Utvara Hellkite: Dragon), this one included; slot
+    /// 0 (if `triggering`) is the attacker.
+    SubtypeYouControlAttacks(&'static str),
+    /// "Whenever a [subtype] is put into a graveyard from the battlefield" (Ygra, Eater of All: a
+    /// Food), anyone's, tokens included; slot 0 (if `triggering`) is that card. The subtype is
+    /// checked on the card in the graveyard.
+    SubtypeToGraveyardFromBattlefield(&'static str),
+    /// "When this [permanent] enters untapped" (Witch's Cottage): checked with the "enters tapped"
+    /// triggers, once its enter replacements have applied.
+    EntersUntapped,
+    /// "Whenever the Ring tempts you" (CR 701.54), fired once the Ring-bearer is chosen or asked
+    /// for.
+    RingTemptsYou,
+    /// "Whenever you choose a creature as your Ring-bearer" (Call of the Ring), the same one again
+    /// included (CR 701.54c); slot 0 (if `triggering`) is that creature.
+    YouChooseRingBearer,
 }
 
 #[derive(Clone, Debug, PartialEq)]

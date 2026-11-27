@@ -2269,3 +2269,84 @@ fn fleeting_memories_investigates_and_mills_on_a_clue_sacrifice() {
         "target player mills three"
     );
 }
+
+// ---- Core: triggers, batch 16 ----
+
+#[test]
+fn utvara_hellkite_makes_a_dragon_for_each_dragon_attacking() {
+    let mut g = table();
+    let utvara = put(&mut g, 0, "Utvara Hellkite");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    attack(&mut g, &[utvara, lions]);
+    resolve_all(&mut g, &[]);
+    let dragons = tokens(&g, 0, "Dragon");
+    assert_eq!(dragons.len(), 1, "for Utvara, not the Lions");
+    let d = dragons[0];
+    assert_eq!((g.power(d), g.toughness(d)), (6, 6));
+    assert!(g.keywords(d).has(Keywords::FLYING));
+    assert_eq!(g.def_of(d).colors, [false, false, false, true, false]);
+}
+
+#[test]
+fn well_of_lost_dreams_pays_x_up_to_the_life_gained_to_draw_x() {
+    let mut g = table();
+    put(&mut g, 0, "Well of Lost Dreams");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let swords = hand(&mut g, 0, "Swords to Plowshares");
+    let before = g.players[0].hand.len();
+    act(&mut g, Action::Cast(swords));
+    act(&mut g, Action::Target(obj(lions)));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[0].life, 42, "gained the Lions' power");
+    assert!(
+        has(&g, Action::Amount(2)) && !has(&g, Action::Amount(3)),
+        "X at most 2"
+    );
+    resolve_all(&mut g, &[Action::Amount(2)]);
+    assert_eq!(g.players[0].hand.len(), before - 1 + 2);
+}
+
+#[test]
+fn hullbreaker_horror_bounces_on_each_spell_you_cast() {
+    let mut g = table();
+    let horror = put(&mut g, 0, "Hullbreaker Horror");
+    assert!(g.def_of(horror).uncounterable);
+    let theirs = put(&mut g, 1, "Savannah Lions");
+    let ring = hand(&mut g, 0, "Sol Ring");
+    act(&mut g, Action::Cast(ring));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    // Only your own spell is on the stack: no spell you don't control to return.
+    assert!(!has(&g, Action::Mode(0)));
+    assert!(
+        has(&g, Action::Mode(1)) && has(&g, Action::Mode(2)),
+        "a permanent, or none"
+    );
+    resolve_all(&mut g, &[Action::Mode(1), Action::Target(obj(theirs))]);
+    assert_eq!(g.obj(theirs).zone, Zone::Hand);
+    assert_eq!(g.obj(ring).zone, Zone::Battlefield);
+    let ring2 = hand(&mut g, 0, "Sol Ring");
+    act(&mut g, Action::Cast(ring2));
+    resolve_all(&mut g, &[Action::Mode(2)]);
+    assert_eq!(g.obj(ring2).zone, Zone::Battlefield, "choosing none");
+}
+
+#[test]
+fn call_of_the_ring_tempts_at_upkeep_and_draws_for_two_life_on_choosing() {
+    let mut g = table();
+    put(&mut g, 0, "Call of the Ring");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    g.start_turn(5, 0);
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.ring_bearer(0), Some(lions), "the only creature, chosen");
+    let before = g.players[0].hand.len();
+    act(&mut g, Action::Yes); // pay 2 life
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 38);
+    assert_eq!(g.players[0].hand.len(), before + 1);
+}
