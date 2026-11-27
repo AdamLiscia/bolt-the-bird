@@ -866,3 +866,17 @@ Bracks (pg_b). Pieces (lane B's replacement theme, plus one condition):
   the per-X loop, so a `mana_value_is_x` target (The Mycosynth Gardens) was never offered. Now an
   {X} ability's targets are checked for each X inside the loop ("X target creatures" keeps its count
   check and the old up-front check). Test: core_merger `an_x_ability_targeting_mana_value_x_...`.
+
+### Borrowed from d1 while the desktop is offline (2026-11-26)
+
+- A paid mana ability that makes one mana: `paid_mana` with an empty second output (nothing is added
+  for it, in `paid_mana_plan`). The Mycosynth Gardens' "{1}, {T}: Add one mana of any color." (lane
+  C's script, finished and listed).
+- `Activated::sacrifice_artifact` ("Sacrifice an artifact", kept out of the mana payment): Goblin
+  Engineer.
+- Cavern of Souls: `CardDef::chosen_type_mana_uncounterable` with Secluded Courtyard's
+  `any_color_for_chosen_type`; its any-color mana pays only for creature spells of the chosen type,
+  and `note_haste_mana` makes such a spell uncounterable.
+- Cavern of Souls simplification: any of Cavern's mana that pays for a creature spell of the chosen
+  type makes it uncounterable, {C} included. Choosing the any-color ability for that same generic mana
+  is always possible, so the outcome is the same.

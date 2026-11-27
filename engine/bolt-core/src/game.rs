@@ -7630,6 +7630,16 @@ impl Game {
     /// Hall of the Bandit Lord: mana from `source` spent on a creature spell gives it haste once it
     /// enters (see [`Game::haste_from_mana`]).
     fn note_haste_mana(&mut self, source: ObjId, spell: PayFor) {
+        // Cavern of Souls: a creature spell of the chosen type its mana pays for can't be countered.
+        if let PayFor::Spell(c) = spell {
+            let chosen = self.obj(source).chosen_type.clone();
+            if self.def_of(source).chosen_type_mana_uncounterable
+                && self.def_of(c).types.creature
+                && chosen.is_some_and(|t| self.has_base_subtype(c, &t))
+            {
+                self.obj_mut(c).cast_uncounterable = true;
+            }
+        }
         if let PayFor::Spell(c) = spell {
             if self.def_of(source).mana_ext.creature_spell_haste && self.def_of(c).types.creature {
                 let zcc = self.obj(c).zcc + 1;
@@ -7854,7 +7864,11 @@ impl Game {
                 };
                 let allowed = match spell {
                     PayFor::Spell(c) => self.def_of(c).types.creature && self.has_base_subtype(c, t),
-                    PayFor::Ability(src) => self.types_of(src).creature && self.has_subtype(src, t),
+                    PayFor::Ability(src) => {
+                        !self.def_of(id).chosen_type_mana_uncounterable
+                            && self.types_of(src).creature
+                            && self.has_subtype(src, t)
+                    }
                     PayFor::Other | PayFor::OmenSpell(_) => false,
                 };
                 if allowed {
@@ -8057,7 +8071,9 @@ impl Game {
             for &f in &used {
                 let (input, outputs) = self.def_of(f).paid_mana.expect("a two-mana source");
                 bill = add_costs(&bill, &input);
-                all.extend(outputs.iter().map(|&m| (None, m)));
+                // An empty second output: a paid ability that makes one mana (The Mycosynth Gardens).
+                let makes = |m: &&ManaSource| m.colorless || m.colors.iter().any(|&c| c);
+                all.extend(outputs.iter().filter(makes).map(|&m| (None, m)));
             }
             let plain: Vec<ManaSource> = all.iter().map(|s| s.1).collect();
             if mana::pay(&bill, &plain).is_some() {
@@ -8628,6 +8644,20 @@ impl Game {
                             .filter(|&c| !self.cant_be_sacrificed(c))
                             .map(|c| Action::ActivateWith(id, n, c)),
                     );
+                } else if a.sacrifice_artifact {
+                    // "Sacrifice an artifact" (Goblin Engineer), kept out of the mana payment.
+                    let artifacts: Vec<ObjId> = self
+                        .permanents(p)
+                        .filter(|&c| self.types_of(c).artifact && !self.cant_be_sacrificed(c))
+                        .collect();
+                    v.extend(
+                        artifacts
+                            .into_iter()
+                            .filter(|&c| {
+                                uses_self || self.can_pay_for(p, &a.mana, Some(c), PayFor::Ability(id))
+                            })
+                            .map(|c| Action::ActivateWith(id, n, c)),
+                    );
                 } else if a.sacrifice_token {
                     // "Sacrifice a token": any token you control, kept out of the mana payment.
                     let tokens: Vec<ObjId> = self
@@ -8778,7 +8808,7 @@ impl Game {
         let exclude = if uses_self {
             Some(id)
         } else {
-            victim.filter(|_| a.sacrifice_token || a.sacrifice_subtype.is_some())
+            victim.filter(|_| a.sacrifice_token || a.sacrifice_subtype.is_some() || a.sacrifice_artifact)
         };
         // Mana first: a creature can tap for mana and then be sacrificed for the same cost
         // (CR 602.2b). The fuzzer found the reverse order failing.

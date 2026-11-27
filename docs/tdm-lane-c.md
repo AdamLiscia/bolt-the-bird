@@ -853,7 +853,7 @@ Built first: the batch 1 WIP plus the tarkir 0834aa0 merge, verified at d72d923 
 - Thespian's Stage (listed): `Effect::SourceBecomesCopyOfSlot { slot, keep_own }`: `become_copy` for good, with
   `copy_exceptions = keep_own`. "Except it has this ability" is the copy ability twice: once printed, once
   `copy_only` (kept by `copy_keeps_abilities`, as Sakashima's).
-- The Mycosynth Gardens: scripted with the same effect (`keep_own: false`), **not listed**: "{1}, {T}: Add one mana
+- The Mycosynth Gardens: scripted with the same effect (`keep_own: false`); listed by lane B at 496558d with its paid mana. Before that it was not listed: "{1}, {T}: Add one mana
   of any color." needs d1 (a mana ability with a mana cost). It also needs the merger: the activation listing's
   `trigger_can_target` pre-check uses X = 0, so a `mana_value_is_x` target rejects every X and the ability is never
   offered. The merger fixed that on tarkir (X-dependent targets are checked for each X), so its test is back.

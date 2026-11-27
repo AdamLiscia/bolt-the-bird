@@ -348,6 +348,9 @@ pub struct Activated {
     /// "Pay life equal to the number of colors in your commanders' color identity" in the cost
     /// (War Room).
     pub life_per_commander_color: bool,
+    /// "Sacrifice an artifact" in the cost: any artifact you control, kept out of the mana payment
+    /// (Goblin Engineer). Activated with `Action::ActivateWith`.
+    pub sacrifice_artifact: bool,
 }
 
 /// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,
@@ -994,6 +997,9 @@ pub struct CardDef {
     /// Sower of Discord, with both players chosen (two players): "Whenever damage is dealt to one of
     /// the chosen players, the other chosen player also loses that much life." (its trigger number)
     pub damage_to_a_player_other_loses: Option<usize>,
+    /// Cavern of Souls, with `any_color_for_chosen_type`: its any-color mana is only for creature
+    /// spells of the chosen type (not abilities), and a spell it pays for can't be countered.
+    pub chosen_type_mana_uncounterable: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1495,6 +1501,7 @@ impl CardDef {
             opponents_cant_gain_life: false,
             prevents_half_damage_to_you_and_yours: false,
             damage_to_a_player_other_loses: None,
+            chosen_type_mana_uncounterable: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1771,6 +1778,7 @@ impl CardDef {
             opponents_cant_gain_life: false,
             prevents_half_damage_to_you_and_yours: false,
             damage_to_a_player_other_loses: None,
+            chosen_type_mana_uncounterable: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2047,6 +2055,7 @@ impl CardDef {
             opponents_cant_gain_life: false,
             prevents_half_damage_to_you_and_yours: false,
             damage_to_a_player_other_loses: None,
+            chosen_type_mana_uncounterable: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

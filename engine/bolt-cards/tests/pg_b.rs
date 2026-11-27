@@ -3316,3 +3316,48 @@ fn mahadi_makes_a_treasure_for_each_creature_that_died_tokens_included() {
     }
     assert_eq!(tokens(&g, 0, "Treasure").len(), 2);
 }
+
+#[test]
+fn goblin_engineer_bins_an_artifact_then_trades_one_for_it() {
+    let mut g = table();
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    let engineer = hand(&mut g, 0, "Goblin Engineer");
+    play(&mut g, engineer, false, &[], &[Action::Pick(ring)]);
+    assert_eq!(g.obj(ring).zone, Zone::Graveyard);
+
+    // Later: {R}, {T}, Sacrifice an artifact (Mind Stone): Sol Ring returns.
+    let stone = put(&mut g, 0, "Mind Stone");
+    let vessel = g.add_card(0, cid("Thought Vessel"), Zone::Graveyard); // mana value 2
+    let big = g.add_card(0, cid("Solemn Simulacrum"), Zone::Graveyard); // mana value 4
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::ActivateWith(engineer, 0, stone));
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Target(Target::Object(vessel))));
+    assert!(
+        !legal.contains(&Action::Target(Target::Object(big))),
+        "mana value 3 or less"
+    );
+    act(&mut g, Action::Target(Target::Object(ring)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(stone).zone, Zone::Graveyard, "sacrificed");
+    assert_eq!(g.obj(ring).zone, Zone::Battlefield);
+}
+
+#[test]
+fn cavern_of_souls_makes_any_color_for_the_chosen_type_and_it_cant_be_countered() {
+    let mut g = game(&[]);
+    let cavern = put(&mut g, 0, "Cavern of Souls");
+    g.objects[cavern.0 as usize].chosen_type = Some("Elf".to_string());
+    let elves = hand(&mut g, 0, "Llanowar Elves"); // an Elf
+    let birds = hand(&mut g, 0, "Birds of Paradise"); // a Bird
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Cast(elves)));
+    assert!(!legal.contains(&Action::Cast(birds)), "only the chosen type");
+    act(&mut g, Action::Cast(elves));
+    assert!(g.obj(elves).cast_uncounterable, "it can't be countered");
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+}
