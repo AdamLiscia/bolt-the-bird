@@ -1084,6 +1084,15 @@ pub struct CardDef {
     /// would create one or more tokens each turn, you may instead create that many tokens that are
     /// copies of equipped creature." (`Game::mirrormind_crown`; the engine always takes the copies)
     pub first_tokens_copy_equipped: bool,
+    /// "Each [subtype] and [subtype] you control has \"{T}: Add {G}.\"" (Brightcap Badger:
+    /// Fungus, Saproling), in the mana-source pass.
+    pub your_subtypes_tap_for_green: &'static [&'static str],
+    /// "If you would proliferate, proliferate twice instead." (Tekuthal, Inquiry Dominus), in
+    /// `Effect::Proliferate`.
+    pub proliferate_twice: bool,
+    /// "[This] can't be the target of abilities your opponents control." (Shanna, Sisay's
+    /// Legacy), in `target_legal`.
+    pub untargetable_by_opponents_abilities: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1644,6 +1653,9 @@ impl CardDef {
             fights_only_if_creature_died: false,
             soulbond_damage_draw: false,
             first_tokens_copy_equipped: false,
+            your_subtypes_tap_for_green: &[],
+            proliferate_twice: false,
+            untargetable_by_opponents_abilities: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1940,6 +1952,9 @@ impl CardDef {
             fights_only_if_creature_died: false,
             soulbond_damage_draw: false,
             first_tokens_copy_equipped: false,
+            your_subtypes_tap_for_green: &[],
+            proliferate_twice: false,
+            untargetable_by_opponents_abilities: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2236,6 +2251,9 @@ impl CardDef {
             fights_only_if_creature_died: false,
             soulbond_damage_draw: false,
             first_tokens_copy_equipped: false,
+            your_subtypes_tap_for_green: &[],
+            proliferate_twice: false,
+            untargetable_by_opponents_abilities: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

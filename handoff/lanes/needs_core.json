@@ -2702,7 +2702,7 @@
   {
    "card": "Malcolm, Alluring Scoundrel",
    "deck": "Raffine, Scheming Seer",
-   "missing": "needs core: chorus counters and casting the discarded card free",
+   "missing": "needs core: chorus counters and casting the discarded card free [done by d3 batch 31: scripted (pg_d3); chorus counters are its kind_counters, Effect::DiscardThenMayCastFreeIfKindCounters(4) (Decision::DiscardMayCastFree)]",
    "lane": "d2",
    "theme": "effects",
    "owner": "d3"
@@ -3230,7 +3230,7 @@
   {
    "card": "Alesha, Who Smiles at Death",
    "deck": "Najeela, the Blade-Blossom",
-   "missing": "needs core: return a creature card tapped and attacking, after a may-pay hybrid cost",
+   "missing": "needs core: return a creature card tapped and attacking, after a may-pay hybrid cost [done by d3 batch 34: scripted (pg_d3), Effect::ReturnSlotToBattlefieldAttacking]",
    "lane": "d3",
    "theme": "triggers",
    "owner": "d2",
@@ -3343,7 +3343,7 @@
   {
    "card": "Shanna, Sisay's Legacy",
    "deck": "Najeela, the Blade-Blossom",
-   "missing": "needs core: can't be the target of abilities your opponents control",
+   "missing": "needs core: can't be the target of abilities your opponents control [done by d3 batch 32: scripted (pg_d3); CardDef::untargetable_by_opponents_abilities, Scale::PerCreatureYouControl]",
    "lane": "d3",
    "theme": "mana",
    "owner": "d1"
@@ -3783,7 +3783,7 @@
   {
    "card": "Vraska, Betrayal's Sting",
    "deck": "Atraxa, Praetors' Voice",
-   "missing": "needs core: proliferate, compleated, a creature becoming a Treasure, and poison counters",
+   "missing": "needs core: proliferate, compleated, a creature becoming a Treasure, and poison counters [d3 batches 31-32: proliferate (Decision::Proliferate), Effect::BecomeTreasure(slot) (-2), Effect::TargetPlayerPoisonUpTo { slot, n: 9 } (-9) are in; the card waits for d1 compleated on tarkir]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -3791,7 +3791,7 @@
   {
    "card": "Tekuthal, Inquiry Dominus",
    "deck": "Atraxa, Praetors' Voice",
-   "missing": "needs core: proliferate twice, and removing counters from among your permanents as a cost",
+   "missing": "needs core: proliferate twice, and removing counters from among your permanents as a cost [d3 batch 31: CardDef::proliferate_twice is in; the remove-three-counters cost goes to d1]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -3799,7 +3799,7 @@
   {
    "card": "Ashiok, Nightmare Muse",
    "deck": "Atraxa, Praetors' Voice",
-   "missing": "needs core: a 2/3 blue and black Nightmare creature token with an attack/block trigger, and casting from exile",
+   "missing": "needs core: a 2/3 blue and black Nightmare creature token with an attack/block trigger, and casting from exile [d3 batch 34: the -3 is Effect::BounceThenOwnerExilesFromHand(slot) (Decision::ExileCardFromHand); still: the +1 Nightmare token (needs a token number) and the -7]",
    "lane": "d3",
    "theme": "triggers",
    "owner": "d2",
@@ -3840,7 +3840,7 @@
   {
    "card": "Ichormoon Gauntlet",
    "deck": "Atraxa, Praetors' Voice",
-   "missing": "needs core: loyalty abilities granted to planeswalkers, and an extra counter of a chosen kind",
+   "missing": "needs core: loyalty abilities granted to planeswalkers, and an extra counter of a chosen kind [routing 2026-11-27: lane B the granted loyalty abilities, d3 the additional counter of the chosen kind] [d3 batch 33: Effect::AddCounterOfChosenKind(slot) (Decision::ChooseCounterKind) is in; still lane B: the granted loyalty abilities]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -5130,7 +5130,7 @@
   {
    "card": "Brightcap Badger",
    "deck": "Bloomburrow Commander (BLC)",
-   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "missing": "BLC (lane B's routing, 2026-11-26) [done by d3 batch 31: scripted (pg_d3) as Brightcap Badger // Fungus Frolic; CardDef::your_subtypes_tap_for_green]",
    "lane": "mac-b",
    "theme": "mana",
    "owner": "d1"
@@ -5170,7 +5170,7 @@
   {
    "card": "Kodama of the East Tree",
    "deck": "Bloomburrow Commander (BLC)",
-   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "missing": "BLC (lane B's routing, 2026-11-26) [done by d3 batch 34: scripted (pg_d3), Effect::MayPutPermanentFromHandMvAtMostExtra (Object::put_by_kodama)]",
    "lane": "mac-b",
    "theme": "triggers",
    "owner": "d2",
@@ -6649,7 +6649,7 @@
    "card": "Chandra, Dressed to Kill",
    "deck": "Ghyrson Starn, Kelermorph",
    "owner": "d3",
-   "missing": "its loyalty effects (exile top, play it); d4: the emblem [added from the live validator, 2026-11-27]",
+   "missing": "its loyalty effects (exile top, play it); d4: the emblem [added from the live validator, 2026-11-27] [d3 batch 31: Effect::ExileTopCastColorThisTurn { n, color } is in (both +1 and -7); the card waits for d4 emblem on tarkir] [done by d3 batch 33: scripted (pg_d3) with d4 EmblemKind::OnYourColorSpellCast]",
    "lane": "d3",
    "theme": "effects and statics"
   },
@@ -6950,6 +6950,70 @@
    "lane": "mac-b",
    "theme": "replace_filter",
    "owner": "mac-b"
+  },
+  {
+   "card": "Adept Watershaper",
+   "deck": "IDEA Neriv, Heart of the Storm",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 33: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Riverguard's Reflexes",
+   "deck": "IDEA Neriv, Heart of the Storm",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 33: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Keep Out",
+   "deck": "IDEA Neriv, Heart of the Storm",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 33: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Terminate",
+   "deck": "IDEA Hearthhull, the Worldseed",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 33: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Sear",
+   "deck": "IDEA Zurgo, Thunder's Decree; IDEA Niv-Mizzet, Visionary",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 33: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Boulder Dash",
+   "deck": "IDEA Niv-Mizzet, Visionary",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 33: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Goatnap",
+   "deck": "IDEA Niv-Mizzet, Visionary",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 33: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Crib Swap",
+   "deck": "IDEA Zurgo, Thunder's Decree",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 33: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
   }
  ]
 }

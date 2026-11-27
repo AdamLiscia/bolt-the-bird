@@ -514,6 +514,12 @@ pub fn token_defs() -> Vec<CardDef> {
             t.colors = [false, false, false, false, true];
             t
         },
+        {
+            // 119, lane d3: Crib Swap's "1/1 colorless Shapeshifter creature token with changeling".
+            let mut t = token("Shapeshifter", "Shapeshifter", 1, 1, Keywords::NONE);
+            t.changeling = true;
+            t
+        },
     ]
 }
 
@@ -757,6 +763,8 @@ pub struct Tokens {
     pub dinosaur_egg: usize,
     /// 118: d2's Palani's Hatcher Dinosaur, a 3/3 green.
     pub dinosaur_3: usize,
+    /// 119: d3's Crib Swap Shapeshifter, a 1/1 colorless with changeling.
+    pub shapeshifter_changeling_1: usize,
 }
 
 impl Tokens {
@@ -881,6 +889,7 @@ impl Tokens {
             egg: base + 116,
             dinosaur_egg: base + 117,
             dinosaur_3: base + 118,
+            shapeshifter_changeling_1: base + 119,
         }
     }
 }

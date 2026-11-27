@@ -290,3 +290,34 @@ def test_mirrormind_crown_asks_copies_or_the_tokens():
     dec = {"kind": "MirrormindCopies"}
     assert label(dec, "Yes", 0) == "Make copies of the equipped creature instead"
     assert label(dec, "No", 0) == "Make the tokens"
+
+
+def test_malcolm_discards_and_may_cast_it_free():
+    dec = {"kind": "DiscardMayCastFree", "free": True}
+    assert sv._decision_label(dec, "Pick", 0, "Opt") == "Discard (you may cast it free) Opt"
+    dec = {"kind": "DiscardMayCastFree", "free": False}
+    assert sv._decision_label(dec, "Pick", 0, "Opt") == "Discard Opt"
+
+
+def test_proliferate_chooses_permanents_and_players():
+    dec = {"kind": "Proliferate", "picked": [], "players": [False, False], "rounds": 1}
+    assert sv._decision_label(dec, "Pick", 0, "Llanowar Elves") == "Proliferate: Llanowar Elves"
+    assert label(dec, "Mode", 1) == "Proliferate: player 2"
+    assert label(dec, "Yes", 0) == "Done choosing (proliferate)"
+
+
+def test_ichormoon_gauntlet_chooses_a_counter_kind():
+    dec = {"kind": "ChooseCounterKind", "kinds": [0, 2]}
+    assert label(dec, "Mode", 0) == "Another +1/+1 counter"
+    assert label(dec, "Mode", 2) == "Another stun counter"
+
+
+def test_hand_to_battlefield_and_exile_from_hand_picks():
+    sentry = {"kind": "CreatureFromHandAttackingMaxMv", "max": 2}
+    assert (
+        sv._decision_label(sentry, "Pick", 0, "Llanowar Elves") == "Put onto the battlefield attacking: Llanowar Elves"
+    )
+    kodama = {"kind": "PermanentFromHandMaxMv", "max": 3}
+    assert sv._decision_label(kodama, "Pick", 0, "Sol Ring") == "Put onto the battlefield: Sol Ring"
+    ashiok = {"kind": "ExileCardFromHand"}
+    assert sv._decision_label(ashiok, "Pick", 0, "Opt") == "Exile from your hand: Opt"

@@ -1525,8 +1525,9 @@ pub enum Effect {
     /// A -1/-1 counter on the creature in `slot` (kept as negative `Object::counters`, so +1/+1 and
     /// -1/-1 counters cancel out, CR 704.5q).
     MinusCounter(u8),
-    /// Proliferate (CR 701.27), choosing for you: your permanents with +1/+1 counters and your
-    /// planeswalkers, and opponents' permanents with -1/-1 counters.
+    /// Proliferate (CR 701.27): choose any number of permanents and players with counters
+    /// (`Decision::Proliferate`), then give each another counter of each kind it already has
+    /// (`Game::proliferate_one`); twice per Tekuthal (`CardDef::proliferate_twice`).
     Proliferate,
     /// Myrkul: you may exile the card in `slot` (the creature that died); if you do, create a token
     /// that's a copy of it, except it's an enchantment and loses its other card types.
@@ -2767,6 +2768,59 @@ pub enum Effect {
     CounterOpponentsSpellsAndAbilitiesTokenEach {
         def: usize,
     },
+    /// Discard a card (`Decision::DiscardMayCastFree`); if the source has `n` or more of its own
+    /// kind of counter (`Object::kind_counters`), you may cast the discarded card without paying
+    /// its mana cost (Malcolm, Alluring Scoundrel: chorus counters, 4).
+    DiscardThenMayCastFreeIfKindCounters(u8),
+    /// Exile the top `n` cards of your library; you may cast those of `color` this turn
+    /// (Chandra, Dressed to Kill: 1 for the +1, 5 for the -7, red).
+    ExileTopCastColorThisTurn {
+        n: u8,
+        color: crate::Color,
+    },
+    /// The creature in `slot` becomes a Treasure artifact with "{T}, Sacrifice this artifact: Add
+    /// one mana of any color" and loses all other card types and abilities, for as long as it
+    /// stays (Vraska, Betrayal's Sting's -2; `TypeChange::treasure_form`).
+    BecomeTreasure(u8),
+    /// "If target player has fewer than `n` poison counters, they get a number of poison counters
+    /// equal to the difference." (Vraska, Betrayal's Sting's -9: 9)
+    TargetPlayerPoisonUpTo {
+        slot: u8,
+        n: i32,
+    },
+    /// "Choose a counter on target permanent. Put an additional counter of that kind on that
+    /// permanent." (Ichormoon Gauntlet): the permanent in `slot`; with more than one kind,
+    /// `Decision::ChooseCounterKind`.
+    AddCounterOfChosenKind(u8),
+    /// The creature in `slot` gets +`power`/+`toughness` until end of turn if it has `subtype`
+    /// (Goatnap: a Goat, +3/+0).
+    PumpIfSubtype {
+        slot: u8,
+        subtype: &'static str,
+        power: i32,
+        toughness: i32,
+    },
+    /// "You may put a creature card with mana value X or less from your hand onto the battlefield
+    /// tapped and attacking, where X is the number of attacking creatures you control." (Kinscaer
+    /// Sentry), as `Decision::CreatureFromHandAttackingMaxMv`.
+    CreatureFromHandAttackingMvAtMostAttackers,
+    /// Return the creature card in `slot` from your graveyard to the battlefield tapped and
+    /// attacking (Alesha, Who Smiles at Death).
+    ReturnSlotToBattlefieldAttacking(u8),
+    /// The source becomes a `power`/`toughness` creature with `subtypes` in addition to its other
+    /// types, for as long as it stays (Ride the Shoopuf: a 7/7 Beast).
+    SourceBecomesCreature {
+        power: i32,
+        toughness: i32,
+        subtypes: &'static [&'static str],
+    },
+    /// "You may put a permanent card with equal or lesser mana value from your hand onto the
+    /// battlefield" (Kodama of the East Tree): the entering permanent is the item's `extra`; nothing
+    /// if Kodama put it there (`Object::put_by_kodama`). As `Decision::PermanentFromHandMaxMv`.
+    MayPutPermanentFromHandMvAtMostExtra,
+    /// Return the nonland permanent in `slot` to its owner's hand, then that player exiles a card
+    /// from their hand (Ashiok, Nightmare Muse's -3), as `Decision::ExileCardFromHand`.
+    BounceThenOwnerExilesFromHand(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -2920,6 +2974,8 @@ pub enum Scope {
     OtherYourNonHumanCreatures,
     /// Other colorless creatures you control (It That Heralds the End).
     OtherYourColorlessCreatures,
+    /// Other tapped creatures you control (Adept Watershaper).
+    OtherYourTappedCreatures,
 }
 
 /// What a scaled static ability counts.
@@ -2955,6 +3011,9 @@ pub enum Scale {
     /// Slime counters on the affected permanent itself (`Object::slime`; Toxrill, the Corrosive:
     /// "Creatures you don't control get -1/-1 for each slime counter on them").
     PerSlimeCounterOnIt,
+    /// Creatures that entered the battlefield under your control this turn (Kinbinding;
+    /// `Game::creatures_entered`).
+    PerCreatureEnteredUnderYourControlThisTurn,
 }
 
 /// A condition on a static ability ("as long as ...").
