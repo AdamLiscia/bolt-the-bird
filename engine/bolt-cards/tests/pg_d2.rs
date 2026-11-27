@@ -2429,3 +2429,36 @@ fn angel_of_destiny_shares_the_life_and_wins_at_fifteen_over() {
     }
     assert!(g.players[1].lost, "it attacked this turn");
 }
+
+#[test]
+fn bonus_round_copies_each_instant_or_sorcery_cast_this_turn() {
+    let mut g = table();
+    let round = hand(&mut g, 0, "Bonus Round");
+    play(&mut g, round, false, &[], &[]);
+    assert_eq!(g.obj(round).zone, Zone::Graveyard);
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    // Keep the copy's target (the opponent).
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let legal = g.legal_actions();
+        let a = match g.pending {
+            Pending::ChooseTarget(_) if legal.contains(&Action::Target(Target::Player(1))) => {
+                Action::Target(Target::Player(1))
+            }
+            Pending::ChooseTarget(_) | Pending::Decide(_) if legal.contains(&Action::No) => Action::No,
+            Pending::ChooseTarget(_) | Pending::Decide(_) => legal[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.players[1].life, 34, "the Bolt and its copy");
+    // Next turn it's over.
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let bolt2 = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt2, false, &[Target::Player(1)], &[]);
+    assert_eq!(g.players[1].life, 31, "until end of turn only");
+}

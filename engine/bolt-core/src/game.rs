@@ -319,6 +319,9 @@ pub struct Object {
     /// Olivia, Crimson Bride: "When you don't control a legendary Vampire, exile this creature.",
     /// for the object with this zone-change count.
     pub exile_without_legendary_vampire: Option<u32>,
+    /// Whether it was an artifact when it last left the battlefield, statics included (last known
+    /// information, CR 603.10a: Ygra's "other creatures are Food artifacts" for Marionette Master).
+    pub left_as_artifact: bool,
 }
 
 /// One resolved effect's change to a permanent's characteristics (lane d3's type-changing store):
@@ -2329,6 +2332,7 @@ impl Game {
             land_copy_pending: false,
             citadel_cast: false,
             exile_without_legendary_vampire: None,
+            left_as_artifact: false,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -4609,6 +4613,7 @@ impl Game {
         } else {
             Vec::new()
         };
+        let was_artifact = from == Zone::Battlefield && self.types_of(id).artifact;
         let list = self.zone_list(owner, from);
         let pos = list.iter().position(|&x| x == id).expect("object is in its zone");
         list.remove(pos);
@@ -4720,6 +4725,7 @@ impl Game {
                 }
             }
             o.last_subtypes = last;
+            o.left_as_artifact = was_artifact;
             o.granted = Keywords::NONE;
             o.keyword_counters = Keywords::NONE;
             o.lore = 0;
@@ -5226,7 +5232,9 @@ impl Game {
                 self.fire(1, When::AnotherNontokenCreatureDies, Some(id));
             }
         }
-        if dies && self.types_of(id).artifact {
+        // Artifact as it last existed on the battlefield (Ygra's Food artifacts).
+        let artifact = self.types_of(id).artifact || (dies && self.obj(id).left_as_artifact);
+        if dies && artifact {
             let owner = self.obj(id).owner;
             self.fire(0, When::ArtifactToGraveyardFromBattlefield, Some(id));
             self.fire(1, When::ArtifactToGraveyardFromBattlefield, Some(id));
@@ -5264,7 +5272,7 @@ impl Game {
                 }
             }
         }
-        if dies && (self.types_of(id).artifact || self.types_of(id).creature) {
+        if dies && (artifact || self.types_of(id).creature) {
             self.fire(
                 last_controller,
                 When::ThisOrAnotherCreatureOrArtifactYouControlDies,
@@ -11051,6 +11059,18 @@ impl Game {
             });
         }
         if instant_or_sorcery {
+            // Bonus Round: "until end of turn, whenever a player casts an instant or sorcery
+            // spell, that player copies it": controlled by the caster, the spell in `extra`.
+            let turn = self.turn;
+            for (w, src, n, _, t) in self.delayed_this_turn.clone() {
+                if w == When::PlayerCastsInstantOrSorceryThisTurn && t == turn {
+                    self.triggered.push(StackItem {
+                        kind: StackKind::Trigger(n),
+                        extra: Some(card),
+                        ..Game::casting(src, p)
+                    });
+                }
+            }
             let before = self.triggered.len();
             self.fire(p, When::YouCastInstantOrSorcery, None);
             for t in &mut self.triggered[before..] {

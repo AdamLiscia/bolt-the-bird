@@ -3515,6 +3515,9 @@ pub enum When {
     /// "At the beginning of your upkeep, if [this] is in the command zone" (Oloro, Ageless
     /// Ascetic): fired for the active player's cards in the command zone, not their permanents.
     YourUpkeepInCommandZone,
+    /// With `Effect::DelayedThisTurn`: "until end of turn, whenever a player casts an instant or
+    /// sorcery spell" (Bonus Round), controlled by that player, with the spell in `extra`.
+    PlayerCastsInstantOrSorceryThisTurn,
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -1098,6 +1098,14 @@ pub fn script(name: &str) -> Option<Script> {
                 conditional(d, When::EndStep { your_turn_only: true }, Condition::LifeAtLeastStartingPlus(15), vec![], vec![Effect::OpponentLosesIfSourceAttackedThisTurn]);
             },
         ),
+        // ---- Core: triggers, batch 19 (a delayed cast trigger for any player; LKI artifacts) ----
+        "Bonus Round" => s(
+            &["Until end of turn, whenever a player casts an instant or sorcery spell, that player copies it and may choose new targets for the copy."],
+            |d, _| {
+                d.spell = Some(Ability::new(vec![], vec![Effect::DelayedThisTurn { when: When::PlayerCastsInstantOrSorceryThisTurn, trigger: 0 }]));
+                on(d, When::Never, vec![], vec![Effect::CopySpellNewTargets]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1313,4 +1321,5 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Composer of Spring",
     "Oloro, Ageless Ascetic",
     "Angel of Destiny",
+    "Bonus Round",
 ];

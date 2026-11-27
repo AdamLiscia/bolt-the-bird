@@ -82,7 +82,7 @@
   {
    "card": "Marionette Apprentice",
    "deck": "Ygra, Eater of All",
-   "missing": "fabricate N; a 1/1 colorless Servo artifact creature token; a trigger on another creature or artifact you control going to the graveyard from the battlefield",
+   "missing": "fabricate N; a 1/1 colorless Servo artifact creature token; a trigger on another creature or artifact you control going to the graveyard from the battlefield [d2: its triggers are in (When::AnotherCreatureOrArtifactYouControlToGraveyardFromBattlefield, ArtifactYouControlToGraveyardFromBattlefield); d2 batch 19: they see Ygra's Food artifacts as they last existed (Object::left_as_artifact). d1 batch 14 scripts the cards]",
    "lane": "d1",
    "theme": "triggers",
    "owner": "d2"
@@ -114,7 +114,7 @@
   {
    "card": "Marionette Master",
    "deck": "Ygra, Eater of All",
-   "missing": "fabricate N; a 1/1 colorless Servo artifact creature token; an artifact-you-control-to-graveyard trigger; lose life equal to this creature's power",
+   "missing": "fabricate N; a 1/1 colorless Servo artifact creature token; an artifact-you-control-to-graveyard trigger; lose life equal to this creature's power [d2: its triggers are in (When::AnotherCreatureOrArtifactYouControlToGraveyardFromBattlefield, ArtifactYouControlToGraveyardFromBattlefield); d2 batch 19: they see Ygra's Food artifacts as they last existed (Object::left_as_artifact). d1 batch 14 scripts the cards]",
    "lane": "d1",
    "theme": "triggers",
    "owner": "d2"
