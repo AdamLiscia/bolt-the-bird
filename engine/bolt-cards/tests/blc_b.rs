@@ -3063,3 +3063,49 @@ fn gourmands_talent_makes_your_artifacts_foods_on_your_turn_and_grows_with_life_
         "green"
     );
 }
+
+// ---- Crew with any number of creatures (CR 702.122a), 2026-11-27 ----
+
+#[test]
+fn two_two_power_creatures_crew_a_crew_4_together() {
+    let mut g = table();
+    let chariot = hand(&mut g, 0, "Esika's Chariot");
+    play(&mut g, chariot, false, &[], &[]);
+    let cats: Vec<ObjId> = g.permanents(0).filter(|&x| g.def_of(x).name == "Cat").collect();
+    assert_eq!(cats.len(), 2, "two 2/2 Cats");
+    act(&mut g, Action::ActivateWith(chariot, 0, cats[0]));
+    assert!(
+        matches!(g.pending, Pending::Decide(0)),
+        "2 power isn't enough alone"
+    );
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::Yes), "not yet 4");
+    assert!(!legal.contains(&Action::Pick(chariot)), "it can't crew itself");
+    act(&mut g, Action::Pick(cats[1]));
+    act(&mut g, Action::Yes);
+    resolve_all(&mut g, &[]);
+    assert!(g.types_of(chariot).creature, "crewed");
+    assert!(g.obj(cats[0]).tapped && g.obj(cats[1]).tapped);
+}
+
+#[test]
+fn one_three_power_creature_cant_crew_a_crew_4_and_no_cancels() {
+    let mut g = table();
+    let chariot = put(&mut g, 0, "Esika's Chariot");
+    put(&mut g, 0, "Bloodroot Apothecary"); // a 3/3, alone
+    assert!(
+        !g.legal_actions()
+            .iter()
+            .any(|a| matches!(a, Action::ActivateWith(x, 0, _) if *x == chariot)),
+        "3 total power isn't 4"
+    );
+    let second = put(&mut g, 0, "Squirrel Sovereign"); // 2 more power
+    let first = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Bloodroot Apothecary")
+        .expect("it");
+    act(&mut g, Action::ActivateWith(chariot, 0, first));
+    act(&mut g, Action::No); // changed my mind
+    assert!(!g.types_of(chariot).creature);
+    assert!(!g.obj(first).tapped && !g.obj(second).tapped, "nothing paid");
+}
