@@ -4454,7 +4454,10 @@ fn gemstone_caverns_may_begin_on_the_battlefield_for_the_player_going_second() {
     assert_eq!(g.obj(gem).zone, Zone::Battlefield);
     assert_eq!(g.obj(gem).kind_counters, 1, "a luck counter");
     let victim = g.players[1].hand[0];
-    assert!(g.legal_actions().contains(&Action::Pick(victim)), "then exile a card from hand");
+    assert!(
+        g.legal_actions().contains(&Action::Pick(victim)),
+        "then exile a card from hand"
+    );
     act(&mut g, Action::Pick(victim));
     assert_eq!(g.obj(victim).zone, Zone::Exile);
     assert_eq!(g.players[1].hand.len(), 6);
@@ -4501,6 +4504,9 @@ fn demons_disciple_makes_each_player_sacrifice_a_creature_or_planeswalker() {
     let theirs = put(&mut g, 1, "Llanowar Elves");
     let c = hand(&mut g, 0, "Demon's Disciple");
     play(&mut g, c, false, &[], &[Action::Pick(mine), Action::Pick(theirs)]);
-    assert_eq!((g.obj(mine).zone, g.obj(theirs).zone), (Zone::Graveyard, Zone::Graveyard));
+    assert_eq!(
+        (g.obj(mine).zone, g.obj(theirs).zone),
+        (Zone::Graveyard, Zone::Graveyard)
+    );
     assert_eq!(g.obj(c).zone, Zone::Battlefield, "it kept its own creature");
 }

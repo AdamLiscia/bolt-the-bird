@@ -12135,9 +12135,11 @@ impl Game {
     /// player, one copy at a time (`Decision::GemstoneCaverns`); then the first turn begins.
     fn pregame_actions(&mut self) {
         let q = opponent(self.first);
-        let next = self.players[q].hand.iter().copied().find(|&c| {
-            self.def_of(c).begins_game_with_luck_counter && !self.pregame_asked.contains(&c)
-        });
+        let next = self.players[q]
+            .hand
+            .iter()
+            .copied()
+            .find(|&c| self.def_of(c).begins_game_with_luck_counter && !self.pregame_asked.contains(&c));
         if let Some(card) = next {
             self.pregame_asked.push(card);
             return self.ask(q, Decision::GemstoneCaverns { card, exile: false });
