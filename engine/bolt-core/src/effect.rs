@@ -2630,6 +2630,11 @@ pub enum Effect {
     /// `Decision::ExileFromHandUntilSourceLeaves`; the card returns to its owner's hand
     /// (`Game::hand_links`).
     ExileFromHandUntilSourceLeaves(u8),
+    /// Sunbird's Invocation: reveal the top X cards of your library, X the mana value of the spell
+    /// in `extra` (its {X} included); you may cast one with mana value X or less from among them
+    /// free (`free_casts_one`); the rest go to the bottom in a random order. The revealed cards
+    /// wait in exile, as cascade's do.
+    RevealTopMvMayCastOneFree,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -3585,6 +3590,8 @@ pub enum When {
     /// "Whenever a [subtype] attacks", any player's (Najeela: Warrior); the attacker is the item's
     /// `extra`.
     CreatureOfSubtypeAttacks(&'static str),
+    /// "Whenever you cast a spell from your hand" (Sunbird's Invocation), with the spell in `extra`.
+    YouCastSpellFromHand,
 }
 
 #[derive(Clone, Debug, PartialEq)]
