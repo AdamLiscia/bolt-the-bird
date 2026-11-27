@@ -2342,7 +2342,11 @@ pub fn script(name: &str) -> Option<Script> {
                 d.aura = true;
                 d.spell = Some(Ability::new(vec![CREATURE], vec![]));
                 d.enchanted_creature_type_becomes = Some("Insect");
-                d.enchanted_becomes_artifact_creature = true;
+                d.enchanted_card_types_become = Some(Types {
+                    artifact: true,
+                    creature: true,
+                    ..Types::default()
+                });
                 d.statics.push(Static {
                     scope: Scope::Attached,
                     lose_abilities: true,
@@ -2370,6 +2374,79 @@ pub fn script(name: &str) -> Option<Script> {
             let keywords = Keywords::HEXPROOF.with(Keywords::INDESTRUCTIBLE);
             spell(d, vec![f], vec![Effect::Grant { slot: 0, keywords }, Effect::Scry { n: 1 }]);
         }),
+        "Kenrith's Transformation" => s(
+            &[
+                "Enchant creature",
+                "When this Aura enters, draw a card.",
+                "Enchanted creature loses all abilities and is a green Elk creature with base power and toughness 3/3.",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                d.enchanted_creature_type_becomes = Some("Elk");
+                d.enchanted_card_types_become = Some(Types { creature: true, ..Types::default() });
+                d.statics.push(Static {
+                    scope: Scope::Attached,
+                    lose_abilities: true,
+                    base_pt: Some((3, 3)),
+                    set_colors: Some([false, false, false, false, true]),
+                    ..neutral_static()
+                });
+                on(d, When::Enters, vec![], vec![draw(1)]);
+            },
+        ),
+        "The Battle of Bywater" => s(
+            &["Destroy all creatures with power 3 or greater. Then create a Food token for each creature you control."],
+            |d, t| {
+                spell(d, vec![], vec![Effect::DestroyAllCreaturesPowerAtLeast(3), Effect::CreateTokensPerCreatureYouControl { def: t.food }]);
+            },
+        ),
+        "Dakkon Blackblade" => s(
+            &["Dakkon Blackblade's power and toughness are each equal to the number of lands you control."],
+            |d, _| d.pt_lands = true,
+        ),
+        "Scion of Oona" => s(
+            &["Other Faerie creatures you control get +1/+1.", "Other Faeries you control have shroud."],
+            |d, _| {
+                lord(d, "Faerie");
+                d.statics.push(Static {
+                    scope: Scope::OtherYourSubtype("Faerie"),
+                    keywords: Keywords::SHROUD,
+                    ..neutral_static()
+                });
+            },
+        ),
+        "Sword of Light and Shadow" => s(
+            &[
+                "Equipped creature gets +2/+2 and has protection from white and from black.",
+                "Whenever equipped creature deals combat damage to a player, you gain 3 life and you may return up to one target creature card from your graveyard to your hand.",
+                "Equip {2}",
+            ],
+            |d, _| {
+                attached(d, false, 2, 2, Keywords::NONE);
+                d.statics.last_mut().expect("just added").protection = [true, false, true, false, false];
+                let gain = Effect::GainLife { who: Who::You, n: 3 };
+                let ability = up_to(vec![graveyard_cards(true, Controller::You)], vec![gain, Effect::Bounce(0)]);
+                d.triggers.push(Trigger { when: When::EquippedDealsCombatDamageToPlayer, ability });
+                equip(d, "{2}");
+            },
+        ),
+        "Reckless Endeavor" => s(
+            &["Roll two d12 and choose one result. Reckless Endeavor deals damage equal to that result to each creature. Then create a number of Treasure tokens equal to the other result."],
+            |d, t| spell(d, vec![], vec![Effect::RollTwoDiceDamageEachCreatureAndTokens { sides: 12, def: t.treasure }]),
+        ),
+        "Garruk, Primal Hunter" => s(
+            &[
+                "+1: Create a 3/3 green Beast creature token.",
+                "−3: Draw cards equal to the greatest power among creatures you control.",
+                "−6: Create a 6/6 green Wurm creature token for each land you control.",
+            ],
+            |d, t| {
+                loyalty(d, 1, Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.beast_3, n: 1 }]));
+                loyalty(d, -3, Ability::new(vec![], vec![Effect::DrawGreatestPowerYouControl]));
+                loyalty(d, -6, Ability::new(vec![], vec![Effect::CreateTokensPerLand { def: t.wurm_6 }]));
+            },
+        ),
         _ => None,
     }
 }
@@ -2685,4 +2762,11 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Darksteel Mutation",
     "Ashaya, Soul of the Wild",
     "Loran's Escape",
+    "Kenrith's Transformation",
+    "The Battle of Bywater",
+    "Dakkon Blackblade",
+    "Scion of Oona",
+    "Sword of Light and Shadow",
+    "Reckless Endeavor",
+    "Garruk, Primal Hunter",
 ];

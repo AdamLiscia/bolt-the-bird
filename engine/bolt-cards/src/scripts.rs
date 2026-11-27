@@ -570,6 +570,30 @@ pub fn token_defs() -> Vec<CardDef> {
             t.colors = [true, false, false, false, false];
             t
         },
+        // 126: another lane's token, a placeholder until it lands on tarkir.
+        token("Placeholder 126", "Placeholder", 0, 0, Keywords::NONE),
+        // 127: another lane's token, a placeholder until it lands on tarkir.
+        token("Placeholder 127", "Placeholder", 0, 0, Keywords::NONE),
+        // 128: another lane's token, a placeholder until it lands on tarkir.
+        token("Placeholder 128", "Placeholder", 0, 0, Keywords::NONE),
+        // 129: another lane's token, a placeholder until it lands on tarkir.
+        token("Placeholder 129", "Placeholder", 0, 0, Keywords::NONE),
+        // 130: another lane's token, a placeholder until it lands on tarkir.
+        token("Placeholder 130", "Placeholder", 0, 0, Keywords::NONE),
+        // 131: another lane's token, a placeholder until it lands on tarkir.
+        token("Placeholder 131", "Placeholder", 0, 0, Keywords::NONE),
+        // 132: another lane's token, a placeholder until it lands on tarkir.
+        token("Placeholder 132", "Placeholder", 0, 0, Keywords::NONE),
+        // 133: another lane's token, a placeholder until it lands on tarkir.
+        token("Placeholder 133", "Placeholder", 0, 0, Keywords::NONE),
+        // 134: another lane's token, a placeholder until it lands on tarkir.
+        token("Placeholder 134", "Placeholder", 0, 0, Keywords::NONE),
+        // 135, lane d3: Garruk, Primal Hunter's "6/6 green Wurm creature token".
+        {
+            let mut t = token("Wurm", "Wurm", 6, 6, Keywords::NONE);
+            t.colors = [false, false, false, false, true];
+            t
+        },
     ]
 }
 
@@ -829,6 +853,26 @@ pub struct Tokens {
     pub dragon_2_firebreathing: usize,
     /// 125, lane d3: Skycat Sovereign's 1/1 white Cat Bird with flying.
     pub cat_bird: usize,
+    /// 126: another lane's token, a placeholder until it lands on tarkir.
+    pub placeholder_126: usize,
+    /// 127: another lane's token, a placeholder until it lands on tarkir.
+    pub placeholder_127: usize,
+    /// 128: another lane's token, a placeholder until it lands on tarkir.
+    pub placeholder_128: usize,
+    /// 129: another lane's token, a placeholder until it lands on tarkir.
+    pub placeholder_129: usize,
+    /// 130: another lane's token, a placeholder until it lands on tarkir.
+    pub placeholder_130: usize,
+    /// 131: another lane's token, a placeholder until it lands on tarkir.
+    pub placeholder_131: usize,
+    /// 132: another lane's token, a placeholder until it lands on tarkir.
+    pub placeholder_132: usize,
+    /// 133: another lane's token, a placeholder until it lands on tarkir.
+    pub placeholder_133: usize,
+    /// 134: another lane's token, a placeholder until it lands on tarkir.
+    pub placeholder_134: usize,
+    /// 135, lane d3: Garruk, Primal Hunter's 6/6 green Wurm.
+    pub wurm_6: usize,
 }
 
 impl Tokens {
@@ -960,6 +1004,16 @@ impl Tokens {
             dragon_egg: base + 123,
             dragon_2_firebreathing: base + 124,
             cat_bird: base + 125,
+            placeholder_126: base + 126,
+            placeholder_127: base + 127,
+            placeholder_128: base + 128,
+            placeholder_129: base + 129,
+            placeholder_130: base + 130,
+            placeholder_131: base + 131,
+            placeholder_132: base + 132,
+            placeholder_133: base + 133,
+            placeholder_134: base + 134,
+            wurm_6: base + 135,
         }
     }
 }

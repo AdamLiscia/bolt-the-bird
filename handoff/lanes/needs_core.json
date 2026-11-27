@@ -7496,7 +7496,7 @@
   {
    "card": "Darksteel Mutation",
    "deck": "IDEA Sythis, Harvest's Hand",
-   "missing": "idea-deck claim (idea_next11, 2026-11-27): type change and lost abilities on the enchanted creature (Insect artifact creature 0/1, indestructible); scripted after the pool push",
+   "missing": "idea-deck claim (idea_next11, 2026-11-27): type change and lost abilities on the enchanted creature (Insect artifact creature 0/1, indestructible); scripted after the pool push [done by d3 batch 41: CardDef::enchanted_card_types_become, scripted (pg_d3)]",
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"
@@ -7504,7 +7504,7 @@
   {
    "card": "Kenrith's Transformation",
    "deck": "IDEA Sythis, Harvest's Hand",
-   "missing": "idea-deck claim (idea_next11, 2026-11-27): type change and lost abilities on the enchanted creature (green Elk 3/3); scripted after the pool push",
+   "missing": "idea-deck claim (idea_next11, 2026-11-27): type change and lost abilities on the enchanted creature (green Elk 3/3); scripted after the pool push [done by d3 batch 41: CardDef::enchanted_card_types_become, scripted (pg_d3)]",
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"
@@ -7512,7 +7512,7 @@
   {
    "card": "Katilda, Dawnhart Martyr // Katilda's Rising Dawn",
    "deck": "IDEA Sythis, Harvest's Hand",
-   "missing": "idea-deck claim (idea_next11, 2026-11-27): scaled P/T (Spirits and/or enchantments you control); disturb is Mac C's; scripted after the pool push",
+   "missing": "idea-deck claim (idea_next11, 2026-11-27): scaled P/T (Spirits and/or enchantments you control); disturb is Mac C's; scripted after the pool push [d3 batch 41: held; needs Mac C: disturb (cast transformed from the graveyard); the Spirits-and/or-enchantments P/T count is d3's, built with the card]",
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"
@@ -7520,7 +7520,7 @@
   {
    "card": "Urza's Ruinous Blast",
    "deck": "IDEA Ratadrabik of Urborg",
-   "missing": "idea-deck claim (idea_next11, 2026-11-27): exile all nonland permanents that aren't legendary; scripted after the pool push",
+   "missing": "idea-deck claim (idea_next11, 2026-11-27): exile all nonland permanents that aren't legendary; scripted after the pool push [d3 batch 41: held; needs merger: the legendary sorcery cast restriction (CR 205.4d); the exile-all-nonlegendary-nonland effect is d3's, built with the card]",
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"
@@ -7528,7 +7528,7 @@
   {
    "card": "The Battle of Bywater",
    "deck": "IDEA Baylen, the Haymaker",
-   "missing": "idea-deck claim (idea_next11, 2026-11-27): destroy all creatures with power 3 or greater, then a Food per creature you control; scripted after the pool push",
+   "missing": "idea-deck claim (idea_next11, 2026-11-27): destroy all creatures with power 3 or greater, then a Food per creature you control; scripted after the pool push [done by d3 batch 41: Effect::CreateTokensPerCreatureYouControl, scripted (pg_d3)]",
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"
@@ -7536,7 +7536,7 @@
   {
    "card": "Ashaya, Soul of the Wild",
    "deck": "IDEA Toski, Bearer of Secrets",
-   "missing": "idea-deck claim (idea_next11, 2026-11-27): scaled P/T (lands you control) and nontoken creatures you control are Forest lands; scripted after the pool push",
+   "missing": "idea-deck claim (idea_next11, 2026-11-27): scaled P/T (lands you control) and nontoken creatures you control are Forest lands; scripted after the pool push [done by d3 batch 41: CardDef::your_nontoken_creatures_are_forest_lands (+ your_subtypes_tap_for_green Forest), scripted (pg_d3)]",
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"
@@ -7544,7 +7544,7 @@
   {
    "card": "Dakkon Blackblade",
    "deck": "IDEA Dakkon Blackblade",
-   "missing": "idea-deck claim (idea_next11, 2026-11-27): scaled P/T (lands you control: Scale::PerLandYouControl, d3 batch 39); scripted after the pool push",
+   "missing": "idea-deck claim (idea_next11, 2026-11-27): scaled P/T (lands you control: Scale::PerLandYouControl, d3 batch 39); scripted after the pool push [done by d3 batch 41: scripted (pg_d3)]",
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"
@@ -7552,7 +7552,7 @@
   {
    "card": "Reckless Endeavor",
    "deck": "IDEA Prosper, Tome-Bound",
-   "missing": "idea-deck claim (idea_next11, 2026-11-27): roll two d12 and choose one result (damage to each creature, Treasures for the other); scripted after the pool push",
+   "missing": "idea-deck claim (idea_next11, 2026-11-27): roll two d12 and choose one result (damage to each creature, Treasures for the other); scripted after the pool push [done by d3 batch 41: Effect::RollTwoDiceDamageEachCreatureAndTokens with Decision::ChooseDamageRoll, scripted (pg_d3)]",
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"
@@ -7560,7 +7560,7 @@
   {
    "card": "Scion of Oona",
    "deck": "IDEA Alela, Artful Provocateur",
-   "missing": "idea-deck claim (idea_next11, 2026-11-27): Faerie lord with granted shroud; scripted after the pool push",
+   "missing": "idea-deck claim (idea_next11, 2026-11-27): Faerie lord with granted shroud; scripted after the pool push [done by d3 batch 41: scripted (pg_d3)]",
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"
@@ -7568,7 +7568,7 @@
   {
    "card": "Sword of Light and Shadow",
    "deck": "IDEA Alela, Artful Provocateur",
-   "missing": "idea-deck claim (idea_next11, 2026-11-27): protection from white and black on the equipped creature, plus its combat damage trigger; scripted after the pool push",
+   "missing": "idea-deck claim (idea_next11, 2026-11-27): protection from white and black on the equipped creature, plus its combat damage trigger; scripted after the pool push [done by d3 batch 41: scripted (pg_d3)]",
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"
@@ -7576,7 +7576,7 @@
   {
    "card": "Loran's Escape",
    "deck": "IDEA Ratadrabik of Urborg",
-   "missing": "idea-deck claim (idea_next11, 2026-11-27): artifact-or-creature target granted hexproof and indestructible, then scry 1; scripted after the pool push",
+   "missing": "idea-deck claim (idea_next11, 2026-11-27): artifact-or-creature target granted hexproof and indestructible, then scry 1; scripted after the pool push [done by d3 batch 41: scripted (pg_d3)]",
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"
@@ -7584,7 +7584,7 @@
   {
    "card": "Garruk, Primal Hunter",
    "deck": "IDEA Rocco, Cabaretti Caterer",
-   "missing": "idea-deck claim (idea_next11, 2026-11-27): -3 draws by the greatest power among your creatures; -6 a Wurm per land you control; scripted after the pool push",
+   "missing": "idea-deck claim (idea_next11, 2026-11-27): -3 draws by the greatest power among your creatures; -6 a Wurm per land you control; scripted after the pool push [done by d3 batch 41: token 135 t.wurm_6, scripted (pg_d3)]",
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"

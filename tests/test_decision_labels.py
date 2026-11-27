@@ -392,3 +392,8 @@ def test_kindred_summons_names_a_creature_type():
 def test_lithoforming_sacrifices_a_land_to_draw():
     dec = {"kind": "SacrificeLandsDraw", "left": 1, "drawn": 0}
     assert sv._decision_label(dec, "Pick", 0, "Mountain") == "Sacrifice (draw a card) Mountain"
+
+
+def test_reckless_endeavor_picks_the_damage_roll():
+    dec = {"kind": "ChooseDamageRoll", "rolls": [3, 9]}
+    assert label(dec, "Mode", 1) == "9 damage to each creature, 3 tokens"

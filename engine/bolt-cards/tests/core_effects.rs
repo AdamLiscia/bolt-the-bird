@@ -3792,7 +3792,11 @@ fn an_aura_can_make_its_creature_an_artifact_creature_only() {
     let mut aura = (*set("CMD").unwrap().defs)[cid("Noggle the Mind")].clone();
     aura.name = "Test Mutation".into();
     aura.enchanted_creature_type_becomes = None;
-    aura.enchanted_becomes_artifact_creature = true;
+    aura.enchanted_card_types_become = Some(Types {
+        artifact: true,
+        creature: true,
+        ..Types::default()
+    });
     aura.statics = vec![Static {
         lose_abilities: true,
         ..plain_static(Scope::Attached)
@@ -3823,4 +3827,54 @@ fn nontoken_creatures_you_control_can_be_forest_lands() {
     assert!(g.has_subtype(elves, "Elf"), "in addition");
     assert!(!g.types_of(theirs).land && !g.types_of(ring).land);
     assert_eq!(count(&g, 0, |g, x| g.types_of(x).land), 27);
+}
+
+#[test]
+fn create_tokens_per_creature_you_control() {
+    let food = bolt_cards::scripts::Tokens::starting_at(set("CMD").unwrap().card_count()).food;
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![],
+        vec![Effect::CreateTokensPerCreatureYouControl { def: food }],
+    )]);
+    g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    g.add_card(1, cid("Savannah Lions"), Zone::Battlefield);
+    cast_test(&mut g, t, &[], &[]);
+    let foods = count(&g, 0, |g, x| g.is_token(x) && g.def_of(x).name == "Food");
+    assert_eq!(foods, 2, "yours only");
+}
+
+#[test]
+fn roll_two_dice_asks_which_is_the_damage() {
+    let treasure = bolt_cards::scripts::Tokens::starting_at(set("CMD").unwrap().card_count()).treasure;
+    let e = Effect::RollTwoDiceDamageEachCreatureAndTokens {
+        sides: 6,
+        def: treasure,
+    };
+    for seed_turn in 0..6 {
+        let (mut g, t) = game_with(vec![sorcery(vec![], vec![e])]);
+        for _ in 0..seed_turn {
+            g.roll_die(6); // vary the rolls
+        }
+        let ox = g.add_card(1, cid("Courser of Kruphix"), Zone::Battlefield);
+        let c = g.add_card(0, t, Zone::Hand);
+        act(&mut g, Action::Cast(c));
+        while !g.items.is_empty() && !matches!(g.pending, Pending::Decide(_)) {
+            act(&mut g, Action::PassPriority);
+        }
+        let (damage, made) = match g.decision.clone() {
+            Some(bolt_core::game::Decision::ChooseDamageRoll { rolls, .. }) => {
+                act(&mut g, Action::Mode(0));
+                (rolls[0], rolls[1])
+            }
+            _ => {
+                let n = count(&g, 0, |g, x| g.is_token(x));
+                (n as u32, n as u32)
+            }
+        };
+        let treasures = count(&g, 0, |g, x| g.is_token(x) && g.def_of(x).name == "Treasure");
+        assert_eq!(treasures as u32, made);
+        let dead = g.obj(ox).zone == Zone::Graveyard;
+        assert_eq!(dead, damage >= 4, "Courser has toughness 4");
+    }
 }

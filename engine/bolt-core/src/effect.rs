@@ -3039,6 +3039,17 @@ pub enum Effect {
     SacrificeXLandsDrawEach,
     /// "You may play X additional lands this turn." (Nahiri's Lithoforming; X the spell's X)
     ExtraLandsThisTurnX,
+    /// "Create a [token] for each creature you control." (The Battle of Bywater: Food)
+    CreateTokensPerCreatureYouControl {
+        def: usize,
+    },
+    /// Reckless Endeavor: "Roll two d`sides` and choose one result. [This] deals damage equal to
+    /// that result to each creature. Then create a number of [tokens] equal to the other result."
+    /// The choice is `Decision::ChooseDamageRoll` (not asked when the two results are equal).
+    RollTwoDiceDamageEachCreatureAndTokens {
+        sides: u32,
+        def: usize,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

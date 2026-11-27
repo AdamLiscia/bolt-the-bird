@@ -1152,10 +1152,10 @@ pub struct CardDef {
     /// (`Decision::GemstoneCaverns`); the luck counter is `Object::kind_counters`.
     pub begins_game_with_luck_counter: bool,
     /// An Aura: "Enchanted creature is an [Insect] artifact creature ... and it loses all other
-    /// ... card types" (Darksteel Mutation), in `Game::types_of`: its card types are artifact and
-    /// creature only (supertypes stay). `enchanted_creature_type_becomes` and its static give the
-    /// rest.
-    pub enchanted_becomes_artifact_creature: bool,
+    /// ... card types" (Darksteel Mutation: artifact and creature; Kenrith's Transformation:
+    /// creature), in `Game::types_of`: its card types are these only (supertypes stay).
+    /// `enchanted_creature_type_becomes` and its static give the rest.
+    pub enchanted_card_types_become: Option<Types>,
     /// "Nontoken creatures you control are Forest lands in addition to their other types." (Ashaya,
     /// Soul of the Wild), in `Game::types_of` and `Game::has_subtype`; it needs a static (a static
     /// source) so the check is cheap.
@@ -1770,7 +1770,7 @@ impl CardDef {
             your_planeswalkers_have_loyalty: Vec::new(),
             artifact_tokens_plus_one: None,
             begins_game_with_luck_counter: false,
-            enchanted_becomes_artifact_creature: false,
+            enchanted_card_types_become: None,
             your_nontoken_creatures_are_forest_lands: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
@@ -2079,7 +2079,7 @@ impl CardDef {
             your_planeswalkers_have_loyalty: Vec::new(),
             artifact_tokens_plus_one: None,
             begins_game_with_luck_counter: false,
-            enchanted_becomes_artifact_creature: false,
+            enchanted_card_types_become: None,
             your_nontoken_creatures_are_forest_lands: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
@@ -2388,7 +2388,7 @@ impl CardDef {
             your_planeswalkers_have_loyalty: Vec::new(),
             artifact_tokens_plus_one: None,
             begins_game_with_luck_counter: false,
-            enchanted_becomes_artifact_creature: false,
+            enchanted_card_types_become: None,
             your_nontoken_creatures_are_forest_lands: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,

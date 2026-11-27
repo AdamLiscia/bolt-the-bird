@@ -5066,3 +5066,135 @@ fn lorans_escape_gives_hexproof_and_indestructible_then_scries() {
     assert!(k.has(Keywords::HEXPROOF) && k.has(Keywords::INDESTRUCTIBLE));
     assert_eq!(g.players[0].library[0], top, "scried to the bottom");
 }
+
+#[test]
+fn kenriths_transformation_draws_and_makes_a_green_3_3_elk() {
+    let mut g = table();
+    let courser = put(&mut g, 1, "Courser of Kruphix");
+    let k = hand(&mut g, 0, "Kenrith's Transformation");
+    let cards = g.players[0].hand.len();
+    play(&mut g, k, false, &[obj(courser)], &[]);
+    assert_eq!(g.players[0].hand.len(), cards, "cast one, drew one");
+    let t = g.types_of(courser);
+    assert!(t.creature && !t.enchantment);
+    assert_eq!((g.power(courser), g.toughness(courser)), (3, 3));
+    assert_eq!(g.colors_of(courser), [false, false, false, false, true]);
+    assert!(g.has_subtype(courser, "Elk") && !g.has_subtype(courser, "Centaur"));
+}
+
+#[test]
+fn the_battle_of_bywater_destroys_the_big_ones_then_makes_food() {
+    let mut g = table();
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let courser = put(&mut g, 0, "Courser of Kruphix");
+    let angel = put(&mut g, 1, "Serra Angel");
+    let b = hand(&mut g, 0, "The Battle of Bywater");
+    play(&mut g, b, false, &[], &[]);
+    assert_eq!(g.obj(angel).zone, Zone::Graveyard, "power 4");
+    assert_eq!(
+        (g.obj(lions).zone, g.obj(courser).zone),
+        (Zone::Battlefield, Zone::Battlefield)
+    );
+    assert_eq!(tokens(&g, 0, "Food").len(), 2, "one per creature you control");
+}
+
+#[test]
+fn dakkon_blackblade_counts_your_lands() {
+    let mut g = table();
+    let d = put(&mut g, 0, "Dakkon Blackblade");
+    put(&mut g, 1, "Forest");
+    assert_eq!((g.power(d), g.toughness(d)), (25, 25));
+}
+
+#[test]
+fn scion_of_oona_pumps_and_shrouds_other_faeries() {
+    let mut g = table();
+    let scion = put(&mut g, 0, "Scion of Oona");
+    let cloud = put(&mut g, 0, "Cloud of Faeries");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    assert_eq!((g.power(cloud), g.toughness(cloud)), (2, 2));
+    assert!(g.keywords(cloud).has(Keywords::SHROUD));
+    assert_eq!((g.power(scion), g.toughness(scion)), (1, 1), "other Faeries only");
+    assert!(!g.keywords(scion).has(Keywords::SHROUD));
+    assert_eq!(g.power(lions), 2);
+}
+
+#[test]
+fn sword_of_light_and_shadow_protects_gains_and_returns_a_creature() {
+    let mut g = table();
+    let sword = put(&mut g, 0, "Sword of Light and Shadow");
+    let looter = put(&mut g, 0, "Merfolk Looter");
+    let dead = g.add_card(0, cid("Savannah Lions"), Zone::Graveyard);
+    to_main1(&mut g, 5, 0);
+    act(&mut g, Action::Activate(sword, 0));
+    act(&mut g, Action::Target(obj(looter)));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.power(looter), g.toughness(looter)), (3, 3));
+    assert_eq!(g.protection(looter), [true, false, true, false, false]);
+    let life = g.players[0].life;
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(looter));
+    act(&mut g, Action::FinishAttacks);
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            Pending::ChooseTarget(0) => Action::Target(obj(dead)),
+            Pending::Decide(1) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.players[1].life, 37);
+    assert_eq!(g.players[0].life, life + 3);
+    assert_eq!(g.obj(dead).zone, Zone::Hand);
+}
+
+#[test]
+fn reckless_endeavor_rolls_two_d12_for_damage_and_treasures() {
+    let mut g = table();
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let r = hand(&mut g, 0, "Reckless Endeavor");
+    act(&mut g, Action::Cast(r));
+    while !g.items.is_empty() && !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let treasures = match g.decision.clone() {
+        Some(bolt_core::game::Decision::ChooseDamageRoll { rolls, .. }) => {
+            assert_eq!(g.legal_actions(), vec![Action::Mode(0), Action::Mode(1)]);
+            act(&mut g, Action::Mode(1)); // the second result is the damage
+            rolls[0] as usize
+        }
+        _ => tokens(&g, 0, "Treasure").len(), // a tie: no choice
+    };
+    resolve_all(&mut g, &[]);
+    assert!((1..=12).contains(&treasures));
+    assert_eq!(tokens(&g, 0, "Treasure").len(), treasures);
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard, "at least 1 damage");
+}
+
+#[test]
+fn garruk_primal_hunter_makes_beasts_draws_and_makes_wurms() {
+    let mut g = table();
+    let garruk = hand(&mut g, 0, "Garruk, Primal Hunter");
+    play(&mut g, garruk, false, &[], &[]);
+    act(&mut g, Action::Loyalty(garruk, 0));
+    resolve_all(&mut g, &[]);
+    let beasts = tokens(&g, 0, "Beast");
+    assert_eq!(beasts.len(), 1);
+    assert_eq!((g.power(beasts[0]), g.toughness(beasts[0])), (3, 3));
+    to_main1(&mut g, 5, 0);
+    let cards = g.players[0].hand.len();
+    act(&mut g, Action::Loyalty(garruk, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), cards + 3, "the Beast's power");
+    g.objects[garruk.0 as usize].loyalty = 6;
+    to_main1(&mut g, 7, 0);
+    act(&mut g, Action::Loyalty(garruk, 2));
+    resolve_all(&mut g, &[]);
+    let wurms = tokens(&g, 0, "Wurm");
+    assert_eq!(wurms.len(), 25);
+    assert_eq!((g.power(wurms[0]), g.toughness(wurms[0])), (6, 6));
+    assert_eq!(g.colors_of(wurms[0]), [false, false, false, false, true]);
+}

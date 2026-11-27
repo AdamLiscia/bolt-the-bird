@@ -1521,6 +1521,13 @@ pub enum Decision {
     /// Nahiri's Lithoforming: `Pick` a land to sacrifice (`left` more after this one); `drawn` lands
     /// are sacrificed so far, and that many cards are drawn after the last.
     SacrificeLandsDraw { left: u8, drawn: u8 },
+    /// Reckless Endeavor: `Mode(i)` picks `rolls[i]` as the damage to each creature from `source`;
+    /// the other result is the number of `def` tokens created.
+    ChooseDamageRoll {
+        source: ObjId,
+        rolls: [u32; 2],
+        def: usize,
+    },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -2811,31 +2818,29 @@ impl Game {
                 ..Types::default()
             };
         }
-        if self.artifact_creature_aura(id) {
+        if let Some(only) = self.aura_card_types(id) {
             // Darksteel Mutation: "an Insect artifact creature ... loses all other card types".
             t = Types {
-                artifact: true,
-                creature: true,
                 legendary: t.legendary,
                 basic: t.basic,
                 snow: t.snow,
-                ..Types::default()
+                ..only
             };
         }
         self.with_kormus_bell(id, t)
     }
 
-    /// Whether an Aura with `enchanted_becomes_artifact_creature` (and its abilities) is attached to
-    /// `id` (Darksteel Mutation). Cheap when no ability-removing Aura is on the battlefield.
-    fn artifact_creature_aura(&self, id: ObjId) -> bool {
+    /// The only card types an Aura attached to `id` (with its abilities) leaves it
+    /// (`CardDef::enchanted_card_types_become`: Darksteel Mutation). Cheap when no ability-removing
+    /// Aura is on the battlefield.
+    fn aura_card_types(&self, id: ObjId) -> Option<Types> {
         if self.ability_loss_sources == 0 {
-            return false;
+            return None;
         }
         let zcc = self.obj(id).zcc;
-        self.static_sources.iter().any(|&src| {
-            self.obj(src).attached_to == Some((id, zcc))
-                && self.def_of(src).enchanted_becomes_artifact_creature
-                && !self.lost_abilities(src)
+        self.static_sources.iter().find_map(|&src| {
+            let only = self.def_of(src).enchanted_card_types_become?;
+            (self.obj(src).attached_to == Some((id, zcc)) && !self.lost_abilities(src)).then_some(only)
         })
     }
 
@@ -4342,6 +4347,30 @@ impl Game {
             && self
                 .permanents(opponent(p))
                 .any(|x| self.def_of(x).opponents_cast_only_from_hand && !self.lost_abilities(x))
+    }
+
+    /// Reckless Endeavor's results: `source` deals `damage` to each creature, then `p` creates
+    /// `tokens` of `def`.
+    fn damage_each_creature_then_tokens(
+        &mut self,
+        source: ObjId,
+        p: PlayerId,
+        damage: u32,
+        tokens: u32,
+        def: usize,
+    ) {
+        let all: Vec<ObjId> = self
+            .battlefield
+            .iter()
+            .copied()
+            .filter(|&c| self.types_of(c).creature)
+            .collect();
+        for c in all {
+            self.deal_damage(source, Target::Object(c), damage as i32);
+        }
+        for _ in 0..tokens {
+            self.create_token(p, def);
+        }
     }
 
     /// Nahiri's Lithoforming: asks `p` to sacrifice one of `left` more lands, if they have one;
@@ -15546,6 +15575,7 @@ impl Game {
                 .map(Action::Pick)
                 .collect(),
             Decision::KindredSummonsType { options } => (0..options.len() as u8).map(Action::Mode).collect(),
+            Decision::ChooseDamageRoll { .. } => vec![Action::Mode(0), Action::Mode(1)],
             Decision::SacrificeGreatestMv => self
                 .greatest_mv_sacrifice_options(p)
                 .into_iter()
@@ -17533,6 +17563,10 @@ impl Game {
                 if let Some(t) = options.get(i as usize).cloned() {
                     self.kindred_summons(p, &t);
                 }
+            }
+            (Decision::ChooseDamageRoll { source, rolls, def }, Action::Mode(i)) => {
+                let i = (i as usize).min(1);
+                self.damage_each_creature_then_tokens(source, p, rolls[i], rolls[1 - i], def);
             }
             (Decision::SacrificeGreatestMv, Action::Pick(c)) => {
                 self.move_to(c, Zone::Graveyard);
@@ -26481,6 +26515,27 @@ impl Game {
             Effect::AdNauseam => self.ad_nauseam_step(item.controller),
             Effect::OpponentsPermanentsLoseHexproofIndestructibleEot => {
                 self.lose_hexproof_indestructible_turn[opponent(item.controller)] = self.turn;
+            }
+            Effect::CreateTokensPerCreatureYouControl { def } => {
+                let n = self.creatures(item.controller).count();
+                for _ in 0..n {
+                    self.create_token(item.controller, def);
+                }
+            }
+            Effect::RollTwoDiceDamageEachCreatureAndTokens { sides, def } => {
+                let rolls = [self.roll_die(sides), self.roll_die(sides)];
+                if rolls[0] == rolls[1] {
+                    self.damage_each_creature_then_tokens(
+                        item.source,
+                        item.controller,
+                        rolls[0],
+                        rolls[1],
+                        def,
+                    );
+                } else {
+                    let source = item.source;
+                    self.ask(item.controller, Decision::ChooseDamageRoll { source, rolls, def });
+                }
             }
             Effect::KindredSummons => {
                 let p = item.controller;
