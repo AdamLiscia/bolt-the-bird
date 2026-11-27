@@ -1905,7 +1905,9 @@ fn tap_an_untapped_creature_as_a_cost_not_its_mana() {
     let mut shire = CardDef::creature("Shrine", "{1}", 0, 4, Keywords::NONE);
     shire.activated.push(Activated {
         mana: ManaCost::parse("{B}").expect("cost"),
-        tap_named_creature: true,
+        tap_named_permanent: Some(
+            bolt_core::effect::Filter::CREATURE.controlled_by(bolt_core::effect::Controller::You),
+        ),
         ability: Ability::new(vec![], vec![Effect::Draw { who: Who::You, n: 1 }]),
         ..Activated::default()
     });
@@ -3461,4 +3463,45 @@ fn remove_a_counter_for_one_mana_of_any_color_without_tapping() {
     settle(&mut g);
     assert_eq!(g.obj(bear).zone, Zone::Battlefield);
     assert_eq!(g.obj(r).kind_counters, 0);
+}
+
+#[test]
+fn tap_a_named_artifact_for_blue() {
+    use batch3::*;
+    use bolt_core::effect::{Controller, Filter};
+    let artifact = Filter {
+        players: false,
+        creatures: false,
+        planeswalkers: false,
+        artifacts: true,
+        ..Filter::ANY
+    };
+    let mut urza = CardDef::creature("Urza Test", "{2}{U}{U}", 1, 4, Keywords::NONE);
+    urza.activated.push(Activated {
+        tap_named_permanent: Some(artifact.controlled_by(Controller::You)),
+        ability: Ability::new(
+            vec![],
+            vec![Effect::AddMana {
+                color: Color::Blue,
+                n: 1,
+            }],
+        ),
+        ..Activated::default()
+    });
+    let mut thing = CardDef::creature("Thing", "{1}", 1, 1, Keywords::NONE);
+    thing.types.artifact = true;
+    let mut g = batch6_board(vec![urza, thing], 0);
+    let u = put(&mut g, 0, 25);
+    let t = put(&mut g, 0, 26);
+    let bear = put(&mut g, 0, GREEN_BEAR);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::ActivateWith(u, 0, t)), "an artifact");
+    assert!(
+        !legal.contains(&Action::ActivateWith(u, 0, bear)),
+        "not an artifact"
+    );
+    act(&mut g, Action::ActivateWith(u, 0, t));
+    assert!(g.obj(t).tapped);
+    assert_eq!(g.players[0].pool.len(), 1, "a mana ability: no stack");
+    assert!(g.players[0].pool[0].colors[1]);
 }

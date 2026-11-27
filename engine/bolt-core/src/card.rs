@@ -421,11 +421,12 @@ pub struct Activated {
     /// "Return a [subtype] you control to its owner's hand" in the cost (Quirion Ranger: a Forest;
     /// Wirewood Symbiote: an Elf): activated with `Action::ActivateWith`, that permanent the victim.
     pub return_own_subtype: Option<&'static str>,
-    /// "Tap an untapped creature you control" in the cost, the player naming it: activated with
-    /// `Action::ActivateWith`, that creature the victim (Earthcraft, The Shire). Summoning sickness
-    /// doesn't matter (it isn't the creature's own {T}); it's tapped before the mana is paid, so it
-    /// can't also tap for that mana.
-    pub tap_named_creature: bool,
+    /// "Tap an untapped [permanent matching this filter] you control" in the cost, the player naming
+    /// it: activated with `Action::ActivateWith`, that permanent the victim (Earthcraft, The Shire:
+    /// a creature; Urza, Lord High Artificer: an artifact). Summoning sickness doesn't matter (it
+    /// isn't the permanent's own {T}); it's tapped before the mana is paid, so it can't also tap for
+    /// that mana. Matched with `Game::target_ok` (it isn't targeted, but your own permanents pass).
+    pub tap_named_permanent: Option<crate::effect::Filter>,
 }
 
 /// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,
@@ -1451,6 +1452,14 @@ pub struct ManaExt {
     pub noncreature_spell_tax: u8,
     /// "[Subtype] spells you cast cost {N} less to cast." (Nogi, Draco-Zealot: Dragon, 1)
     pub subtype_spell_discount: Option<(&'static str, u8)>,
+    /// Devour N (CR 702.82): "As this enters, you may sacrifice any number of creatures. It enters
+    /// with N times that many +1/+1 counters on it." Asked as `Decision::Devour` before anyone gets
+    /// priority again (`Game::devour_pending`), one creature at a time.
+    pub devour: u8,
+    /// Prototype (CR 702.160): cast from hand with `Action::CastAlternative` for this cost; the
+    /// permanent is then this power, toughness and colors (`Object::prototyped`) (Cradle
+    /// Clearcutter: {2}{G}, 1/3, green).
+    pub prototype: Option<(crate::mana::ManaCost, i32, i32, [bool; 5])>,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana

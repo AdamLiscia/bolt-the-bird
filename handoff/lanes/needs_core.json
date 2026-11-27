@@ -7664,10 +7664,26 @@
   {
    "card": "Dragon Broodmother",
    "deck": "Vaevictis Asmadi, the Dire",
-   "missing": "devour; an upkeep 1/1 red and green flying Dragon token with devour 2 (token 127) (handback from d3)",
+   "missing": "devour; an upkeep 1/1 red and green flying Dragon token with devour 2 (token 127) (handback from d3) [d1 batch 46: scripted. Known limit: devour's sacrifices are asked just after it enters, before anyone gets priority, so enter triggers see it without the counters]",
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"
+  },
+  {
+   "card": "Cradle Clearcutter",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "prototype; {G} equal to its power (handback from d3) [d1 batch 46: scripted]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Urza, Lord High Artificer",
+   "deck": "Vaevictis Asmadi, the Dire",
+   "missing": "'Tap an untapped artifact you control: Add {U}' [d1 batch 46: piece in, d3 scripts the card: Activated::tap_named_permanent = Some(artifact filter controlled by You), the player names the artifact via ActivateWith; with Effect::AddMana it's a mana ability]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d3"
   }
  ]
 }

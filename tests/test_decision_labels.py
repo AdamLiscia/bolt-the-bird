@@ -440,3 +440,9 @@ def test_nesting_grounds_picks_the_counter_kind_to_move():
     dec = {"kind": "MoveCounterKind", "from": [3, 1], "to": [4, 1], "kinds": [0, 2]}
     assert label(dec, "Mode", 0) == "Move a +1/+1 counter"
     assert label(dec, "Mode", 2) == "Move a stun counter"
+
+
+def test_devour_picks_each_creature_or_stops():
+    dec = {"kind": "Devour", "card": [3, 1], "n": 2}
+    assert sv._decision_label(dec, "Pick", 0, "Llanowar Elves") == "Devour (sacrifice): Llanowar Elves"
+    assert label(dec, "No", 0) == "Done devouring"

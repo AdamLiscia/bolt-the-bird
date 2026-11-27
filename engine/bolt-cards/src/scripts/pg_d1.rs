@@ -1036,7 +1036,7 @@ pub fn script(name: &str) -> Option<Script> {
                 d.mana_ext.enters_tapped_unless_legendary_creature = true;
                 d.mana = Some(ManaSource::of(&[Color::Green]));
                 let n = activated(d, "{1}{G}", true, vec![], vec![Effect::CreateToken { who: Who::You, def: t.food, n: 1 }]);
-                d.activated[n].tap_named_creature = true;
+                d.activated[n].tap_named_permanent = Some(YOUR_CREATURE);
             },
         ),
         // ---- d1 core, batch 9: improvise, multikicker, forage, restricted and conditional mana ----
@@ -2176,7 +2176,7 @@ pub fn script(name: &str) -> Option<Script> {
                 ..Filter::ANY
             };
             let n = activated(d, "", false, vec![basic], vec![Effect::UntapTarget(0)]);
-            d.activated[n].tap_named_creature = true;
+            d.activated[n].tap_named_permanent = Some(YOUR_CREATURE);
         }),
         "Gravecrawler" => s(
             &[
@@ -2359,6 +2359,20 @@ pub fn script(name: &str) -> Option<Script> {
             &["Whenever Klauth attacks, add X mana in any combination of colors, where X is the total power of attacking creatures. Spend this mana only to cast spells. Until end of turn, you don't lose this mana as steps and phases end."],
             |d, _| {
                 on(d, When::Attacks, vec![], vec![Effect::AddSpellManaUntilEotPerAttackingPower]);
+            },
+        ),
+        "Dragon Broodmother" => s(
+            &["At the beginning of each upkeep, create a 1/1 red and green Dragon creature token with flying and devour 2."],
+            |d, t| {
+                on(d, When::Upkeep { your_turn_only: false }, vec![], vec![Effect::CreateToken { who: Who::You, def: t.dragon_devour, n: 1 }]);
+            },
+        ),
+        "Cradle Clearcutter" => s(
+            &["Prototype {2}{G} — 1/3", "{T}: Add an amount of {G} equal to this creature's power."],
+            |d, _| {
+                let cost = ManaCost::parse("{2}{G}").expect("cost");
+                d.mana_ext.prototype = Some((cost, 1, 3, [false, false, false, false, true]));
+                activated(d, "", true, vec![], vec![Effect::AddManaSourcePower(Color::Green)]);
             },
         ),
         "Castle Garenbrig" => s(
@@ -2667,4 +2681,6 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Oakhame Adversary",
     "Nogi, Draco-Zealot",
     "Klauth, Unrivaled Ancient",
+    "Dragon Broodmother",
+    "Cradle Clearcutter",
 ];

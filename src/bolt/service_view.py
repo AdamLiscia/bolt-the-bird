@@ -253,6 +253,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"ExileFromHandUntilSourceLeaves": "Exile until it leaves:"}.get(d)
         verb = verb or {"BlightCreature": f"Blight {dec.get('n', 1)} (-1/-1 counters on):"}.get(d)
         verb = verb or {"UpkeepGainLandsOrSacrifice": "Gain control of (cumulative upkeep):"}.get(d)
+        verb = verb or {"Devour": "Devour (sacrifice):"}.get(d)
         if d == "LoseUnless":
             verb = "Sacrifice" if dec.get("sacrifice") else "Discard"
         return f"{verb} {card_name}" if verb else None
@@ -297,6 +298,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
             f"Sacrifice {subject or 'it'}",
         ),
         "UpkeepGainLandsOrSacrifice": ("Gain control of a land", f"Sacrifice {src or 'it'}"),
+        "Devour": ("Devour", "Done devouring"),
         "DiscardLandOrGraveyard": ("Discard a land", f"Don't discard ({subject or 'it'} goes to the graveyard)"),
         "SylvanPayOrTop": (f"Pay 4 life to keep {subject or 'it'}", f"Put {subject or 'it'} on top of your library"),
         "ExpropriateVote": ("Vote time (an extra turn)", "Vote money (a permanent)"),

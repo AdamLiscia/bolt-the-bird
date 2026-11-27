@@ -339,6 +339,9 @@ pub struct Object {
     /// Put onto the battlefield by Kodama of the East Tree's ability (so its entering doesn't
     /// trigger that ability again); cleared as it leaves.
     pub put_by_kodama: bool,
+    /// Cast for its prototype cost and resolved (CR 702.160): its `ManaExt::prototype` power,
+    /// toughness and colors; cleared as it leaves.
+    pub prototyped: bool,
 }
 
 /// One resolved effect's change to a permanent's characteristics (lane d3's type-changing store):
@@ -1561,6 +1564,9 @@ pub enum Decision {
     /// Nesting Grounds: `Mode` the kind of counter (`Game::counter_kinds_on`' codes, `kinds`) to move
     /// from `from` onto `to`.
     MoveCounterKind { from: ObjId, to: ObjId, kinds: Vec<u8> },
+    /// Devour `n` for `card`: `Pick` another creature you control to sacrifice (`card` gets `n`
+    /// +1/+1 counters for it), or `No` to stop.
+    Devour { card: ObjId, n: u8 },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -2137,6 +2143,10 @@ pub struct Game {
     /// Klauth's mana per player: (any-color mana only for spells, the turn it was made in); it stays
     /// until end of turn.
     pub spell_mana_eot: [(u32, u32); 2],
+    /// Creatures with devour that just entered (with their zone change count), asked at the next
+    /// priority (`give_priority`), as riot is.
+    pub devour_pending: Vec<(ObjId, u32)>,
+    devour_then: PlayerId,
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2467,6 +2477,8 @@ impl Game {
             instant_sorcery_discount_until: Vec::new(),
             creature_ability_color_mana: [([0; 5], 0, Step::PreGame); 2],
             spell_mana_eot: [(0, 0); 2],
+            devour_pending: Vec::new(),
+            devour_then: 0,
         }
     }
 
@@ -2741,6 +2753,7 @@ impl Game {
             last_slime: 0,
             damage_by: (0, [0; 2]),
             put_by_kodama: false,
+            prototyped: false,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -3130,6 +3143,10 @@ impl Game {
         if self.obj(id).zone != Zone::Battlefield {
             return printed;
         }
+        let printed = match (self.obj(id).prototyped, self.def_of(id).mana_ext.prototype) {
+            (true, Some((_, _, _, c))) => c, // prototype (CR 702.160)
+            _ => printed,
+        };
         // A resolved effect's colors (a manland's), else Kormus Bell's black; an Aura's set colors
         // come after.
         let printed = match self.type_changes(id).filter_map(|c| c.colors).last() {
@@ -4128,6 +4145,9 @@ impl Game {
         if self.belled(id) {
             return (1, 1); // Kormus Bell
         }
+        if let (true, Some((_, p, t, _))) = (o.prototyped, d.mana_ext.prototype) {
+            return (p, t); // prototype (CR 702.160)
+        }
         // "During your turn, this creature has base power and toughness 5/2." (Snowmelt Stag)
         if let Some(pt) = self
             .def_of(id)
@@ -4424,6 +4444,13 @@ impl Game {
             v.push(14);
         }
         v
+    }
+
+    /// Whether `card`'s controller has another creature it could devour.
+    fn devour_options(&self, card: ObjId) -> bool {
+        let p = self.obj(card).controller;
+        self.creatures(p)
+            .any(|x| x != card && !self.cant_be_sacrificed(x))
     }
 
     /// One counter of kind `k` (`counter_kinds_on`' codes) off `id`; false if it has none.
@@ -6349,6 +6376,9 @@ impl Game {
             {
                 self.riot_pending.push((id, zcc));
             }
+            if def.mana_ext.devour > 0 {
+                self.devour_pending.push((id, zcc)); // devour: asked at the next priority
+            }
             // Communal Brewing: "that creature enters with X additional +1/+1 counters on it".
             let extra: i32 = self
                 .spell_enters_with_counters
@@ -6706,6 +6736,7 @@ impl Game {
             self.obj_mut(id).last_enchantment_only = was;
             self.obj_mut(id).copy_enchantment_only = false;
             self.obj_mut(id).warped = false;
+            self.obj_mut(id).prototyped = false;
             if self.obj(id).transformed {
                 self.obj_mut(id).transformed = false;
                 self.triggered
@@ -8295,6 +8326,18 @@ impl Game {
                             ..CastMode::default()
                         },
                     ));
+                } else if self.obj(c).zone == Zone::Hand
+                    && def.alt_cost.is_none()
+                    && def.mana_ext.prototype.is_some()
+                {
+                    // Prototype: from hand for its prototype cost.
+                    v.push((
+                        Action::CastAlternative(c),
+                        CastMode {
+                            alt: true,
+                            ..CastMode::default()
+                        },
+                    ));
                 }
                 // Cleave: the bracketed words removed, for the cleave cost.
                 if def.mana_ext.cleave.is_some() && def.alt_cost.is_none() {
@@ -8508,6 +8551,7 @@ impl Game {
                     generic: 3,
                     ..ManaCost::default()
                 },
+                None if def.mana_ext.prototype.is_some() => def.mana_ext.prototype.expect("prototype").0,
                 None if def.warp.is_some() => def.warp.expect("warp"),
                 None if def.mana_ext.freerunning.is_some() => def.mana_ext.freerunning.expect("freerunning"),
                 None if def.mana_ext.cleave.is_some() => def.mana_ext.cleave.expect("cleave"),
@@ -10350,13 +10394,15 @@ impl Game {
                             .filter(|&c| self.def_of(c).types.land)
                             .map(|c| Action::ActivateWith(id, n, c)),
                     );
-                } else if a.tap_named_creature {
-                    // Earthcraft, The Shire: any untapped creature you control, the player's pick,
-                    // as long as the mana can still be paid without it (it can't tap for both).
+                } else if let Some(f) = a.tap_named_permanent {
+                    // Earthcraft, The Shire, Urza: an untapped permanent you control matching `f`, the
+                    // player's pick, as long as the mana can still be paid without it.
                     let cost = Game::ability_discounted(a, ability_discount, a.mana);
                     v.extend(
-                        self.creatures(p)
-                            .filter(|&c| c != id && !self.obj(c).tapped)
+                        self.permanents(p)
+                            .filter(|&c| {
+                                c != id && !self.obj(c).tapped && self.target_ok(&f, p, Target::Object(c))
+                            })
                             .filter(|&c| {
                                 cost == ManaCost::default() || {
                                     let mut g = self.clone();
@@ -10692,7 +10738,9 @@ impl Game {
         let cost = Game::ability_discounted(&a, self.ability_discount(p), cost);
         // Earthcraft, The Shire: the named creature tapped for the cost first, so it can't also tap
         // for the mana.
-        if let Some(v) = victim.filter(|&v| a.tap_named_creature && self.obj(v).zone == Zone::Battlefield) {
+        if let Some(v) =
+            victim.filter(|&v| a.tap_named_permanent.is_some() && self.obj(v).zone == Zone::Battlefield)
+        {
             self.become_tapped(v);
         }
         self.pay_mana_for(p, &cost, exclude, PayFor::Ability(id));
@@ -10757,8 +10805,8 @@ impl Game {
                 if self.obj(v).zone == Zone::Hand {
                     self.move_to(v, Zone::Graveyard); // discarded
                 }
-            } else if a.tap_named_creature {
-                // Earthcraft, The Shire: tapped before the mana, above.
+            } else if a.tap_named_permanent.is_some() {
+                // Earthcraft, The Shire, Urza: tapped before the mana, above.
             } else if a.return_land || a.return_own_subtype.is_some() {
                 if self.obj(v).zone == Zone::Battlefield {
                     self.move_to(v, Zone::Hand); // Meloku: returned, after the mana
@@ -13101,6 +13149,7 @@ impl Game {
             && self.def_of(card).alt_cost.is_none()
             && self.def_of(card).warp.is_none()
             && self.def_of(card).morph.is_none()
+            && self.def_of(card).mana_ext.prototype.is_none()
             && self.def_of(card).mana_ext.freerunning.is_none()
             && self.def_of(card).mana_ext.cleave.is_none()
         {
@@ -14203,6 +14252,9 @@ impl Game {
             } else if r.acts && self.types_of(source).is_permanent() {
                 self.move_to(source, Zone::Battlefield);
                 self.obj_mut(source).controller = r.item.controller;
+                if r.item.alt && self.defs[self.obj(source).def].mana_ext.prototype.is_some() {
+                    self.obj_mut(source).prototyped = true; // prototype: its smaller size and color
+                }
                 if r.item.alt && self.defs[self.obj(source).def].warp.is_some() {
                     self.obj_mut(source).warped = true;
                 }
@@ -14751,6 +14803,15 @@ impl Game {
             }
             Decision::ChooseEnterMode { .. } => vec![Action::Mode(0), Action::Mode(1)],
             Decision::Riot { .. } => vec![Action::Mode(0), Action::Mode(1)],
+            Decision::Devour { card, .. } => {
+                let mut v: Vec<Action> = self
+                    .creatures(p)
+                    .filter(|&x| x != *card && !self.cant_be_sacrificed(x))
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::MirrormindCopies { .. } => vec![Action::Yes, Action::No],
             Decision::GemstoneCaverns { exile: false, .. } => vec![Action::Yes, Action::No],
             Decision::GemstoneCaverns { exile: true, .. } => hand.iter().copied().map(Action::Pick).collect(),
@@ -16275,6 +16336,24 @@ impl Game {
                 self.obj_mut(*card).suspend_haste = true; // haste, as Hall of the Bandit Lord gives
             }
             let then = self.riot_then;
+            self.give_priority(then);
+            return;
+        }
+        if let Decision::Devour { card, n } = d {
+            if let Action::Pick(x) = a {
+                if self.obj(x).zone == Zone::Battlefield {
+                    self.move_to(x, Zone::Graveyard);
+                    self.sacrificed(x, p);
+                    if self.obj(card).zone == Zone::Battlefield {
+                        self.add_counters(card, n as i32);
+                    }
+                }
+                if self.obj(card).zone == Zone::Battlefield && self.devour_options(card) {
+                    self.ask(p, Decision::Devour { card, n });
+                    return;
+                }
+            }
+            let then = self.devour_then;
             self.give_priority(then);
             return;
         }
@@ -28205,6 +28284,17 @@ impl Game {
                     self.riot_then = p;
                     let owner = self.obj(c).controller;
                     self.ask(owner, Decision::Riot { card: c });
+                    return;
+                }
+            }
+            // Devour: the sacrifices, before anyone can act again.
+            while !self.devour_pending.is_empty() {
+                let (c, z) = self.devour_pending.remove(0);
+                if self.obj(c).zone == Zone::Battlefield && self.obj(c).zcc == z && self.devour_options(c) {
+                    self.devour_then = p;
+                    let owner = self.obj(c).controller;
+                    let n = self.def_of(c).mana_ext.devour;
+                    self.ask(owner, Decision::Devour { card: c, n });
                     return;
                 }
             }

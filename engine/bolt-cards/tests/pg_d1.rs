@@ -4948,3 +4948,63 @@ fn klauth_adds_spell_only_mana_that_lasts_the_turn() {
     act(&mut g, Action::Cast(nw));
     assert_eq!(g.spell_mana_eot[0].0, x - 2);
 }
+
+#[test]
+fn dragon_broodmother_makes_a_dragon_that_devours_at_each_upkeep() {
+    let mut g = table();
+    put(&mut g, 0, "Dragon Broodmother");
+    let elf = put(&mut g, 0, "Llanowar Elves");
+    let seer = put(&mut g, 0, "Viscera Seer");
+    // Through the opponent's upkeep: its trigger makes player 0 a Dragon, and the devour asks.
+    while !matches!(g.pending, Pending::Decide(0)) {
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ if !g.legal_actions().contains(&Action::PassPriority) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    let dragon = tokens(&g, 0, "Dragon");
+    assert_eq!(dragon.len(), 1);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(elf)) && legal.contains(&Action::No));
+    act(&mut g, Action::Pick(elf));
+    act(&mut g, Action::Pick(seer));
+    assert_eq!(g.obj(elf).zone, Zone::Graveyard);
+    assert_eq!(g.obj(seer).zone, Zone::Graveyard);
+    assert_eq!(g.obj(dragon[0]).counters, 4, "devour 2: two creatures");
+    assert!(g.keywords(dragon[0]).has(Keywords::FLYING));
+}
+
+#[test]
+fn cradle_clearcutter_casts_as_a_prototype_and_taps_for_its_power() {
+    let mut g = table();
+    let forests: Vec<ObjId> = g
+        .permanents(0)
+        .filter(|&x| g.def_of(x).name == "Forest")
+        .take(3)
+        .collect();
+    tap_lands_except(&mut g, &forests);
+    let cc = hand(&mut g, 0, "Cradle Clearcutter");
+    let legal = g.legal_actions();
+    assert!(
+        legal.contains(&Action::CastAlternative(cc)),
+        "{{2}}{{G}} prototype"
+    );
+    assert!(!legal.contains(&Action::Cast(cc)), "{{6}}: three lands");
+    act(&mut g, Action::CastAlternative(cc));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(cc).zone, Zone::Battlefield);
+    assert_eq!((g.power(cc), g.toughness(cc)), (1, 3));
+    assert!(g.colors_of(cc)[4], "green");
+    // Full size: 3/6, colorless; it taps for {G} per power.
+    let mut g = table();
+    let cc = put(&mut g, 0, "Cradle Clearcutter");
+    g.objects[cc.0 as usize].since_turn = 0;
+    assert_eq!((g.power(cc), g.toughness(cc)), (3, 6));
+    assert!(!g.colors_of(cc).iter().any(|&k| k));
+    act(&mut g, Action::Activate(cc, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].pool.len(), 3);
+}
