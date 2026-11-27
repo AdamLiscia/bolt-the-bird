@@ -1970,32 +1970,6 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].remove_counters_self = 1;
             },
         ),
-        // ---- Bello ----
-        "Alchemist's Talent" => s(
-            &[
-                "When this Class enters, create two tapped Treasure tokens.",
-                "{1}{R}: Level 2",
-                "Treasures you control have \"{T}, Sacrifice this artifact: Add two mana of any one color.\"",
-                "{4}{R}: Level 3",
-                "Whenever you cast a spell, if mana from a Treasure was spent to cast it, this Class deals damage equal to that spell's mana value to each opponent.",
-            ],
-            |d, t| {
-                on(d, When::Enters, vec![], vec![Effect::CreateTokensTapped { def: t.treasure, n: 2 }]);
-                let n = activated(d, "{1}{R}", false, vec![], vec![Effect::ClassLevelUp(2)]);
-                d.activated[n].sorcery = true;
-                d.activated[n].level_up_to = 2;
-                d.mana_ext.treasures_add_two_at_level = 2;
-                let n = activated(d, "{4}{R}", false, vec![], vec![Effect::ClassLevelUp(3)]);
-                d.activated[n].sorcery = true;
-                d.activated[n].level_up_to = 3;
-                let mut burn = Ability::new(
-                    vec![],
-                    vec![Effect::StopUnlessTreasureManaSpentOnExtra, Effect::DamageEachOpponentCastSpellManaValue],
-                );
-                burn.condition = Some(Condition::ClassLevelAtLeast(3));
-                d.triggers.push(Trigger { when: When::YouCast, ability: burn });
-            },
-        ),
         // ---- Raggadragga ----
         "Comet Storm" => s(
             &[
@@ -2319,7 +2293,6 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Deathrite Shaman",
     "Braid of Fire",
     "Glen Elendra Guardian",
-    "Alchemist's Talent",
     "Comet Storm",
     "Changeling Wayfinder",
     "Reaping Willow",

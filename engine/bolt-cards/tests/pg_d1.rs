@@ -4076,46 +4076,6 @@ fn glen_elendra_guardian_enters_shrunk_and_removes_its_counter_to_counter_a_spel
 }
 
 #[test]
-fn alchemists_talent_makes_tapped_treasures_and_burns_for_treasure_paid_spells() {
-    let mut g = table();
-    let talent = hand(&mut g, 0, "Alchemist's Talent");
-    act(&mut g, Action::Cast(talent));
-    resolve_all(&mut g, &[]);
-    let treasures: Vec<ObjId> = g
-        .permanents(0)
-        .filter(|&x| g.def_of(x).name == "Treasure")
-        .collect();
-    assert_eq!(treasures.len(), 2);
-    assert!(treasures.iter().all(|&x| g.obj(x).tapped), "tapped");
-    act(&mut g, Action::Activate(talent, 0));
-    resolve_all(&mut g, &[]);
-    act(&mut g, Action::Activate(talent, 1));
-    resolve_all(&mut g, &[]);
-    // Only the Treasures can pay now.
-    for x in g.permanents(0).collect::<Vec<_>>() {
-        g.objects[x.0 as usize].tapped = g.types_of(x).land;
-    }
-    let bolt = hand(&mut g, 0, "Lightning Bolt");
-    act(&mut g, Action::Cast(bolt));
-    act(&mut g, Action::Target(Target::Player(1)));
-    settle(&mut g);
-    assert_eq!(
-        g.players[1].life, 36,
-        "3 from the Bolt, 1 (its mana value) from the Class"
-    );
-
-    // Paid with a land: no damage from the Class.
-    for x in g.permanents(0).collect::<Vec<_>>() {
-        g.objects[x.0 as usize].tapped = !g.types_of(x).land;
-    }
-    let bolt = hand(&mut g, 0, "Lightning Bolt");
-    act(&mut g, Action::Cast(bolt));
-    act(&mut g, Action::Target(Target::Player(1)));
-    settle(&mut g);
-    assert_eq!(g.players[1].life, 33);
-}
-
-#[test]
 fn comet_storm_hits_one_target_plus_one_per_kick() {
     let mut g = table();
     let elf = put(&mut g, 1, "Llanowar Elves");

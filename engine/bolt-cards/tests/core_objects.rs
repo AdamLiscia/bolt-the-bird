@@ -1747,3 +1747,297 @@ fn toxrill_slimes_shrinks_makes_slugs_and_draws_off_them() {
     assert_eq!(g.players[0].hand.len(), cards + 1);
     assert!(tokens(&g, 0, "Slug").is_empty(), "the Slug was sacrificed");
 }
+
+// ---- Rev, Tithe Extractor; Ashiok, Nightmare Muse's pieces (batch 19) ----
+
+#[test]
+fn rev_grants_deathtouch_and_exiles_their_top_card_face_down_castable() {
+    let mut g = table();
+    let rev = put(&mut g, 0, "Rev, Tithe Extractor");
+    let bolt = g.add_card(1, cid("Lightning Bolt"), Zone::Library);
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(rev));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[Action::Target(obj(rev))]);
+    assert!(g.keywords(rev).has(Keywords::DEATHTOUCH));
+    pass_to(&mut g, Step::Main2);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 1);
+    assert_eq!(g.obj(bolt).zone, Zone::Exile);
+    assert!(g.exiled_face_down(bolt));
+    assert!(
+        g.legal_actions().contains(&Action::Cast(bolt)),
+        "castable while exiled"
+    );
+    to_main1(&mut g, 9, 0);
+    assert!(
+        g.legal_actions().contains(&Action::Cast(bolt)),
+        "for as long as it remains exiled"
+    );
+}
+
+#[test]
+fn rev_leaves_an_exiled_land_uncastable() {
+    let mut g = table();
+    let land = g.add_card(1, cid("Mountain"), Zone::Library);
+    let rev = put(&mut g, 0, "Rev, Tithe Extractor");
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(rev));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[Action::Target(obj(rev))]);
+    pass_to(&mut g, Step::Main2);
+    assert_eq!(g.obj(land).zone, Zone::Exile);
+    assert!(!g.legal_actions().contains(&Action::PlayLand(land)));
+}
+
+#[test]
+fn casting_up_to_three_face_up_opponent_exiled_spells_free() {
+    let mut g = table_with(|defs| {
+        defs[cid("Inkshield")].spell = Some(bolt_core::Ability::new(
+            vec![],
+            vec![bolt_core::Effect::CastFaceUpOpponentExiledFreeUpTo(3)],
+        ));
+    });
+    let bolts: Vec<ObjId> = (0..4)
+        .map(|_| g.add_card(1, cid("Lightning Bolt"), Zone::Exile))
+        .collect();
+    let hidden = g.add_card(1, cid("Lightning Bolt"), Zone::Exile);
+    let zcc = g.obj(hidden).zcc;
+    g.face_down_exiled.push((hidden, zcc));
+    let mine = g.add_card(0, cid("Lightning Bolt"), Zone::Exile);
+    let muse = hand(&mut g, 0, "Inkshield"); // standing in for Ashiok's −7
+    act(&mut g, Action::Cast(muse));
+    while !matches!(g.pending, Pending::FreeCast(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::Cast(hidden)), "face-up cards only");
+    assert!(!legal.contains(&Action::Cast(mine)), "cards your opponents own");
+    for &b in &bolts[..3] {
+        act(&mut g, Action::Cast(b));
+        act(&mut g, Action::Target(Target::Player(1)));
+    }
+    assert!(
+        !matches!(g.pending, Pending::FreeCast(_)),
+        "up to three: the window closes"
+    );
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 31);
+    assert_eq!(g.obj(bolts[3]).zone, Zone::Exile);
+    assert!(!g.obj(bolts[3]).cast_free);
+}
+
+#[test]
+fn each_opponent_exiles_the_top_two_cards() {
+    let mut g = table_with(|defs| {
+        defs[cid("Inkshield")].spell = Some(bolt_core::Ability::new(
+            vec![],
+            vec![bolt_core::Effect::EachOpponentExilesTop(2)],
+        ));
+    });
+    let a = g.add_card(1, cid("Lightning Bolt"), Zone::Library);
+    let b = g.add_card(1, cid("Hungry Ghoul"), Zone::Library);
+    let c = hand(&mut g, 0, "Inkshield"); // standing in for the Nightmare token's trigger
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!((g.obj(a).zone, g.obj(b).zone), (Zone::Exile, Zone::Exile));
+}
+
+// ---- Alchemist's Talent, Fortune Teller's Talent, Evercoat Ursine (batch 20) ----
+
+#[test]
+fn alchemists_talent_makes_tapped_treasures_then_burns_for_treasure_spells() {
+    let mut g = table();
+    let talent = hand(&mut g, 0, "Alchemist's Talent");
+    play(&mut g, talent, false, &[], &[]);
+    let treasures = tokens(&g, 0, "Treasure");
+    assert_eq!(treasures.len(), 2);
+    assert!(treasures.iter().all(|&t| g.obj(t).tapped), "tapped");
+    assert!(
+        g.legal_actions().contains(&Action::Activate(talent, 0)),
+        "level 2 as a sorcery"
+    );
+    // Level 3 on a board with only Treasures, so the Bolt is paid with Treasure mana.
+    let mut g = game(&[]);
+    let talent = put(&mut g, 0, "Alchemist's Talent");
+    g.objects[talent.0 as usize].class_level = 3;
+    let treasure = g
+        .defs
+        .iter()
+        .position(|d| d.token && d.name == "Treasure")
+        .expect("Treasure");
+    g.add_card(0, treasure, Zone::Battlefield);
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[Target::Player(1)], &[]);
+    assert_eq!(g.players[1].life, 36, "3 from the Bolt, 1 for its mana value");
+}
+
+#[test]
+fn alchemists_talent_level_three_ignores_spells_without_treasure_mana() {
+    let mut g = table();
+    let talent = put(&mut g, 0, "Alchemist's Talent");
+    g.objects[talent.0 as usize].class_level = 3;
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[Target::Player(1)], &[]);
+    assert_eq!(g.players[1].life, 37);
+}
+
+#[test]
+fn fortune_tellers_talent_level_two_plays_the_top_after_a_spell() {
+    let mut g = table();
+    let talent = put(&mut g, 0, "Fortune Teller's Talent");
+    let land = top(&mut g, "Mountain");
+    assert!(!g.legal_actions().contains(&Action::PlayLand(land)), "level 1");
+    g.objects[talent.0 as usize].class_level = 2;
+    assert!(
+        !g.legal_actions().contains(&Action::PlayLand(land)),
+        "no spell cast yet this turn"
+    );
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    play(&mut g, elves, false, &[], &[]);
+    assert!(g.legal_actions().contains(&Action::PlayLand(land)));
+    let bolt = top(&mut g, "Lightning Bolt");
+    assert!(g.legal_actions().contains(&Action::Cast(bolt)), "spells too");
+}
+
+#[test]
+fn two_hideaways_and_one_free_spell_on_combat_damage() {
+    // Evercoat Ursine's pieces on an edited Hungry Ghoul (the Ursine itself is unclaimed).
+    let mut g = table_with(|defs| {
+        let d = &mut defs[cid("Hungry Ghoul")];
+        for (when, effects) in [
+            (
+                bolt_core::When::Enters,
+                vec![
+                    bolt_core::Effect::Hideaway(3),
+                    bolt_core::Effect::HideawayAnother(3),
+                ],
+            ),
+            (
+                bolt_core::When::DealsCombatDamageToPlayer,
+                vec![bolt_core::Effect::MayCastOneHideawayFree],
+            ),
+        ] {
+            d.triggers.push(bolt_core::Trigger {
+                when,
+                ability: bolt_core::Ability::new(vec![], effects),
+            });
+        }
+    });
+    let first = top(&mut g, "Lightning Bolt");
+    for _ in 0..2 {
+        top(&mut g, "Plains");
+    }
+    let second = top(&mut g, "Lightning Bolt");
+    for _ in 0..2 {
+        top(&mut g, "Plains");
+    }
+    let bear = hand(&mut g, 0, "Hungry Ghoul");
+    play(
+        &mut g,
+        bear,
+        false,
+        &[],
+        &[Action::Pick(second), Action::Pick(first)],
+    );
+    assert_eq!(
+        (g.obj(first).zone, g.obj(second).zone),
+        (Zone::Exile, Zone::Exile)
+    );
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(bear));
+    act(&mut g, Action::FinishAttacks);
+    while !matches!(g.pending, Pending::FreeCast(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Cast(first)) && legal.contains(&Action::Cast(second)));
+    act(&mut g, Action::Cast(first));
+    act(&mut g, Action::Target(Target::Player(1)));
+    assert!(!matches!(g.pending, Pending::FreeCast(_)), "one of them");
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(first).zone, Zone::Graveyard);
+    assert_eq!(g.obj(second).zone, Zone::Exile);
+}
+
+#[test]
+fn blade_of_the_bloodchief_grows_its_creature_twice_as_fast_on_a_vampire() {
+    let mut g = table();
+    let blade = put(&mut g, 0, "Blade of the Bloodchief");
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    act(&mut g, Action::Activate(blade, 0));
+    resolve_all(&mut g, &[Action::Target(obj(ghoul))]);
+    let elves = put(&mut g, 1, "Llanowar Elves");
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[obj(elves)], &[]);
+    assert_eq!(g.obj(ghoul).counters, 1, "a creature died");
+    let bat = put(&mut g, 0, "Vampire Nighthawk");
+    act(&mut g, Action::Activate(blade, 0));
+    resolve_all(&mut g, &[Action::Target(obj(bat))]);
+    let elves = put(&mut g, 1, "Llanowar Elves");
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[obj(elves)], &[]);
+    assert_eq!(g.obj(bat).counters, 2, "a Vampire gets two");
+    assert_eq!(g.obj(ghoul).counters, 1, "no longer equipped");
+}
+
+#[test]
+fn nesting_dragon_makes_eggs_that_hatch_into_firebreathing_dragons() {
+    let mut g = table();
+    put(&mut g, 0, "Nesting Dragon");
+    let land = hand(&mut g, 0, "Mountain");
+    act(&mut g, Action::PlayLand(land));
+    resolve_all(&mut g, &[]);
+    let eggs = tokens(&g, 0, "Dragon Egg");
+    assert_eq!(eggs.len(), 1, "landfall");
+    let egg = eggs[0];
+    assert_eq!((g.power(egg), g.toughness(egg)), (0, 2));
+    assert!(g.keywords(egg).has(Keywords::DEFENDER));
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[obj(egg)], &[]);
+    let dragons = tokens(&g, 0, "Dragon");
+    assert_eq!(dragons.len(), 1, "the Egg died into a Dragon");
+    let dragon = dragons[0];
+    assert!(g.keywords(dragon).has(Keywords::FLYING));
+    act(&mut g, Action::Activate(dragon, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.power(dragon), g.toughness(dragon)), (3, 2), "{{R}}: +1/+0");
+}
+
+#[test]
+fn ashiok_makes_nightmares_that_exile_two_and_bounces_then_exiles_from_hand() {
+    let mut g = table();
+    let ashiok = put(&mut g, 0, "Ashiok, Nightmare Muse");
+    g.objects[ashiok.0 as usize].loyalty = 5;
+    act(&mut g, Action::Loyalty(ashiok, 0));
+    resolve_all(&mut g, &[]);
+    let nightmare = tokens(&g, 0, "Nightmare")[0];
+    assert_eq!((g.power(nightmare), g.toughness(nightmare)), (2, 3));
+    let a = g.add_card(1, cid("Lightning Bolt"), Zone::Library);
+    let b = g.add_card(1, cid("Hungry Ghoul"), Zone::Library);
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(nightmare));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.obj(a).zone, g.obj(b).zone), (Zone::Exile, Zone::Exile));
+    pass_to(&mut g, Step::Main2);
+    let elves = put(&mut g, 1, "Llanowar Elves");
+    act(&mut g, Action::Loyalty(ashiok, 1));
+    act(&mut g, Action::Target(obj(elves)));
+    while !matches!(g.pending, Pending::Decide(1)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Pick(elves));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Exile, "bounced, then exiled from hand");
+}
