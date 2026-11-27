@@ -2245,6 +2245,40 @@ pub fn script(name: &str) -> Option<Script> {
                 on_modal(d, When::DealsCombatDamageToPlayer, None, sets);
             },
         ),
+        "Master of Cruelties" => s(
+            &[
+                "This creature can only attack alone.",
+                "Whenever this creature attacks a player and isn't blocked, that player's life total becomes 1. This creature assigns no combat damage this combat.",
+            ],
+            |d, _| {
+                d.mana_ext.attacks_only_alone = true;
+                let effects = vec![Effect::OpponentLifeBecomesOne, Effect::SourceAssignsNoCombatDamage];
+                on(d, When::AttacksAndIsntBlocked, vec![], effects);
+            },
+        ),
+        "Overpowering Attack" => s(
+            &[
+                "Freerunning {2}{R}",
+                "Untap all creatures you control that attacked this turn. If it's your main phase, there is an additional combat phase after this phase, followed by an additional main phase.",
+            ],
+            |d, _| {
+                // A sorcery: always in a main phase. Only the active player's creatures attacked.
+                spell(d, vec![], vec![Effect::UntapCreaturesAttackedThisTurn, Effect::AdditionalCombatAndMain]);
+                d.mana_ext.freerunning = ManaCost::parse("{2}{R}");
+            },
+        ),
+        "Tendo Ice Bridge" => s(
+            &[
+                "This land enters with a charge counter on it.",
+                "{T}: Add {C}.",
+                "{T}, Remove a charge counter from this land: Add one mana of any color.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::KindCounterSelf(1)]);
+                d.mana = Some(ManaSource { colorless: true, colors: [true; 5] });
+                d.mana_ext.colored_removes_kind_counter = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -2501,6 +2535,9 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Najeela, the Blade-Blossom",
     "From the Catacombs",
     "Rankle and Torbran",
+    "Master of Cruelties",
+    "Overpowering Attack",
+    "Tendo Ice Bridge",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",
