@@ -2116,6 +2116,9 @@ pub struct ZonesExt {
     /// "You may cast artifact spells and colorless spells from the top of your library." (Mystic
     /// Forge)
     pub top_spells_artifact_or_colorless: bool,
+    /// "You may cast this card from your graveyard or from exile." (Squee, the Immortal): its owner
+    /// may cast it from either zone, with its normal timing and cost.
+    pub cast_from_graveyard_or_exile: bool,
 }
 
 #[cfg(test)]

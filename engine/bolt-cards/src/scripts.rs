@@ -373,6 +373,33 @@ pub fn token_defs() -> Vec<CardDef> {
             t.colors = [false, true, false, false, false];
             t
         },
+        token("Placeholder 100", "", 0, 0, Keywords::NONE), // 100: reserved for d1
+        {
+            // 101, lane C: Hornet Queen's "1/1 green Insect creature tokens with flying and deathtouch".
+            let mut t = token(
+                "Insect",
+                "Insect",
+                1,
+                1,
+                Keywords::FLYING.with(Keywords::DEATHTOUCH),
+            );
+            t.colors = [false, false, false, false, true];
+            t
+        },
+        {
+            // 102, lane C: Wurmcoil Engine's "3/3 colorless Phyrexian Wurm artifact creature token
+            // with deathtouch".
+            let mut t = token("Phyrexian Wurm", "Phyrexian Wurm", 3, 3, Keywords::DEATHTOUCH);
+            t.types.artifact = true;
+            t
+        },
+        {
+            // 103, lane C: Wurmcoil Engine's "3/3 colorless Phyrexian Wurm artifact creature token
+            // with lifelink".
+            let mut t = token("Phyrexian Wurm", "Phyrexian Wurm", 3, 3, Keywords::LIFELINK);
+            t.types.artifact = true;
+            t
+        },
     ]
 }
 
@@ -581,6 +608,14 @@ pub struct Tokens {
     pub wicked_role: usize,
     pub spirit_2: usize,
     pub shark: usize,
+    /// 100: reserved for d1.
+    pub placeholder_100: usize,
+    /// 101: a 1/1 green Insect with flying and deathtouch (Hornet Queen).
+    pub insect_deathtouch: usize,
+    /// 102: a 3/3 colorless Phyrexian Wurm artifact creature with deathtouch (Wurmcoil Engine).
+    pub wurm_deathtouch: usize,
+    /// 103: a 3/3 colorless Phyrexian Wurm artifact creature with lifelink (Wurmcoil Engine).
+    pub wurm_lifelink: usize,
 }
 
 impl Tokens {
@@ -686,6 +721,10 @@ impl Tokens {
             wicked_role: base + 97,
             spirit_2: base + 98,
             shark: base + 99,
+            placeholder_100: base + 100,
+            insect_deathtouch: base + 101,
+            wurm_deathtouch: base + 102,
+            wurm_lifelink: base + 103,
         }
     }
 }

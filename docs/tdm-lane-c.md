@@ -884,3 +884,101 @@ Fast-forwarded to tarkir 53fd106 (the merger's X-dependent activation targets; n
   that piece when the effect lands, or both if it's handed to me.
 Tests: core_objects 42 (the Mycosynth copy test back, Arasta's trigger carrying the spell, Prosper playing a land
 from exile and not from hand); pg_c 212.
+
+## needs_core (mac-c), batch 12: Sheoldred and Animar (unbuilt)
+
+tarkir was already at a6fb683 (nothing to merge). Tokens: 100 is a placeholder for d1 (`Tokens::placeholder_100`),
+101 the 1/1 green Insect with flying and deathtouch (`Tokens::insect_deathtouch`); 102-104 still free for lane C.
+Core (game/zones.rs, dispatch arms after `SourceBecomesCopyOfSlot`):
+`Effect::{DestroyAllCreaturesTappedTokenPerNontoken, TargetPlayerDrawsHalfLibraryLosesHalfLife,
+EachPlayerDrawsPerKindCounter, SearchCreatureBySacrificedMvPlusCounter, ExchangeControlWithSlotOrSacrifice}` and
+`SearchTo::BattlefieldPlusCounter` (one arm in the `Decision::Search` answer).
+Cards (6, listed): Blood Money, Peer into the Abyss, Otherworld Atlas (charge counters are `kind_counters`), Neoform,
+Gilded Drake, Hornet Queen. Tests in core_objects (47).
+Shortcut: Neoform's counter is put on just after the card enters. (Gilded Drake with its one target illegal
+doesn't resolve, CR 608.2b, so it isn't sacrificed: correct, per the merger.)
+needs_core.json: the 7 blocked entries now name the blocker's owner (d1: Elder Brain, Walking Ballista, Somberwald
+Sage, Vizier, Karador; d2: The Ozolith; mac-b: Rhythm of the Wild), each with lane C's part noted.
+Waiting on others:
+- Elder Brain: d1 ("spend mana as though it were mana of any color"). The exile-hand, draw-that-many and
+  play-while-exiled part is lane C's and needs no new piece beyond `playable`.
+- Walking Ballista: d1 (a "remove a +1/+1 counter from this" activation cost); `enters_with_x_counters` and `{4}`
+  exist.
+- Rhythm of the Wild: riot (enters with your choice of a +1/+1 counter or haste: Mac B replacement, or d1
+  keywords) and "creature spells you control can't be countered" (a static: merger).
+- Somberwald Sage: d1 (mana spendable only on creature spells).
+- Vizier of the Menagerie: `top_spells_creatures` exists; "spend mana of any type to cast creature spells" is d1.
+- The Ozolith: d2 (a "creature you control leaves the battlefield, if it had counters" trigger with its last-known
+  counters); moving the counters at the beginning of combat is lane C's once that exists.
+- Karador, Ghost Chieftain: d1 (costs {1} less per creature card in your graveyard); "once during each of your
+  turns, cast a creature spell from your graveyard" is lane C's (cast-from-zone) and next.
+
+## Handoff (2026-11-26, power outage): for the next lane C
+
+State: tarkir-c at the commit after 6265d77 (notes only). Built and verified: everything through a6fb683
+(on tarkir; 2,133 passing there). **Unbuilt WIP on top: 75620ee (batch 12 cards) and 6265d77 (needs_core owners).**
+
+When the merger sends the go:
+1. Merge tarkir (it should include lane B's 25c40ea). Take tarkir's `token_defs` and `Tokens` exactly; lane C's
+   slots are after 100: `placeholder_100` (d1's, it renames it) and 101 `insect_deathtouch` (Hornet Queen).
+   102-104 are lane C's and unused. Check the ends of CardDef, Game, Object, Effect, When, Decision, SearchTo,
+   ManaExt, ManaCount, SubsystemExt, ZonesExt: each the union of both sides, no duplicates. `cargo build` before
+   committing the merge.
+2. Full check: `PATH=/opt/homebrew/opt/rustup/bin:$PATH CARGO_INCREMENTAL=0
+   CARGO_TARGET_DIR=/Users/adamliscia/bolt-target-lanes`, touch bolt-core/src/*.rs, bolt-core/src/game/*.rs and
+   bolt-cards sources first; `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`,
+   `cargo test --no-fail-fast` (per-binary counts equal the `#[test]` counts: core_objects 47, pg_c 212 from lane
+   C's side; play.rs is ignored), then `.venv/bin/ruff check .`, `ruff format --check .`,
+   `.venv/bin/python -m pytest -q tests`.
+3. Batch 12 untested so far, so the likely spots if something fails: `Game::exchange_control_or_sacrifice`
+   (Gilded Drake, an "up to one" trigger pushed as a raw `Trigger` with `up_to`), Neoform's `CastWith` sacrifice
+   plus the `Decision::Search` answer `SearchTo::BattlefieldPlusCounter`, and Peer into the Abyss's test (it sets
+   player 1's life to 39 and expects 19).
+4. Commit, send the merger the hash and totals. Never push; never commit to tarkir.
+
+Open lane C work, waiting on other owners (needs_core.json names each blocker and lane C's part):
+- Elder Brain (d1: spend mana as any color), then lane C's exile-hand, draw-that-many, play-while-exiled.
+- Karador (d1: cost per graveyard creature), then lane C's once-each-turn creature cast from the graveyard.
+- The Ozolith (d2: leaves-with-counters trigger), then lane C's counter keeping and moving.
+- Wandering Archaic // Explore the Vastlands: d3's look-at-five effect, then lane C extends `back_face_castable`
+  (game/zones.rs) to instant and sorcery backs. The front is one line (see "Borrowed d2 pieces, batch 3").
+- Lithoform Engine's targeting shortcuts wait on d3's `Filter` (permanent spells; a controller check for
+  `abilities`).
+- Earlier lists in this file: "Held back (lane C)", the Olivia/Bruna script-only pass ("Still waiting, by owner"),
+  and lane B's decks' Mac C pieces.
+Rules that bit this lane: Effect is `Copy` (no `.clone()`, clippy fails); test bindings must be used or `_`-named;
+`obj_mut` isn't public to tests (drive state through actions, `start_turn`, `to_main1`).
+
+## Merge of tarkir 25c40ea, and needs_core (mac-c) batch 13 (unbuilt)
+
+Merge 09782f0: tarkir 25c40ea (lane B) into tarkir-c. One conflict, the end of `Effect` (lane B's
+`DamageExtrasControllerAmount`, `SylvanLibrary`, then lane C's batch 12 variants). Tokens: tarkir's, then 100, 101.
+needs_core.json: union (828 entries both sides). Every variant/field set checked as the union, no duplicates.
+Unbuilt: the merger held the build slot (2026-11-26).
+
+Batch 13, unbuilt. Core (appended; arms after `ExchangeControlWithSlotOrSacrifice`, functions in game/zones.rs):
+- `Effect::CountersOnAttached(n)` (Bone Sabres), `Effect::CopyAttachedThenEightSameNameWins` (Mechanized
+  Production: token copy of the enchanted artifact via `token_copy_of`, doubled, then the eight-same-name win).
+- `ZonesExt::cast_from_graveyard_or_exile` (Squee): two lines in `priority_actions`' `from_exile` (owner only) and
+  `from_graveyard` filters.
+- Tokens 102 `wurm_deathtouch`, 103 `wurm_lifelink` (Wurmcoil Engine). 104 still free.
+Cards (4): Wurmcoil Engine, Bone Sabres, Squee, the Immortal, Mechanized Production. Tests in core_objects (51).
+Likely failure spots: the Squee test (cast from exile/graveyard through `play`), Mechanized Production's
+`upkeep_through` (start_turn(5, 0) and (7, 0) on player 0 only).
+
+Looked at and left (mac-c owner in needs_core.json, blocker elsewhere):
+- Urza, Lord High Artificer: "Tap an untapped artifact you control: Add {U}" (d1, mana production). The Construct is
+  `saga_construct`; the {5} shuffle-exile-play-free is lane C's once the mana piece lands.
+- The Necrobloom: dredge 2 is a draw replacement (Mac B); the landfall choice is simple.
+- Final Act: d3-shaped (destroy all planeswalkers, mass effects) plus "each opponent loses all counters"; no battles in
+  the engine. Doable Farewell-style (31 mode sets) if the merger hands it over.
+- Briarbridge Patrol: "deals damage to one or more creatures" trigger and a clues-sacrificed-this-turn count (d2).
+- Toxrill: slime-counter scaled static (d3) and a dies-with-slime trigger (d2), plus a Slug token.
+- Teferi, Master of Time: instant-speed loyalty (merger timing); phasing and extra turns exist.
+- Rona: "whenever you cast a legendary spell" (d2), then the back face (lane C).
+- Karador: lane C's once-each-turn graveyard creature cast still waits on d1's cost reduction.
+
+Built on 2a71b71 (tarkir 47148af merged): one fix, the Aura state-based check in game.rs now keeps an Aura whose
+enchant filter allows artifacts on an artifact (`|| (ty.artifact && f.artifacts)`; Mechanized Production fell off
+its Sol Ring). Squee's two `priority_actions` lines approved by the merger. 2,145 Rust tests pass (core_objects 51,
+pg_c 212, play.rs 3 ignored), clippy, fmt, ruff and pytest clean.

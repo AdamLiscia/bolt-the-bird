@@ -2191,6 +2191,78 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::YouPlayCardFromExile, vec![], vec![treasure]);
             },
         ),
+        // ---- needs_core (mac-c), batch 12: Sheoldred and Animar ----
+        "Blood Money" => s(
+            &["Destroy all creatures. For each nontoken creature destroyed this way, you create a tapped Treasure token."],
+            |d, t| spell(d, vec![], vec![Effect::DestroyAllCreaturesTappedTokenPerNontoken { def: t.treasure }]),
+        ),
+        "Peer into the Abyss" => s(
+            &["Target player draws cards equal to half the number of cards in their library and loses half their life. Round up each time."],
+            |d, _| spell(d, vec![Filter::PLAYER], vec![Effect::TargetPlayerDrawsHalfLibraryLosesHalfLife(0)]),
+        ),
+        "Otherworld Atlas" => s(
+            &[
+                "{T}: Put a charge counter on this artifact.",
+                "{T}: Each player draws a card for each charge counter on this artifact.",
+            ],
+            |d, _| {
+                activated(d, "", true, vec![], vec![Effect::KindCounterSelf(1)]);
+                activated(d, "", true, vec![], vec![Effect::EachPlayerDrawsPerKindCounter]);
+            },
+        ),
+        "Neoform" => s(
+            &[
+                "As an additional cost to cast this spell, sacrifice a creature.",
+                "Search your library for a creature card with mana value equal to 1 plus the sacrificed creature's mana value, put that card onto the battlefield with an additional +1/+1 counter on it, then shuffle.",
+            ],
+            |d, _| {
+                d.extra_cost = Some(ExtraCost::SacrificeCreature);
+                spell(d, vec![], vec![Effect::SearchCreatureBySacrificedMvPlusCounter { plus: 1 }]);
+            },
+        ),
+        "Gilded Drake" => s(
+            &["When this creature enters, exchange control of this creature and up to one target creature an opponent controls. If you don't or can't make an exchange, sacrifice this creature. This ability still resolves if its target becomes illegal."],
+            |d, _| {
+                // With its one target illegal, the ability doesn't resolve (CR 608.2b): no sacrifice.
+                d.triggers.push(Trigger {
+                    when: When::Enters,
+                    ability: up_to(vec![OPP_CREATURE], vec![Effect::ExchangeControlWithSlotOrSacrifice(0)]),
+                });
+            },
+        ),
+        "Hornet Queen" => s(
+            &["When this creature enters, create four 1/1 green Insect creature tokens with flying and deathtouch."],
+            |d, t| on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.insect_deathtouch, n: 4 }]),
+        ),
+        "Wurmcoil Engine" => s(
+            &["When this creature dies, create a 3/3 colorless Phyrexian Wurm artifact creature token with deathtouch and a 3/3 colorless Phyrexian Wurm artifact creature token with lifelink."],
+            |d, t| {
+                let wurm = |def| Effect::CreateToken { who: Who::You, def, n: 1 };
+                on(d, When::Dies, vec![], vec![wurm(t.wurm_deathtouch), wurm(t.wurm_lifelink)]);
+            },
+        ),
+        "Bone Sabres" => s(
+            &["Whenever equipped creature attacks, put four +1/+1 counters on it.", "Equip {3}"],
+            |d, _| {
+                on(d, When::EquippedAttacks, vec![], vec![Effect::CountersOnAttached(4)]);
+                equip(d, "{3}");
+            },
+        ),
+        "Squee, the Immortal" => s(&["You may cast this card from your graveyard or from exile."], |d, _| {
+            d.zones.cast_from_graveyard_or_exile = true;
+        }),
+        "Mechanized Production" => s(
+            &[
+                "Enchant artifact you control",
+                "At the beginning of your upkeep, create a token that's a copy of enchanted artifact. Then if you control eight or more artifacts with the same name as one another, you win the game.",
+            ],
+            |d, _| {
+                d.aura = true;
+                let yours = Filter { players: false, creatures: false, planeswalkers: false, artifacts: true, controller: Controller::You, ..Filter::ANY };
+                d.spell = Some(Ability::new(vec![yours], vec![]));
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::CopyAttachedThenEightSameNameWins]);
+            },
+        ),
         _ => None,
     }
 }
@@ -2445,4 +2517,14 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Thespian's Stage",
     "The Mycosynth Gardens",
     "Prosper, Tome-Bound",
+    "Blood Money",
+    "Peer into the Abyss",
+    "Otherworld Atlas",
+    "Neoform",
+    "Gilded Drake",
+    "Hornet Queen",
+    "Wurmcoil Engine",
+    "Bone Sabres",
+    "Squee, the Immortal",
+    "Mechanized Production",
 ];

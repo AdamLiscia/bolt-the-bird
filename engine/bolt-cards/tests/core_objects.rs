@@ -988,3 +988,184 @@ fn playing_a_card_from_exile_triggers_and_from_hand_does_not() {
     resolve_all(&mut g, &[]);
     assert_eq!(tokens(&g, 0, "Treasure").len(), 1, "played from exile");
 }
+
+// ---- needs_core (mac-c), batch 12: Sheoldred and Animar ----
+
+#[test]
+fn hornet_queen_makes_deathtouch_insects_and_blood_money_pays_only_for_nontokens() {
+    let mut g = table();
+    let queen = hand(&mut g, 0, "Hornet Queen");
+    act(&mut g, Action::Cast(queen));
+    resolve_all(&mut g, &[]);
+    let insects = tokens(&g, 0, "Insect");
+    assert_eq!(insects.len(), 4);
+    assert!(g.keywords(insects[0]).has(Keywords::FLYING) && g.keywords(insects[0]).has(Keywords::DEATHTOUCH));
+    assert_eq!(
+        g.colors_of(insects[0]),
+        [false, false, false, false, true],
+        "green"
+    );
+    let ghoul = put(&mut g, 1, "Hungry Ghoul");
+    let money = hand(&mut g, 0, "Blood Money");
+    act(&mut g, Action::Cast(money));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(queen).zone, Zone::Graveyard);
+    assert_eq!(g.obj(ghoul).zone, Zone::Graveyard);
+    assert!(tokens(&g, 0, "Insect").is_empty());
+    let treasures = tokens(&g, 0, "Treasure");
+    assert_eq!(treasures.len(), 2, "Hornet Queen and the Ghoul, not the Insects");
+    assert!(treasures.iter().all(|&t| g.obj(t).tapped));
+}
+
+#[test]
+fn peer_into_the_abyss_draws_half_the_library_and_halves_life_rounding_up() {
+    let mut g = table();
+    let lib = g.players[1].library.len();
+    let hand_before = g.players[1].hand.len();
+    g.players[1].life = 39;
+    let peer = hand(&mut g, 0, "Peer into the Abyss");
+    act(&mut g, Action::Cast(peer));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].hand.len(), hand_before + lib.div_ceil(2));
+    assert_eq!(g.players[1].life, 19, "loses 20 of 39");
+}
+
+#[test]
+fn otherworld_atlas_charges_then_each_player_draws_per_counter() {
+    let mut g = table();
+    let atlas = put(&mut g, 0, "Otherworld Atlas");
+    act(&mut g, Action::Activate(atlas, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(atlas).kind_counters, 1);
+    to_main1(&mut g, 5, 0);
+    let (mine, theirs) = (g.players[0].hand.len(), g.players[1].hand.len());
+    act(&mut g, Action::Activate(atlas, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), mine + 1);
+    assert_eq!(g.players[1].hand.len(), theirs + 1);
+}
+
+#[test]
+fn neoform_finds_one_more_mana_value_with_an_extra_counter() {
+    let mut g = table();
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let sage = top(&mut g, "Somberwald Sage");
+    let neoform = hand(&mut g, 0, "Neoform");
+    act(&mut g, Action::CastWith(neoform, ghoul));
+    resolve_all(&mut g, &[Action::Pick(sage)]);
+    assert_eq!(g.obj(ghoul).zone, Zone::Graveyard, "sacrificed");
+    assert_eq!(g.obj(sage).zone, Zone::Battlefield, "mana value 3");
+    assert_eq!(g.obj(sage).counters, 1);
+}
+
+#[test]
+fn gilded_drake_exchanges_control_with_an_opponents_creature() {
+    let mut g = table();
+    let theirs = put(&mut g, 1, "Hungry Ghoul");
+    let drake = hand(&mut g, 0, "Gilded Drake");
+    act(&mut g, Action::Cast(drake));
+    resolve_all(&mut g, &[Action::Target(obj(theirs))]);
+    assert_eq!(g.obj(drake).controller, 1);
+    assert_eq!(g.obj(theirs).controller, 0);
+}
+
+// ---- Batch 13: counters on the attached creature, cast from graveyard or exile, copy the enchanted artifact ----
+
+#[test]
+fn wurmcoil_engine_dies_into_a_deathtouch_wurm_and_a_lifelink_wurm() {
+    let mut g = table();
+    let engine = put(&mut g, 0, "Wurmcoil Engine");
+    let dam = hand(&mut g, 0, "Damnation");
+    play(&mut g, dam, false, &[], &[]);
+    assert_eq!(g.obj(engine).zone, Zone::Graveyard);
+    let wurms = tokens(&g, 0, "Phyrexian Wurm");
+    assert_eq!(wurms.len(), 2);
+    assert!(wurms
+        .iter()
+        .all(|&w| g.types_of(w).artifact && g.power(w) == 3 && g.toughness(w) == 3));
+    assert!(wurms.iter().all(|&w| g.colors_of(w) == [false; 5]), "colorless");
+    let dt = wurms
+        .iter()
+        .filter(|&&w| g.keywords(w).has(Keywords::DEATHTOUCH))
+        .count();
+    let ll = wurms
+        .iter()
+        .filter(|&&w| g.keywords(w).has(Keywords::LIFELINK))
+        .count();
+    assert_eq!((dt, ll), (1, 1), "one with deathtouch, the other with lifelink");
+}
+
+#[test]
+fn counters_on_attached_bone_sabres_puts_four_counters_on_the_attacker() {
+    let mut lands = vec!["Hungry Ghoul"];
+    for land in ["Plains", "Island", "Swamp", "Mountain", "Forest"] {
+        lands.extend([land; 5]);
+    }
+    let mut g = game(&lands);
+    let ghoul = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Hungry Ghoul")
+        .unwrap();
+    let sabres = put(&mut g, 0, "Bone Sabres");
+    act(&mut g, Action::Activate(sabres, 0));
+    resolve_all(&mut g, &[Action::Target(obj(ghoul))]);
+    assert_eq!(g.obj(sabres).attached_to.map(|(c, _)| c), Some(ghoul));
+    let base = g.power(ghoul);
+    while g.step != Step::DeclareAttackers {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(ghoul));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ghoul).counters, 4);
+    assert_eq!(g.power(ghoul), base + 4);
+}
+
+#[test]
+fn cast_from_graveyard_or_exile_squee_comes_back_from_either_zone() {
+    let mut g = table();
+    let dead = g.add_card(0, cid("Squee, the Immortal"), Zone::Graveyard);
+    let gone = g.add_card(0, cid("Squee, the Immortal"), Zone::Exile);
+    let theirs = g.add_card(1, cid("Squee, the Immortal"), Zone::Exile);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Cast(dead)), "from your graveyard");
+    assert!(legal.contains(&Action::Cast(gone)), "from exile");
+    assert!(
+        !legal.contains(&Action::Cast(theirs)),
+        "only its owner's permission"
+    );
+    play(&mut g, dead, false, &[], &[]);
+    assert_eq!(g.obj(dead).zone, Zone::Battlefield);
+    play(&mut g, gone, false, &[], &[]);
+    assert_eq!(g.obj(gone).zone, Zone::Battlefield);
+}
+
+/// Passes from the start of player 0's turn `turn` until main phase 1 or the game ends.
+fn upkeep_through(g: &mut Game, turn: u32) {
+    g.start_turn(turn, 0);
+    while g.step != Step::Main1 && g.result.is_none() {
+        act(g, Action::PassPriority);
+    }
+}
+
+#[test]
+fn copy_attached_mechanized_production_copies_each_upkeep_and_wins_at_eight() {
+    let mut g = table();
+    let ring = put(&mut g, 0, "Sol Ring");
+    let mp = hand(&mut g, 0, "Mechanized Production");
+    play(&mut g, mp, false, &[obj(ring)], &[]);
+    assert_eq!(g.obj(mp).attached_to.map(|(c, _)| c), Some(ring));
+    upkeep_through(&mut g, 5);
+    assert_eq!(
+        tokens(&g, 0, "Sol Ring").len(),
+        1,
+        "a token copy of the enchanted artifact"
+    );
+    assert!(g.result.is_none(), "two Sol Rings");
+    for _ in 0..5 {
+        put(&mut g, 0, "Sol Ring");
+    }
+    upkeep_through(&mut g, 7);
+    assert_eq!(g.result, Some(bolt_core::Outcome::Winner(0)), "eight Sol Rings");
+}
