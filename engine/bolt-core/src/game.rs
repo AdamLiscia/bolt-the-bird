@@ -7324,6 +7324,16 @@ impl Game {
                         },
                     ));
                 }
+                // Freerunning: after combat damage to a player from your Assassin or commander.
+                if def.mana_ext.freerunning.is_some() && def.alt_cost.is_none() && self.freerunning_ok(p) {
+                    v.push((
+                        Action::CastAlternative(c),
+                        CastMode {
+                            alt: true,
+                            ..CastMode::default()
+                        },
+                    ));
+                }
                 // Darksteel Monolith: {0} rather than the mana cost of a colorless spell from hand.
                 if self.monolith_alt(p, c) {
                     v.push((
@@ -7504,6 +7514,7 @@ impl Game {
                     ..ManaCost::default()
                 },
                 None if def.warp.is_some() => def.warp.expect("warp"),
+                None if def.mana_ext.freerunning.is_some() => def.mana_ext.freerunning.expect("freerunning"),
                 None if self.monolith_alt(p, c) => ManaCost::default(), // Darksteel Monolith
                 None => {
                     // Defiler of Vigor: 2 life paid, {G} less.
@@ -8064,7 +8075,10 @@ impl Game {
             let src = (i >= pool.len()).then(|| self.def_of(sources[i - pool.len()].0));
             let pain_colors = src.map_or([false; 5], |d| d.mana_ext.pain_colors);
             if src.is_some_and(|d| {
-                d.pain_colored || d.mana_ext.colored_gives_opponent_life || d.mana_ext.colored_life_cost
+                d.pain_colored
+                    || d.mana_ext.colored_gives_opponent_life
+                    || d.mana_ext.colored_life_cost
+                    || d.mana_ext.colored_removes_kind_counter
             }) || pain_colors.iter().any(|&b| b)
             {
                 let saved = painless[k];
@@ -8090,6 +8104,9 @@ impl Game {
         for land in pained {
             if self.def_of(land).mana_ext.colored_life_cost {
                 self.lose_life(p, 1); // Spire of Industry: "Pay 1 life"
+            } else if self.def_of(land).mana_ext.colored_removes_kind_counter {
+                let o = self.obj_mut(land);
+                o.kind_counters = (o.kind_counters - 1).max(0); // Tendo Ice Bridge
             } else if self.def_of(land).mana_ext.colored_gives_opponent_life {
                 self.gain_life(opponent(p), 1); // Grove of the Burnwillows
             } else {
@@ -8287,6 +8304,10 @@ impl Game {
         }
         if self.def_of(id).mana_ext.colored_life_cost && c != 5 {
             self.lose_life(p, 1); // Spire of Industry
+        }
+        if self.def_of(id).mana_ext.colored_removes_kind_counter && c != 5 {
+            let o = self.obj_mut(id);
+            o.kind_counters = (o.kind_counters - 1).max(0); // Tendo Ice Bridge
         }
         if self.def_of(id).mana_ext.colored_gives_opponent_life && c != 5 {
             self.gain_life(opponent(p), 1);
@@ -9985,6 +10006,7 @@ impl Game {
                     || (d.mana_ext.colored_only_with_artifact
                         && !self.permanents(p).any(|x| self.types_of(x).artifact))
                     || (d.mana_ext.colored_life_cost && self.players[p].life < 1)
+                    || (d.mana_ext.colored_removes_kind_counter && self.obj(id).kind_counters < 1)
                 {
                     // Tainted Wood: only its {C} without a Swamp.
                     return d.mana.map(|m| {
@@ -10072,6 +10094,9 @@ impl Game {
                 && (!k.has(Keywords::DEFENDER) || o.defender_ignored_turn == self.turn)
                 && (o.since_turn < self.turn || k.has(Keywords::HASTE))
                 && !declared.contains(&id)
+                // Master of Cruelties: "This creature can only attack alone."
+                && (!self.def_of(id).mana_ext.attacks_only_alone || declared.is_empty())
+                && !declared.iter().any(|&a| self.def_of(a).mana_ext.attacks_only_alone)
                 && !(self.def_of(id).cant_attack_twice_per_turn
                     && self.attacked_creatures_this_turn.contains(&id))
                 && (self.def_of(id).attacks_only_with_artifacts == 0
@@ -10276,6 +10301,19 @@ impl Game {
             n += 1;
         }
         n
+    }
+
+    /// Freerunning's condition: `p` dealt combat damage to a player this turn with an Assassin or
+    /// a commander (`Game::combat_damaged_player`).
+    fn freerunning_ok(&self, p: PlayerId) -> bool {
+        let turn = self.turn;
+        self.combat_damaged_player.iter().any(|&(s, _, t)| {
+            t == turn
+                && self.obj(s).controller == p
+                && (self.is_commander(s)
+                    || self.has_subtype(s, "Assassin")
+                    || self.def_of(s).subtypes.iter().any(|x| x == "Assassin"))
+        })
     }
 
     /// Darksteel Monolith: an unused Monolith `p` controls.
@@ -11385,6 +11423,7 @@ impl Game {
             && self.def_of(card).alt_cost.is_none()
             && self.def_of(card).warp.is_none()
             && self.def_of(card).morph.is_none()
+            && self.def_of(card).mana_ext.freerunning.is_none()
         {
             let pips: u8 = self.def_of(card).phyrexian.iter().sum();
             // Phyrexian pips paid with life, or Defiler of Vigor's optional additional cost.
