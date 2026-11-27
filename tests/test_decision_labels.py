@@ -409,3 +409,9 @@ def test_braid_of_fire_adds_mana_or_is_sacrificed():
     dec = {"kind": "UpkeepAddManaOrSacrifice", "card": [3, 1], "n": 2}
     assert label(dec, "Yes", 0) == "Add 2 mana (keep Thriving Heath)"
     assert label(dec, "No", 0) == "Sacrifice Thriving Heath"
+
+
+def test_scuzzback_scrounger_blights_a_creature_or_declines():
+    dec = {"kind": "BlightCreature", "n": 1}
+    assert sv._decision_label(dec, "Pick", 0, "Llanowar Elves") == "Blight 1 (-1/-1 counters on): Llanowar Elves"
+    assert label(dec, "No", 0) == "Don't blight"

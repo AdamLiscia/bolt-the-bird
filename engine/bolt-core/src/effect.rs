@@ -3024,6 +3024,9 @@ pub enum Effect {
     /// control of the chosen type." (Three Tree City: the source's `chosen_type`), as
     /// `Decision::ManaOfOneColor`.
     AddManaOneColorPerChosenType,
+    /// "You may blight `n`. If you do, ..." (Scuzzback Scrounger): `Decision::BlightCreature` picks a
+    /// creature you control for `n` -1/-1 counters, or `No` skips the rest (as does controlling none).
+    MayBlightThen(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

@@ -2049,6 +2049,76 @@ pub fn script(name: &str) -> Option<Script> {
                 activated(d, "{2}", true, vec![], vec![Effect::AddManaOneColorPerChosenType]);
             },
         ),
+        "Flare of Malice" => s(
+            &[
+                "You may sacrifice a nontoken black creature rather than pay this spell's mana cost.",
+                "Each opponent sacrifices a creature or planeswalker with the greatest mana value among creatures and planeswalkers they control.",
+            ],
+            |d, _| {
+                d.mana_ext.alt_sacrifice_nontoken_color = Some(2);
+                spell(d, vec![], vec![Effect::OpponentSacrificesGreatestMvCreatureOrPlaneswalker]);
+            },
+        ),
+        "Scuzzback Scrounger" => s(
+            &["At the beginning of your first main phase, you may blight 1. If you do, create a Treasure token."],
+            |d, t| {
+                let treasure = Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 };
+                on(d, When::FirstMainPhaseYourTurn, vec![], vec![Effect::MayBlightThen(1), treasure]);
+            },
+        ),
+        "Mina and Denn, Wildborn" => s(
+            &[
+                "You may play an additional land on each of your turns.",
+                "{R}{G}, Return a land you control to its owner's hand: Target creature gains trample until end of turn.",
+            ],
+            |d, _| {
+                d.extra_land_drops = 1;
+                let n = activated(d, "{R}{G}", false, vec![CREATURE], vec![Effect::Grant { slot: 0, keywords: Keywords::TRAMPLE }]);
+                d.activated[n].return_land = true;
+            },
+        ),
+        "Wild Growth" => s(
+            &["Enchant land", "Whenever enchanted land is tapped for mana, its controller adds an additional {G}."],
+            |d, _| {
+                mana_aura(d);
+                d.mana_ext.enchanted_land_extra_color = Some(4);
+            },
+        ),
+        "Utopia Sprawl" => s(
+            &[
+                "Enchant Forest",
+                "As this Aura enters, choose a color.",
+                "Whenever enchanted Forest is tapped for mana, its controller adds an additional one mana of the chosen color.",
+            ],
+            |d, _| {
+                mana_aura(d);
+                let forest = Filter {
+                    players: false,
+                    creatures: false,
+                    planeswalkers: false,
+                    lands: true,
+                    subtype: Some("Forest"),
+                    ..Filter::ANY
+                };
+                d.spell = Some(Ability::new(vec![forest], vec![]));
+                d.choose_color = true;
+                d.mana_ext.enchanted_land_extra_color = Some(5);
+            },
+        ),
+        "Shimmerwilds Growth" => s(
+            &[
+                "Enchant land",
+                "As this Aura enters, choose a color.",
+                "Enchanted land is the chosen color.",
+                "Whenever enchanted land is tapped for mana, its controller adds an additional one mana of the chosen color.",
+            ],
+            |d, _| {
+                // Simplification: the land doesn't become the chosen color (only its mana matters).
+                mana_aura(d);
+                d.choose_color = true;
+                d.mana_ext.enchanted_land_extra_color = Some(5);
+            },
+        ),
         // ---- Ral ----
         "Braid of Fire" => s(&["Cumulative upkeep—Add {R}."], |d, _| {
             on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::CumulativeUpkeepAddMana(Color::Red)]);
@@ -2306,6 +2376,12 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Tekuthal, Inquiry Dominus",
     "Deathrite Shaman",
     "Braid of Fire",
+    "Flare of Malice",
+    "Scuzzback Scrounger",
+    "Mina and Denn, Wildborn",
+    "Wild Growth",
+    "Utopia Sprawl",
+    "Shimmerwilds Growth",
     "Glen Elendra Guardian",
     "Comet Storm",
     "Changeling Wayfinder",

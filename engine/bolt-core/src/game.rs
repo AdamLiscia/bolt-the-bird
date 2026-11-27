@@ -1531,6 +1531,9 @@ pub enum Decision {
         color: crate::Color,
         n: u8,
     },
+    /// Blight `n`: `Pick` a creature you control to put `n` -1/-1 counters on, or `No` (don't, and
+    /// skip the rest of the effect).
+    BlightCreature { n: u8 },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -8165,6 +8168,17 @@ impl Game {
                         ));
                     }
                 }
+                // Flare of Malice: sacrifice a nontoken creature of that color instead.
+                if let Some(color) = def.mana_ext.alt_sacrifice_nontoken_color {
+                    for x in self.creatures(p).collect::<Vec<_>>() {
+                        if !self.is_token(x)
+                            && self.colors_of(x)[color as usize]
+                            && !self.cant_be_sacrificed(x)
+                        {
+                            v.push((Action::CastWith(c, x), CastMode::with(x)));
+                        }
+                    }
+                }
                 // Force of Vigor: exile a card of that color from your hand instead, not on your turn.
                 if let (Some(color), false) = (def.pitch_not_your_turn, p == self.active) {
                     for &x in &self.players[p].hand {
@@ -8246,7 +8260,9 @@ impl Game {
             && mode.x == 0
             && !mode.alt
             && !mode.flashback;
-        let pitched = (def.pitch_not_your_turn.is_some() || def.mana_ext.pitch_with_life.is_some())
+        let pitched = (def.pitch_not_your_turn.is_some()
+            || def.mana_ext.pitch_with_life.is_some()
+            || def.mana_ext.alt_sacrifice_nontoken_color.is_some())
             && mode.extra.is_some()
             && !mode.flashback;
         let energized = mode.alt
@@ -10661,7 +10677,15 @@ impl Game {
                 let zcc = self.obj(id).zcc;
                 for &a in &auras {
                     if self.obj(a).attached_to == Some((id, zcc)) {
-                        out.push((id, ManaSource::of(&crate::Color::ALL)));
+                        let extra = match self.def_of(a).mana_ext.enchanted_land_extra_color {
+                            None => Some(ManaSource::of(&crate::Color::ALL)),
+                            Some(5) => self
+                                .obj(a)
+                                .chosen_color
+                                .map(|c| ManaSource::of(&[crate::Color::ALL[c as usize]])),
+                            Some(c) => Some(ManaSource::of(&[crate::Color::ALL[c as usize]])),
+                        };
+                        out.extend(extra.map(|m| (id, m)));
                     }
                 }
                 for &(sub, c) in &adders {
@@ -15028,6 +15052,11 @@ impl Game {
                 v.push(Action::No);
                 v
             }
+            Decision::BlightCreature { .. } => {
+                let mut v: Vec<Action> = self.creatures(p).map(Action::Pick).collect();
+                v.push(Action::No);
+                v
+            }
             Decision::SacrificeToken => {
                 let mut v: Vec<Action> = self
                     .permanents(p)
@@ -16156,6 +16185,12 @@ impl Game {
                 self.return_to_hand_at_end.push((c, zcc));
             }
             (Decision::PutCreatureAttacking, Action::No) => {}
+            (Decision::BlightCreature { n }, Action::Pick(c)) => {
+                self.obj_mut(c).counters -= n as i32; // -1/-1 counters
+            }
+            (Decision::BlightCreature { .. }, Action::No) => {
+                self.resolving.as_mut().expect("resolving").remaining.clear();
+            }
             (Decision::SacrificeToken, Action::No) => {
                 self.resolving.as_mut().expect("resolving").remaining.clear();
             }
@@ -24268,6 +24303,14 @@ impl Game {
                     self.obj_mut(src).kind_counters += n;
                     self.counters_placed(item.controller, n);
                     self.kind_counters_reached(src, before);
+                }
+            }
+            Effect::MayBlightThen(n) => {
+                let p = item.controller;
+                if self.creatures(p).next().is_some() {
+                    self.ask(p, Decision::BlightCreature { n });
+                } else {
+                    self.resolving.as_mut().expect("resolving").remaining.clear();
                 }
             }
             Effect::MaySacrificeToken => {

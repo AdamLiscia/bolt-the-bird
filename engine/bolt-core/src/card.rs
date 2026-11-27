@@ -1390,6 +1390,13 @@ pub struct ManaExt {
     /// "This creature enters with N -1/-1 counters on it." (Glen Elendra Guardian, Flitterwing
     /// Nuisance: 1)
     pub enters_with_minus_counters: u8,
+    /// "You may sacrifice a nontoken [color] creature rather than pay this spell's mana cost."
+    /// (Flare of Malice: black): `Action::CastWith` names the creature (the player's pick), as a
+    /// pitch spell names its card.
+    pub alt_sacrifice_nontoken_color: Option<u8>,
+    /// With `enchanted_land_extra_any`: the additional mana is one of this color (WUBRG 0-4; Wild
+    /// Growth: green), or 5 for the Aura's chosen color (Utopia Sprawl), instead of any color.
+    pub enchanted_land_extra_color: Option<u8>,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana

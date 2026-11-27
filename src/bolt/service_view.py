@@ -248,6 +248,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"CreatureFromHandAttacking": "Put onto the battlefield attacking:"}.get(d)
         verb = verb or {"PatronOfChaosSacrifice": "Sacrifice (one of two):"}.get(d)
         verb = verb or {"ExileFromHandUntilSourceLeaves": "Exile until it leaves:"}.get(d)
+        verb = verb or {"BlightCreature": f"Blight {dec.get('n', 1)} (-1/-1 counters on):"}.get(d)
         if d == "LoseUnless":
             verb = "Sacrifice" if dec.get("sacrifice") else "Discard"
         return f"{verb} {card_name}" if verb else None
@@ -319,6 +320,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         return "Done attaching Auras"
     if d == "PatronOfChaosSacrifice" and not yes:
         return "Don't sacrifice (they draw two cards)"
+    if d == "BlightCreature" and not yes:
+        return "Don't blight"
     if d == "ExileFromHandUntilSourceLeaves" and not yes:
         return "Exile nothing"
     if d == "MayPutExiledLandOntoBattlefield":

@@ -4217,3 +4217,123 @@ fn three_tree_city_names_a_type_as_it_enters_and_taps_for_one_color_per_creature
         .iter()
         .all(|m| m.colors == [false, false, false, false, true]));
 }
+
+#[test]
+fn flare_of_malice_sacrifices_a_picked_nontoken_black_creature_instead_of_mana() {
+    let mut g = game(&[]);
+    let mine = put(&mut g, 0, "Deathrite Shaman"); // black (and green), nontoken
+    let small = put(&mut g, 1, "Llanowar Elves");
+    let big = put(&mut g, 1, "Eternal Witness");
+    let flare = hand(&mut g, 0, "Flare of Malice");
+    assert!(!g.legal_actions().contains(&Action::Cast(flare)), "no mana");
+    act(&mut g, Action::CastWith(flare, mine));
+    settle(&mut g);
+    assert_eq!(g.obj(mine).zone, Zone::Graveyard, "sacrificed for the cost");
+    assert_eq!(g.obj(big).zone, Zone::Graveyard, "the greatest mana value");
+    assert_eq!(g.obj(small).zone, Zone::Battlefield);
+}
+
+/// Passes to player 0's next turn until a decision comes up.
+fn to_next_decision(g: &mut Game) {
+    while !matches!(g.pending, Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ if !g.legal_actions().contains(&Action::PassPriority) => g.legal_actions()[0], // cleanup discard
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn scuzzback_scrounger_may_blight_one_for_a_treasure_each_first_main_phase() {
+    let mut g = table();
+    let scuzz = put(&mut g, 0, "Scuzzback Scrounger");
+    let elf = put(&mut g, 0, "Llanowar Elves");
+    to_next_decision(&mut g);
+    assert_eq!((g.active, g.step), (0, Step::Main1));
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(scuzz)) && legal.contains(&Action::Pick(elf)));
+    assert!(legal.contains(&Action::No));
+    act(&mut g, Action::Pick(scuzz));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.power(scuzz), g.toughness(scuzz)), (2, 1), "a -1/-1 counter");
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 1);
+    // Next time, decline: no Treasure.
+    to_next_decision(&mut g);
+    act(&mut g, Action::No);
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 1);
+    assert_eq!(g.obj(elf).zone, Zone::Battlefield);
+}
+
+#[test]
+fn mina_and_denn_returns_a_land_to_give_trample_and_allows_an_extra_land() {
+    let mut g = table();
+    let md = put(&mut g, 0, "Mina and Denn, Wildborn");
+    let elf = put(&mut g, 0, "Llanowar Elves");
+    let land = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Plains")
+        .expect("a Plains");
+    act(&mut g, Action::ActivateWith(md, 0, land));
+    act(&mut g, Action::Target(Target::Object(elf)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(land).zone, Zone::Hand, "returned for the cost");
+    assert!(g.keywords(elf).has(Keywords::TRAMPLE));
+    // Two land plays this turn.
+    let a = hand(&mut g, 0, "Forest");
+    let b = hand(&mut g, 0, "Mountain");
+    act(&mut g, Action::PlayLand(a));
+    assert!(g.legal_actions().contains(&Action::PlayLand(b)));
+}
+
+#[test]
+fn wild_growth_adds_an_additional_green() {
+    let mut g = table();
+    let island = first_named(&g, 0, "Island");
+    enchant_land(&mut g, "Wild Growth", island);
+    let made: Vec<_> = g.mana_sources(0).into_iter().filter(|s| s.0 == island).collect();
+    assert_eq!(made.len(), 2);
+    assert!(made
+        .iter()
+        .any(|s| s.1.colors == [false, false, false, false, true]));
+}
+
+#[test]
+fn utopia_sprawl_enchants_a_forest_and_adds_the_chosen_color() {
+    let mut g = table();
+    let island = first_named(&g, 0, "Island");
+    let forest = first_named(&g, 0, "Forest");
+    let c = hand(&mut g, 0, "Utopia Sprawl");
+    act(&mut g, Action::Cast(c));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(island))),
+        "only a Forest"
+    );
+    act(&mut g, Action::Target(obj(forest)));
+    resolve_all(&mut g, &[Action::Mode(2)]); // black
+    assert_eq!(g.obj(c).attached_to.map(|a| a.0), Some(forest));
+    g.objects[forest.0 as usize].tapped = false;
+    let made: Vec<_> = g.mana_sources(0).into_iter().filter(|s| s.0 == forest).collect();
+    assert_eq!(made.len(), 2);
+    assert!(made
+        .iter()
+        .any(|s| s.1.colors == [false, false, true, false, false]));
+}
+
+#[test]
+fn shimmerwilds_growth_adds_the_chosen_color() {
+    let mut g = table();
+    let plains = first_named(&g, 0, "Plains");
+    let c = hand(&mut g, 0, "Shimmerwilds Growth");
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::Target(obj(plains)));
+    resolve_all(&mut g, &[Action::Mode(3)]); // red
+    g.objects[plains.0 as usize].tapped = false;
+    let made: Vec<_> = g.mana_sources(0).into_iter().filter(|s| s.0 == plains).collect();
+    assert!(made
+        .iter()
+        .any(|s| s.1.colors == [false, false, false, true, false]));
+}

@@ -7468,6 +7468,30 @@
    "theme": "triggers",
    "owner": "d2",
    "status": "waiting: 'enters with three wish counters' (a CardDef field for kind counters on entering; merger) and 'an opponent gains control of this artifact' (an effect)"
+  },
+  {
+   "card": "Wild Growth",
+   "deck": "Sythis, Harvest's Hand",
+   "missing": "enchanted land adds an additional {G} [claimed by d1, idea_next11]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Utopia Sprawl",
+   "deck": "Sythis, Harvest's Hand",
+   "missing": "enchant Forest; chosen color; enchanted land adds that color [claimed by d1, idea_next11]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Shimmerwilds Growth",
+   "deck": "Sythis, Harvest's Hand",
+   "missing": "chosen color; enchanted land adds that color [claimed by d1, idea_next11]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
   }
  ]
 }
