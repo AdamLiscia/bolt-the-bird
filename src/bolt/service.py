@@ -541,7 +541,12 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
                     full_name[n] = longer[0]
 
     def canon(n: str) -> str:
-        return full_name.get(n, n)
+        n = full_name.get(n, n)
+        # A deck list may name a two-part card in full ("Purging Stormbrood // Absorb Essence", an Omen or
+        # Adventure) while the pool row and its script carry the front name only: use the front then.
+        if n not in kit.info.index and " // " in n and n.split(" // ")[0] in kit.info.index:
+            return n.split(" // ")[0]
+        return n
 
     def check_commander_deck(
         commanders: list[str], cards_: list[Card], strict: bool = True
