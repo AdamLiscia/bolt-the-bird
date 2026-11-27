@@ -1240,3 +1240,25 @@ Core (appended; functions in game/zones.rs):
 Cards (2): Wishclaw Talisman, Midgar, City of Mako // Reactor Raid. Tests in core_objects (87).
 Likely failure spots when built: the Talisman's activation legality for player 1 after `to_main1(6, 1)` (it must
 untap in their untap step), the Midgar hand-count arithmetic.
+
+## Batch 23 (unbuilt): the monarch; Court of Grace, Forth Eorlingas!
+
+Core (appended; functions in game/zones.rs), modelled on d4's initiative:
+- `Game::monarch: Option<(PlayerId, ObjId)>` (the seat, and the card that made them monarch: the source of the
+  draw trigger) and `Game::monarch_on_combat_damage: [Option<(turn, card)>; 2]` (Forth Eorlingas!).
+- `StackKind::MonarchDraw` with `monarch_draw_ability()` (draw a card): **one arm in `ability_of`'s
+  exhaustive `StackKind` match.**
+- **One call at the top of `Step::End`** (`monarch_end_step`: the active monarch's draw trigger goes on
+  `triggered`). Turn structure: the merger's.
+- **One call at the end of `fire()`** (`fire_monarch`, after `fire_subsystems`): on
+  `When::YourCreaturesDealCombatDamageToPlayer` for `p`, the opponent's monarchy passes to `p`, or `p` becomes
+  the monarch if Forth Eorlingas! resolved for them this turn (1v1: the player dealt damage is the opponent).
+  `fire()` is d2's.
+- `Effect::{BecomeMonarch, BecomeMonarchOnCombatDamageThisTurn, CreateTokenIfMonarchElse { monarch, other }}`.
+- Observation: `monarch` (a seat or None) after `starting_life` (bolt-py); the view's state has a top-level
+  `monarch` (service_view, docs/api.md row updated), with a test in tests/test_service_view.py.
+Cards (2, drafted against idea_next11.json; they compile only once the 172 new cards and token 133 are in):
+Court of Grace (`t.spirit`, `t.angel_4`), Forth Eorlingas! (`t.human_knight_2_trample_haste`, **token 133 asked
+for**: a 2/2 red Human Knight with trample and haste). Tests in core_objects (90).
+Likely failure spots when built: the end-step draw count in the Court test (the trigger resolves at End), the
+Ghoul's attack on turn 6 for player 1, `CastX(forth, 2)` paying {2}{R}{W}.

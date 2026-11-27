@@ -2533,6 +2533,27 @@ pub fn script(name: &str) -> Option<Script> {
                 d.adventure = true;
             },
         ),
+        "Court of Grace" => s(
+            &[
+                "When this enchantment enters, you become the monarch.",
+                "At the beginning of your upkeep, create a 1/1 white Spirit creature token with flying. If you're the monarch, create a 4/4 white Angel creature token with flying instead.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::BecomeMonarch]);
+                let token = Effect::CreateTokenIfMonarchElse { monarch: t.angel_4, other: t.spirit };
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![token]);
+            },
+        ),
+        "Forth Eorlingas!" => s(
+            &[
+                "Create X 2/2 red Human Knight creature tokens with trample and haste.",
+                "Whenever one or more creatures you control deal combat damage to one or more players this turn, you become the monarch.",
+            ],
+            |d, t| {
+                let knights = Effect::CreateTokensX { def: t.human_knight_2_trample_haste };
+                spell(d, vec![], vec![knights, Effect::BecomeMonarchOnCombatDamageThisTurn]);
+            },
+        ),
         "Fortune Teller's Talent" => s(
             &[
                 "You may look at the top card of your library any time.",
@@ -2893,5 +2914,7 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Ashiok, Nightmare Muse",
     "Wishclaw Talisman",
     "Midgar, City of Mako // Reactor Raid",
+    "Court of Grace",
+    "Forth Eorlingas!",
     // Not "Evercoat Ursine" (unclaimed: a hidden land must be playable as a land play).
 ];

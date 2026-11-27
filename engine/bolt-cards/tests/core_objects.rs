@@ -2094,3 +2094,65 @@ fn reactor_raid_declined_draws_nothing() {
     resolve_all(&mut g, &[Action::No]);
     assert_eq!(g.players[0].hand.len(), cards - 1);
 }
+
+// ---- The monarch (batch 23): Court of Grace, Forth Eorlingas! ----
+
+#[test]
+fn court_of_grace_makes_you_the_monarch_who_draws_and_gets_angels() {
+    let mut g = table();
+    let court = hand(&mut g, 0, "Court of Grace");
+    play(&mut g, court, false, &[], &[]);
+    assert_eq!(g.monarch.map(|(p, _)| p), Some(0));
+    let cards = g.players[0].hand.len();
+    pass_to(&mut g, Step::End);
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.players[0].hand.len(),
+        cards + 1,
+        "the monarch draws at their end step"
+    );
+    to_main1(&mut g, 5, 0);
+    assert_eq!(tokens(&g, 0, "Angel").len(), 1, "an Angel instead of a Spirit");
+    assert!(tokens(&g, 0, "Spirit").is_empty());
+}
+
+#[test]
+fn combat_damage_to_the_monarch_takes_it_and_court_makes_spirits_without_it() {
+    let mut g = table();
+    put(&mut g, 0, "Court of Grace");
+    let ghoul = put(&mut g, 1, "Hungry Ghoul");
+    let court = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Court of Grace")
+        .expect("court");
+    g.monarch = Some((0, court));
+    g.start_turn(6, 1);
+    while g.pending != Pending::DeclareAttackers(1) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(ghoul));
+    act(&mut g, Action::FinishAttacks);
+    pass_to(&mut g, Step::Main2);
+    assert_eq!(g.monarch.map(|(p, _)| p), Some(1), "combat damage to the monarch");
+    to_main1(&mut g, 7, 0);
+    assert_eq!(tokens(&g, 0, "Spirit").len(), 1, "not the monarch: a Spirit");
+}
+
+#[test]
+fn forth_eorlingas_makes_knights_and_the_monarch_on_combat_damage() {
+    let mut g = table();
+    let forth = hand(&mut g, 0, "Forth Eorlingas!");
+    act(&mut g, Action::CastX(forth, 2));
+    resolve_all(&mut g, &[]);
+    let knights = tokens(&g, 0, "Human Knight");
+    assert_eq!(knights.len(), 2);
+    assert!(g.keywords(knights[0]).has(Keywords::HASTE));
+    assert_eq!(g.monarch, None);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(knights[0]));
+    act(&mut g, Action::FinishAttacks);
+    pass_to(&mut g, Step::Main2);
+    assert_eq!(g.monarch.map(|(p, _)| p), Some(0));
+}

@@ -718,6 +718,8 @@ pub enum StackKind {
     /// Undying from the keyword (`Keywords::UNDYING`, printed or granted): "When this creature
     /// dies, if it had no +1/+1 counters on it, return it ... with a +1/+1 counter on it."
     Undying,
+    /// The monarch's "At the beginning of your end step, draw a card." (CR 724.2)
+    MonarchDraw,
 }
 
 /// The ability of a ward trigger, which has no targets or effects of its own.
@@ -746,6 +748,12 @@ fn sacrifice_when_targeted_ability() -> &'static Ability {
 }
 
 /// Undying's triggered ability (CR 702.93a), for `StackKind::Undying`.
+/// The monarch's end-step draw (CR 724.2), lane C's (game/zones.rs).
+fn monarch_draw_ability() -> &'static Ability {
+    static A: std::sync::OnceLock<Ability> = std::sync::OnceLock::new();
+    A.get_or_init(|| Ability::new(Vec::new(), vec![Effect::Draw { who: Who::You, n: 1 }]))
+}
+
 fn undying_ability() -> &'static Ability {
     static A: std::sync::OnceLock<Ability> = std::sync::OnceLock::new();
     A.get_or_init(|| Ability::new(Vec::new(), vec![Effect::Undying]))
@@ -1980,6 +1988,12 @@ pub struct Game {
     /// Hideaway cards beyond a source's `Object::hideaway`: (source, its zcc, card, the card's zcc
     /// in exile) (Evercoat Ursine's second hideaway).
     pub hideaway_more: Vec<(ObjId, u32, ObjId, u32)>,
+    /// The monarch (CR 724), and the card that made them the monarch (the source of the end-step
+    /// draw trigger).
+    pub monarch: Option<(PlayerId, ObjId)>,
+    /// Forth Eorlingas!: (the turn, the card) on which each player becomes the monarch when their
+    /// creatures deal combat damage to a player.
+    pub monarch_on_combat_damage: [Option<(u32, ObjId)>; 2],
     /// The other creatures a crew cost taps with its named one (from `Decision::CrewTap`).
     crew_extra: Vec<ObjId>,
     /// Saddled Mounts (CR 702.171b) and the creatures that saddled them: (mount, its zcc, rider,
@@ -2349,6 +2363,8 @@ impl Game {
             face_down_exiled: Vec::new(),
             free_casts_max: 0,
             hideaway_more: Vec::new(),
+            monarch: None,
+            monarch_on_combat_damage: [None; 2],
             saddled: Vec::new(),
             karador_turn: [0; 2],
             any_graveyard_spells_turn: [0; 2],
@@ -4619,6 +4635,7 @@ impl Game {
         }
         // Emblems' triggered abilities and the initiative (lane d4's subsystems).
         self.fire_subsystems(p, when);
+        self.fire_monarch(p, when); // the monarch (CR 724), game/zones.rs
     }
 
     /// "If a creature attacking causes a triggered ability of a permanent you control to trigger,
@@ -6890,6 +6907,7 @@ impl Game {
             StackKind::Room { .. } | StackKind::InitiativeVenture => self.subsystem_ability(item.kind),
             StackKind::SacrificeWhenTargeted { .. } => sacrifice_when_targeted_ability(),
             StackKind::Undying => undying_ability(),
+            StackKind::MonarchDraw => monarch_draw_ability(),
         }
     }
 
@@ -25942,6 +25960,14 @@ impl Game {
             }
             Effect::HideawayAnother(n) => self.hideaway_another(src, item.controller, n),
             Effect::OpponentGainsControlOfSource => self.give_source_to_opponent(src, item.controller),
+            Effect::BecomeMonarch => self.monarch = Some((item.controller, src)),
+            Effect::BecomeMonarchOnCombatDamageThisTurn => {
+                self.monarch_on_combat_damage[item.controller] = Some((self.turn, src))
+            }
+            Effect::CreateTokenIfMonarchElse { monarch, other } => {
+                let mine = self.monarch.is_some_and(|(q, _)| q == item.controller);
+                self.create_token(item.controller, if mine { monarch } else { other });
+            }
 
             Effect::CountersOnAttachedBySubtype { n, subtype, n_if } => {
                 self.counters_on_attached_by_subtype(src, n, subtype, n_if)
@@ -27032,8 +27058,9 @@ impl Game {
                 self.give_priority(a);
             }
             Step::End => {
-                // Ilharg: "Return that creature to your hand at the beginning of the next end step."
-                // Warp: exiled at the beginning of the next end step; its owner may cast it from exile.
+                self.monarch_end_step(); // the monarch draws (CR 724.2), game/zones.rs
+                                         // Ilharg: "Return that creature to your hand at the beginning of the next end step."
+                                         // Warp: exiled at the beginning of the next end step; its owner may cast it from exile.
                 let warped: Vec<ObjId> = self
                     .battlefield
                     .iter()

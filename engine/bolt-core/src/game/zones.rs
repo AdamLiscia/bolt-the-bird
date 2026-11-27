@@ -1163,4 +1163,30 @@ impl Game {
             self.counters_placed(controller, n);
         }
     }
+
+    /// The monarch's end-step draw (CR 724.2): a triggered ability of the active player, if they're
+    /// the monarch.
+    pub(super) fn monarch_end_step(&mut self) {
+        if let Some((q, source)) = self.monarch {
+            if q == self.active {
+                self.triggered.push(StackItem {
+                    kind: StackKind::MonarchDraw,
+                    ..Game::casting(source, q)
+                });
+            }
+        }
+    }
+
+    /// The monarch passes (CR 724.2): combat damage from `p`'s creatures to the monarch makes `p` the
+    /// monarch, as does Forth Eorlingas! this turn (1v1: a player dealt damage is the opponent).
+    pub(super) fn fire_monarch(&mut self, p: PlayerId, when: When) {
+        if when != When::YourCreaturesDealCombatDamageToPlayer {
+            return;
+        }
+        match (self.monarch, self.monarch_on_combat_damage[p]) {
+            (Some((q, s)), _) if q == opponent(p) => self.monarch = Some((p, s)),
+            (_, Some((turn, s))) if turn == self.turn => self.monarch = Some((p, s)),
+            _ => {}
+        }
+    }
 }

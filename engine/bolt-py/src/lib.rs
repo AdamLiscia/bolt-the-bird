@@ -742,6 +742,8 @@ impl Game {
         d.set_item("commanders", commanders)?;
         // Each player's starting life total (20, or 40 in Commander): the network scales life by it.
         d.set_item("starting_life", g.starting_life)?;
+        // The monarch (CR 724): a seat, or None.
+        d.set_item("monarch", g.monarch.map(|(p, _)| p))?;
         let field = PyList::empty(py);
         for &c in &g.battlefield {
             let o = g.obj(c);

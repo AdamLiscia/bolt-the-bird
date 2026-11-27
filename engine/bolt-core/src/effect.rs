@@ -2949,6 +2949,17 @@ pub enum Effect {
     /// "An opponent gains control of this artifact." (Wishclaw Talisman): the source, if you control
     /// it, passes to the opponent for good.
     OpponentGainsControlOfSource,
+    /// "You become the monarch." (CR 724; `Game::monarch`)
+    BecomeMonarch,
+    /// "Whenever one or more creatures you control deal combat damage to one or more players this
+    /// turn, you become the monarch." (Forth Eorlingas!; `Game::monarch_on_combat_damage`)
+    BecomeMonarchOnCombatDamageThisTurn,
+    /// Create a `monarch` token if you're the monarch, a `other` token otherwise (Court of Grace:
+    /// "If you're the monarch, create a 4/4 white Angel ... instead").
+    CreateTokenIfMonarchElse {
+        monarch: usize,
+        other: usize,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

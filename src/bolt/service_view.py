@@ -444,6 +444,7 @@ def state(game, seat: int, version: int, game_id: str) -> dict:
     kind, who = obs["pending"]
     out = {
         "game_id": game_id, "version": version, "seat": seat, "turn": obs["turn"], "step": obs["step"],
+        "monarch": obs.get("monarch"),
         "active": obs["active"], "to_act": None if over else game.to_act(),
         "pending": _pending(kind, who, obs.get("decision"), obs.get("choosing"), obs.get("bottom_left")), "over": over, "result": result,
         "view": {

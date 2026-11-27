@@ -134,3 +134,8 @@ def test_a_mulligan_says_how_many_cards_are_left_to_bottom():
 
     s = state(g, who, version=0, game_id="t")
     assert s["pending"]["kind"] == "Bottom" and s["pending"]["left"] == 1
+
+
+def test_the_view_says_who_the_monarch_is():
+    _, _, s = states(n=1)[0]
+    assert "monarch" in s and s["monarch"] is None, "nobody is the monarch at the start"
