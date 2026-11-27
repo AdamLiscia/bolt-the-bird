@@ -1531,6 +1531,36 @@ pub fn script(name: &str) -> Option<Script> {
                 spell(d, vec![SPELL], vec![Effect::CounterUnlessPays(0, 2, 2)]);
             },
         ),
+        // ---- idea decks: Hearthhull, Kenrith ----
+        "Vernal Fen" => s(&["This land enters tapped unless you control two or more basic lands."], |d, _| {
+            d.enters_tapped_unless_basics = 2;
+            d.mana = Some(ManaSource::of(&[Color::Black, Color::Green]));
+        }),
+        "Tropical Island" => s(&[], |d, _| d.mana = Some(ManaSource::of(&[Color::Green, Color::Blue]))),
+        "Underground Sea" => s(&[], |d, _| d.mana = Some(ManaSource::of(&[Color::Blue, Color::Black]))),
+        "Volcanic Island" => s(&[], |d, _| d.mana = Some(ManaSource::of(&[Color::Blue, Color::Red]))),
+        "Noble Hierarch" => s(&["Exalted", "{T}: Add {G}, {W}, or {U}."], |d, _| {
+            exalted(d);
+            d.mana = Some(ManaSource::of(&[Color::Green, Color::White, Color::Blue]));
+        }),
+        "Dark Ritual" => s(&["Add {B}{B}{B}."], |d, _| {
+            spell(d, vec![], vec![Effect::AddMana { color: Color::Black, n: 3 }]);
+        }),
+        // ---- idea decks: Sephiroth ----
+        "Culling the Weak" => s(&["As an additional cost to cast this spell, sacrifice a creature.", "Add {B}{B}{B}{B}."], |d, _| {
+            d.extra_cost = Some(ExtraCost::SacrificeCreature);
+            spell(d, vec![], vec![Effect::AddMana { color: Color::Black, n: 4 }]);
+        }),
+        "Blood Pet" => s(&["Sacrifice this creature: Add {B}."], |d, _| {
+            d.mana = Some(ManaSource::of(&[Color::Black]));
+            d.sac_for_mana = true;
+            d.mana_ext.sac_mana_no_tap = true;
+        }),
+        // ---- idea decks: Niv-Mizzet ----
+        "Unexpected Assistance" => s(&["Convoke", "Draw three cards, then discard a card."], |d, _| {
+            d.mana_ext.convoke = true;
+            spell(d, vec![], vec![draw(3), discard(1)]);
+        }),
         _ => None,
     }
 }
@@ -1725,4 +1755,13 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Path of Ancestry",
     "Rain of Riches",
     "Make Disappear",
+    "Vernal Fen",
+    "Tropical Island",
+    "Underground Sea",
+    "Volcanic Island",
+    "Noble Hierarch",
+    "Dark Ritual",
+    "Culling the Weak",
+    "Blood Pet",
+    "Unexpected Assistance",
 ];

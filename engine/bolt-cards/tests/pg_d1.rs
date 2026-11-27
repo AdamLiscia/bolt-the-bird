@@ -3296,3 +3296,67 @@ fn make_disappear_with_casualty_is_copied() {
     }
     assert_eq!(g.players[1].life, 40, "the Bolt was countered");
 }
+
+// ---- idea decks: lands, rituals, mana creatures ----
+
+#[test]
+fn idea_deck_lands_tap_for_their_colors_and_vernal_fen_checks_basics() {
+    let mut g = game(&[]);
+    for (name, n) in [
+        ("Tropical Island", 2),
+        ("Underground Sea", 2),
+        ("Volcanic Island", 2),
+    ] {
+        let l = put(&mut g, 0, name);
+        let m = g
+            .mana_sources(0)
+            .into_iter()
+            .find(|&(x, _)| x == l)
+            .expect("a source")
+            .1;
+        assert_eq!(m.colors.iter().filter(|&&b| b).count(), n, "{name}");
+    }
+    let fen = hand(&mut g, 0, "Vernal Fen");
+    act(&mut g, Action::PlayLand(fen));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(fen).tapped, "no basic lands");
+}
+
+#[test]
+fn dark_ritual_and_culling_the_weak_add_black() {
+    let mut g = game(&["Swamp"]);
+    let ritual = hand(&mut g, 0, "Dark Ritual");
+    act(&mut g, Action::Cast(ritual));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].pool.len(), 3);
+    let mut g = game(&["Swamp"]);
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let cull = hand(&mut g, 0, "Culling the Weak");
+    act(&mut g, Action::CastWith(cull, elves));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].pool.len(), 4);
+}
+
+#[test]
+fn blood_pet_sacrifices_for_black_and_unexpected_assistance_convokes() {
+    let mut g = game(&[]);
+    let pet = put(&mut g, 0, "Blood Pet");
+    let elves = hand(&mut g, 0, "Llanowar Elves"); // can't: {G}
+    let ritual = hand(&mut g, 0, "Dark Ritual"); // {B}: the Pet pays
+    let _ = elves;
+    act(&mut g, Action::Cast(ritual));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(pet).zone, Zone::Graveyard, "sacrificed for its {{B}}");
+
+    let mut g = game(&["Island", "Island"]);
+    for _ in 0..4 {
+        let c = put(&mut g, 0, "Llanowar Elves");
+        g.objects[c.0 as usize].since_turn = 0;
+    }
+    let ua = hand(&mut g, 0, "Unexpected Assistance");
+    assert!(
+        g.legal_actions().contains(&Action::Cast(ua)),
+        "convoked with four Elves and two Islands"
+    );
+}
