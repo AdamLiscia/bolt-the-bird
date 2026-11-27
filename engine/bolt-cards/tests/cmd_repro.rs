@@ -173,18 +173,17 @@ fn tatyova_vs_myrkul_seed_0_plays_out() {
     first_priority_playouts(3, 2, 0);
 }
 
-/// The search's safety net: a stack entry that panics when it resolves (a trigger its source doesn't
-/// have) makes every playout panic. The pilot scores those as losses and plays the baseline's move,
+/// The search's safety net: a stack entry that panics when it resolves (its source doesn't exist)
+/// makes every playout panic. The pilot scores those as losses and plays the baseline's move,
 /// and never panics out to its caller.
 #[test]
 fn a_panicking_playout_scores_as_a_loss() {
     let mut g = table();
-    let plains = g.add_card(0, cid("Plains"), Zone::Battlefield);
     g.add_card(0, cid("Opt"), Zone::Hand); // an instant: a move besides passing
     g.items.push(StackItem {
-        source: plains,
+        source: bolt_core::ObjId(1_000_000), // no such object: resolving it panics
         controller: 0,
-        kind: StackKind::Trigger(99),
+        kind: StackKind::Trigger(0),
         targets: Vec::new(),
         kicked: false,
         flashback: false,
@@ -303,4 +302,128 @@ fn a_copys_trigger_resolves_after_the_copy_leaves() {
     resolve_all(&mut g, &[]);
     assert_eq!(g.def_of(meta).name, "Phyrexian Metamorph");
     assert_eq!(g.players[1].life, life - 2, "both triggers deal their 1");
+}
+
+/// Lane T's runaway hunt, 2026-11-27: Chain of Smog's "that player may copy this spell" asked again
+/// and again, the rules player always taking the first choice (a copy aimed at player 0, itself
+/// included). It now copies only at an opponent with cards to discard, so the chain ends.
+#[test]
+fn the_rules_player_ends_a_chain_of_smog() {
+    let mut g = table();
+    let smog = g.add_card(0, cid("Chain of Smog"), Zone::Hand);
+    g.add_card(0, cid("Plains"), Zone::Hand); // player 0 keeps one card
+    for _ in 0..3 {
+        g.add_card(1, cid("Plains"), Zone::Hand);
+    }
+    act(&mut g, Action::Cast(smog));
+    act(&mut g, Action::Target(Target::Player(1)));
+    let mut steps = 0;
+    while !g.items.is_empty() || !matches!(g.pending, Pending::Priority(_)) {
+        let legal = g.legal_actions();
+        let a = baseline::choose(&g, &legal);
+        act(&mut g, a);
+        steps += 1;
+        assert!(steps < 200, "the chain never ended: {:?}", g.pending);
+    }
+    // Player 1 discards 2 and copies it at player 0 (1 card), who discards it and copies it at
+    // player 1's last card; then neither has a card to lose and the chain stops.
+    assert!(g.players[0].hand.is_empty() && g.players[1].hand.is_empty());
+}
+
+/// Desktop training, 2026-11-27: 7 "a trigger of its source" panics. A trigger no definition has (no
+/// snapshot, current definition, front or back face) now resolves as doing nothing.
+#[test]
+fn a_trigger_its_source_doesnt_have_does_nothing() {
+    let mut g = table();
+    let plains = g.add_card(0, cid("Plains"), Zone::Battlefield);
+    g.items.push(StackItem {
+        source: plains,
+        controller: 0,
+        kind: StackKind::Trigger(99),
+        targets: Vec::new(),
+        kicked: false,
+        flashback: false,
+        extra: None,
+        mode: Some(3),
+        amount: 0,
+        alt: false,
+        x: 0,
+        division: Vec::new(),
+        source_zcc: None,
+    });
+    let life = (g.players[0].life, g.players[1].life);
+    resolve_all(&mut g, &[]);
+    assert!(g.items.is_empty());
+    assert_eq!((g.players[0].life, g.players[1].life), life);
+    assert_eq!(g.obj(plains).zone, Zone::Battlefield);
+}
+
+/// The desktop's cmd_play_1, 2026-11-27: one engine call spun for 9.5+ minutes. The engine's loop
+/// caps end such a game in a draw with a reason instead. Past MAX_OBJECTS, the next object made
+/// ends it.
+#[test]
+fn a_runaway_board_ends_the_game_in_a_draw() {
+    let mut g = table();
+    while g.objects.len() < bolt_core::game::MAX_OBJECTS {
+        g.add_card(0, cid("Plains"), Zone::Exile);
+    }
+    assert!(g.result.is_none());
+    g.add_card(0, cid("Plains"), Zone::Exile);
+    assert_eq!(g.result, Some(bolt_core::Outcome::Draw));
+    assert!(g.end_reason.is_some_and(|r| r.contains("MAX_OBJECTS")));
+    assert!(g.legal_actions().is_empty() || g.is_over());
+}
+
+/// Forced passes with nobody able to act or lose (empty libraries, but "you can't lose the game"):
+/// `settle` used to pass turn after turn forever inside one call. A loop cap now ends it in a draw.
+#[test]
+fn turns_with_no_decisions_forever_end_in_a_draw() {
+    let mut defs = (*set("CMD").unwrap().defs).clone();
+    let plains = cid("Plains");
+    defs[plains].cant_lose = true;
+    let mut g = Game::empty(std::sync::Arc::new(defs), 1, 0);
+    for p in 0..2 {
+        g.add_card(p, plains, Zone::Battlefield);
+    }
+    g.auto_pass = true;
+    g.start_turn(1, 0);
+    let t = std::time::Instant::now();
+    while !g.is_over() && t.elapsed().as_secs() < 60 {
+        let legal = g.legal_actions();
+        g.apply(baseline::choose(&g, &legal)).expect("legal");
+    }
+    assert_eq!(g.result, Some(bolt_core::Outcome::Draw));
+    assert!(g.end_reason.is_some(), "turn {}: no loop cap tripped", g.turn);
+}
+
+/// Desktop self-play, 2026-11-27: Scute Swarm copies doubling on every land drop reached 549
+/// permanents, every step slower. Past MAX_PERMANENTS the game is a draw, "board too large".
+#[test]
+fn scute_swarm_past_the_permanent_cap_ends_in_a_draw() {
+    let mut g = table();
+    let swarm = cid("Scute Swarm");
+    while g.battlefield.len() < bolt_core::game::MAX_PERMANENTS - 1 {
+        g.add_card(0, swarm, Zone::Battlefield);
+    }
+    // Two lands entering: every Swarm's landfall makes a copy (six or more lands), far past the cap.
+    let woods = g.add_card(0, cid("Awaken the Woods"), Zone::Hand);
+    act(&mut g, Action::CastX(woods, 2));
+    let mut steps = 0;
+    while !g.is_over() && steps < 10_000 {
+        let legal = g.legal_actions();
+        let a = baseline::choose(&g, &legal);
+        act(&mut g, a);
+        steps += 1;
+    }
+    assert_eq!(g.result, Some(bolt_core::Outcome::Draw));
+    assert!(
+        g.end_reason.is_some_and(|r| r.contains("board too large")),
+        "{:?}",
+        g.end_reason
+    );
+    assert!(
+        g.battlefield.len() < 2 * bolt_core::game::MAX_PERMANENTS,
+        "{}",
+        g.battlefield.len()
+    );
 }

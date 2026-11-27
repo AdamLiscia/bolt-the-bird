@@ -174,6 +174,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
             faces = (src or "").split(" // ")
             face = faces[value] if len(faces) == 2 else ("its front", "its back")[value]
             return f"Play it as {face}"
+        if d == "ManaOfOneColor" and 0 <= value < 5:
+            return f"Add {dec.get('n', 1)} {COLORS[value].lower()} mana"
         if d == "ProtectionColor" and 0 <= value < 5:
             return f"Protection from {COLORS[value].lower()}"
         if d == "ChooseCardType" and 0 <= value < 7:
@@ -229,6 +231,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"SacrificeSaddler": "Sacrifice (it saddled the Mount):"}.get(d)
         verb = verb or {"GitrogLandPick": "Put onto the battlefield tapped:"}.get(d)
         verb = verb or {"RemoveCountersFromOthers": "Remove a counter from"}.get(d)
+        verb = verb or {"ImprintNonartifactNonland": "Exile (imprint):", "DiscardLandOrGraveyard": "Discard (it stays):"}.get(d)  # fmt: skip
+        verb = verb or {"SacrificeCreaturesForCost": "Sacrifice (for the cost):"}.get(d)
         if d == "IterationPick":
             verb = "Put into your hand:" if dec.get("to_hand") else "Put on the bottom:"
         verb = verb or {"ChooseRingBearer": "Choose as your Ring-bearer:"}.get(d)
@@ -243,16 +247,17 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"SacrificeLandsDraw": "Sacrifice (draw a card)"}.get(d)
         verb = verb or {"SacrificeGreatestMv": "Sacrifice"}.get(d)
         verb = verb or {"EachSacrificesCreatureOrPlaneswalker": "Sacrifice"}.get(d)
-
         verb = verb or {"SacrificeOfSubtype": "Sacrifice"}.get(d)
         verb = verb or {"MaySacrificeLand": "Sacrifice", "MaySacrificeArtifactOrCreature": "Sacrifice"}.get(d)  # fmt: skip
         verb = verb or {"NameCardInLibrary": "Name"}.get(d)
+        verb = verb or {"ChooseExiledToPlay": "You may play until the end of your next turn:"}.get(d)
         if d == "DiscardMayCastFree":
             verb = "Discard (you may cast it free)" if dec.get("free") else "Discard"
         verb = verb or {"MoveAuraTo": "Attach the Aura to"}.get(d)
         verb = verb or {"CreatureFromHandAttacking": "Put onto the battlefield attacking:"}.get(d)
         verb = verb or {"PatronOfChaosSacrifice": "Sacrifice (one of two):"}.get(d)
         verb = verb or {"ExileFromHandUntilSourceLeaves": "Exile until it leaves:"}.get(d)
+        verb = verb or {"BlightCreature": f"Blight {dec.get('n', 1)} (-1/-1 counters on):"}.get(d)
         if d == "LoseUnless":
             verb = "Sacrifice" if dec.get("sacrifice") else "Discard"
         return f"{verb} {card_name}" if verb else None
@@ -275,7 +280,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         "PayWardLife": (f"Pay {dec.get('life', 0)} life for ward ({subject})", f"Don't pay ({subject} is countered)"),
         "PayOrCountered": (f"Pay {dec.get('cost', '')} ({subject} resolves)", f"Don't pay ({subject} is countered)"),
         "SplitPiles": (f"Put {subject} in pile A", f"Put {subject} in pile B"),
-        "ShockLand": (f"Pay 2 life: {subject} enters untapped", f"{subject} enters tapped"),
+        "ShockLand": (f"Pay {dec.get('life', 2)} life: {subject} enters untapped", f"{subject} enters tapped"),
         "CommanderToCommandZone": (f"Move {subject} to the command zone", f"Leave {subject} there"),
         "ChoosePile": ("Choose pile A", "Choose pile B"),
         "PayToStop": (f"Pay {dec.get('cost', '')}", "Don't pay"),
@@ -290,6 +295,13 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         ),  # fmt: skip
         "SacrificeSaddler": ("Sacrifice a creature that saddled it", "Don't sacrifice"),
         "RemoveCountersFromOthers": ("Remove a counter", "Don't activate it"),
+        "ImprintNonartifactNonland": ("Exile a card", "Don't exile a card"),
+        "SacrificeCreaturesForCost": ("Sacrifice it", "Don't activate it"),
+        "UpkeepAddManaOrSacrifice": (
+            f"Add {dec.get('n', 1)} mana (keep {subject or 'it'})",
+            f"Sacrifice {subject or 'it'}",
+        ),
+        "DiscardLandOrGraveyard": ("Discard a land", f"Don't discard ({subject or 'it'} goes to the graveyard)"),
         "SylvanPayOrTop": (f"Pay 4 life to keep {subject or 'it'}", f"Put {subject or 'it'} on top of your library"),
         "ExpropriateVote": ("Vote time (an extra turn)", "Vote money (a permanent)"),
         "PayUpkeep": (f"Pay the upkeep {dec.get('cost', '')}", f"Don't pay (sacrifice {subject or src})"),
@@ -321,6 +333,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         return "Done attaching Auras"
     if d == "PatronOfChaosSacrifice" and not yes:
         return "Don't sacrifice (they draw two cards)"
+    if d == "BlightCreature" and not yes:
+        return "Don't blight"
     if d == "ExileFromHandUntilSourceLeaves" and not yes:
         return "Exile nothing"
     if d == "MayPutExiledLandOntoBattlefield":

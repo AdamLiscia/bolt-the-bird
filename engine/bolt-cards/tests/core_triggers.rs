@@ -2297,3 +2297,346 @@ fn delayed_creature_combat_damage_to_a_player_this_turn_draws() {
     }
     assert_eq!(g.players[0].hand.len(), before, "this turn only");
 }
+
+// ---- batch 38: damage to creatures, Case solving, Clues sacrificed ----
+
+/// Passes (no attackers, no blockers) until this turn's end step begins.
+fn into_end_step(g: &mut Game) {
+    while g.step != Step::End {
+        let a = match g.pending {
+            bolt_core::Pending::ChooseTarget(_) | bolt_core::Pending::Decide(_) => g.legal_actions()[0],
+            bolt_core::Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            bolt_core::Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn deals_damage_to_one_or_more_creatures_in_combat_and_outside_it() {
+    let mut g = game_with(|defs: &mut Vec<CardDef>| {
+        defs[cid("Savannah Lions")].triggers.push(trigger(
+            When::DealsDamageToOneOrMoreCreatures,
+            None,
+            gain_one(),
+        ));
+    });
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let elves = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+    let bite = g.add_card(0, cid("Bite Down"), Zone::Hand);
+    play(&mut g, bite, false, &[obj(lions), obj(elves)], &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].life, 41, "noncombat damage to a creature");
+    // Combat: blocked by one creature, then unblocked (damage to a player doesn't count).
+    let thopter = g.add_card(1, cid("Ornithopter"), Zone::Battlefield);
+    g.start_turn(5, 0);
+    while g.pending != bolt_core::Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(lions));
+    act(&mut g, Action::FinishAttacks);
+    while !matches!(g.pending, bolt_core::Pending::DeclareBlockers(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(
+        &mut g,
+        Action::Block {
+            blocker: thopter,
+            attacker: lions,
+        },
+    );
+    act(&mut g, Action::FinishBlocks);
+    while g.step != Step::Main2 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[0].life, 42, "combat damage to the blocker");
+    g.start_turn(7, 0);
+    while g.pending != bolt_core::Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(lions));
+    act(&mut g, Action::FinishAttacks);
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            bolt_core::Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.players[0].life, 42, "unblocked: no trigger");
+}
+
+#[test]
+fn a_case_solves_at_your_end_step_after_four_instants_and_sorceries() {
+    let to_solve = Condition::Both(
+        Box::new(Condition::CaseUnsolved),
+        Box::new(Condition::InstantsSorceriesCastThisTurnAtLeast(4)),
+    );
+    let mut g = game_with(move |defs: &mut Vec<CardDef>| {
+        let d = &mut defs[cid("Sol Ring")];
+        d.triggers.push(trigger(
+            When::EndStep { your_turn_only: true },
+            Some(to_solve.clone()),
+            vec![Effect::SolveCase],
+        ));
+        d.triggers.push(trigger(
+            When::YouCastInstantOrSorcery,
+            Some(Condition::CaseSolved),
+            gain_one(),
+        ));
+    });
+    let case = g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    for _ in 0..3 {
+        let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Hand);
+        play(&mut g, bolt, false, &[bolt_core::Target::Player(1)], &[]);
+    }
+    into_end_step(&mut g);
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(case).class_level < 2, "three: unsolved");
+    assert_eq!(g.players[0].life, 40);
+    g.start_turn(5, 0);
+    to_main(&mut g);
+    for _ in 0..4 {
+        let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Hand);
+        play(&mut g, bolt, false, &[bolt_core::Target::Player(1)], &[]);
+    }
+    assert_eq!(g.players[0].life, 40, "not solved yet");
+    into_end_step(&mut g);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(case).class_level, 2, "solved");
+    g.start_turn(7, 0);
+    to_main(&mut g);
+    let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Hand);
+    play(&mut g, bolt, false, &[bolt_core::Target::Player(1)], &[]);
+    assert_eq!(g.players[0].life, 41, "solved: its ability works");
+}
+
+#[test]
+fn clues_sacrificed_this_turn_are_counted_per_player() {
+    let mut g = game_with(|defs: &mut Vec<CardDef>| {
+        defs[cid("Sol Ring")].triggers.push(trigger(
+            When::EndStep {
+                your_turn_only: false,
+            },
+            Some(Condition::SacrificedCluesThisTurnAtLeast(3)),
+            gain_one(),
+        ));
+    });
+    g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    let clue_def = set("CMD")
+        .unwrap()
+        .defs
+        .iter()
+        .position(|d| d.token && d.name == "Clue")
+        .expect("the Clue token");
+    let sacrifice_clues = |g: &mut Game, n: usize| {
+        for _ in 0..n {
+            let clue = g.add_card(0, clue_def, Zone::Battlefield);
+            act(g, Action::Activate(clue, 0));
+            resolve_all(g, &[]);
+        }
+    };
+    sacrifice_clues(&mut g, 2);
+    assert_eq!(g.clues_sacrificed[0], (3, 2));
+    into_end_step(&mut g);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 40, "two Clues: no");
+    g.start_turn(5, 0);
+    to_main(&mut g);
+    sacrifice_clues(&mut g, 3);
+    assert_eq!(g.clues_sacrificed[0], (5, 3), "a new turn starts over");
+    into_end_step(&mut g);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 41, "three Clues");
+}
+
+#[test]
+fn creatures_with_a_mana_ability_attacking_and_seven_mana_spells() {
+    let mut g = game_with(|defs: &mut Vec<CardDef>| {
+        let mut s = defs[cid("Vanquisher's Banner")].statics[0];
+        s.scope = bolt_core::effect::Scope::YourCreaturesWithManaAbility;
+        let d = &mut defs[cid("Sol Ring")];
+        d.statics.push(s);
+        d.triggers.push(trigger(
+            When::CreatureYouControlWithManaAbilityAttacks,
+            None,
+            vec![Effect::UntapExtra],
+        ));
+        d.triggers.push(trigger(
+            When::YouCast,
+            Some(Condition::ManaSpentToCastAtLeast(7)),
+            gain_one(),
+        ));
+    });
+    g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    assert_eq!(
+        (g.power(elves), g.toughness(elves)),
+        (2, 2),
+        "a mana ability: +1/+1"
+    );
+    assert_eq!((g.power(lions), g.toughness(lions)), (2, 1), "none: no pump");
+    let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Hand);
+    play(&mut g, bolt, false, &[bolt_core::Target::Player(1)], &[]);
+    assert_eq!(g.players[0].life, 40, "one mana spent");
+    let akroma = g.add_card(0, cid("Akroma, Angel of Wrath"), Zone::Hand);
+    play(&mut g, akroma, false, &[], &[]);
+    assert_eq!(g.players[0].life, 41, "eight mana spent");
+    g.start_turn(5, 0);
+    while g.pending != bolt_core::Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(elves));
+    act(&mut g, Action::Attack(lions));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[]);
+    assert!(!g.obj(elves).tapped, "untapped: it has a mana ability");
+    assert!(g.obj(lions).tapped);
+}
+
+// ---- batch 39: "when that creature dies this turn" ----
+
+#[test]
+fn delayed_when_that_creature_dies_this_turn_only_for_it() {
+    let mut g = game_with(|defs: &mut Vec<CardDef>| {
+        let d = &mut defs[cid("Hero's Downfall")];
+        let n = d.triggers.len();
+        // "When that creature dies this turn, you gain life equal to its power."
+        d.spell
+            .as_mut()
+            .expect("a spell")
+            .effects
+            .insert(0, Effect::DelayedWhenSlotDiesThisTurn { slot: 0, trigger: n });
+        d.triggers
+            .push(trigger(When::Never, None, vec![Effect::GainLifeAmount]));
+    });
+    let lions = g.add_card(1, cid("Savannah Lions"), Zone::Battlefield);
+    g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+    cast_now(&mut g, 0, "Hero's Downfall", &[obj(lions)]);
+    assert_eq!(life(&g, 0), 42, "the power it died with");
+}
+
+// ---- batch 40: artifact or enchantment spells, artifact combat damage, color-gated Aura grants, deaths ----
+
+#[test]
+fn you_cast_artifact_or_enchantment_triggers_once_for_an_artifact_enchantment() {
+    let mut g = game_with(|defs: &mut Vec<CardDef>| {
+        blood_with(vec![trigger(When::YouCastArtifactOrEnchantment, None, gain(1))])(defs);
+        defs[cid("Sol Ring")].types.enchantment = true;
+    });
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Hand);
+    play(&mut g, ring, false, &[], &[]);
+    assert_eq!(life(&g, 0), 41, "once, though it's both");
+    let signet = g.add_card(0, cid("Arcane Signet"), Zone::Hand);
+    play(&mut g, signet, false, &[], &[]);
+    assert_eq!(life(&g, 0), 42);
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Hand);
+    play(&mut g, lions, false, &[], &[]);
+    assert_eq!(life(&g, 0), 42, "a creature spell");
+}
+
+#[test]
+fn artifact_creatures_dealing_combat_damage_each_and_batched() {
+    let mut g = game_with(blood_with(vec![
+        trigger(When::YourArtifactCreatureDealsCombatDamageToPlayer, None, gain(1)),
+        trigger(
+            When::YourArtifactCreaturesDealCombatDamageToPlayer,
+            None,
+            gain(10),
+        ),
+    ]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let golem = g.add_card(0, cid("Solemn Simulacrum"), Zone::Battlefield);
+    let strix = g.add_card(0, cid("Baleful Strix"), Zone::Battlefield);
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    attack_through(&mut g, &[golem, strix, lions]);
+    assert_eq!(life(&g, 1), 40 - 5);
+    assert_eq!(
+        life(&g, 0),
+        40 + 5 + 2 + 10,
+        "Exquisite Blood; two artifacts; one batch"
+    );
+}
+
+#[test]
+fn enchanted_of_color_triggers_only_for_the_creatures_colors() {
+    let mut g = game_with(|defs: &mut Vec<CardDef>| {
+        let d = &mut defs[cid("Curiosity")];
+        d.triggers.clear();
+        d.triggers.push(trigger(
+            When::EnchantedOfColorDealsDamageToOpponent(0),
+            None,
+            gain(1),
+        ));
+        d.triggers.push(trigger(
+            When::EnchantedOfColorDealsDamageToOpponent(1),
+            None,
+            gain(10),
+        ));
+    });
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield); // white
+    let c = g.add_card(0, cid("Curiosity"), Zone::Hand);
+    play(&mut g, c, false, &[obj(lions)], &[]);
+    attack_through(&mut g, &[lions]);
+    assert_eq!(life(&g, 1), 38);
+    assert_eq!(life(&g, 0), 41, "white only");
+}
+
+#[test]
+fn another_creature_dies_it_returns_the_card_at_the_next_end_step_if_a_creature_remains() {
+    let it = Filter {
+        triggering: true,
+        graveyard: Some(true),
+        players: false,
+        creatures: false,
+        planeswalkers: false,
+        ..Filter::ANY
+    };
+    let mut back = trigger(
+        When::AnotherCreatureDiesIt,
+        Some(Condition::CreatureOnBattlefield),
+        vec![Effect::ReturnSlotAtNextEndStep(0)],
+    );
+    back.ability.targets = vec![it];
+    let mut g = game_with(blood_with(vec![back]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let elves = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+    kill(&mut g, lions);
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard, "not yet");
+    into_end_step(&mut g);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield, "the next end step");
+    assert_eq!(g.obj(lions).controller, 0, "under its owner's control");
+    g.start_turn(5, 0);
+    to_main(&mut g);
+    kill(&mut g, lions);
+    kill(&mut g, elves);
+    into_end_step(&mut g);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Graveyard, "no creature left as it died");
+    assert_eq!(
+        g.obj(lions).zone,
+        Zone::Battlefield,
+        "the Elves were out when it died"
+    );
+}
+
+#[test]
+fn create_tokens_tapped_and_attacking_joins_the_attack() {
+    let mut g = game_with(blood_with(vec![trigger(
+        When::YouAttack,
+        None,
+        vec![Effect::CreateTokensTappedAndAttacking {
+            def: token_def("Human"),
+            n: 2,
+        }],
+    )]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    attack_through(&mut g, &[lions]);
+    assert_eq!(life(&g, 1), 40 - 2 - 2, "two attacking 1/1s");
+}
