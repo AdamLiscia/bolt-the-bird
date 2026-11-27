@@ -7,6 +7,7 @@ to Nerd Leagues or any database: NL calls this; this never calls NL.
 """
 
 import os
+import re
 import secrets
 import threading
 import time
@@ -30,6 +31,7 @@ MAX_TURNS, MAX_MOVES = 200, 20_000
 IDLE_SECONDS = 6 * 3600
 # The smart pilot's time per decision in Commander, in ms: some 1v1 Commander positions took minutes to
 # search in full. Past it, the pilot plays the best move scored so far. FDN and TDM search in full.
+CASUAL_SIZE_SLACK = 2  # strict=False: decks of 98-102 cards are allowed, with a warning
 CMD_SMART_MS = 2500
 BASIC_NAMES = {"W": "Plains", "U": "Island", "B": "Swamp", "R": "Mountain", "G": "Forest"}
 
@@ -258,12 +260,14 @@ class GameBody(BaseModel):
     commander_b: str | list[str] | None = None
     starting_life: int = 40
     auto_command_zone: list[bool] = [False, False]  # per seat: always move the commander there
+    strict: bool = True  # False (casual tables): a deck within 2 of 100 cards is a warning, not a problem
 
 
 class ValidateBody(BaseModel):
     format: str = "commander"
     commander: str | list[str]
     deck: list[Card]
+    strict: bool = True  # False (casual tables): a deck within 2 of 100 cards is a warning, not a problem
 
 
 class ManaBody(BaseModel):
@@ -539,7 +543,9 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
     def canon(n: str) -> str:
         return full_name.get(n, n)
 
-    def check_commander_deck(commanders: list[str], cards_: list[Card]) -> tuple[list[int], list[int], dict]:
+    def check_commander_deck(
+        commanders: list[str], cards_: list[Card], strict: bool = True
+    ) -> tuple[list[int], list[int], dict]:
         """Ids for the commanders and the rest of the deck (a listed commander is taken out once),
         plus what's wrong: names outside the pool, cards not scripted yet, and deck problems."""
         commanders = [canon(n) for n in commanders]
@@ -558,14 +564,22 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
         problems = [f"not a card in the pool: {n}" for n in unknown]
         if len(cmd_ids) == len(commanders):
             problems += be.commander_deck_problems(cmd_ids, ids, set=SET)
+        warnings = []
+        if not strict:  # casual tables: a slightly-off card count is the owner's to fix, not a block
+            for p in list(problems):
+                m = re.fullmatch(r"(\d+) cards with the commander, not 100", p)
+                if m and abs(int(m.group(1)) - 100) <= CASUAL_SIZE_SLACK:
+                    problems.remove(p)
+                    warnings.append(p)
         # A name outside the pool is also a card still to script (and fetch): list it in both.
-        return cmd_ids, ids, {"problems": problems, "missing": sorted(set(missing) | set(unknown))}
+        return cmd_ids, ids, {"problems": problems, "warnings": warnings,
+                              "missing": sorted(set(missing) | set(unknown))}  # fmt: skip
 
     @router.post("/deck/validate")
     def deck_validate(body: ValidateBody):
         if body.format != "commander":
             raise ApiError(422, "format must be 'commander'")
-        _, _, found = check_commander_deck(commander_names(body.commander), body.deck)
+        _, _, found = check_commander_deck(commander_names(body.commander), body.deck, body.strict)
         return {"ok": not found["problems"] and not found["missing"], **found}
 
     def deck_ids(cards_: list[Card]) -> list[int]:
@@ -737,7 +751,7 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
                 raise ApiError(422, "auto_command_zone is two booleans, one per seat")
             sides = []
             for seat, (c, deck) in enumerate([(body.commander_a, body.deck_a), (body.commander_b, body.deck_b)]):
-                ids_c, ids, found = check_commander_deck(commander_names(c), deck)
+                ids_c, ids, found = check_commander_deck(commander_names(c), deck, body.strict)
                 if found["missing"]:
                     raise ApiError(422, "cards the engine doesn't play yet", seat=seat, missing=found["missing"])
                 if found["problems"]:

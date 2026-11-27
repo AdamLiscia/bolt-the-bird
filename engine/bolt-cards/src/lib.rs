@@ -681,7 +681,11 @@ pub fn color_identity(o: &Oracle) -> [bool; 5] {
 /// Whether a deck may hold any number of copies of this card (CR 903.5b): basic lands, and cards
 /// that say so.
 fn any_number_allowed(o: &Oracle) -> bool {
-    o.type_line.starts_with("Basic Land")
+    // Any card with the Basic supertype (CR 205.4, 903.5b): "Basic Land", "Basic Snow Land" (Snow-Covered
+    // basics) and Wastes.
+    let supertypes = o.type_line.split('\u{2014}').next().unwrap_or("");
+    let words: Vec<&str> = supertypes.split_whitespace().collect();
+    (words.contains(&"Basic") && words.contains(&"Land"))
         || o.oracle_text
             .as_deref()
             .is_some_and(|t| t.contains("A deck can have any number of cards named"))
@@ -940,6 +944,15 @@ mod tests {
         assert_eq!(id("Plains"), [false; 5], "basic land types don't count");
         assert!(id("Dirgur Island Dragon")[1]);
         assert_eq!(id("Boulderborn Dragon"), [false; 5]);
+    }
+
+    #[test]
+    fn snow_covered_basics_may_repeat_in_commander() {
+        // "Basic Snow Land — Forest" has the Basic supertype (CR 205.4), so the singleton rule exempts it.
+        let t = set("CMD").unwrap();
+        let i = |name: &str| t.index_of(name).unwrap();
+        let deck = [i("Snow-Covered Forest"), i("Snow-Covered Forest"), i("Forest"), i("Forest")];
+        assert!(singleton_problems(t, &deck).is_empty(), "{:?}", singleton_problems(t, &deck));
     }
 
     #[test]
