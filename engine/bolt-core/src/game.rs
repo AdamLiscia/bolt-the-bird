@@ -16281,9 +16281,8 @@ impl Game {
                     .into_iter()
                     .map(|p| (p, n as u32))
                     .collect();
-                if self.draws_with_dredge(draws, false) {
-                    return; // dredge? (the rest of the effects follow the answer)
-                }
+                // A dredge decision may be pending: the rest follows its answer.
+                self.draws_with_dredge(draws, false);
             }
             Effect::GainLife { who, n } => {
                 for p in self.players_for(item, legal, who) {
@@ -19109,9 +19108,8 @@ impl Game {
                     item.targets.get(slot as usize),
                     legal.get(slot as usize).copied().unwrap_or(false),
                 ) {
-                    if self.draws_with_dredge(vec![(q, item.x as u32)], false) {
-                        return;
-                    }
+                    // A dredge decision may be pending: the rest follows its answer.
+                    self.draws_with_dredge(vec![(q, item.x as u32)], false);
                 }
             }
             Effect::MayCastFromHandFree { max_mv } => {
@@ -20143,9 +20141,8 @@ impl Game {
                 }
             }
             Effect::DrawX => {
-                if self.draws_with_dredge(vec![(item.controller, item.x as u32)], false) {
-                    return;
-                }
+                // A dredge decision may be pending: the rest follows its answer.
+                self.draws_with_dredge(vec![(item.controller, item.x as u32)], false);
             }
             Effect::AddManaAnyColor => {
                 self.players[item.controller]
@@ -20642,9 +20639,8 @@ impl Game {
             }
             Effect::DrawAmount => {
                 let n = item.amount.max(0) as u32;
-                if self.draws_with_dredge(vec![(item.controller, n)], false) {
-                    return;
-                }
+                // A dredge decision may be pending: the rest follows its answer.
+                self.draws_with_dredge(vec![(item.controller, n)], false);
             }
             Effect::CreateTokensAmount { def } => {
                 for _ in 0..item.amount {
