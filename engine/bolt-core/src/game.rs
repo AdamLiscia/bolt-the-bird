@@ -361,6 +361,8 @@ pub struct Object {
     /// Cast for its prototype cost and resolved (CR 702.160): its `ManaExt::prototype` power,
     /// toughness and colors; cleared as it leaves.
     pub prototyped: bool,
+    /// Defense counters on a battle (CR 310).
+    pub defense: i32,
 }
 
 /// One resolved effect's change to a permanent's characteristics (lane d3's type-changing store):
@@ -1646,6 +1648,10 @@ pub enum Decision {
         chosen: Vec<ObjId>,
         need: u8,
     },
+    /// `Pick` an instant or sorcery card from your library or graveyard to put into your hand, or
+    /// `No` to find nothing; picking from the library (or finding nothing) shuffles it (Invasion of
+    /// Arcavios).
+    SearchLibraryOrGraveyardInstantOrSorcery,
 }
 
 /// One batch of a "one or more tokens ... enter" trigger (`Game::token_enter_batches`): (source,
@@ -2270,6 +2276,11 @@ pub struct Game {
     /// The open free-cast window may also play one of its land cards as the caster's land play,
     /// during their turn with a land play left (Evercoat Ursine: "you may play one of them"; CR 305.2).
     pub free_casts_lands: bool,
+    /// Tokens each player created this turn: (the turn, how many) (Thalisse, Reverent Medium).
+    pub tokens_created_count: [(u32, u32); 2],
+    /// Set while `Action::AttackPlaneswalker` declares an attacker at a battle: no attack tax
+    /// (Ghostly Prison and the rest tax attacks on a player and their planeswalkers only).
+    pub attacking_battle: bool,
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2617,6 +2628,8 @@ impl Game {
             devour_then: 0,
             lands_enter_tapped_turn: [0; 2],
             free_casts_lands: false,
+            tokens_created_count: [(0, 0); 2],
+            attacking_battle: false,
         }
     }
 
@@ -2897,6 +2910,7 @@ impl Game {
             last_toughness: 0,
             chosen_number: None,
             prototyped: false,
+            defense: 0,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -2928,6 +2942,14 @@ impl Game {
             Some(back) if o.transformed => back,
             _ => d,
         }
+    }
+
+    /// A battle's protector (CR 310): a Siege's is the opponent its controller chose as it entered,
+    /// 1v1 always the controller's opponent (a Siege's controller can't protect it). `None` if
+    /// `id` isn't a battle on the battlefield.
+    pub fn battle_protector(&self, id: ObjId) -> Option<PlayerId> {
+        let o = self.obj(id);
+        (o.zone == Zone::Battlefield && self.types_of(id).battle).then(|| opponent(o.controller))
     }
 
     fn modifiers(&self, id: ObjId) -> impl Iterator<Item = &Modifier> + '_ {
@@ -6087,8 +6109,9 @@ impl Game {
             self.commander_choice && matches!(to, Zone::Graveyard | Zone::Exile) && self.is_commander(id);
         // A modal double-faced card cast as its back face is its front again off the stack, unless
         // it resolves onto the battlefield (CR 712.14).
+        // So is a transforming card cast transformed (a defeated Siege's back face).
         let mdfc_spell_leaves =
-            from == Zone::Stack && to != Zone::Battlefield && self.defs[self.obj(id).def].modal_back;
+            from == Zone::Stack && to != Zone::Battlefield && self.defs[self.obj(id).def].back.is_some();
         let o = self.obj_mut(id);
         o.zone = to;
         o.void_counter = void && to == Zone::Exile;
@@ -6410,9 +6433,26 @@ impl Game {
         if to == Zone::Battlefield && from != Zone::Battlefield && self.is_token(id) {
             let c = self.obj(id).controller;
             self.token_created_turn[c] = self.turn;
+            let (t, n) = self.tokens_created_count[c];
+            self.tokens_created_count[c] = (self.turn, if t == self.turn { n + 1 } else { 1 });
             self.fire(c, When::TokenYouControlEnters, Some(id));
             self.fire_token_batch(c, id, false);
             self.fire_token_batch(opponent(c), id, true);
+        }
+        if to == Zone::Battlefield && from != Zone::Battlefield && self.types_of(id).artifact {
+            // "Whenever one or more artifacts you control enter" (Ingenious Artillerist).
+            let c = self.obj(id).controller;
+            for src in self.permanents(c).collect::<Vec<_>>() {
+                if self.lost_abilities(src) {
+                    continue;
+                }
+                let whens: Vec<When> = self.def_of(src).triggers.iter().map(|tr| tr.when).collect();
+                for (n, w) in whens.into_iter().enumerate() {
+                    if w == When::OneOrMoreArtifactsYouControlEnter {
+                        self.batch_trigger(src, n, c);
+                    }
+                }
+            }
         }
         if to == Zone::Battlefield && from != Zone::Battlefield && self.types_of(id).enchantment {
             let c = self.obj(id).controller;
@@ -6904,6 +6944,13 @@ impl Game {
                 self.obj_mut(id).loyalty = l; // CR 306.5b
                 let controller = self.obj(id).controller;
                 self.counters_placed(controller, l);
+            }
+            if def.types.battle {
+                // CR 310: a battle enters with its printed defense in defense counters.
+                let controller = self.obj(id).controller;
+                let n = def.defense.unwrap_or(0).max(0) * self.doubling(controller);
+                self.obj_mut(id).defense = n;
+                self.counters_placed(controller, n);
             }
             if def.mana_ext.enters_with_minus_counters > 0 {
                 // Glen Elendra Guardian: -1/-1 counters, which cancel +1/+1 ones (CR 704.5q).
@@ -7436,6 +7483,14 @@ impl Game {
                     .permanents(opponent(p))
                     .filter(|&w| self.types_of(w).planeswalker)
                     .collect();
+                // CR 310: a battle can be attacked by anyone but its protector (a Siege's
+                // controller and its allies; 1v1, the battles you control).
+                let battles: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&b| self.battle_protector(b).is_some_and(|q| q != p))
+                    .collect();
                 let mut v: Vec<Action> = Vec::new();
                 let (at_player, at_walker) = (
                     self.attack_tax_payable(p, false),
@@ -7448,6 +7503,7 @@ impl Game {
                     if at_walker {
                         v.extend(walkers.iter().map(|&w| Action::AttackPlaneswalker(c, w)));
                     }
+                    v.extend(battles.iter().map(|&b| Action::AttackPlaneswalker(c, b)));
                 }
                 // CR 508.1d: creatures that attack each combat if able must be declared.
                 let forced = self.must_attack_turn[p] == self.turn && self.turn > 0;
@@ -7840,8 +7896,11 @@ impl Game {
                     && f.creature_max_power.is_none_or(|m| self.power(id) <= m)
                     && (!f.in_combat || in_combat)
                     && (!f.was_dealt_damage || o.damage > 0);
+                // CR 115.4: "any target" (a player, creature or planeswalker filter) includes battles.
+                let any_target = f.players && f.creatures && f.planeswalkers;
                 let kind_ok = creature_ok
                     || (ty.planeswalker && f.planeswalkers)
+                    || (ty.battle && any_target)
                     || (ty.artifact && f.artifacts)
                     || (ty.land && f.lands)
                     || (ty.enchantment && f.enchantments)
@@ -12120,6 +12179,9 @@ impl Game {
 
     /// The defending player's attack tax on one more attacker, as a cost (0 when there's none).
     fn attack_tax_cost(&self, p: PlayerId, at_planeswalker: bool) -> ManaCost {
+        if self.attacking_battle {
+            return ManaCost::default(); // attacking a battle isn't attacking a player or planeswalker
+        }
         ManaCost {
             generic: self.attack_tax(opponent(p), at_planeswalker).min(u8::MAX as u32) as u8,
             ..ManaCost::default()
@@ -12844,8 +12906,10 @@ impl Game {
             (Pending::Priority(p), Action::Loyalty(id, n)) => self.activate_loyalty(p, id, n),
             (Pending::DeclareAttackers(_), Action::AttackPlaneswalker(c, pw)) => {
                 self.attacking_planeswalker = true;
+                self.attacking_battle = self.types_of(pw).battle;
                 let declared = self.apply(Action::Attack(c));
                 self.attacking_planeswalker = false;
+                self.attacking_battle = false;
                 declared.expect("the attacker is legal");
                 self.combat
                     .as_mut()
@@ -14265,6 +14329,13 @@ impl Game {
             for t in &mut self.triggered[before..] {
                 t.extra.get_or_insert(card); // the spell (Metallurgic Summonings: its mana value)
             }
+            if self.obj(card).from_hand {
+                let before = self.triggered.len();
+                self.fire(p, When::YouCastInstantOrSorceryFromHand, None);
+                for t in &mut self.triggered[before..] {
+                    t.extra = Some(card); // Invocation of the Founders: "copy that spell"
+                }
+            }
             let earlier = self.instants_sorceries_cast[p];
             self.instants_sorceries_cast[p] += 1;
             let before = self.triggered.len();
@@ -14449,6 +14520,9 @@ impl Game {
         }
         for c in std::mem::take(&mut self.free_casts) {
             self.obj_mut(c).cast_free = false;
+            if self.obj(c).zone == Zone::Exile {
+                self.obj_mut(c).transformed = false; // a defeated Siege not cast: front face up
+            }
             if to_hand && self.obj(c).zone == Zone::Exile {
                 self.move_to(c, Zone::Hand); // Breaching Dragonstorm: "If you don't, put that card into your hand."
             }
@@ -16292,6 +16366,22 @@ impl Game {
                 v.push(Action::No);
                 v
             }
+            Decision::SearchLibraryOrGraveyardInstantOrSorcery => {
+                let mut v: Vec<Action> = self
+                    .library_matches(p, SearchFor::InstantOrSorcery)
+                    .into_iter()
+                    .chain(
+                        self.players[p]
+                            .graveyard
+                            .iter()
+                            .copied()
+                            .filter(|&c| self.def_of(c).types.instant || self.def_of(c).types.sorcery),
+                    )
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::NameCardInLibrary { .. } => {
                 let mut seen: Vec<&str> = Vec::new();
                 let mut v = Vec::new();
@@ -17309,6 +17399,16 @@ impl Game {
                 self.sacrificed(c, p);
             }
             (Decision::SacrificeNontokenCreatureOrLoseLife { life }, _) => self.lose_life(p, life),
+            (Decision::SearchLibraryOrGraveyardInstantOrSorcery, Action::Pick(c)) => {
+                let from_library = self.obj(c).zone == Zone::Library;
+                self.move_to(c, Zone::Hand);
+                if from_library {
+                    self.finish_search(p, SearchTo::Hand, Some(c));
+                }
+            }
+            (Decision::SearchLibraryOrGraveyardInstantOrSorcery, _) => {
+                self.finish_search(p, SearchTo::Hand, None); // searched the library, found nothing
+            }
             (Decision::MayTapElseOpponentToken { card, .. }, Action::Yes) => {
                 if self.obj(card).zone == Zone::Battlefield {
                     self.obj_mut(card).tapped = true;
@@ -28132,6 +28232,37 @@ impl Game {
                     self.deal_damage(src, target, mv);
                 }
             }
+            Effect::ExileSelfCastTransformed => {
+                // A defeated Siege: exile it, then its controller may cast it transformed free.
+                let alive = self.obj(src).zone == Zone::Battlefield
+                    && item.source_zcc.is_none_or(|z| z == self.obj(src).zcc);
+                if alive {
+                    let p = item.controller;
+                    self.move_to(src, Zone::Exile);
+                    if self.obj(src).zone == Zone::Exile && self.defs[self.obj(src).def].back.is_some() {
+                        let o = self.obj_mut(src);
+                        o.transformed = true; // cast transformed: its back face
+                        o.cast_free = true;
+                        self.free_casts.push(src);
+                        self.free_caster = p;
+                    }
+                }
+            }
+            Effect::SearchLibraryOrGraveyardInstantOrSorcery => {
+                self.ask(
+                    item.controller,
+                    Decision::SearchLibraryOrGraveyardInstantOrSorcery,
+                );
+            }
+            Effect::CreateTokensPerTokenCreatedThisTurn { def } => {
+                let p = item.controller;
+                let (t, n) = self.tokens_created_count[p];
+                if t == self.turn {
+                    for _ in 0..n {
+                        self.create_token(p, def);
+                    }
+                }
+            }
             Effect::DiscoverSourceToughness => {
                 let t = if self.obj(src).zone == Zone::Battlefield {
                     self.toughness(src)
@@ -31200,6 +31331,16 @@ impl Game {
                     }
                 }
             }
+            Target::Object(id) if self.types_of(id).battle && !self.types_of(id).creature => {
+                // CR 120.3: damage to a battle removes that many defense counters; removing the
+                // last one defeats it (a Siege's "When it's defeated").
+                let before = self.obj(id).defense;
+                let after = (before - amount.max(0)).max(0);
+                self.obj_mut(id).defense = after;
+                if before > 0 && after == 0 {
+                    self.fire_source(id, When::BattleDefeated);
+                }
+            }
             Target::Object(id) if self.types_of(id).planeswalker && !self.types_of(id).creature => {
                 self.obj_mut(id).loyalty -= amount; // CR 120.3c
             }
@@ -31374,6 +31515,21 @@ impl Game {
                     .copied()
                     .filter(|&w| self.types_of(w).planeswalker && self.obj(w).loyalty <= 0),
             );
+            // CR 704.5v: a battle with no defense goes to the graveyard, unless an ability of it
+            // has triggered and not yet left the stack (a Siege's defeat trigger).
+            for &id in &self.battlefield {
+                if self.types_of(id).battle && !self.types_of(id).creature && self.obj(id).defense <= 0 {
+                    let waiting = self
+                        .items
+                        .iter()
+                        .chain(self.triggered.iter())
+                        .any(|i| i.source == id && matches!(i.kind, StackKind::Trigger(_)));
+                    let resolving = self.resolving.as_ref().is_some_and(|r| r.item.source == id);
+                    if !waiting && !resolving {
+                        dies.push(id);
+                    }
+                }
+            }
             // CR 704.5m-n: an Aura attached to nothing legal goes to the graveyard; an Equipment
             // becomes unattached.
             for &id in &self.battlefield.clone() {

@@ -3248,6 +3248,19 @@ pub enum Effect {
     /// "Lands you control enter tapped this turn." (Nahiri's Lithoforming), as
     /// `Game::lands_enter_tapped_turn`.
     YourLandsEnterTappedThisTurn,
+    /// Create a `def` token for each token you created this turn (`Game::tokens_created_count`,
+    /// counted as it resolves: Thalisse, Reverent Medium's end step Spirits).
+    CreateTokensPerTokenCreatedThisTurn {
+        def: usize,
+    },
+    /// A Siege's defeat (CR 310): exile the source, then its controller may cast it transformed
+    /// without paying its mana cost (a one-card free-cast window, `Pending::FreeCast`).
+    ExileSelfCastTransformed,
+    /// "Search your library, graveyard, and/or outside the game for an instant or sorcery card you
+    /// own, reveal it, and put it into your hand. If you search your library this way, shuffle."
+    /// (Invasion of Arcavios; nothing is outside the game here), as
+    /// `Decision::SearchLibraryOrGraveyardInstantOrSorcery`.
+    SearchLibraryOrGraveyardInstantOrSorcery,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -4421,6 +4434,14 @@ pub enum When {
     /// "Whenever another creature or artifact you control enters" (Weftstalker Ardent), once per
     /// permanent.
     AnotherCreatureOrArtifactYouControlEnters,
+    /// "Whenever one or more artifacts you control enter", batched like the token batches, with how
+    /// many entered as the amount (Ingenious Artillerist: "deals that much damage").
+    OneOrMoreArtifactsYouControlEnter,
+    /// A battle's last defense counter was removed (CR 310: it's "defeated").
+    BattleDefeated,
+    /// "Whenever you cast an instant or sorcery spell from your hand" (the spell in `extra`;
+    /// Invocation of the Founders).
+    YouCastInstantOrSorceryFromHand,
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -234,7 +234,8 @@ to the human's first decision.
     "battlefield": [
       {"id": 51, "name": "Llanowar Elves", "controller": 1, "owner": 1, "tapped": false,
        "creature": true, "land": false, "power": 1, "toughness": 1, "damage": 0, "counters": 0,
-       "loyalty": 0, "attached_to": null, "entered_turn": 2, "entered_this_turn": false}
+       "loyalty": 0, "attached_to": null, "entered_turn": 2, "entered_this_turn": false,
+       "battle": false, "defense": 0, "protector": null}
     ],
     "stack": [{"id": 60, "name": "Shock", "controller": 1}],
     "exile": [],
@@ -251,6 +252,8 @@ to the human's first decision.
 ```
 
 - `version` increases with every action; send it back with `act`.
+- A battle (`battle` true) shows its defense counters in `defense` and its `protector` (a seat). It's attacked
+  with an `AttackPlaneswalker` move, labeled "Attack the battle ...".
 - `to_act` is the seat that must decide; it is the human's seat unless `over`.
 - When `pending.kind` is `Bottom` (London mulligan), `pending.left` is how many cards are still to go on the
   bottom.

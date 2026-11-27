@@ -574,6 +574,7 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         enchanted_card_types_become: None,
         your_nontoken_creatures_are_forest_lands: false,
         attached_colors_become: None,
+        defense: None,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;

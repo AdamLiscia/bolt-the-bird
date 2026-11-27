@@ -503,3 +503,19 @@ def test_the_cabbage_merchant_names_each_food_to_tap():
     dec = {"kind": "TapNamedForCost", "source": [3, 1], "n": 0, "chosen": [[4, 1]], "need": 2}
     assert sv._decision_label(dec, "Pick", 0, "Food") == "Tap (for the cost): Food"
     assert label(dec, "No", 0) == "Don't activate it"
+
+
+def test_invasion_of_arcavios_searches_the_library_or_graveyard(monkeypatch):
+    dec = {"kind": "SearchLibraryOrGraveyardInstantOrSorcery"}
+    assert sv._decision_label(dec, "Pick", 0, "Opt") == "Put into your hand: Opt"
+    assert label(dec, "No", 0) == "Find nothing"
+
+
+def test_attacking_a_battle_says_so(monkeypatch):
+    monkeypatch.setattr(sv, "BATTLES", {"Invasion of Arcavios // Invocation of the Founders"})
+    battle = sv._label(
+        "AttackPlaneswalker", ["Serra Angel", "Invasion of Arcavios // Invocation of the Founders"], (), 0, (0, 0, 0)
+    )
+    assert battle == "Attack the battle Invasion of Arcavios // Invocation of the Founders with Serra Angel"
+    walker = sv._label("AttackPlaneswalker", ["Serra Angel", "Chandra, Torch of Defiance"], (), 0, (0, 0, 0))
+    assert walker == "Attack Chandra, Torch of Defiance with Serra Angel"

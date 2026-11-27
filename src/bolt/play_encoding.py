@@ -173,7 +173,7 @@ def encode(obs: dict, me: int, set_name: str | None = None) -> dict:
     for e in obs["battlefield"]:
         f = [
             float(e["tapped"]), float(e["creature"]), float(e["land"]), e.get("power", 0) / 10,
-            e.get("toughness", 0) / 10, e["damage"] / 10, e["counters"] / 5, e["loyalty"] / 10,
+            e.get("toughness", 0) / 10, e["damage"] / 10, e["counters"] / 5, (e["loyalty"] + e.get("defense", 0)) / 10,
             float(e["attached_to"] is not None),
             float(e["creature"] and e["entered_turn"] == obs["turn"]),
             float(e["id"] in attacking), float(e["id"] in blocking), float(e["id"] in blocked),

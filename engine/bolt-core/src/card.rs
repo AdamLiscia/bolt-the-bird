@@ -88,6 +88,8 @@ pub struct Types {
     pub basic: bool,
     /// The snow supertype (CR 205.4g): its mana is {S} when spent.
     pub snow: bool,
+    /// The battle card type (CR 310).
+    pub battle: bool,
 }
 
 impl Types {
@@ -107,6 +109,7 @@ impl Types {
                 "Legendary" => t.legendary = true,
                 "Basic" => t.basic = true,
                 "Snow" => t.snow = true,
+                "Battle" => t.battle = true,
                 _ => {}
             }
         }
@@ -1209,6 +1212,9 @@ pub struct CardDef {
     /// Deathmantle: "is a black Zombie"; the Zombie is `enchanted_creature_type_becomes`, which
     /// works for Equipment too), in `Game::colors_of`.
     pub attached_colors_become: Option<[bool; 5]>,
+    /// A battle's printed defense (CR 310): it enters with that many defense counters
+    /// (`Object::defense`). Scryfall's oracle rows don't carry it, so the script sets it.
+    pub defense: Option<i32>,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1900,6 +1906,7 @@ impl CardDef {
             extra_upkeep_for_enchanted: false,
             zones: ZonesExt::default(),
             choose_number: None,
+            defense: None,
         }
     }
 
@@ -2216,6 +2223,7 @@ impl CardDef {
             extra_upkeep_for_enchanted: false,
             zones: ZonesExt::default(),
             choose_number: None,
+            defense: None,
         }
     }
 
@@ -2532,6 +2540,7 @@ impl CardDef {
             extra_upkeep_for_enchanted: false,
             zones: ZonesExt::default(),
             choose_number: None,
+            defense: None,
         }
     }
 }

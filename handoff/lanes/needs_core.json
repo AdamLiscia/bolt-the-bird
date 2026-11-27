@@ -688,8 +688,8 @@
    "missing": "discover X",
    "lane": "d1",
    "theme": "objects_zones",
-   "owner": "mac-c",
-   "status": "done: d2 batch 47, routed to d2 by the coordinator (Effect::DiscoverSourceToughness on Game::discover; Effect::Discover(n) for discover N)"
+   "owner": "d2",
+   "status": "done: d2 batch 47 (Effect::DiscoverSourceToughness on Game::discover; Effect::Discover(n) for discover N); owner d2 (lane C never started it)"
   },
   {
    "card": "Drumbellower",
@@ -5032,7 +5032,8 @@
    "missing": "MDFC/battle; soulbond",
    "lane": "mac-b",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "d2",
+   "status": "done: d2 batch 49 (battles: Types::battle, CardDef::defense, Object::defense, Game::battle_protector, Game::attacking_battle; attacked through Action::AttackPlaneswalker; When::BattleDefeated + Effect::ExileSelfCastTransformed via the siege_battle helper in scripts.rs; Effect/Decision::SearchLibraryOrGraveyardInstantOrSorcery; When::YouCastInstantOrSorceryFromHand). Known limits: 1v1 protector is always the controller's opponent; 'outside the game' finds nothing; the defense isn't in the oracle rows, so each battle's script sets it."
   },
   {
    "card": "Tandem Lookout",
@@ -5502,7 +5503,8 @@
    "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
    "lane": "mac-c",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "core done: d2 batch 48 (When::OneOrMoreArtifactsYouControlEnter, batched, the count as amount; with Effect::DamageEachOpponentAmount). Lane B scripts the card once this reaches tarkir."
   },
   {
    "card": "Thalisse, Reverent Medium",
@@ -5510,7 +5512,8 @@
    "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
    "lane": "mac-c",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "core done: d2 batch 48 (Game::tokens_created_count, Effect::CreateTokensPerTokenCreatedThisTurn { def } on When::EndStep { your_turn_only: false }; the 1/1 flying Spirit token exists). Lane B scripts the card once this reaches tarkir."
   },
   {
    "card": "Gisa's Favorite Shovel",
@@ -7791,7 +7794,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "done: d2 batch 47 (TriggerDoubler::EquippedCreature; prowess as the Equipment's PumpAttached trigger)"
+   "status": "done: d2 batch 47 (TriggerDoubler::EquippedCreature; prowess as the Equipment's PumpAttached trigger) Known limit (OK for the demo): can miss doubling an equipped creature's own dies trigger if the Equipment is unattached first."
   },
   {
    "card": "Y'shtola, Night's Blessed",
@@ -8040,7 +8043,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "done: d2 batch 47 (When::YouCastSpellFromExile, Effect::DamageEqualExtrasManaValue, on d4's SubsystemExt::commanders_have_trigger)"
+   "status": "done: d2 batch 47 (When::YouCastSpellFromExile, Effect::DamageEqualExtrasManaValue, on d4's SubsystemExt::commanders_have_trigger) Known limit (OK for the demo): the damage comes from the Background (d4's granted-trigger copies keep it as source); it should come from the commander (matters for lifelink and deathtouch)."
   },
   {
    "card": "Smaug, Wicked Worm",
@@ -8067,7 +8070,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "done: d2 batch 47 (CardDef::choose_number, Decision::ChooseNumber, Object::chosen_number, When::OpponentCastsChosenNumber)"
+   "status": "done: d2 batch 47 (CardDef::choose_number, Decision::ChooseNumber, Object::chosen_number, When::OpponentCastsChosenNumber) Known limit (OK for the demo): the number is chosen only when Talion is cast and resolves; it should be chosen as it enters by any route."
   },
   {
    "card": "Nihil Spellbomb",

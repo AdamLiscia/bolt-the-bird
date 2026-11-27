@@ -4914,3 +4914,85 @@ fn wizards_staff_gives_prowess_and_doubles_the_equipped_creatures_triggers() {
     );
     assert_eq!(g.power(lions), 2, "not equipped");
 }
+
+/// Passes (finishing blocks) until the free-cast window opens for player 0.
+fn to_free_cast(g: &mut Game) {
+    for _ in 0..200 {
+        if g.pending == Pending::FreeCast(0) {
+            return;
+        }
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+    panic!("no free-cast window: {:?}", g.pending);
+}
+
+#[test]
+fn invasion_of_arcavios_tutors_an_instant_is_defeated_in_combat_and_copies_spells_from_your_hand() {
+    let mut g = table();
+    let gy_opt = g.add_card(0, cid("Opt"), Zone::Graveyard);
+    let lib_bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Library);
+    let lib_lions = g.add_card(0, cid("Savannah Lions"), Zone::Library);
+    let inv = hand(&mut g, 0, "Invasion of Arcavios // Invocation of the Founders");
+    act(&mut g, Action::Cast(inv));
+    for _ in 0..20 {
+        if matches!(g.pending, Pending::Decide(_)) {
+            break;
+        }
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(
+        legal.contains(&Action::Pick(gy_opt)),
+        "an instant in the graveyard"
+    );
+    assert!(
+        legal.contains(&Action::Pick(lib_bolt)),
+        "an instant in the library"
+    );
+    assert!(!legal.contains(&Action::Pick(lib_lions)), "not a creature");
+    assert!(legal.contains(&Action::No));
+    resolve_all(&mut g, &[Action::Pick(gy_opt)]);
+    assert_eq!(g.obj(gy_opt).zone, Zone::Hand);
+    assert_eq!(g.obj(inv).zone, Zone::Battlefield);
+    assert!(g.types_of(inv).battle);
+    assert_eq!(g.obj(inv).defense, 7, "it enters with its defense");
+    assert_eq!(g.battle_protector(inv), Some(1), "the opponent protects it");
+
+    // Player 0 attacks its own Siege; 8 combat damage removes all 7 defense counters.
+    let angel = put(&mut g, 0, "Serra Angel");
+    let lions: Vec<ObjId> = (0..2).map(|_| put(&mut g, 0, "Savannah Lions")).collect();
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(g
+        .legal_actions()
+        .contains(&Action::AttackPlaneswalker(angel, inv)));
+    for a in [angel, lions[0], lions[1]] {
+        act(&mut g, Action::AttackPlaneswalker(a, inv));
+    }
+    act(&mut g, Action::FinishAttacks);
+    to_free_cast(&mut g);
+    assert_eq!(g.players[1].life, 40, "the damage went to the battle");
+    assert_eq!(g.obj(inv).zone, Zone::Exile, "defeated: exiled");
+    act(&mut g, Action::Cast(inv));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(inv).zone, Zone::Battlefield);
+    assert!(g.obj(inv).transformed, "cast transformed");
+    assert_eq!(g.def_of(inv).name, "Invocation of the Founders");
+    assert!(g.types_of(inv).enchantment && !g.types_of(inv).battle);
+
+    // Invocation of the Founders: an instant cast from your hand may be copied.
+    while g.step != Step::Main2 {
+        act(&mut g, Action::PassPriority);
+    }
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[Action::Yes, Action::Target(Target::Player(1))]);
+    assert_eq!(g.players[1].life, 34, "the Bolt and its copy");
+}

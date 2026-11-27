@@ -3042,3 +3042,189 @@ fn creature_deals_combat_damage_to_you_carries_the_creature_and_the_damage() {
     assert_eq!(life(&g, 1), 40, "lost 2 in combat, gained the 2 back");
     assert_eq!(g.obj(lions).zone, Zone::Graveyard, "the creature in slot 0");
 }
+
+// ---- batch 48: batched artifact entries, tokens created this turn ----
+
+#[test]
+fn one_or_more_artifacts_entering_batch_with_the_count() {
+    let defs = set("CMD").unwrap().defs.clone();
+    let treasure = (0..defs.len())
+        .find(|&i| defs[i].token && defs[i].name == "Treasure")
+        .expect("a token");
+    let mut g = game_with(move |defs| {
+        blood_with(vec![trigger(
+            When::OneOrMoreArtifactsYouControlEnter,
+            None,
+            vec![Effect::GainLifeAmount],
+        )])(defs);
+        defs[cid("Sol Ring")].triggers.push(trigger(
+            When::Enters,
+            None,
+            vec![Effect::CreateToken {
+                who: Who::You,
+                def: treasure,
+                n: 2,
+            }],
+        ));
+    });
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Hand);
+    play(&mut g, ring, false, &[], &[]);
+    assert_eq!(
+        life(&g, 0),
+        40 + 1 + 2,
+        "Sol Ring, then both Treasures as one batch of 2"
+    );
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Hand);
+    play(&mut g, lions, false, &[], &[]);
+    assert_eq!(life(&g, 0), 43, "not an artifact");
+}
+
+#[test]
+fn tokens_created_this_turn_are_counted_per_player() {
+    let defs = set("CMD").unwrap().defs.clone();
+    let treasure = (0..defs.len())
+        .find(|&i| defs[i].token && defs[i].name == "Treasure")
+        .expect("a token");
+    let mut g = game_with(blood_with(vec![trigger(
+        When::EndStep {
+            your_turn_only: false,
+        },
+        None,
+        vec![Effect::CreateTokensPerTokenCreatedThisTurn { def: treasure }],
+    )]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    g.tokens_created_count[0] = (g.turn, 2);
+    g.tokens_created_count[1] = (g.turn, 5);
+    while g.step != Step::End {
+        let a = if matches!(g.pending, bolt_core::Pending::DeclareAttackers(_)) {
+            Action::FinishAttacks
+        } else {
+            Action::PassPriority
+        };
+        act(&mut g, a);
+    }
+    resolve_all(&mut g, &[]);
+    let treasures = g
+        .permanents(0)
+        .filter(|&c| g.def_of(c).name == "Treasure")
+        .count();
+    assert_eq!(treasures, 2, "your two tokens, not the opponent's");
+    assert_eq!(g.tokens_created_count[0], (g.turn, 4), "the new ones count too");
+}
+
+fn invasion() -> usize {
+    cid("Invasion of Arcavios // Invocation of the Founders")
+}
+
+/// Casts Invasion of Arcavios for player 0, finding nothing with its search.
+fn cast_invasion(g: &mut Game) -> ObjId {
+    let inv = g.add_card(0, invasion(), Zone::Hand);
+    act(g, Action::Cast(inv));
+    resolve_all(g, &[Action::No]);
+    assert_eq!(g.obj(inv).zone, Zone::Battlefield);
+    inv
+}
+
+#[test]
+fn damage_to_a_battle_removes_defense_counters_and_any_target_includes_battles() {
+    let mut g = game_with(|_| {});
+    let inv = cast_invasion(&mut g);
+    assert_eq!(g.obj(inv).defense, 7);
+    let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Hand);
+    act(&mut g, Action::Cast(bolt));
+    assert!(
+        g.legal_actions().contains(&Action::Target(obj(inv))),
+        "any target: a battle"
+    );
+    act(&mut g, Action::Target(obj(inv)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(inv).defense, 4);
+    assert_eq!(g.players[1].life, 40);
+}
+
+#[test]
+fn a_battle_with_no_defense_and_no_waiting_trigger_goes_to_the_graveyard() {
+    let mut g = game_with(|d| {
+        let inv = &mut d[invasion()];
+        inv.defense = Some(3);
+        inv.triggers.retain(|t| t.when != When::BattleDefeated);
+    });
+    let inv = cast_invasion(&mut g);
+    let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Hand);
+    play(&mut g, bolt, false, &[obj(inv)], &[]);
+    assert_eq!(g.obj(inv).zone, Zone::Graveyard, "CR 704.5v");
+}
+
+#[test]
+fn a_defeated_siege_not_cast_stays_exiled_front_face_up() {
+    let mut g = game_with(|d| d[invasion()].defense = Some(3));
+    let inv = cast_invasion(&mut g);
+    let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Hand);
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(obj(inv)));
+    for _ in 0..20 {
+        if g.pending == bolt_core::Pending::FreeCast(0) {
+            break;
+        }
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.pending, bolt_core::Pending::FreeCast(0));
+    assert!(
+        g.legal_actions().contains(&Action::Cast(inv)),
+        "cast it transformed, free"
+    );
+    act(&mut g, Action::PassPriority);
+    assert_eq!(g.obj(inv).zone, Zone::Exile);
+    assert!(!g.obj(inv).transformed);
+    assert_eq!(
+        g.def_of(inv).name,
+        "Invasion of Arcavios // Invocation of the Founders"
+    );
+}
+
+#[test]
+fn the_protector_cant_attack_a_battle_and_attack_taxes_dont_apply_to_it() {
+    let mut g = game_with(|_| {});
+    let inv = cast_invasion(&mut g);
+    let mine = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Savannah Lions"), Zone::Battlefield);
+    g.add_card(1, cid("Ghostly Prison"), Zone::Battlefield);
+    g.start_turn(5, 0);
+    while g.pending != bolt_core::Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    let untapped = g.permanents(0).filter(|&x| !g.obj(x).tapped).count();
+    act(&mut g, Action::AttackPlaneswalker(mine, inv));
+    assert_eq!(
+        g.permanents(0).filter(|&x| !g.obj(x).tapped).count(),
+        untapped - 1,
+        "only the attacker taps: no Ghostly Prison tax"
+    );
+    g.start_turn(6, 1);
+    while g.pending != bolt_core::Pending::DeclareAttackers(1) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(
+        !g.legal_actions()
+            .contains(&Action::AttackPlaneswalker(theirs, inv)),
+        "its protector"
+    );
+}
+
+#[test]
+fn you_cast_instant_or_sorcery_from_hand_skips_other_zones() {
+    let mut g = game_with(|d| {
+        let lions = cid("Savannah Lions");
+        d[lions]
+            .triggers
+            .push(trigger(When::YouCastInstantOrSorceryFromHand, None, gain_one()));
+    });
+    g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let tt = g.add_card(0, cid("Think Twice"), Zone::Hand);
+    play(&mut g, tt, false, &[], &[]);
+    assert_eq!(g.players[0].life, 41, "from the hand");
+    act(&mut g, Action::CastFlashback(tt));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 41, "flashback: from the graveyard");
+}

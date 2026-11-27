@@ -1117,6 +1117,18 @@ fn may(d: &mut CardDef, when: When, targets: Vec<Filter>, effects: Vec<Effect>) 
     });
 }
 
+/// A Siege battle (CR 310) with this printed defense: the reminder text's "When it's defeated,
+/// exile it, then cast it transformed" as its trigger (cast it free, or don't).
+fn siege_battle(d: &mut CardDef, defense: i32) {
+    d.defense = Some(defense);
+    on(
+        d,
+        When::BattleDefeated,
+        vec![],
+        vec![Effect::ExileSelfCastTransformed],
+    );
+}
+
 const SPELL: Filter = Filter {
     players: false,
     creatures: false,
