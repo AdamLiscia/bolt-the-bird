@@ -3086,6 +3086,11 @@ fn two_two_power_creatures_crew_a_crew_4_together() {
     resolve_all(&mut g, &[]);
     assert!(g.types_of(chariot).creature, "crewed");
     assert!(g.obj(cats[0]).tapped && g.obj(cats[1]).tapped);
+    let crewers: Vec<ObjId> = g.crewed.iter().filter(|e| e.0 == chariot).map(|e| e.2).collect();
+    assert!(
+        crewers.contains(&cats[0]) && crewers.contains(&cats[1]),
+        "both recorded as crewers"
+    );
 }
 
 #[test]

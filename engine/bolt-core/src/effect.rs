@@ -2667,6 +2667,9 @@ pub enum Effect {
     /// "Each opponent sacrifices a nontoken creature or planeswalker of their choice." (Sheoldred //
     /// The True Scriptures), as `Decision::SacrificeNontokenCreatureOrPlaneswalker`.
     OpponentSacrificesNontokenCreatureOrPlaneswalker,
+    /// Exile each creature that crewed the source this turn; return them to the battlefield tapped
+    /// under their owner's control at the beginning of the next end step (Golden Argosy).
+    ExileCrewersReturnTappedAtEnd,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
