@@ -261,3 +261,10 @@ def test_dredge_reads_as_returning_a_card_or_drawing():
 def test_sheoldred_each_opponent_sacrifices_a_nontoken_creature_or_planeswalker():
     dec = {"kind": "SacrificeNontokenCreatureOrPlaneswalker"}
     assert sv._decision_label(dec, "Pick", 0, "Hungry Ghoul") == "Sacrifice Hungry Ghoul"
+
+
+def test_karadors_graveyard_cast_is_named():
+    karador = sv._label("CastFromGraveyardAs", ["Llanowar Elves"], (5,), 0, (0, 5, -1))
+    assert karador == "Cast Llanowar Elves from your graveyard (Karador)"
+    muldrotha = sv._label("CastFromGraveyardAs", ["Llanowar Elves"], (1,), 0, (0, 1, -1))
+    assert muldrotha == "Cast Llanowar Elves from your graveyard (option 2)"

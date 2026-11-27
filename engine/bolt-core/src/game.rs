@@ -1895,7 +1895,14 @@ pub struct Game {
     /// Saddle: the other creatures that saddled a Mount with its named one, as (mount, riders),
     /// recorded as the cost is paid for `Effect::BecomeSaddled`.
     saddle_extra: Vec<(ObjId, Vec<ObjId>)>,
+    /// The turn each player last cast a creature spell from their graveyard with Karador's
+    /// permission (`ManaExt::creature_from_graveyard_once_each_turn`).
+    pub karador_turn: [u32; 2],
 }
+
+/// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
+/// creature spell (0 through 4 are Muldrotha's permanent types).
+pub const KARADOR_CAST: u8 = 5;
 
 pub fn opponent(p: PlayerId) -> PlayerId {
     1 - p
@@ -2188,6 +2195,7 @@ impl Game {
             saddle_extra: Vec::new(),
             hand_links: Vec::new(),
             saddled: Vec::new(),
+            karador_turn: [0; 2],
         }
     }
 
@@ -7086,6 +7094,26 @@ impl Game {
                 }
             }
         }
+        // Karador: once during each of your turns, a creature spell from your graveyard.
+        if p == self.active
+            && self.karador_turn[p] != self.turn
+            && self.permanents(p).any(|x| {
+                self.def_of(x).mana_ext.creature_from_graveyard_once_each_turn && !self.lost_abilities(x)
+            })
+        {
+            let flash_all = self.permanents(p).any(|x| self.def_of(x).grants_flash);
+            for &c in &self.players[p].graveyard {
+                let def = self.def_of(c);
+                let timing = sorcery_timing || flash_all || def.keywords.has(Keywords::FLASH);
+                if def.types.creature
+                    && !def.types.land
+                    && timing
+                    && self.mode_affordable(p, c, CastMode::default())
+                {
+                    v.push(Action::CastFromGraveyardAs(c, KARADOR_CAST));
+                }
+            }
+        }
         // Cast from the graveyard by removing counters from your creatures.
         let available: i32 = self
             .creatures(p)
@@ -7609,6 +7637,12 @@ impl Game {
                     0
                 }
             }
+            Some(Reduction::PerCreatureCardInYourGraveyard) => self.players[p]
+                .graveyard
+                .iter()
+                .filter(|&&x| self.def_of(x).types.creature)
+                .count()
+                .min(255) as u8,
             Some(Reduction::PerInstantSorceryInGraveyard) => self.players[p]
                 .graveyard
                 .iter()
@@ -10652,7 +10686,11 @@ impl Game {
             }
             (Pending::Priority(p), Action::Cast(c)) => self.cast(p, c, CastMode::default()),
             (Pending::Priority(p), Action::CastFromGraveyardAs(c, t)) => {
-                self.graveyard_types_used[p][t as usize] = true;
+                if t == KARADOR_CAST {
+                    self.karador_turn[p] = self.turn;
+                } else {
+                    self.graveyard_types_used[p][t as usize] = true;
+                }
                 self.cast(p, c, CastMode::default());
             }
             (Pending::Priority(p), Action::CastFromGraveyard(c)) => {
