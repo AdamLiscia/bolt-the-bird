@@ -18,7 +18,7 @@ import time
 import bolt_engine as be
 import torch
 
-from bolt.play_encoding import collate, encode
+from bolt.play_encoding import KINDS, collate, encode
 
 # The card set games are played in (BOLT_PLAY_SET, default FDN: the engine's original call).
 PLAY_SET = os.environ.get("BOLT_PLAY_SET", "FDN").upper()
@@ -67,6 +67,15 @@ def _beat(gi: int) -> None:
         arr, slot = _BEAT
         arr[2 * slot] = time.time()
         arr[2 * slot + 1] = gi
+
+
+def _card_names() -> list:
+    try:
+        return list(be.card_names() if PLAY_SET == "FDN" else be.card_names(PLAY_SET))
+    except BaseException as e:
+        if isinstance(e, (KeyboardInterrupt, SystemExit)):
+            raise
+        return []
 
 
 def board_summary(g) -> dict:
@@ -154,10 +163,34 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
         slow.add(gi)
         return True
 
-    def play(gi, i):
+    import collections
+
+    last = [collections.deque(maxlen=10) for _ in games]  # each game's last moves, for a panic's record
+    names = _card_names()
+
+    def play(gi, i, obs=None, enc=None):
         _beat(gi)
+        try:  # (kind, card name or None): cheap, and what a panic's replay needs to find its spot
+            if obs is not None:
+                kind, cards = obs["legal_actions"][i][0], obs["legal_cards"][i]
+            elif enc is not None:  # the network's move: its encoding has the kind and the cards (+1)
+                k = enc["act_kind"][i]
+                kind, cards = KINDS[k] if k < len(KINDS) else "?", [c - 1 for c in enc["act_card"][i]]
+            else:
+                kind, cards = games[gi].legal_actions()[i][0], ()
+            c = next((x for x in cards if x >= 0), None)
+            last[gi].append((kind, names[c] if c is not None and c < len(names) else None))
+        except BaseException as e:
+            if isinstance(e, (KeyboardInterrupt, SystemExit)):
+                raise
         games[gi].step(i)
         moves[gi] += 1
+
+    def failed(gi, e) -> None:
+        """An engine error ends game gi: its result says what it was doing, for the hang log."""
+        results[gi] = {"result": "error", "turn": games[gi].turn,
+                       "panic": {"message": str(e)[:300], "moves": moves[gi], "turn": games[gi].turn,
+                                 "last": list(last[gi])}}  # fmt: skip
 
     while live:
         waiting = []
@@ -180,10 +213,10 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
                     if seat in ("net", "opp"):
                         obs = g.observation(who)
                         if not obs["legal_actions"]:  # an engine bug: nothing legal to do
-                            results[gi] = {"result": "error", "turn": g.turn}
+                            failed(gi, "no legal actions")
                             break
                         if len(obs["legal_actions"]) == 1:
-                            play(gi, 0)
+                            play(gi, 0, obs)
                             continue
                         waiting.append((gi, who, encode(obs, who)))
                         break
@@ -194,16 +227,17 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
                         i = smart_call(
                             gi, (smart[0], smart[1], seed_, *smart[2:]), smart[2] if len(smart) > 2 else None
                         )
+                    seen = None
                     if who in record:
-                        obs = g.observation(who)
-                        if len(obs["legal_actions"]) > 1:
-                            steps.append({"game": game_offset + gi, "seat": who, "enc": encode(obs, who),
+                        seen = g.observation(who)
+                        if len(seen["legal_actions"]) > 1:
+                            steps.append({"game": game_offset + gi, "seat": who, "enc": encode(seen, who),
                                           "action": i, "logp": None, "value": None})  # fmt: skip
-                    play(gi, i)
+                    play(gi, i, seen)
             except BaseException as e:  # an engine error (a Rust panic is a BaseException) ends that game
                 if isinstance(e, (KeyboardInterrupt, SystemExit)):
                     raise
-                results[gi] = {"result": "error", "turn": g.turn}
+                failed(gi, e)
             if gi not in slow:
                 own[gi] += time.time() - since
         if waiting:
@@ -239,11 +273,11 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
                         steps.append(step)
                 since = time.time()
                 try:
-                    play(gi, i)
+                    play(gi, i, enc=enc)
                 except BaseException as e:  # a Rust panic too
                     if isinstance(e, (KeyboardInterrupt, SystemExit)):
                         raise
-                    results[gi] = {"result": "error", "turn": games[gi].turn}
+                    failed(gi, e)
                 own[gi] += time.time() - since
         before = len(games) - len(live)
         live = [gi for gi in live if results[gi] is None]
@@ -442,12 +476,17 @@ def run_parallel(net, jobs, workers=6, chunk=None, seed=0, retries=2, compact=Fa
                         raise RuntimeError(f"job chunk {k} kept stalling outside a game")
                 pending.appendleft(k)
     keys = sorted(done)
-    for k in keys:  # games stopped by their own time budget (run_games' game_s): logged here, once
+    for k in keys:  # games stopped by their time budget, or by an engine panic: logged here, once
         for gi, r in enumerate(done[k]["results"]):
             if r.get("slow"):
                 rec = {**_hang_record(parts[k][gi], seats, kw, k + gi), "why": "over its time budget", **r["slow"]}
                 print(f"SLOW: game {k + gi} (seed {rec['seed']}) stopped after {r['slow'].get('seconds')}s, "
                       f"{r['slow'].get('moves')} moves, permanents {r['slow'].get('permanents')}", flush=True)  # fmt: skip
+                log(rec)
+            if r.get("panic"):
+                rec = {**_hang_record(parts[k][gi], seats, kw, k + gi), "why": "engine panic", **r["panic"]}
+                print(f"PANIC: game {k + gi} (seed {rec['seed']}) at move {rec['moves']}: {rec['message'][:120]}",
+                      flush=True)  # fmt: skip
                 log(rec)
     results = [r for k in keys for r in done[k]["results"]]
     if compact:
