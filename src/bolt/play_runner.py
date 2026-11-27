@@ -285,9 +285,12 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
         done = len(games) - len(live)
         if progress and (done // progress > before // progress or (done == len(games) and done != before)):
             # a stalled game shows as a worker that stops reporting (2026-11-27, the desktop's cmd_play_1)
-            slow = max(live, key=lambda gi: moves[gi], default=None)
+            # (not `slow`: that name is the set of games whose samples are dropped, 2026-11-27)
+            longest = max(live, key=lambda gi: moves[gi], default=None)
             tail = (
-                f"; longest still playing: game {game_offset + slow}, {moves[slow]} moves" if slow is not None else ""
+                f"; longest still playing: game {game_offset + longest}, {moves[longest]} moves"
+                if longest is not None
+                else ""
             )
             print(f"[worker {os.getpid()}] {done}/{len(games)} games done, {time.time() - t0:.0f}s{tail}", flush=True)
     if slow:  # games stopped for time, or ended by an engine error, leave no samples
@@ -489,8 +492,10 @@ def run_parallel(net, jobs, workers=6, chunk=None, seed=0, retries=2, compact=Fa
                       f"{r['slow'].get('moves')} moves, permanents {r['slow'].get('permanents')}", flush=True)  # fmt: skip
                 log(rec)
             if r.get("panic"):
-                rec = {**_hang_record(parts[k][gi], seats, kw, k + gi), "why": "engine panic", **r["panic"]}
-                print(f"PANIC: game {k + gi} (seed {rec['seed']}) at move {rec['moves']}: {rec['message'][:120]}",
+                rec = {**_hang_record(parts[k][gi], seats, kw, k + gi), "why": "engine panic", **r["panic"],
+                       "dropped_steps": r.get("dropped_steps", 0)}  # fmt: skip
+                print(f"PANIC: game {k + gi} (seed {rec['seed']}) at move {rec['moves']}, {rec['dropped_steps']} "
+                      f"recorded decisions dropped: {rec['message'][:120]}",
                       flush=True)  # fmt: skip
                 log(rec)
     results = [r for k in keys for r in done[k]["results"]]

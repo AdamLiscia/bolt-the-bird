@@ -37,7 +37,8 @@ def to_arrays(steps: list[dict], results: list[dict]) -> dict:
         "obj_off": np.concatenate([[0], np.cumsum(n_obj)]).astype(np.int64),
         "act_off": np.concatenate([[0], np.cumsum(n_act)]).astype(np.int64),
         "card": cat("card", np.int16), "zone": cat("zone", np.int8), "feats": f16(cat("feats", np.float32, len(FEATS))),
-        "globals": np.asarray([s["enc"]["globals"] for s in steps], dtype=np.float32),
+        # (0, n) when no step was recorded (every game of a matchup dropped), so it concatenates with the rest
+        "globals": np.asarray([s["enc"]["globals"] for s in steps], dtype=np.float32).reshape(-1, len(GLOBAL_NAMES)),
         "act_kind": cat("act_kind", np.int8), "act_ptr": cat("act_ptr", np.int16, 3),
         "act_card": cat("act_card", np.int16, 3), "act_num": f16(cat("act_num", np.float32, 2)),
         "act_player": cat("act_player", np.int8),
