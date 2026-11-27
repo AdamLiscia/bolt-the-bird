@@ -2065,6 +2065,72 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::YouCastCreature, vec![], vec![pay, draw(1)]);
             },
         ),
+        // ---- Core: triggers, batch 43 (idea decks: Y'shtola, Rocco, Alela, Prosper, Dakkon; batched token entries) ----
+        "Y'shtola, Night's Blessed" => s(
+            &[
+                "At the beginning of each end step, if a player lost 4 or more life this turn, you draw a card.",
+                "Whenever you cast a noncreature spell with mana value 3 or greater, Y'shtola deals 2 damage to each opponent and you gain 2 life.",
+            ],
+            |d, _| {
+                let lost = Condition::PlayerLostLifeThisTurnAtLeast(4);
+                conditional(d, When::EndStep { your_turn_only: false }, lost, vec![], vec![draw(1)]);
+                let drain = vec![damage(2, Recipient::EachOpponent), Effect::GainLife { who: Who::You, n: 2 }];
+                on(d, When::YouCastNoncreatureMvAtLeast(3), vec![], drain);
+            },
+        ),
+        "Uncover the Moon-Letters" => s(
+            &["Whenever you cast a noncreature spell, you may draw X cards, where X is the amount of mana spent to cast that spell. If you do, discard two cards."],
+            |d, _| may(d, When::YouCastNoncreatureManaSpent, vec![], vec![Effect::DrawAmount, discard(2)]),
+        ),
+        "Thopter Assembly" => s(
+            &["At the beginning of your upkeep, if you control no Thopters other than this creature, return this creature to its owner's hand and create five 1/1 colorless Thopter artifact creature tokens with flying."],
+            |d, t| {
+                let alone = Condition::ControlNoOtherSubtype("Thopter");
+                let effects = vec![Effect::BounceSelf, Effect::CreateToken { who: Who::You, def: t.thopter, n: 5 }];
+                conditional(d, When::Upkeep { your_turn_only: true }, alone, vec![], effects);
+            },
+        ),
+        "Nihil Spellbomb" => s(
+            &[
+                "{T}, Sacrifice this artifact: Exile target player's graveyard.",
+                "When this artifact is put into a graveyard from the battlefield, you may pay {B}. If you do, draw a card.",
+            ],
+            |d, _| {
+                let n = activated(d, "", true, vec![Filter::PLAYER], vec![Effect::ExileGraveyard { who: Who::TargetPlayer(0) }]);
+                d.activated[n].sacrifice_self = true;
+                let pay = Effect::MayPay(ManaCost::parse("{B}").expect("a mana cost"));
+                on(d, When::ThisPutIntoGraveyardFromBattlefield, vec![], vec![pay, draw(1)]);
+            },
+        ),
+        "Crime Novelist" => s(
+            &["Whenever you sacrifice an artifact, put a +1/+1 counter on this creature and add {R}."],
+            |d, _| {
+                let effects = vec![Effect::CountersSelf { n: 1 }, Effect::AddMana { color: Color::Red, n: 1 }];
+                on(d, When::YouSacrificeArtifact, vec![], effects);
+            },
+        ),
+        "Smaug, Wicked Worm" => s(
+            &[
+                "When Smaug enters, create X tapped Treasure tokens, where X is the number of artifacts your opponents control.",
+                "Whenever you cast a spell, if mana from a Treasure was spent to cast it, you draw a card and lose 1 life.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::CreateTappedTokensPerOpponentArtifact { def: t.treasure }]);
+                let effects = vec![Effect::StopUnlessTreasureManaSpentOnExtra, draw(1), Effect::LoseLife { who: Who::You, n: 1 }];
+                on(d, When::YouCast, vec![], effects);
+            },
+        ),
+        "Twilight Drover" => s(
+            &[
+                "Whenever a creature token leaves the battlefield, put a +1/+1 counter on this creature.",
+                "{2}{W}, Remove a +1/+1 counter from this creature: Create two 1/1 white Spirit creature tokens with flying.",
+            ],
+            |d, t| {
+                on(d, When::CreatureTokenLeavesBattlefield, vec![], vec![Effect::CountersSelf { n: 1 }]);
+                let n = activated(d, "{2}{W}", false, vec![], vec![Effect::CreateToken { who: Who::You, def: t.spirit, n: 2 }]);
+                d.activated[n].remove_plus_counters = 1;
+            },
+        ),
         _ => None,
     }
 }
@@ -2385,4 +2451,12 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Reconnaissance Mission",
     "Tymna the Weaver",
     "Lifecrafter's Bestiary",
+    // Core: triggers, batch 43
+    "Y'shtola, Night's Blessed",
+    "Uncover the Moon-Letters",
+    "Thopter Assembly",
+    "Nihil Spellbomb",
+    "Crime Novelist",
+    "Smaug, Wicked Worm",
+    "Twilight Drover",
 ];

@@ -4463,3 +4463,123 @@ fn tymna_pays_a_life_to_draw_after_combat_damage_to_the_opponent() {
     assert_eq!(g.players[0].life, 40 + 2 - 1, "lifelink, then paid one");
     assert_eq!(g.players[0].hand.len(), hand + 1);
 }
+
+// ---- Core: triggers, batch 43 ----
+
+#[test]
+fn yshtola_draws_after_a_big_loss_and_drains_on_big_noncreature_spells() {
+    let mut g = table();
+    put(&mut g, 0, "Y'shtola, Night's Blessed");
+    let ring = hand(&mut g, 0, "Sol Ring");
+    play(&mut g, ring, false, &[], &[]);
+    assert_eq!(g.players[1].life, 40, "mana value 1");
+    let blood = hand(&mut g, 0, "Exquisite Blood"); // mana value 5
+    play(&mut g, blood, false, &[], &[]);
+    assert_eq!(
+        (g.players[0].life, g.players[1].life),
+        (42, 38),
+        "Y'shtola's drain"
+    );
+    let library = g.players[0].library.len();
+    into_end_step(&mut g);
+    drain(&mut g);
+    assert_eq!(g.players[0].library.len(), library, "only 2 lost this turn");
+    // Next turn: two drains are 4 life lost.
+    to_step(&mut g, 5, 0, Step::Main1);
+    for _ in 0..2 {
+        let blood = hand(&mut g, 0, "Exquisite Blood");
+        put(&mut g, 0, "Swamp");
+        play(&mut g, blood, false, &[], &[]);
+    }
+    assert!(g.players[1].life <= 34);
+    let library = g.players[0].library.len();
+    into_end_step(&mut g);
+    drain(&mut g);
+    assert_eq!(g.players[0].library.len(), library - 1, "4 lost: draw");
+}
+
+#[test]
+fn uncover_the_moon_letters_draws_the_mana_spent_then_discards_two() {
+    let mut g = table();
+    put(&mut g, 0, "Uncover the Moon-Letters");
+    let signet = hand(&mut g, 0, "Arcane Signet");
+    let before = g.players[0].hand.len();
+    act(&mut g, Action::Cast(signet));
+    drain(&mut g);
+    // -1 cast, +2 drawn, -2 discarded.
+    assert_eq!(g.players[0].hand.len(), before - 1);
+    assert_eq!(g.players[0].graveyard.len(), 2);
+}
+
+#[test]
+fn thopter_assembly_bounces_itself_for_five_thopters_when_alone() {
+    let mut g = table();
+    let assembly = put(&mut g, 0, "Thopter Assembly");
+    to_step(&mut g, 5, 0, Step::Main1);
+    assert_eq!(g.obj(assembly).zone, Zone::Hand);
+    assert_eq!(tokens(&g, 0, "Thopter").len(), 5);
+    let again = put(&mut g, 0, "Thopter Assembly");
+    to_step(&mut g, 7, 0, Step::Main1);
+    assert_eq!(g.obj(again).zone, Zone::Battlefield, "other Thopters: nothing");
+}
+
+#[test]
+fn nihil_spellbomb_exiles_a_graveyard_and_pays_black_to_draw() {
+    let mut g = table();
+    let bomb = put(&mut g, 0, "Nihil Spellbomb");
+    let card = g.add_card(1, cid("Lightning Bolt"), Zone::Graveyard);
+    let library = g.players[0].library.len();
+    act(&mut g, Action::Activate(bomb, 0));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[Action::Yes]);
+    assert_eq!(g.obj(card).zone, Zone::Exile);
+    assert!(in_graveyard(&g, 0, bomb));
+    assert_eq!(g.players[0].library.len(), library - 1, "paid {{B}}: drew");
+}
+
+#[test]
+fn crime_novelist_grows_and_adds_red_on_an_artifact_sacrifice() {
+    let mut g = table();
+    let novelist = put(&mut g, 0, "Crime Novelist");
+    let bomb = put(&mut g, 0, "Nihil Spellbomb");
+    act(&mut g, Action::Activate(bomb, 0));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[Action::No]);
+    assert_eq!(g.obj(novelist).counters, 1);
+}
+
+#[test]
+fn smaug_makes_tapped_treasures_per_opponent_artifact_and_draws_on_treasure_spells() {
+    let mut g = table();
+    put(&mut g, 1, "Sol Ring");
+    put(&mut g, 1, "Arcane Signet");
+    let smaug = hand(&mut g, 0, "Smaug, Wicked Worm");
+    play(&mut g, smaug, false, &[], &[]);
+    let treasures = tokens(&g, 0, "Treasure");
+    assert_eq!(treasures.len(), 2);
+    assert!(treasures.iter().all(|&t| g.obj(t).tapped));
+    let library = g.players[0].library.len();
+    let lions = hand(&mut g, 0, "Savannah Lions");
+    play(&mut g, lions, false, &[], &[]);
+    assert_eq!(g.players[0].library.len(), library, "no Treasure mana: no card");
+}
+
+#[test]
+fn twilight_drover_grows_when_any_creature_token_leaves_and_makes_spirits() {
+    let mut g = table();
+    let drover = put(&mut g, 0, "Twilight Drover");
+    let spirit = token_def(&g, "Spirit");
+    let theirs = g.add_card(1, spirit, Zone::Battlefield);
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[obj(theirs)], &[]);
+    assert_eq!(g.obj(drover).counters, 1, "the opponent's token");
+    let n = g
+        .legal_actions()
+        .into_iter()
+        .find(|a| matches!(a, Action::Activate(x, _) if *x == drover))
+        .expect("its ability");
+    act(&mut g, n);
+    drain(&mut g);
+    assert_eq!(g.obj(drover).counters, 0);
+    assert_eq!(tokens(&g, 0, "Spirit").len(), 2);
+}

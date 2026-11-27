@@ -7700,7 +7700,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 43 (When::YouCastNoncreatureManaSpent)"
   },
   {
    "card": "Valeria Richards, Precocious",
@@ -7727,7 +7727,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 43 (Condition::PlayerLostLifeThisTurnAtLeast)"
   },
   {
    "card": "Angelic Renewal",
@@ -7787,10 +7787,10 @@
    "card": "Nim Deathmantle",
    "deck": "IDEA Rocco, Cabaretti Caterer",
    "missing": "a nontoken creature to your graveyard from the battlefield: may pay {4}, return and attach",
-   "lane": "d2",
+   "lane": "d3",
    "theme": "triggers",
-   "owner": "d2",
-   "status": "waiting on d3 (routed): 'is a black Zombie' replaces creature types; d2 has the trigger part drafted (nontoken creature to your graveyard from the battlefield, may pay {4}, return and attach)"
+   "owner": "d3",
+   "status": "moved to d3 whole (coordinator, 2026-11-27): d3 has the pieces on its branch (db510f5)"
   },
   {
    "card": "Twilight Drover",
@@ -7799,7 +7799,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 43 (When::CreatureTokenLeavesBattlefield)"
   },
   {
    "card": "Adeline, Resplendent Cathar",
@@ -7907,7 +7907,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "skipped by d2: already scripted on lane-d3 (pg_d3)"
   },
   {
    "card": "Thopter Assembly",
@@ -7916,7 +7916,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 43 (Condition::ControlNoOtherSubtype)"
   },
   {
    "card": "Thopter Spy Network",
@@ -7931,10 +7931,10 @@
    "card": "Zur the Enchanter",
    "deck": "IDEA Alela, Artful Provocateur",
    "missing": "attacks: may search an enchantment MV 3 or less onto the battlefield",
-   "lane": "d2",
+   "lane": "d3",
    "theme": "triggers",
-   "owner": "d2",
-   "status": "needs core (d3, routed by the coordinator): SearchFor an enchantment card with mana value 3 or less; the attack trigger exists (When::Attacks + may)"
+   "owner": "d3",
+   "status": "moved to d3 whole (coordinator, 2026-11-27): d3 has the pieces on its branch (db510f5)"
   },
   {
    "card": "Crime Novelist",
@@ -7943,7 +7943,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 43 (existing pieces)"
   },
   {
    "card": "Decadent Dragon // Expensive Taste",
@@ -7979,7 +7979,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 43 (Effect::CreateTappedTokensPerOpponentArtifact; the Treasure-mana check is on resolution, StopUnlessTreasureManaSpentOnExtra)"
   },
   {
    "card": "Weftstalker Ardent",
@@ -8006,7 +8006,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 43 (existing pieces)"
   },
   {
    "card": "Nazgûl",

@@ -1522,6 +1522,10 @@ pub enum Decision {
     ChooseExiledToPlay { cards: Vec<ObjId> },
 }
 
+/// One batch of a "one or more tokens ... enter" trigger (`Game::token_enter_batches`): (source,
+/// trigger number, controller, the tokens that entered with their zcc).
+pub type TokenBatch = (ObjId, usize, PlayerId, Vec<(ObjId, u32)>);
+
 /// Options for [`Game::new_commander_with`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CommanderOptions {
@@ -2090,6 +2094,10 @@ pub struct Game {
     /// End-Blaze Epiphany's "when that creature dies this turn": (creature, its zcc, source, the
     /// source's trigger number, controller, the turn), once.
     pub delayed_slot_dies: Vec<(ObjId, u32, ObjId, usize, PlayerId, u32)>,
+    /// Batched "one or more tokens ... enter" triggers (`When::OneOrMoreTokensYouControlEnter`,
+    /// `When::OneOrMoreTokensOpponentsControlEnter`): (source, trigger number, controller, the
+    /// tokens that entered with their zcc), one entry per batch, newest last.
+    pub token_enter_batches: Vec<TokenBatch>,
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2418,6 +2426,7 @@ impl Game {
             trigger_snapshots: Vec::new(),
             clues_sacrificed: [(0, 0); 2],
             delayed_slot_dies: Vec::new(),
+            token_enter_batches: Vec::new(),
         }
     }
 
@@ -5051,6 +5060,62 @@ impl Game {
         }
     }
 
+    /// Token `token` entered: `p`'s "one or more tokens you control enter" triggers (`opponents`
+    /// false; `p` controls it) or "one or more tokens your opponents control enter" (`opponents`
+    /// true), batched as `batch_trigger` does, with the token added to the batch's list in
+    /// `Game::token_enter_batches`.
+    fn fire_token_batch(&mut self, p: PlayerId, token: ObjId, opponents: bool) {
+        let zcc = self.obj(token).zcc;
+        for id in self.permanents(p).collect::<Vec<_>>() {
+            if self.lost_abilities(id) {
+                continue;
+            }
+            let whens: Vec<When> = self.def_of(id).triggers.iter().map(|tr| tr.when).collect();
+            for (n, w) in whens.into_iter().enumerate() {
+                let once = match w {
+                    When::OneOrMoreTokensYouControlEnter if !opponents => false,
+                    When::OneOrMoreTokensOpponentsControlEnter { once_each_turn } if opponents => {
+                        once_each_turn
+                    }
+                    _ => continue,
+                };
+                let waiting = self
+                    .triggered
+                    .iter()
+                    .any(|t| t.source == id && t.kind == StackKind::Trigger(n) && t.controller == p);
+                if waiting {
+                    self.batch_trigger(id, n, p);
+                    if let Some(b) = self
+                        .token_enter_batches
+                        .iter_mut()
+                        .rev()
+                        .find(|b| b.0 == id && b.1 == n && b.2 == p)
+                    {
+                        b.3.push((token, zcc));
+                    }
+                } else if !once || self.first_trigger_this_turn(id, n) {
+                    self.batch_trigger(id, n, p);
+                    self.token_enter_batches.push((id, n, p, vec![(token, zcc)]));
+                }
+            }
+        }
+    }
+
+    /// The tokens of the batch a resolving "one or more tokens ... enter" trigger is for: the
+    /// newest batch recorded for its source, trigger and controller (as they entered: the zcc each
+    /// had on the battlefield). Lane C's "for each of them" effects read this.
+    pub fn token_batch(&self, item: &StackItem) -> Vec<(ObjId, u32)> {
+        let StackKind::Trigger(n) = item.kind else {
+            return Vec::new();
+        };
+        self.token_enter_batches
+            .iter()
+            .rev()
+            .find(|b| b.0 == item.source && b.1 == n && b.2 == item.controller)
+            .map(|b| b.3.clone())
+            .unwrap_or_default()
+    }
+
     /// The triggers of `p`'s permanents with a `When` that `hit` accepts, each batched.
     fn fire_batched(&mut self, p: PlayerId, hit: impl Fn(When) -> bool) {
         for id in self.permanents(p).collect::<Vec<_>>() {
@@ -5774,12 +5839,18 @@ impl Game {
             }
             if self.is_token(id) {
                 self.fire(last_controller, When::TokenYouControlLeaves, Some(id));
+                if self.types_of(id).creature {
+                    self.fire(0, When::CreatureTokenLeavesBattlefield, Some(id));
+                    self.fire(1, When::CreatureTokenLeavesBattlefield, Some(id));
+                }
             }
         }
         if to == Zone::Battlefield && from != Zone::Battlefield && self.is_token(id) {
             let c = self.obj(id).controller;
             self.token_created_turn[c] = self.turn;
             self.fire(c, When::TokenYouControlEnters, Some(id));
+            self.fire_token_batch(c, id, false);
+            self.fire_token_batch(opponent(c), id, true);
         }
         if to == Zone::Battlefield && from != Zone::Battlefield && self.types_of(id).enchantment {
             let c = self.obj(id).controller;
@@ -12887,6 +12958,16 @@ impl Game {
             self.fire(p, When::YouCastOnOpponentsTurn, None);
         }
         self.fire(opponent(p), When::OpponentCasts, None);
+        if noncreature {
+            // Uncover the Moon-Letters: X is the mana spent to cast it.
+            let before = self.triggered.len();
+            self.fire(p, When::YouCastNoncreatureManaSpent, None);
+            let spent = self.obj(card).mana_spent as i32;
+            for t in &mut self.triggered[before..] {
+                t.amount = spent;
+                t.extra = Some(card);
+            }
+        }
         if self.obj(card).mana_spent == 0 {
             // Boromir: "if no mana was spent to cast it", and "that spell".
             let before = self.triggered.len();
@@ -26351,6 +26432,19 @@ impl Game {
                     }
                 }
             }
+            Effect::CreateTappedTokensPerOpponentArtifact { def } => {
+                let p = item.controller;
+                let n = self
+                    .permanents(opponent(p))
+                    .filter(|&x| self.types_of(x).artifact)
+                    .count();
+                for _ in 0..n {
+                    self.create_token(p, def);
+                    for id in self.last_created.clone() {
+                        self.obj_mut(id).tapped = true;
+                    }
+                }
+            }
             Effect::CreateTokensPerTokenYouControl { def } => {
                 let p = item.controller;
                 let n = self.permanents(p).filter(|&x| self.is_token(x)).count();
@@ -27074,6 +27168,12 @@ impl Game {
                     .iter()
                     .any(|&(s, _, t)| t == turn && self.obj(s).controller == controller)
             }
+            Some(Condition::PlayerLostLifeThisTurnAtLeast(n)) => {
+                self.life_lost_now(0) >= *n || self.life_lost_now(1) >= *n
+            }
+            Some(Condition::ControlNoOtherSubtype(sub)) => !self
+                .permanents(controller)
+                .any(|x| x != source && self.has_subtype(x, sub)),
             Some(Condition::CreatureOnBattlefield) => {
                 self.battlefield.iter().any(|&c| self.types_of(c).creature)
             }

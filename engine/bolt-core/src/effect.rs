@@ -3054,6 +3054,11 @@ pub enum Effect {
     CreateTokensPerTokenYouControl {
         def: usize,
     },
+    /// Create a tapped `def` token for each artifact the opponent controls (Smaug, Wicked Worm's
+    /// Treasures; one opponent).
+    CreateTappedTokensPerOpponentArtifact {
+        def: usize,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -3572,6 +3577,10 @@ pub enum Condition {
     /// A creature its controller controlled dealt combat damage to a player this turn
     /// (`Game::combat_damaged_player`; 1v1: the opponent was dealt combat damage; Tymna's X is 1).
     OpponentDealtCombatDamageThisTurn,
+    /// A player (either) lost at least this much life this turn (Y'shtola, Night's Blessed: four).
+    PlayerLostLifeThisTurnAtLeast(i32),
+    /// You control no permanent with this subtype other than the source (Thopter Assembly).
+    ControlNoOtherSubtype(&'static str),
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -4169,6 +4178,19 @@ pub enum When {
     PlaneswalkerYouControlDies,
     /// "At the beginning of each of your postcombat main phases" (Tymna the Weaver).
     PostcombatMainYourTurn,
+    /// "Whenever one or more tokens you control enter": once per batch of tokens entering before
+    /// the trigger goes on the stack (`Game::fire_token_batch`), with the count as the amount and
+    /// the tokens in `Game::token_enter_batches` (read with `Game::token_batch`).
+    OneOrMoreTokensYouControlEnter,
+    /// "Whenever one or more tokens your opponents control enter" (Kambal, Profiteering Mayor), as
+    /// `OneOrMoreTokensYouControlEnter`; with `once_each_turn`, "This ability triggers only once
+    /// each turn" (`Game::triggered_once_turn`).
+    OneOrMoreTokensOpponentsControlEnter { once_each_turn: bool },
+    /// "Whenever a creature token leaves the battlefield" (Twilight Drover): anyone's.
+    CreatureTokenLeavesBattlefield,
+    /// "Whenever you cast a noncreature spell", with the mana spent to cast it as the amount
+    /// (Uncover the Moon-Letters: "draw X cards, where X is the amount of mana spent").
+    YouCastNoncreatureManaSpent,
 }
 
 #[derive(Clone, Debug, PartialEq)]
