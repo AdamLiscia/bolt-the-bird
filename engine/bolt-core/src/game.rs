@@ -6250,6 +6250,8 @@ impl Game {
                 f.players
                     && Game::controller_ok(f.controller, controller, p)
                     && (p == controller || !self.player_has_hexproof(p))
+                    // The One Ring: protection from everything (CR 702.16b).
+                    && self.player_protected_until[p].is_none_or(|until| self.turn >= until)
             }
             Target::Object(id) => {
                 let o = self.obj(id);
@@ -25190,7 +25192,7 @@ impl Game {
         // Rankle and Torbran: "If a source would deal damage to a player ... this turn, it deals
         // that much damage plus 2 instead." (each resolved mode adds 2), after the doublers.
         let amount = match (target, self.plus_two_to_players) {
-            (Target::Player(_), (t, n)) if amount > 0 && t == self.turn => amount + 2 * n,
+            (Target::Player(_), (t, n)) if amount > 0 && t == self.turn => amount + 2 * n as i32,
             _ => amount,
         };
         // Gisela: any source's damage to her controller's opponent or their permanents is doubled.
