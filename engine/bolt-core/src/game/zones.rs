@@ -938,4 +938,14 @@ impl Game {
             self.free_caster = p;
         }
     }
+
+    /// Nontoken creatures and planeswalkers `q` controls that can be sacrificed (Sheoldred).
+    pub(super) fn nontoken_creature_or_planeswalker_options(&self, q: PlayerId) -> Vec<ObjId> {
+        self.permanents(q)
+            .filter(|&x| {
+                let t = self.types_of(x);
+                (t.creature || t.planeswalker) && !self.is_token(x) && !self.cant_be_sacrificed(x)
+            })
+            .collect()
+    }
 }

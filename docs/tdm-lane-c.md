@@ -1068,3 +1068,8 @@ Not scripted, by blocker:
 - Toxrill: dropped per the merger (d3 slime store, d2 Slug 109 and dies trigger). 104 still free.
 Likely failure spots when built: the Rona test (the {B/P} transform paid from table(), `play` answering `Yes`
 for the land decision), `g.objects[..].tapped` set directly.
+Merger approved (2026-11-27): the two activation-legality clauses and the `DealtDamage` `extra` borrow.
+Added, unbuilt: `Effect::OpponentSacrificesNontokenCreatureOrPlaneswalker` with
+`Decision::SacrificeNontokenCreatureOrPlaneswalker` (Pick; asked only when there is one; labelled, tested), a
+sibling of Accursed Marauder's edict, for Sheoldred's front. Test in core_objects (62), on an edited Inkshield.
+Sheoldred itself still waits on d4's Saga. Build after lane B's dredge batch, on the merger's go.

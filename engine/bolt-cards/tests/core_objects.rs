@@ -1511,3 +1511,32 @@ fn rona_untaps_on_legendary_casts_transforms_and_takes_a_land_from_the_damagers_
         "the land onto the battlefield"
     );
 }
+
+#[test]
+fn each_opponent_sacrifices_a_nontoken_creature_or_planeswalker() {
+    let mut g = table_with(|defs| {
+        defs[cid("Inkshield")].spell = Some(bolt_core::Ability::new(
+            vec![],
+            vec![bolt_core::Effect::OpponentSacrificesNontokenCreatureOrPlaneswalker],
+        ));
+    });
+    let ghoul = put(&mut g, 1, "Hungry Ghoul");
+    let edict = hand(&mut g, 0, "Inkshield"); // standing in for Sheoldred's enters trigger
+    act(&mut g, Action::Cast(edict));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(ghoul)));
+    assert!(
+        legal
+            .iter()
+            .all(|a| matches!(a, Action::Pick(x) if !g.types_of(*x).land)),
+        "no lands"
+    );
+    resolve_all(&mut g, &[Action::Pick(ghoul)]);
+    assert_eq!(g.obj(ghoul).zone, Zone::Graveyard);
+    // Nothing to sacrifice: no question.
+    let edict = hand(&mut g, 0, "Inkshield");
+    play(&mut g, edict, false, &[], &[]);
+}

@@ -1404,6 +1404,9 @@ pub enum Decision {
     /// Rona, Tolarian Obliterator: `Yes` puts the exiled land `card` onto the battlefield under
     /// your control, `No` leaves it in exile.
     MayPutExiledLandOntoBattlefield { card: ObjId },
+    /// Sheoldred // The True Scriptures: `Pick` a nontoken creature or planeswalker you control to
+    /// sacrifice (asked only when there is one).
+    SacrificeNontokenCreatureOrPlaneswalker,
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -13776,6 +13779,11 @@ impl Game {
             Decision::PatronOfChaosSacrifice { first, .. } => self.patron_of_chaos_actions(p, *first),
             Decision::ExileFromHandUntilSourceLeaves { victim, .. } => self.hand_link_actions(*victim),
             Decision::MayPutExiledLandOntoBattlefield { .. } => vec![Action::Yes, Action::No],
+            Decision::SacrificeNontokenCreatureOrPlaneswalker => self
+                .nontoken_creature_or_planeswalker_options(p)
+                .into_iter()
+                .map(Action::Pick)
+                .collect(),
             Decision::MoveAuraTo { aura } => self
                 .move_aura_options(*aura, p)
                 .into_iter()
@@ -15447,6 +15455,10 @@ impl Game {
             }
             (Decision::ExileFromHandUntilSourceLeaves { source, zcc, .. }, a) => {
                 self.hand_link_decide(source, zcc, a)
+            }
+            (Decision::SacrificeNontokenCreatureOrPlaneswalker, Action::Pick(c)) => {
+                self.move_to(c, Zone::Graveyard);
+                self.sacrificed(c, p);
             }
             (Decision::MayPutExiledLandOntoBattlefield { card }, a) => {
                 if a == Action::Yes && self.obj(card).zone == Zone::Exile {
@@ -23795,6 +23807,12 @@ impl Game {
             Effect::ExileFromHandUntilSourceLeaves(slot) => {
                 for q in self.players_for(item, legal, Who::TargetPlayer(slot)) {
                     self.hand_link_ask(src, item.controller, q);
+                }
+            }
+            Effect::OpponentSacrificesNontokenCreatureOrPlaneswalker => {
+                let q = opponent(item.controller);
+                if !self.nontoken_creature_or_planeswalker_options(q).is_empty() {
+                    self.ask(q, Decision::SacrificeNontokenCreatureOrPlaneswalker);
                 }
             }
             Effect::DamageSourceControllerExilesRandomFromHand => {

@@ -2658,6 +2658,9 @@ pub enum Effect {
     /// source is the trigger's `extra`; a land asks `Decision::MayPutExiledLandOntoBattlefield`, a
     /// nonland card opens a free cast (`Game::free_casts`).
     DamageSourceControllerExilesRandomFromHand,
+    /// "Each opponent sacrifices a nontoken creature or planeswalker of their choice." (Sheoldred //
+    /// The True Scriptures), as `Decision::SacrificeNontokenCreatureOrPlaneswalker`.
+    OpponentSacrificesNontokenCreatureOrPlaneswalker,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
