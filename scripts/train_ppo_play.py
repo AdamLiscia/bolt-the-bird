@@ -87,6 +87,14 @@ def resume_into(net, opt, s, lr=None):
             group["lr"] = lr
 
 
+def by_kind_row(kinds: dict) -> dict:
+    """Per pending kind: its share of the updated decisions, mean entropy, normalized entropy and |ratio - 1|."""
+    total = sum(b[0] for b in kinds.values()) or 1
+    return {k: {"share": round(b[0] / total, 4), "entropy": round(b[1] / b[0], 4),
+                "entropy_norm": round(b[2] / b[0], 4), "ratio_dev": round(b[3] / b[0], 4)}
+            for k, b in sorted(kinds.items(), key=lambda kv: -kv[1][0])}  # fmt: skip
+
+
 def snapshot(net, opt, state):
     return {
         "model": net.state_dict(),
@@ -290,7 +298,21 @@ def main():
         ret = torch.as_tensor(arr["ret"])
         t1 = time.time()
         net.train()
-        sums, steps = {"loss": 0.0, "clipped": 0.0, "kl": 0.0, "value_mse": 0.0, "entropy": 0.0, "ratio_dev": 0.0}, 0
+        sums, steps = (
+            {
+                "loss": 0.0,
+                "clipped": 0.0,
+                "kl": 0.0,
+                "value_mse": 0.0,
+                "entropy": 0.0,
+                "ratio_dev": 0.0,
+                "value_mse_z": 0.0,
+                "entropy_norm": 0.0,
+                "log_legal": 0.0,
+            },
+            0,
+        )
+        kinds: dict = {}  # pending kind -> summed [decisions, entropy, normalized entropy, |ratio - 1|]
         prng = np.random.default_rng(it)
         for _ in range(a.epochs):
             perm = keep[prng.permutation(n)]
@@ -301,6 +323,8 @@ def main():
                 st = ppo_step(net, ref, opt, arr, idx, adv[idx], a.clip, kl_coef, a.value_coef, ret=ret[idx])
                 for key in sums:
                     sums[key] += st[key]
+                for kind, b in st["by_kind"].items():
+                    kinds[kind] = [x + y for x, y in zip(kinds.get(kind, [0, 0.0, 0.0, 0.0]), b, strict=True)]
                 steps += 1
                 beat["t"] = time.time()
         state["iter"] = it
@@ -314,6 +338,7 @@ def main():
                "timeouts": ends["timeout"],
                **{f"won_{k}": round(float(np.mean(v)), 3) for k, v in won.items()},
                **{k: round(v / max(1, steps), 4) for k, v in sums.items()},
+               "by_kind": by_kind_row(kinds),
                "play_s": round(t1 - t0), "update_s": round(time.time() - t1), "time": time.strftime("%H:%M:%S")}  # fmt: skip
         state["history"].append(row)
         # Saved before its line is printed, so a printed iteration is a saved one (2026-11-27: a SIGTERM 4 s
