@@ -891,3 +891,18 @@ abilities that don't tap, and the triggered extras like Mirari's Wake, aren't tr
 (`Effect::SylvanLibrary`, `Game::drawn_this_turn` set in `draw`, Decisions SylvanDraw, SylvanPick,
 SylvanPayOrTop), Deflecting Palm (`Effect::DamageExtrasControllerAmount` after the existing prevention
 shield). Sigarda and Valgavoth not started.
+
+### Sigarda, Host of Herons and Valgavoth, Terror Eater (2026-11-26)
+
+- Sigarda: `CardDef::opponents_cant_make_you_sacrifice`, `Game::forced_sacrifice_blocked` (an
+  opponent's spell or ability is resolving), checked first in `cant_be_sacrificed`. Every forced
+  sacrifice already picks from `cant_be_sacrificed` (edicts, each player sacrifices, annihilator via
+  `sacrifice_permanents`, the greatest-power, nontoken, creature-or-planeswalker and vow sacrifices,
+  Torment-style "unless", ward—sacrifice); two gaps were closed: `Decision::LoseOrDiscard`'s
+  sacrifice options and the Ring's blocker sacrifice (d4). Your own costs and mana abilities are
+  unaffected. Known edge: Animate Dead's "that creature's controller sacrifices it", when an
+  opponent's spell removes the Aura, is blocked too.
+- Valgavoth: ward was in; `CardDef::exiles_opponents_cards_to_play` (in `move_to`: a nontoken card its
+  controller didn't control, headed for an opponent's graveyard, is exiled and recorded in
+  `exiled_with`), playable from exile during your turn (`Game::valgavoth_exiled`, offered with life
+  for its mana value), cast for life through Bolas's Citadel's path (`citadel_top`).

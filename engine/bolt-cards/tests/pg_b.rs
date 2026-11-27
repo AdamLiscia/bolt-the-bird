@@ -3479,3 +3479,105 @@ fn deflecting_palm_prevents_a_sources_damage_and_returns_it() {
     assert_eq!(g.players[0].life, 40, "prevented");
     assert_eq!(g.players[1].life, 38, "that much to its controller");
 }
+
+// ---- Sigarda, Host of Herons: every kind of forced sacrifice (2026-11-26) ----
+
+#[test]
+fn sigarda_stops_an_opponents_each_player_sacrifices() {
+    let mut g = table();
+    let sigarda = put(&mut g, 1, "Sigarda, Host of Herons");
+    let theirs = put(&mut g, 1, "Savannah Lions");
+    let exe = hand(&mut g, 0, "Merciless Executioner");
+    act(&mut g, Action::Cast(exe));
+    while !g.items.is_empty() || matches!(g.pending, Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::Decide(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(exe).zone, Zone::Graveyard, "you still sacrifice yours");
+    assert_eq!(
+        (g.obj(sigarda).zone, g.obj(theirs).zone),
+        (Zone::Battlefield, Zone::Battlefield)
+    );
+}
+
+#[test]
+fn sigarda_stops_an_opponents_nontoken_edict() {
+    let mut g = table();
+    let sigarda = put(&mut g, 1, "Sigarda, Host of Herons");
+    let marauder = hand(&mut g, 0, "Accursed Marauder");
+    act(&mut g, Action::Cast(marauder));
+    while !g.items.is_empty() || matches!(g.pending, Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::Decide(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(sigarda).zone, Zone::Battlefield);
+    assert_eq!(g.obj(marauder).zone, Zone::Graveyard, "you sacrifice yours");
+}
+
+#[test]
+fn sigarda_leaves_only_discard_or_life_for_an_opponents_sacrifice_unless() {
+    let mut g = table();
+    put(&mut g, 1, "Sigarda, Host of Herons");
+    let ring = put(&mut g, 1, "Sol Ring");
+    let t = hand(&mut g, 0, "Torment of Hailfire");
+    act(&mut g, Action::CastX(t, 1));
+    while g.pending != Pending::Decide(1) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::Pick(ring)), "no sacrifice");
+    assert!(legal.contains(&Action::No), "lose the life instead");
+    resolve_all(&mut g, &[Action::No]);
+    assert_eq!(g.obj(ring).zone, Zone::Battlefield);
+    assert_eq!(g.players[1].life, 37);
+}
+
+#[test]
+fn sigarda_doesnt_stop_your_own_sacrifice_costs() {
+    let mut g = table();
+    put(&mut g, 0, "Sigarda, Host of Herons");
+    let port = put(&mut g, 0, "Fountainport");
+    let food = g.add_card(0, cmd_tokens().food, Zone::Battlefield);
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::ActivateWith(port, 0, food)); // {2}, {T}, Sacrifice a token: Draw a card.
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(food).zone, Zone::Gone);
+    assert_eq!(g.players[0].hand.len(), n + 1);
+}
+
+#[test]
+fn valgavoth_exiles_their_dying_cards_and_casts_them_for_life_on_your_turn() {
+    let mut g = table();
+    put(&mut g, 0, "Valgavoth, Terror Eater");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[Target::Object(lions)], &[]);
+    assert_eq!(
+        g.obj(lions).zone,
+        Zone::Exile,
+        "exiled instead of their graveyard"
+    );
+    assert_eq!(
+        g.obj(bolt).zone,
+        Zone::Graveyard,
+        "your own card still goes to your graveyard"
+    );
+    // Your turn: cast it for life equal to its mana value (1), with no mana spent.
+    let untapped = g.permanents(0).filter(|&x| !g.obj(x).tapped).count();
+    assert!(g.legal_actions().contains(&Action::Cast(lions)));
+    play(&mut g, lions, false, &[], &[]);
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield);
+    assert_eq!(g.obj(lions).controller, 0);
+    assert_eq!(g.players[0].life, 39);
+    assert_eq!(
+        g.permanents(0).filter(|&x| !g.obj(x).tapped).count(),
+        untapped + 1,
+        "no lands tapped"
+    );
+}

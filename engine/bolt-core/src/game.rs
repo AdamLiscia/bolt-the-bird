@@ -2122,11 +2122,32 @@ impl Game {
 
     /// Bolas's Citadel: whether `c` is the top card of `p`'s library while `p` controls one.
     fn citadel_top(&self, p: PlayerId, c: ObjId) -> bool {
+        if self.valgavoth_exiled(p, c) {
+            return true; // Valgavoth: cast for life equal to its mana value, too
+        }
         self.obj(c).zone == Zone::Library
             && self.players[p].library.last() == Some(&c)
             && self
                 .permanents(p)
                 .any(|x| self.def_of(x).citadel && !self.lost_abilities(x))
+    }
+
+    /// Valgavoth: `c` is a card in exile exiled with a Valgavoth `p` controls (the same objects),
+    /// during `p`'s turn.
+    fn valgavoth_exiled(&self, p: PlayerId, c: ObjId) -> bool {
+        let o = self.obj(c);
+        self.active == p
+            && o.zone == Zone::Exile
+            && self.exiled_with.iter().any(|&(v, vz, x, xz)| {
+                let vo = self.obj(v);
+                x == c
+                    && xz == o.zcc
+                    && vo.zone == Zone::Battlefield
+                    && vo.zcc == vz
+                    && vo.controller == p
+                    && self.def_of(v).exiles_opponents_cards_to_play
+                    && !self.lost_abilities(v)
+            })
     }
 
     /// Whether a Silent Arbiter is on the battlefield ("no more than one creature can attack /
@@ -4011,6 +4032,9 @@ impl Game {
     /// sacrificed.
     fn cant_be_sacrificed(&self, id: ObjId) -> bool {
         let p = self.obj(id).controller;
+        if self.forced_sacrifice_blocked(p) {
+            return true; // Sigarda, Host of Herons
+        }
         self.step == Step::End
             && self.active == p
             && self.is_token(id)
@@ -4018,6 +4042,16 @@ impl Game {
             && self
                 .permanents(p)
                 .any(|x| self.def_of(x).warrior_tokens_unsacrificeable_end_step)
+    }
+
+    /// Sigarda, Host of Herons: an opponent's spell or ability is resolving, so it can't make `p`
+    /// sacrifice. Every forced sacrifice chooses from `cant_be_sacrificed`; `p`'s own costs and
+    /// effects (and mana abilities) are unaffected.
+    pub(crate) fn forced_sacrifice_blocked(&self, p: PlayerId) -> bool {
+        self.resolving.as_ref().is_some_and(|r| r.item.controller != p)
+            && self
+                .permanents(p)
+                .any(|x| self.def_of(x).opponents_cant_make_you_sacrifice && !self.lost_abilities(x))
     }
 
     /// Voice of Victory: `p` can't cast spells while an opponent with it takes their turn.
@@ -4420,6 +4454,19 @@ impl Game {
         if gisa.is_some() {
             to = Zone::Exile;
         }
+        // Valgavoth: a card its controller didn't control, headed for that player's opponent's
+        // graveyard, is exiled instead.
+        let valgavoth = if to == Zone::Graveyard && !self.is_token(id) {
+            let v = opponent(owner);
+            self.permanents(v)
+                .find(|&x| self.def_of(x).exiles_opponents_cards_to_play && !self.lost_abilities(x))
+                .filter(|_| self.obj(id).controller != v)
+        } else {
+            None
+        };
+        if valgavoth.is_some() {
+            to = Zone::Exile;
+        }
         // Unearth (CR 702.84a): if it would leave the battlefield, it's exiled instead.
         if from == Zone::Battlefield && to != Zone::Battlefield && self.obj(id).unearthed {
             to = Zone::Exile;
@@ -4626,6 +4673,10 @@ impl Game {
             self.players[owner].library = lib;
         }
         self.events.push(Event::Moved { card: id, from, to });
+        if let (Some(v), Zone::Exile) = (valgavoth, self.obj(id).zone) {
+            let entry = (v, self.obj(v).zcc, id, self.obj(id).zcc);
+            self.exiled_with.push(entry); // "cards exiled with Valgavoth"
+        }
         if let (Some(g), Zone::Exile) = (gisa, self.obj(id).zone) {
             let entry = (g, self.obj(g).zcc, id, self.obj(id).zcc);
             self.exiled_with.push(entry); // "creature cards exiled with Gisa"
@@ -6404,7 +6455,11 @@ impl Game {
             let plotted = o
                 .plotted
                 .is_some_and(|(t, zcc)| zcc == o.zcc && t < turn && o.owner == p && sorcery_timing);
-            stashed || plotted || o.playable.is_some_and(|(q, until)| q == p && turn <= until)
+            // Valgavoth: a land, or a spell whose mana value you can pay in life.
+            let valgavoth = self.valgavoth_exiled(p, c)
+                && (self.def_of(c).types.land
+                    || self.players[p].life >= self.def_of(c).cost.mana_value() as i32);
+            stashed || plotted || valgavoth || o.playable.is_some_and(|(q, until)| q == p && turn <= until)
         });
         // Cards an effect lets you cast from your graveyard this turn (Zul Ashur).
         let conduit_ok = self.spells_cast[p] == 0;
@@ -11937,7 +11992,7 @@ impl Game {
                 if *sacrifice {
                     v.extend(
                         self.permanents(p)
-                            .filter(|&x| !self.types_of(x).land)
+                            .filter(|&x| !self.types_of(x).land && !self.cant_be_sacrificed(x))
                             .map(Action::Pick),
                     );
                 }

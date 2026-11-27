@@ -2056,6 +2056,21 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::Never, vec![], vec![Effect::DamageExtrasControllerAmount]);
             },
         ),
+        "Sigarda, Host of Herons" => s(&["Spells and abilities your opponents control can't cause you to sacrifice permanents."], |d, _| {
+            d.opponents_cant_make_you_sacrifice = true;
+        }),
+        "Valgavoth, Terror Eater" => s(
+            &[
+                "Ward\u{2014}Sacrifice three nonland permanents.",
+                "If a card you didn't control would be put into an opponent's graveyard from anywhere, exile it instead.",
+                "During your turn, you may play cards exiled with Valgavoth. If you cast a spell this way, pay life equal to its mana value rather than pay its mana cost.",
+            ],
+            |d, _| {
+                d.ward_sacrifice = 3;
+                d.ward_sacrifice_nonland = true;
+                d.exiles_opponents_cards_to_play = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -2296,6 +2311,8 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Nyxbloom Ancient",
     "Sylvan Library",
     "Deflecting Palm",
+    "Sigarda, Host of Herons",
+    "Valgavoth, Terror Eater",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",

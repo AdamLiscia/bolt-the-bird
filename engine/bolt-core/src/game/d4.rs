@@ -578,7 +578,8 @@ impl Game {
             SubsystemEffect::RingSacrificeBlocker => {
                 if let Some(b) = item.extra {
                     let blocking = self.combat.as_ref().is_some_and(|c| c.is_blocking(b));
-                    if blocking && self.obj(b).zone == Zone::Battlefield {
+                    // Sigarda: the Ring's ability can't make its blocker's controller sacrifice it.
+                    if blocking && self.obj(b).zone == Zone::Battlefield && !self.cant_be_sacrificed(b) {
                         self.obj_mut(b).sacrifice_end_combat = true;
                     }
                 }
