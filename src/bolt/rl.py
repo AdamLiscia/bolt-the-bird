@@ -32,4 +32,5 @@ def ppo_loss(logits, ref_logits, act, old_lp, adv, clip: float, kl_coef: float):
     loss = (-surrogate + kl_coef * kl).mean()
     with torch.no_grad():
         clipped = ((ratio - 1).abs() > clip).float().mean().item()
-    return loss, {"clipped": clipped, "kl": kl.mean().item()}
+        ratio_dev = (ratio - 1).abs().mean().item()  # how far the policy has moved from the one that played
+    return loss, {"clipped": clipped, "kl": kl.mean().item(), "ratio_dev": ratio_dev}

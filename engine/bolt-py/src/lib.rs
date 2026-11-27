@@ -342,6 +342,12 @@ impl Game {
         })
     }
 
+    /// Why the engine ended the game itself (a loop cap tripped; the result is a draw), or None.
+    #[getter]
+    fn end_reason(&self) -> Option<&'static str> {
+        self.g.end_reason
+    }
+
     #[getter]
     fn turn(&self) -> u32 {
         self.g.turn

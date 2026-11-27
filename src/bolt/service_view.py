@@ -166,6 +166,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
             return f"{src}: choose {COLORS[value]}"
         if d == "ChooseCreatureType" and 0 <= value < len(dec.get("options", [])):
             return f"{src}: choose {dec['options'][value]}"
+        if d == "KindredSummonsType" and 0 <= value < len(dec.get("options", [])):
+            return f"Kindred Summons: choose {dec['options'][value]}"
         if d == "ChooseLandFace" and value in (0, 1):
             faces = (src or "").split(" // ")
             face = faces[value] if len(faces) == 2 else ("its front", "its back")[value]
@@ -239,12 +241,14 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"PermanentFromHandMaxMv": "Put onto the battlefield:"}.get(d)
         verb = verb or {"ExileCardFromHand": "Exile from your hand:"}.get(d)
         verb = verb or {"SacrificeLands": "Sacrifice"}.get(d)
+        verb = verb or {"SacrificeLandsDraw": "Sacrifice (draw a card)"}.get(d)
         verb = verb or {"SacrificeGreatestMv": "Sacrifice"}.get(d)
         verb = verb or {"EachSacrificesCreatureOrPlaneswalker": "Sacrifice"}.get(d)
         verb = verb or {"EachSacrificesXCreatures": "Sacrifice"}.get(d)
         verb = verb or {"SacrificeOfSubtype": "Sacrifice"}.get(d)
         verb = verb or {"MaySacrificeLand": "Sacrifice", "MaySacrificeArtifactOrCreature": "Sacrifice"}.get(d)  # fmt: skip
         verb = verb or {"NameCardInLibrary": "Name"}.get(d)
+        verb = verb or {"ChooseExiledToPlay": "You may play until the end of your next turn:"}.get(d)
         if d == "DiscardMayCastFree":
             verb = "Discard (you may cast it free)" if dec.get("free") else "Discard"
         verb = verb or {"MoveAuraTo": "Attach the Aura to"}.get(d)

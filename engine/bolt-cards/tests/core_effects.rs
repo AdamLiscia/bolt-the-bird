@@ -3674,3 +3674,96 @@ fn sacrifice_targets_reveal_top_permanent() {
     );
     assert_eq!(g.obj(theirs).controller, 1, "its owner's");
 }
+
+#[test]
+fn kindred_summons_asks_for_a_type_and_counts_yours() {
+    let (mut g, t) = game_with(vec![sorcery(vec![], vec![Effect::KindredSummons])]);
+    g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    let elf = g.add_card(0, cid("Fyndhorn Elves"), Zone::Library);
+    let other = g.add_card(0, cid("Llanowar Elves"), Zone::Library);
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    while !matches!(g.pending, Pending::Decide(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let i = g
+        .creature_types_known_to(0)
+        .iter()
+        .position(|t| t == "Elf")
+        .unwrap();
+    resolve_all(&mut g, &[Action::Mode(i as u8)]);
+    let on = |x| g.obj(x).zone == Zone::Battlefield;
+    assert_eq!((on(elf), on(other)), (false, true), "X is 1: only the top Elf");
+}
+
+#[test]
+fn opponents_permanents_lose_hexproof_and_indestructible_this_turn() {
+    let e = Effect::OpponentsPermanentsLoseHexproofIndestructibleEot;
+    let (mut g, t) = game_with(vec![sorcery(vec![], vec![e])]);
+    let theirs = g.add_card(1, cid("Savannah Lions"), Zone::Battlefield);
+    let shield = Keywords::HEXPROOF
+        .with(Keywords::INDESTRUCTIBLE)
+        .with(Keywords::FLYING);
+    g.objects[theirs.0 as usize].granted = shield;
+    cast_test(&mut g, t, &[], &[]);
+    let k = g.keywords(theirs);
+    assert!(k.has(Keywords::FLYING) && !k.has(Keywords::HEXPROOF) && !k.has(Keywords::INDESTRUCTIBLE));
+    let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Hand);
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(obj(theirs)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.obj(theirs).zone,
+        Zone::Graveyard,
+        "targetable and not indestructible"
+    );
+}
+
+#[test]
+fn per_land_you_control_counts_your_lands() {
+    let (mut g, t) = game_with(vec![scaled_creature("Test Lands", Scale::PerLandYouControl)]);
+    let a = g.add_card(0, t, Zone::Battlefield);
+    assert_eq!(g.power(a), 25, "five of each basic");
+    g.add_card(1, cid("Forest"), Zone::Battlefield);
+    g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    assert_eq!(g.toughness(a), 25, "only your lands");
+}
+
+#[test]
+fn sacrifice_x_lands_draws_after_and_x_extra_land_plays() {
+    let mut def = sorcery(
+        vec![],
+        vec![Effect::SacrificeXLandsDrawEach, Effect::ExtraLandsThisTurnX],
+    );
+    def.cost = ManaCost::parse("{X}").unwrap();
+    let (mut g, t) = game_with(vec![def]);
+    for _ in 0..5 {
+        g.add_card(0, cid("Island"), Zone::Library);
+    }
+    let lands = g.permanents(0).filter(|&x| g.types_of(x).land).count();
+    let hand = g.players[0].hand.len();
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::CastX(c, 2));
+    while !matches!(g.pending, Pending::Decide(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let pick = |g: &Game| {
+        *g.legal_actions()
+            .iter()
+            .find(|a| matches!(a, Action::Pick(_)))
+            .unwrap()
+    };
+    let a = pick(&g);
+    act(&mut g, a);
+    assert_eq!(
+        g.players[0].hand.len(),
+        hand,
+        "nothing drawn before the last sacrifice"
+    );
+    let a = pick(&g);
+    resolve_all(&mut g, &[a]);
+    let now = g.permanents(0).filter(|&x| g.types_of(x).land).count();
+    // Two sacrificed; X = 2 paid with two more tapped (still on the battlefield).
+    assert_eq!((lands - now, g.players[0].hand.len() - hand), (2, 2));
+    assert_eq!(g.extra_lands_this_turn[0], 2);
+}

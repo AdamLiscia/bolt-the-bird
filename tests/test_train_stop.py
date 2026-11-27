@@ -86,3 +86,33 @@ def test_a_sigterm_right_after_an_iterations_line_resumes_on_that_iteration(trai
     back = Job("stoptest", client=s3, local=tmp_path / "elsewhere", handle_signals=False).resume()
     assert back is not None and back["state"]["iter"] == 2
     assert np.isclose(back["state"]["history"][-1]["iter"], 2)
+
+
+def test_every_iteration_row_reports_entropy_and_ratio_deviation(trainer, monkeypatch):
+    import json
+
+    t, made, s3, tmp_path = trainer
+    monkeypatch.setattr(sys, "argv", [*sys.argv[:7], "2", *sys.argv[8:]])  # --iters 2
+    t.main()
+    rows = json.loads((tmp_path / "results" / "ppo_play_stoptest.json").read_text())["history"]
+    assert len(rows) == 2
+    for r in rows:
+        assert r["entropy"] > 0 and r["ratio_dev"] >= 0, r
+
+
+def test_a_changed_lr_applies_to_the_resumed_optimizer(monkeypatch):
+    sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "scripts"))
+    import train_ppo_play as t
+
+    monkeypatch.setattr(t, "PLAY_SET", None)
+    net = PlayNet(n_cards=8, dim=16, layers=1, heads=2)
+    opt = torch.optim.AdamW(net.parameters(), lr=2e-5)
+    net.value.weight.grad = torch.ones_like(net.value.weight)
+    opt.step()
+    saved = t.snapshot(net, opt, {"iter": 20})
+    net2 = PlayNet(n_cards=8, dim=16, layers=1, heads=2)
+    opt2 = torch.optim.AdamW(net2.parameters(), lr=5e-5)
+    t.resume_into(net2, opt2, saved, lr=5e-5)
+    assert [g["lr"] for g in opt2.param_groups] == [5e-5], "load_state_dict alone would restore 2e-5"
+    m, m2 = opt.state[net.value.weight]["exp_avg"], opt2.state[net2.value.weight]["exp_avg"]
+    assert torch.equal(m, m2), "Adam's moments carry over"
