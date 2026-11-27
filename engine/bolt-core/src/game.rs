@@ -24604,6 +24604,7 @@ impl Game {
                             (ty.creature && f.creatures)
                                 || (ty.land && f.lands)
                                 || (ty.planeswalker && f.planeswalkers)
+                                || (ty.artifact && f.artifacts) // Mechanized Production
                         }
                         _ => ty.creature,
                     };

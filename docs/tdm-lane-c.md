@@ -977,3 +977,8 @@ Looked at and left (mac-c owner in needs_core.json, blocker elsewhere):
 - Teferi, Master of Time: instant-speed loyalty (merger timing); phasing and extra turns exist.
 - Rona: "whenever you cast a legendary spell" (d2), then the back face (lane C).
 - Karador: lane C's once-each-turn graveyard creature cast still waits on d1's cost reduction.
+
+Built on 2a71b71 (tarkir 47148af merged): one fix, the Aura state-based check in game.rs now keeps an Aura whose
+enchant filter allows artifacts on an artifact (`|| (ty.artifact && f.artifacts)`; Mechanized Production fell off
+its Sol Ring). Squee's two `priority_actions` lines approved by the merger. 2,145 Rust tests pass (core_objects 51,
+pg_c 212, play.rs 3 ignored), clippy, fmt, ruff and pytest clean.
