@@ -1191,3 +1191,11 @@ Tests in core_objects (81: Alchemist's two, Fortune Teller's, and Ursine's piece
 Likely failure spots when built: the Treasure-only Bolt (`game(&[])`, paid by the Treasure), the Ursine
 hideaway picks in `play`'s answers (second Bolt from the first three, then the first from the next three), the
 Class level set directly on `class_level`.
+
+## Batch 21 (unbuilt): Blade of the Bloodchief (Korvold, from live_missing.json)
+
+Core (appended): `Effect::CountersOnAttachedBySubtype { n, subtype, n_if }` (zones.rs
+`counters_on_attached_by_subtype`), on `When::AnotherCreatureDies` (the Blade isn't a creature, so that's every
+creature). Card (1): Blade of the Bloodchief. Test in core_objects (82).
+Nesting Dragon (Korvold) waits on two token numbers: a 0/2 red Dragon Egg with defender and a dies trigger, and a
+2/2 red flying Dragon with "{R}: +1/+0".

@@ -1134,4 +1134,13 @@ impl Game {
         self.free_casts_one = true;
         self.free_caster = p;
     }
+
+    /// Blade of the Bloodchief: `n` +1/+1 counters on the creature `src` is attached to, `n_if` if it
+    /// has `subtype`.
+    pub(super) fn counters_on_attached_by_subtype(&mut self, src: ObjId, n: i32, subtype: &str, n_if: i32) {
+        if let Some(c) = self.attached_creature(src) {
+            let k = if self.has_subtype(c, subtype) { n_if } else { n };
+            self.add_counters(c, k);
+        }
+    }
 }

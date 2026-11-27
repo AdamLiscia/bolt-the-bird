@@ -24998,6 +24998,9 @@ impl Game {
                 }
             }
             Effect::HideawayAnother(n) => self.hideaway_another(src, item.controller, n),
+            Effect::CountersOnAttachedBySubtype { n, subtype, n_if } => {
+                self.counters_on_attached_by_subtype(src, n, subtype, n_if)
+            }
             Effect::MayCastOneHideawayFree => self.open_hideaway_free_cast(src, item.controller),
             Effect::EachOpponentExilesTop(n) => {
                 let q = opponent(item.controller);

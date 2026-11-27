@@ -1966,3 +1966,24 @@ fn two_hideaways_and_one_free_spell_on_combat_damage() {
     assert_eq!(g.obj(first).zone, Zone::Graveyard);
     assert_eq!(g.obj(second).zone, Zone::Exile);
 }
+
+#[test]
+fn blade_of_the_bloodchief_grows_its_creature_twice_as_fast_on_a_vampire() {
+    let mut g = table();
+    let blade = put(&mut g, 0, "Blade of the Bloodchief");
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    act(&mut g, Action::Activate(blade, 0));
+    resolve_all(&mut g, &[Action::Target(obj(ghoul))]);
+    let elves = put(&mut g, 1, "Llanowar Elves");
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[obj(elves)], &[]);
+    assert_eq!(g.obj(ghoul).counters, 1, "a creature died");
+    let bat = put(&mut g, 0, "Vampire Nighthawk");
+    act(&mut g, Action::Activate(blade, 0));
+    resolve_all(&mut g, &[Action::Target(obj(bat))]);
+    let elves = put(&mut g, 1, "Llanowar Elves");
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[obj(elves)], &[]);
+    assert_eq!(g.obj(bat).counters, 2, "a Vampire gets two");
+    assert_eq!(g.obj(ghoul).counters, 1, "no longer equipped");
+}

@@ -2472,6 +2472,18 @@ pub fn script(name: &str) -> Option<Script> {
                 d.triggers.push(Trigger { when: When::YouCast, ability: burn });
             },
         ),
+        "Blade of the Bloodchief" => s(
+            &[
+                "Whenever a creature dies, put a +1/+1 counter on equipped creature. If equipped creature is a Vampire, put two +1/+1 counters on it instead.",
+                "Equip {1}",
+            ],
+            |d, _| {
+                // The Blade isn't a creature, so "another creature" is every creature.
+                let grow = Effect::CountersOnAttachedBySubtype { n: 1, subtype: "Vampire", n_if: 2 };
+                on(d, When::AnotherCreatureDies, vec![], vec![grow]);
+                equip(d, "{1}");
+            },
+        ),
         "Fortune Teller's Talent" => s(
             &[
                 "You may look at the top card of your library any time.",
@@ -2827,5 +2839,6 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Rev, Tithe Extractor",
     "Alchemist's Talent",
     "Fortune Teller's Talent",
+    "Blade of the Bloodchief",
     // Not "Evercoat Ursine" (unclaimed: a hidden land must be playable as a land play).
 ];

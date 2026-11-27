@@ -2825,6 +2825,13 @@ pub enum Effect {
     /// free-cast window over the cards hidden away with the source. A land among them can't be
     /// played this way (free-cast windows are spells only).
     MayCastOneHideawayFree,
+    /// Put `n` +1/+1 counters on the equipped (or enchanted) creature, or `n_if` if it has
+    /// `subtype` (Blade of the Bloodchief: 1, two for a Vampire).
+    CountersOnAttachedBySubtype {
+        n: i32,
+        subtype: &'static str,
+        n_if: i32,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

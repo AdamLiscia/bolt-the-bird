@@ -602,7 +602,7 @@
   {
    "card": "Nesting Dragon",
    "deck": "Atla Palani, Nest Tender",
-   "missing": "a 0/2 red Dragon Egg creature token with defender that dies into a 2/2 red Dragon creature token with flying and firebreathing",
+   "missing": "a 0/2 red Dragon Egg creature token with defender that dies into a 2/2 red Dragon creature token with flying and firebreathing [lane C 2026-11-27: waits on two token numbers from the merger (Dragon Egg with its dies trigger, firebreathing Dragon); landfall and a token's dies trigger exist]",
    "lane": "d1",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -2098,7 +2098,7 @@
   {
    "card": "Blade of the Bloodchief",
    "deck": "Henrika Domnathi // Henrika, Infernal Seer",
-   "missing": "needs core: +1/+1 counters on the equipped creature",
+   "missing": "needs core: +1/+1 counters on the equipped creature [lane C 2026-11-27: scripted in pg_c, batch 21 (unbuilt)]",
    "lane": "d2",
    "theme": "objects_zones",
    "owner": "mac-c"
