@@ -34,6 +34,22 @@ aws s3 cp s3://nerdleagues-bolt-checkpoints-011834/checkpoints/human_model.pt ch
 aws s3 cp s3://nerdleagues-bolt-checkpoints-011834/checkpoints/judge_b.pt checkpoints/judge_b.pt --profile bolt-desktop   # the FDN service kit (tests/test_service.py)
 ```
 
+## Before `jobs/cmd_play_1.json` starts (Commander self-play)
+
+farm.py starts every job in `jobs/` that isn't done, so the start network must be on the desktop first, or
+the job fails at load. The engine must be a build with the CMD set (`be.card_names("CMD")` works).
+
+```bash
+# The start network: tdm_play_1's iteration 230, grown to the CMD card pool and Commander inputs.
+aws s3 cp s3://nerdleagues-bolt-checkpoints-011834/farm/tdm_play_1/past/iter_230.pt checkpoints/play/tdm_play_1/iter_230.pt --profile bolt-desktop
+.venv/bin/python scripts/pad_cmd_net.py --from checkpoints/play/tdm_play_1/iter_230.pt --out checkpoints/play/cmd_init_from_tdm.pt
+```
+
+The decks are committed: `handoff/cmd/playable_decks.txt`, written on the Mac by
+`PYTHONPATH=src python scripts/make_cmd_decks.py` from the playgroup's lists in `~/bolt-handoff`. When more
+decks become playable, rerun it and commit the file; the network's card table already covers all of CMD, so
+nothing is re-padded, and the job reads the deck file at each start.
+
 ## The pieces
 
 | Piece | Where | Reuses |

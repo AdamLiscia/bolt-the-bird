@@ -33,7 +33,9 @@ class PlayNet(nn.Module):
 
     def forward(self, x: dict) -> tuple[torch.Tensor, torch.Tensor]:
         """x from bolt.play_encoding.collate. Returns (logits (B, A) with -inf on padding, value (B,))."""
-        objs = self.card(x["card"]) + self.zone(x["zone"]) + self.feats(x["feats"])
+        # a card the player can't see (the engine's -2, encoded -1: face down, hidden in exile) is the last row
+        card = torch.where(x["card"] < 0, self.card.num_embeddings - 1, x["card"])
+        objs = self.card(card) + self.zone(x["zone"]) + self.feats(x["feats"])
         g = self.glob(x["globals"])[:, None]
         pad = torch.cat([torch.zeros_like(x["obj_pad"][:, :1]), x["obj_pad"]], 1)
         h = self.norm(self.encoder(torch.cat([g, objs], 1), src_key_padding_mask=pad))
@@ -48,16 +50,18 @@ class PlayNet(nn.Module):
         return logits, torch.tanh(self.value(hg)).squeeze(-1)
 
 
-def load_checkpoint(path_or_obj) -> "PlayNet":
-    """A PlayNet from a checkpoint (a path, or the loaded {"config", "model"} dict). A checkpoint saved before
-    action kinds were appended to KINDS gets the new kinds' rows, each a copy of "Cast"'s, inserted before the
-    unknown-kind row, which stays last, so it plays exactly as before on every kind it knew."""
-    c = (
-        path_or_obj
-        if isinstance(path_or_obj, dict)
-        else torch.load(path_or_obj, map_location="cpu", weights_only=False)
-    )
-    state = dict(c["model"])
+def pad_state(state: dict) -> dict:
+    """A state dict saved before inputs were appended, grown to the current ones so it computes exactly what
+    it did on every input it knew:
+
+    - action kinds appended to KINDS: each new row a copy of "Cast"'s, inserted before the unknown-kind row,
+      which stays last;
+    - zones appended to ZONE: zero rows;
+    - per-object features appended to FEATS and game numbers appended to GLOBAL_NAMES: zero input weights,
+      so the new inputs add nothing until training moves them.
+
+    A current state dict comes back unchanged."""
+    state = dict(state)
     old = state["kind.weight"]
     want = len(KINDS) + 1
     if old.shape[0] < want:
@@ -65,6 +69,44 @@ def load_checkpoint(path_or_obj) -> "PlayNet":
         cast = old[KINDS.index("Cast")]
         new = cast.unsqueeze(0).repeat(want - 1 - known, 1)
         state["kind.weight"] = torch.cat([old[:known], new, old[known:]])
+    z = state["zone.weight"]
+    if z.shape[0] < len(ZONE):
+        state["zone.weight"] = torch.cat([z, z.new_zeros(len(ZONE) - z.shape[0], z.shape[1])])
+    for key, n in (("feats.weight", len(FEATS)), ("glob.0.weight", len(GLOBAL_NAMES))):
+        w = state[key]
+        if w.shape[1] < n:
+            state[key] = torch.cat([w, w.new_zeros(w.shape[0], n - w.shape[1])], 1)
+    return state
+
+
+def pad_optimizer(opt: torch.optim.Optimizer, net: nn.Module) -> None:
+    """After `opt.load_state_dict` of a state saved before inputs were appended: Adam's moment estimates for
+    the grown tensors, zero-padded the way pad_state pads the weights (kinds: new rows zero too)."""
+    for p in net.parameters():
+        st = opt.state.get(p)
+        if not st:
+            continue
+        for k in ("exp_avg", "exp_avg_sq"):
+            m = st.get(k)
+            if m is None or m.shape == p.shape:
+                continue
+            out = m.new_zeros(p.shape)
+            if p is net.kind.weight:  # old rows before the unknown-kind row, which stays last
+                out[: m.shape[0] - 1] = m[:-1]
+                out[-1] = m[-1]
+            else:
+                out[tuple(slice(0, d) for d in m.shape)] = m
+            st[k] = out
+
+
+def load_checkpoint(path_or_obj) -> "PlayNet":
+    """A PlayNet from a checkpoint (a path, or the loaded {"config", "model"} dict); one saved before inputs
+    were appended is grown by `pad_state`, so it plays exactly as before on everything it knew."""
+    c = (
+        path_or_obj
+        if isinstance(path_or_obj, dict)
+        else torch.load(path_or_obj, map_location="cpu", weights_only=False)
+    )
     net = PlayNet(**c["config"])
-    net.load_state_dict(state)
+    net.load_state_dict(pad_state(c["model"]))
     return net
