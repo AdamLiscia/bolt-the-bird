@@ -30,7 +30,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from bolt.backup import upload_quietly  # noqa: E402
 from bolt.play_data import concat  # noqa: E402
-from bolt.play_net import pad_optimizer, pad_state  # noqa: E402
+from bolt.play_net import load_into, pad_optimizer  # noqa: E402
 from bolt.play_ppo import gae, league, ppo_step  # noqa: E402
 from bolt.play_runner import run_parallel  # noqa: E402
 
@@ -60,10 +60,34 @@ def eval_jobs(decks, pairs):
     return [(decks[i % n], decks[(i + 1 + (i // n) % (n - 1)) % n], 9_000 + i, i % 2) for i in range(pairs)]
 
 
+PLAY_SET = os.environ.get("BOLT_PLAY_SET", "FDN").upper()
+
+
 def load_net(path):
+    """A play checkpoint on today's card pool for BOLT_PLAY_SET (rows moved if the pool grew since it was saved)."""
     from bolt.play_net import load_checkpoint
 
-    return load_checkpoint(path)
+    return load_checkpoint(path, set_name=PLAY_SET)
+
+
+def resume_into(net, opt, s):
+    """A saved {"model", "opt", ...} into net and opt: inputs grown, card rows moved to today's pool (by the names
+    it was saved with, or for a state saved before names were kept, the pool of its size; bolt.play_net)."""
+    from bolt.play_net import legacy_names
+
+    names = s.get("card_names") or legacy_names(PLAY_SET, s["model"]["card.weight"].shape[0] - 2)
+    rows = load_into(net, s["model"], names)
+    opt.load_state_dict(s["opt"])
+    pad_optimizer(opt, net, rows)
+
+
+def snapshot(net, opt, state):
+    return {
+        "model": net.state_dict(),
+        "opt": opt.state_dict(),
+        "state": state,
+        "card_names": net.config.get("card_names"),
+    }
 
 
 def save_atomic(obj, path: Path):
@@ -129,9 +153,7 @@ def main():
     state = {"iter": 0, "history": [], "evals": [], "past": [], "best": None}
     if a.resume and (ck / "state.pt").exists():
         s = torch.load(ck / "state.pt", map_location="cpu", weights_only=False)
-        net.load_state_dict(pad_state(s["model"]))
-        opt.load_state_dict(s["opt"])
-        pad_optimizer(opt, net)
+        resume_into(net, opt, s)
         state = s["state"]
         print(f"resumed at iteration {state['iter']}", flush=True)
     # On the farm (BOLT_JOB set by farm.py): power-cut-safe checkpoints on S3 (bolt.jobs), resumed first.
@@ -142,9 +164,7 @@ def main():
         job = Job(os.environ["BOLT_JOB"])
         s = job.resume()
         if s is not None:
-            net.load_state_dict(pad_state(s["model"]))  # saved before inputs were appended: grown
-            opt.load_state_dict(s["opt"])
-            pad_optimizer(opt, net)
+            resume_into(net, opt, s)
             state = s["state"]
             for f in state["past"]:  # a fresh disk: fetch the past opponents too
                 if not (ck / f).exists():
@@ -250,15 +270,15 @@ def main():
                 upload_quietly(ck / "best.pt")
             print(json.dumps({"eval": it, **e, "best_iter": state["best"]["iter"]}), flush=True)
             beat["t"] = time.time()
-        save_atomic({"model": net.state_dict(), "opt": opt.state_dict(), "state": state}, ck / "state.pt")
+        save_atomic(snapshot(net, opt, state), ck / "state.pt")
         write_results()
         if job and job.due():
-            job.save({"model": net.state_dict(), "opt": opt.state_dict(), "state": state}, step=it)
+            job.save(snapshot(net, opt, state), step=it)
             if job.stop_requested:
                 print(f"stopped at iteration {it} (SIGTERM); checkpoint saved", flush=True)
                 return
     if job:
-        job.save({"model": net.state_dict(), "opt": opt.state_dict(), "state": state}, step=state["iter"], done=True)
+        job.save(snapshot(net, opt, state), step=state["iter"], done=True)
 
 
 if __name__ == "__main__":
