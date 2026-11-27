@@ -4289,7 +4289,7 @@ fn riverguards_reflexes_pumps_grants_first_strike_and_untaps() {
 #[test]
 fn keep_out_hits_a_tapped_creature_or_destroys_an_enchantment() {
     let mut g = table();
-    let tapped = put(&mut g, 1, "Pippin, Guard of the Citadel");
+    let tapped = put(&mut g, 1, "Savannah Lions");
     let untapped = put(&mut g, 1, "Llanowar Elves");
     g.objects[tapped.0 as usize].tapped = true;
     let k = hand(&mut g, 0, "Keep Out");
@@ -4310,11 +4310,11 @@ fn keep_out_hits_a_tapped_creature_or_destroys_an_enchantment() {
 #[test]
 fn terminate_sear_and_boulder_dash() {
     let mut g = table();
-    let a = put(&mut g, 1, "Pippin, Guard of the Citadel");
+    let a = put(&mut g, 1, "Savannah Lions");
     let t = hand(&mut g, 0, "Terminate");
     play(&mut g, t, false, &[obj(a)], &[]);
     assert_eq!(g.obj(a).zone, Zone::Graveyard);
-    let b = put(&mut g, 1, "Pippin, Guard of the Citadel");
+    let b = put(&mut g, 1, "Savannah Lions");
     let sear = hand(&mut g, 0, "Sear");
     act(&mut g, Action::Cast(sear));
     assert!(
@@ -4324,7 +4324,7 @@ fn terminate_sear_and_boulder_dash() {
     act(&mut g, Action::Target(obj(b)));
     resolve_all(&mut g, &[]);
     assert_eq!(g.obj(b).zone, Zone::Graveyard);
-    let c = put(&mut g, 1, "Pippin, Guard of the Citadel");
+    let c = put(&mut g, 1, "Savannah Lions");
     let life = g.players[1].life;
     let dash = hand(&mut g, 0, "Boulder Dash");
     play(&mut g, dash, false, &[obj(c), Target::Player(1)], &[]);
@@ -4335,7 +4335,7 @@ fn terminate_sear_and_boulder_dash() {
 #[test]
 fn goatnap_steals_untaps_and_hastes() {
     let mut g = table();
-    let theirs = put(&mut g, 1, "Pippin, Guard of the Citadel");
+    let theirs = put(&mut g, 1, "Savannah Lions");
     g.objects[theirs.0 as usize].tapped = true;
     let gn = hand(&mut g, 0, "Goatnap");
     play(&mut g, gn, false, &[obj(theirs)], &[]);
@@ -4347,7 +4347,7 @@ fn goatnap_steals_untaps_and_hastes() {
 #[test]
 fn crib_swap_exiles_and_gives_its_controller_a_changeling() {
     let mut g = table();
-    let theirs = put(&mut g, 1, "Pippin, Guard of the Citadel");
+    let theirs = put(&mut g, 1, "Savannah Lions");
     let cs = hand(&mut g, 0, "Crib Swap");
     assert!(g.def_of(cs).changeling, "every creature type");
     play(&mut g, cs, false, &[obj(theirs)], &[]);
