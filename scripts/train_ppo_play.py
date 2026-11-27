@@ -264,6 +264,7 @@ def main():
         kl_coef = a.kl + (a.kl_final - a.kl) * min(1.0, (it - 1) / max(1, a.kl_iters))
         net.eval()
         parts, won, ends = [], {}, {"error": 0, "timeout": 0}
+        dropped_error = 0  # decisions of games an engine error ended, dropped before GAE (run_games)
         for k, (seats, n) in enumerate(league(a.games, state["past"], self_only=a.self_play)):
             jobs = []
             for i in range(n):
@@ -292,6 +293,8 @@ def main():
             for x in r["results"]:
                 if x["result"] in ends:
                     ends[x["result"]] += 1
+                if x["result"] == "error":
+                    dropped_error += x.get("dropped_steps", 0)
             beat["t"] = time.time()
         arr = concat(parts)
         n_all = len(arr["action"])
@@ -368,6 +371,7 @@ def main():
             if job:
                 job._put(f"{job.prefix}/past/iter_{it}.pt", (ck / f"iter_{it}.pt").read_bytes())
         row = {"iter": it, "games": a.games, "decisions": n, "dropped_big": dropped_big, "dropped_nan": dropped_nan,
+               "dropped_error": dropped_error,
                "skipped_nan": skipped, "kl_coef": round(kl_coef, 4), "errors": ends["error"],
                "timeouts": ends["timeout"],
                **{f"won_{k}": round(float(np.mean(v)), 3) for k, v in won.items()},

@@ -291,6 +291,10 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
             )
             print(f"[worker {os.getpid()}] {done}/{len(games)} games done, {time.time() - t0:.0f}s{tail}", flush=True)
     if slow:  # games stopped for time, or ended by an engine error, leave no samples
+        for st in steps:
+            gi = st["game"] - game_offset
+            if gi in slow:
+                results[gi]["dropped_steps"] = results[gi].get("dropped_steps", 0) + 1
         steps = [st for st in steps if st["game"] - game_offset not in slow]
     return {"results": results, "steps": steps}
 
