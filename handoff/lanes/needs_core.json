@@ -3346,7 +3346,7 @@
   {
    "card": "Slip Out the Back",
    "deck": "Najeela, the Blade-Blossom",
-   "missing": "needs core: phasing out",
+   "missing": "needs core: phasing out [lane C 2026-11-27: scripted in pg_c, batch 17 (unbuilt)]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -3802,7 +3802,7 @@
   {
    "card": "City of Shadows",
    "deck": "Atraxa, Praetors' Voice",
-   "missing": "needs core: storage counters and mana per counter",
+   "missing": "needs core: storage counters and mana per counter [lane C 2026-11-27: scripted in pg_c, batch 17 (unbuilt)]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -3818,7 +3818,7 @@
   {
    "card": "Elspeth Tirel",
    "deck": "Atraxa, Praetors' Voice",
-   "missing": "needs core: gain 1 life per creature you control, and destroy all other permanents except lands and tokens",
+   "missing": "needs core: gain 1 life per creature you control, and destroy all other permanents except lands and tokens [lane C 2026-11-27: scripted in pg_c, batch 17 (unbuilt)]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -5010,7 +5010,7 @@
   {
    "card": "Silundi Vision // Silundi Isle",
    "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
-   "missing": "MDFC/battle; soulbond",
+   "missing": "MDFC/battle; soulbond [lane C 2026-11-27: scripted in pg_c, batch 17 (unbuilt)]",
    "lane": "mac-b",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -6670,6 +6670,22 @@
    "lane": "d1",
    "theme": "subsystems",
    "owner": "d4"
+  },
+  {
+   "card": "Ramunap Excavator",
+   "deck": "Hearthhull, the Worldseed",
+   "missing": "idea quick win: claimed by lane C 2026-11-27, scripted in pg_c, batch 17 (unbuilt)",
+   "lane": "mac-c",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Aquitect's Defenses",
+   "deck": "Niv-Mizzet, Visionary",
+   "missing": "idea quick win: claimed by lane C 2026-11-27, scripted in pg_c, batch 17 (unbuilt)",
+   "lane": "mac-c",
+   "theme": "objects_zones",
+   "owner": "mac-c"
   }
  ]
 }

@@ -2320,6 +2320,61 @@ pub fn script(name: &str) -> Option<Script> {
                 on(b, When::DealtDamage, vec![], vec![Effect::DamageSourceControllerExilesRandomFromHand]);
             },
         ),
+        "Silundi Vision // Silundi Isle" => s(
+            &[
+                "Look at the top six cards of your library. You may reveal an instant or sorcery card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.",
+                "Back: This land enters tapped.",
+                "Back: {T}: Add {U}.",
+            ],
+            |d, _| {
+                let look = Effect::LookAtTop { n: 6, pick: Pick::InstantOrSorcery, chosen_to: LookTo::Hand, rest_to: LookRest::BottomRandom };
+                spell(d, vec![], vec![look]);
+                d.modal_back = true;
+                let b = d.back.as_mut().expect("Silundi Isle");
+                b.enters_tapped = true;
+                b.mana = Some(ManaSource::of(&[Color::Blue]));
+            },
+        ),
+        "Slip Out the Back" => s(
+            &["Put a +1/+1 counter on target creature. It phases out."],
+            |d, _| spell(d, vec![Filter::CREATURE], vec![Effect::Counters { slot: 0, n: 1 }, Effect::PhaseOutSlot(0)]),
+        ),
+        "City of Shadows" => s(
+            &["{T}, Exile a creature you control: Put a storage counter on this land.", "{T}: Add {C} for each storage counter on this land."],
+            |d, _| {
+                // Storage counters are the land's own kind (`kind_counters`).
+                let n = activated(d, "", true, vec![], vec![Effect::KindCounterSelf(1)]);
+                d.activated[n].exile_creature_you_control = true;
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                d.mana_ext.mana_per_kind_counter = true;
+            },
+        ),
+        "Elspeth Tirel" => s(
+            &[
+                "+2: You gain 1 life for each creature you control.",
+                "−2: Create three 1/1 white Soldier creature tokens.",
+                "−5: Destroy all other permanents except for lands and tokens.",
+            ],
+            |d, t| {
+                loyalty(d, 2, Ability::new(vec![], vec![Effect::GainLifePerCreatureYouControl]));
+                loyalty(d, -2, Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.soldier, n: 3 }]));
+                loyalty(d, -5, Ability::new(vec![], vec![Effect::DestroyAllOtherPermanentsExceptLandsAndTokens]));
+            },
+        ),
+        "Ramunap Excavator" => s(&["You may play lands from your graveyard."], |d, _| d.lands_from_graveyard = true),
+        "Aquitect's Defenses" => s(
+            &[
+                "Enchant creature you control",
+                "When this Aura enters, enchanted creature gains hexproof until end of turn.",
+                "Enchanted creature gets +1/+2.",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![YOUR_CREATURE], vec![]));
+                on(d, When::Enters, vec![], vec![Effect::GrantAttached(Keywords::HEXPROOF)]);
+                attached(d, false, 1, 2, Keywords::NONE);
+            },
+        ),
         "Deep-Cavern Bat" => s(
             &["When this creature enters, look at target opponent's hand. You may exile a nonland card from it until this creature leaves the battlefield."],
             |d, _| {
@@ -2635,4 +2690,10 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "The One Ring",
     "Deep-Cavern Bat",
     "Rona, Herald of Invasion // Rona, Tolarian Obliterator",
+    "Silundi Vision // Silundi Isle",
+    "Slip Out the Back",
+    "City of Shadows",
+    "Elspeth Tirel",
+    "Ramunap Excavator",
+    "Aquitect's Defenses",
 ];

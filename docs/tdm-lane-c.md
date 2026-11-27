@@ -1077,3 +1077,27 @@ Built on the merge of tarkir 8a4b5cf (lane B's dredge and The Necrobloom): confl
 `Effect`, `Decision` and test_decision_labels.py (tarkir's first, then lane C's); tokens are tarkir's exactly;
 needs_core.json union (835). Built cold: 2,245 Rust tests pass (core_objects 62, play.rs 3 ignored), every
 binary's count equals its `#[test]` count; clippy, fmt, ruff clean; pytest 177. No fixes were needed.
+
+## Batch 17 (unbuilt): live-missing and idea quick wins in objects and zones
+
+tarkir-c fast-forwarded to local tarkir bffcfdd (the 100 new cards' oracle). Token 104 now goes to lane B.
+Core (appended): `Effect::{GainLifePerCreatureYouControl, DestroyAllOtherPermanentsExceptLandsAndTokens}` (Elspeth
+Tirel; zones.rs `destroy_all_other_nonland_nontoken`).
+Cards (6), all on existing pieces except Elspeth: Silundi Vision // Silundi Isle (Ghyrson; `LookAtTop` +
+`modal_back`), Slip Out the Back (Najeela; `Counters` + `PhaseOutSlot`), City of Shadows (Atraxa; storage counters are
+`kind_counters`, `exile_creature_you_control`, `mana_per_kind_counter`), Elspeth Tirel (Atraxa), Ramunap Excavator
+(Hearthhull, idea; `lands_from_graveyard`), Aquitect's Defenses (Niv-Mizzet, idea). Tests in core_objects (68).
+needs_core.json: the four entries marked, and Ramunap and Aquitect's Defenses added as lane C's claims.
+Left in the named decks, by blocker (lane C's theme, not done):
+- Tandem Lookout (Ghyrson): soulbond's granted "deals damage to an opponent, draw" needs a d2 emit for granted
+  triggers (the pairing exists).
+- Invasion of Arcavios (Ghyrson): battles aren't in the engine.
+- Urza (Lonis): d1 (tap an artifact for mana). Briarbridge Patrol (Lonis): d2. The Earth Crystal (Korvold): Mac B
+  doubling and d1 discount. Flitterwing Nuisance and Glen Elendra Guardian (Raffine): d1 (remove a counter as a
+  cost). Mausoleum Wanderer, Skycat Sovereign (Raffine): d3. Veil of Summer, Derevi, Druids' Repository (Najeela):
+  mixed / merger / d1. Vraska, Tekuthal, Ichormoon Gauntlet, Nissa (Atraxa): proliferate and compleated, not started.
+- Idea decks, possible next in this theme: Arthur, Marigold Knight (Zinnia: top six onto the battlefield attacking,
+  returned at end of combat), Morningtide's Light (exile and return at the next end step), Mirrorform (needs a
+  non-Aura target filter, d3), Goliath Daydreamer (cast from exile with dream counters), Ashling's transform.
+Likely failure spots when built: Silundi's `Pick` answer, Elspeth's loyalty indexes (+2 is 0, −2 is 1, −5 is 2) and
+setting `loyalty` directly, City of Shadows paying Sol Ring with only its stored {C}.

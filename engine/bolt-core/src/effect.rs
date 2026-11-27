@@ -2677,6 +2677,10 @@ pub enum Effect {
     /// Exile each creature that crewed the source this turn; return them to the battlefield tapped
     /// under their owner's control at the beginning of the next end step (Golden Argosy).
     ExileCrewersReturnTappedAtEnd,
+    /// "You gain 1 life for each creature you control." (Elspeth Tirel's +2)
+    GainLifePerCreatureYouControl,
+    /// "Destroy all other permanents except for lands and tokens." (Elspeth Tirel's −5)
+    DestroyAllOtherPermanentsExceptLandsAndTokens,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

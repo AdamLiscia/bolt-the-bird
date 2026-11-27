@@ -948,4 +948,17 @@ impl Game {
             })
             .collect()
     }
+
+    /// Elspeth Tirel's −5: destroy every permanent other than `src` that isn't a land or a token.
+    pub(super) fn destroy_all_other_nonland_nontoken(&mut self, src: ObjId) {
+        let all: Vec<ObjId> = self
+            .battlefield
+            .iter()
+            .copied()
+            .filter(|&c| c != src && !self.types_of(c).land && !self.is_token(c))
+            .collect();
+        for c in all {
+            self.destroy(c);
+        }
+    }
 }

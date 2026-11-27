@@ -1540,3 +1540,93 @@ fn each_opponent_sacrifices_a_nontoken_creature_or_planeswalker() {
     let edict = hand(&mut g, 0, "Inkshield");
     play(&mut g, edict, false, &[], &[]);
 }
+
+// ---- Live-missing and idea quick wins (objects and zones), batch 17 ----
+
+#[test]
+fn silundi_vision_takes_an_instant_from_six_or_is_a_tapped_island() {
+    let mut g = table();
+    let bolt = top(&mut g, "Lightning Bolt");
+    let v = hand(&mut g, 0, "Silundi Vision // Silundi Isle");
+    play(&mut g, v, false, &[], &[Action::Pick(bolt)]);
+    assert_eq!(g.obj(bolt).zone, Zone::Hand);
+    let mut g = table();
+    let v = hand(&mut g, 0, "Silundi Vision // Silundi Isle");
+    act(&mut g, Action::PlayLand(v));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.def_of(v).name, "Silundi Isle");
+    assert!(g.types_of(v).land && g.obj(v).tapped);
+}
+
+#[test]
+fn slip_out_the_back_counters_and_phases_out() {
+    let mut g = table();
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let slip = hand(&mut g, 0, "Slip Out the Back");
+    play(&mut g, slip, false, &[obj(ghoul)], &[]);
+    assert_eq!(g.obj(ghoul).counters, 1);
+    assert!(g.phased_out.iter().any(|&(x, _)| x == ghoul));
+}
+
+#[test]
+fn city_of_shadows_stores_exiled_creatures_as_colorless_mana() {
+    let mut g = game(&[]);
+    let city = put(&mut g, 0, "City of Shadows");
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    act(&mut g, Action::ActivateWith(city, 0, ghoul));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ghoul).zone, Zone::Exile);
+    assert_eq!(g.obj(city).kind_counters, 1);
+    to_main1(&mut g, 5, 0);
+    let ring = hand(&mut g, 0, "Sol Ring");
+    assert!(
+        g.legal_actions().contains(&Action::Cast(ring)),
+        "one storage counter: {{C}}"
+    );
+}
+
+#[test]
+fn elspeth_tirel_gains_per_creature_makes_soldiers_and_wipes_nontoken_nonlands() {
+    let mut g = table();
+    let elspeth = put(&mut g, 0, "Elspeth Tirel");
+    let ghoul = put(&mut g, 1, "Hungry Ghoul");
+    let ring = put(&mut g, 1, "Sol Ring");
+    let life = g.players[0].life;
+    act(&mut g, Action::Loyalty(elspeth, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Soldier").len(), 3);
+    to_main1(&mut g, 5, 0);
+    act(&mut g, Action::Loyalty(elspeth, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, life + 3, "three Soldiers");
+    g.objects[elspeth.0 as usize].loyalty = 5;
+    to_main1(&mut g, 7, 0);
+    act(&mut g, Action::Loyalty(elspeth, 2));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        (g.obj(ghoul).zone, g.obj(ring).zone),
+        (Zone::Graveyard, Zone::Graveyard)
+    );
+    assert_eq!(tokens(&g, 0, "Soldier").len(), 3, "tokens stay");
+    assert!(g.permanents(1).any(|x| g.types_of(x).land), "lands stay");
+}
+
+#[test]
+fn ramunap_excavator_plays_lands_from_the_graveyard() {
+    let mut g = table();
+    put(&mut g, 0, "Ramunap Excavator");
+    let land = g.add_card(0, cid("Mountain"), Zone::Graveyard);
+    assert!(g.legal_actions().contains(&Action::PlayLand(land)));
+}
+
+#[test]
+fn aquitects_defenses_grants_hexproof_this_turn_and_plus_one_plus_two() {
+    let mut g = table();
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let aura = hand(&mut g, 0, "Aquitect's Defenses");
+    play(&mut g, aura, false, &[obj(ghoul)], &[]);
+    assert!(g.keywords(ghoul).has(Keywords::HEXPROOF));
+    assert_eq!((g.power(ghoul), g.toughness(ghoul)), (3, 4));
+    to_main1(&mut g, 5, 0);
+    assert!(!g.keywords(ghoul).has(Keywords::HEXPROOF), "until end of turn");
+}

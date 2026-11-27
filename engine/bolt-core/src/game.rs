@@ -24041,6 +24041,15 @@ impl Game {
                     self.hand_link_ask(src, item.controller, q);
                 }
             }
+            Effect::GainLifePerCreatureYouControl => {
+                let n = self.creatures(item.controller).count() as i32;
+                if n > 0 {
+                    self.gain_life(item.controller, n);
+                }
+            }
+            Effect::DestroyAllOtherPermanentsExceptLandsAndTokens => {
+                self.destroy_all_other_nonland_nontoken(src)
+            }
             Effect::OpponentSacrificesNontokenCreatureOrPlaneswalker => {
                 let q = opponent(item.controller);
                 if !self.nontoken_creature_or_planeswalker_options(q).is_empty() {
