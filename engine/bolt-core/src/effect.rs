@@ -2635,6 +2635,10 @@ pub enum Effect {
     /// free (`free_casts_one`); the rest go to the bottom in a random order. The revealed cards
     /// wait in exile, as cascade's do.
     RevealTopMvMayCastOneFree,
+    /// Palantír of Orthanc: the player in `slot` may have you draw a card
+    /// (`Decision::LetDrawOrMill`); if they don't, you mill X cards, X the source's own kind of
+    /// counters (influence), and they lose life equal to the total mana value of those cards.
+    TargetMayLetYouDrawElseMillKindCounters(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

@@ -652,6 +652,7 @@ impl Game {
                         e.set_item("max", *max)?;
                     }
                     D::Fabricate { n, .. } => e.set_item("x", *n)?,
+                    D::LetDrawOrMill { x, .. } => e.set_item("x", *x)?,
                     _ => {}
                 }
                 d.set_item("decision", e)?;
