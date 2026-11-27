@@ -11,6 +11,14 @@ The desktop (i9-9900K, 16 threads, 32 GB, AMD GPU so CPU only, WSL2) lost power 
 September and November, for hours to days each time. Adam's requirement: **every job on it survives a power
 cut** without losing more than a few minutes of work and without counting anything twice.
 
+## Thread schedule and test suites (Adam, 2026-11-27, relayed by the orchestrator)
+
+- **Training:** 8 threads 07:00–23:00 ET, 12 threads 23:00–07:00. Switch with a graceful stop (SIGTERM to
+  farm.py alone, wait for "farm stopped") and a restart with `--budget N --job-threads N`.
+- **Lane test suites:** two full suites may run at once on the desktop: two lock slots, `-j 2` each, the
+  cache watcher on, and the second suite paused if memory dips. Anything beyond two is still one at a time.
+- The Mac keeps one heavy job at a time.
+
 ## Setting up a clone (the desktop)
 
 ```bash

@@ -451,6 +451,8 @@ pub fn token_defs() -> Vec<CardDef> {
             });
             t
         },
+        // 108, lane d2: Currency Converter's "2/2 black Rogue creature token".
+        black(token("Rogue", "Rogue", 2, 2, Keywords::NONE)),
     ]
 }
 
@@ -673,6 +675,8 @@ pub struct Tokens {
     pub warrior_white: usize,
     /// 107: d2's Hallowed Haunting Spirit Cleric, white, */* the Spirits you control.
     pub spirit_cleric: usize,
+    /// 108: d2's Currency Converter Rogue, a 2/2 black.
+    pub rogue_2: usize,
 }
 
 impl Tokens {
@@ -786,6 +790,7 @@ impl Tokens {
             inkling: base + 105,
             warrior_white: base + 106,
             spirit_cleric: base + 107,
+            rogue_2: base + 108,
         }
     }
 }

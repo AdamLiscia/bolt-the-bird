@@ -187,6 +187,8 @@ pub enum Reduction {
     IfOpponentGraveyardAtLeast(u8, u8),
     /// {X} less, X the noncombat damage dealt to your opponents this turn (Chandra's Incinerator).
     NoncombatDamageToOpponentsThisTurn,
+    /// {1} less for each creature card in your graveyard (Karador, Ghost Chieftain).
+    PerCreatureCardInYourGraveyard,
 }
 
 /// An activated ability: "[cost]: [effect]" (CR 602).
@@ -365,11 +367,10 @@ pub struct Activated {
     /// one with each subtype (Jarad, Golgari Lich Lord: a Swamp and a Forest); the engine picks,
     /// keeping permanents that have both subtypes when it can.
     pub sacrifice_two_subtypes: Option<[&'static str; 2]>,
-    /// Saddle N (CR 702.171): tap another untapped creature you control with power N or more (one
-    /// creature, as crew here; `Action::ActivateWith`, that creature as the victim). Scripted with
-    /// `sorcery` and `victim_in_extra`, its `Effect::BecomeSaddled` records the rider.
-    /// Saddle currently uses crew's one-creature shortcut; lane B is replacing both with a
-    /// total-power cost.
+    /// Saddle N (CR 702.171): tap any number of other untapped creatures you control with total
+    /// power N or more, as a sorcery: crew's cost (`Action::ActivateWith` names the first,
+    /// `Decision::CrewTap` the rest). Scripted with `sorcery` and `victim_in_extra`;
+    /// `Effect::BecomeSaddled` records the riders.
     pub saddle: u8,
     /// "Activate only if you've cast N or more instant and/or sorcery spells this turn." (Urabrask:
     /// 3), from `Game::instants_sorceries_cast`.
@@ -1265,6 +1266,9 @@ pub struct ManaExt {
     pub colored_removes_kind_counter: bool,
     /// "This creature can only attack alone." (Master of Cruelties)
     pub attacks_only_alone: bool,
+    /// "Once during each of your turns, you may cast a creature spell from your graveyard."
+    /// (Karador, Ghost Chieftain): `Action::CastFromGraveyardAs(card, KARADOR_CAST)`.
+    pub creature_from_graveyard_once_each_turn: bool,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana
@@ -1320,6 +1324,8 @@ pub enum EntryDoubler {
     Land,
     /// A land or a permanent with this subtype (Traveling Chocobo: Bird).
     LandOrSubtype(&'static str),
+    /// An artifact or a creature, anyone's (Panharmonicon).
+    ArtifactOrCreature,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.

@@ -2667,6 +2667,13 @@ pub enum Effect {
     /// "Each opponent sacrifices a nontoken creature or planeswalker of their choice." (Sheoldred //
     /// The True Scriptures), as `Decision::SacrificeNontokenCreatureOrPlaneswalker`.
     OpponentSacrificesNontokenCreatureOrPlaneswalker,
+    /// Currency Converter: put a card exiled with the source (`Game::exiled_with`) into its
+    /// owner's graveyard (`Decision::ExiledWithToGraveyard`); create a `land` token if it's a land
+    /// card, a `nonland` token otherwise.
+    ExiledWithSourceToGraveyardToken {
+        land: usize,
+        nonland: usize,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
