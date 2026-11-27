@@ -405,6 +405,20 @@ pub fn token_defs() -> Vec<CardDef> {
             t.types.artifact = true;
             t
         },
+        // 104: a placeholder for lane C's token, swapped in at the merge.
+        token("Placeholder 104", "", 0, 0, Keywords::NONE),
+        {
+            // 105, lane B: Inkshield's "2/1 white and black Inkling creature token with flying".
+            let mut t = token("Inkling", "Inkling", 2, 1, Keywords::FLYING);
+            t.colors = [true, false, true, false, false];
+            t
+        },
+        {
+            // 106, lane B: Najeela's "1/1 white Warrior creature token".
+            let mut t = token("Warrior", "Warrior", 1, 1, Keywords::NONE);
+            t.colors = [true, false, false, false, false];
+            t
+        },
     ]
 }
 
@@ -622,6 +636,9 @@ pub struct Tokens {
     pub wurm_deathtouch: usize,
     /// 103: a 3/3 colorless Phyrexian Wurm artifact creature with lifelink (Wurmcoil Engine).
     pub wurm_lifelink: usize,
+    pub placeholder_104: usize,
+    pub inkling: usize,
+    pub warrior_white: usize,
 }
 
 impl Tokens {
@@ -731,6 +748,9 @@ impl Tokens {
             insect_deathtouch: base + 101,
             wurm_deathtouch: base + 102,
             wurm_lifelink: base + 103,
+            placeholder_104: base + 104,
+            inkling: base + 105,
+            warrior_white: base + 106,
         }
     }
 }

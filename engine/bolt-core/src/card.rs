@@ -355,6 +355,8 @@ pub struct Activated {
     /// "Sacrifice an artifact" in the cost: any artifact you control, kept out of the mana payment
     /// (Goblin Engineer). Activated with `Action::ActivateWith`.
     pub sacrifice_artifact: bool,
+    /// "Activate only during combat." (Najeela, the Blade-Blossom)
+    pub only_during_combat: bool,
 }
 
 /// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,
@@ -1046,6 +1048,12 @@ pub struct CardDef {
     /// Metallic Mimic: "Each other creature you control of the chosen type enters with an
     /// additional +1/+1 counter on it." (its `chosen_type`, in the enter path)
     pub others_of_chosen_type_enter_with_counter: bool,
+    /// Ojer Taq: "If one or more creature tokens would be created under your control, three times
+    /// that many of those tokens are created instead." (`Game::creature_token_tripling`)
+    pub triples_creature_tokens: bool,
+    /// Torbran, Thane of Red Fell: "If a red source you control would deal damage to an opponent or
+    /// a permanent an opponent controls, it deals that much damage plus 2 instead." (`deal_damage`)
+    pub red_sources_deal_two_more: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1562,6 +1570,8 @@ impl CardDef {
             opponents_draw_at_most_one: false,
             overload_spell: None,
             others_of_chosen_type_enter_with_counter: false,
+            triples_creature_tokens: false,
+            red_sources_deal_two_more: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1853,6 +1863,8 @@ impl CardDef {
             opponents_draw_at_most_one: false,
             overload_spell: None,
             others_of_chosen_type_enter_with_counter: false,
+            triples_creature_tokens: false,
+            red_sources_deal_two_more: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2144,6 +2156,8 @@ impl CardDef {
             opponents_draw_at_most_one: false,
             overload_spell: None,
             others_of_chosen_type_enter_with_counter: false,
+            triples_creature_tokens: false,
+            red_sources_deal_two_more: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

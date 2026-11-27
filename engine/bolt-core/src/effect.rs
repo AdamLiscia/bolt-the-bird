@@ -2564,6 +2564,23 @@ pub enum Effect {
     /// Exile the creature in `slot` if its power is at most the power of the card in the item's
     /// `extra` (Titan's Presence: the revealed card).
     ExileIfPowerAtMostExtra(u8),
+    /// Prevent all combat damage that would be dealt to you this turn; for each 1 damage prevented
+    /// this way, create a `def` token (Inkshield: a 2/1 Inkling), see `Game::combat_shield_tokens`.
+    PreventCombatDamageToYouMakingTokens {
+        def: usize,
+    },
+    /// You gain protection from everything until your next turn (The One Ring): damage to you is
+    /// prevented, and nothing can target you (`Game::player_protected_until`).
+    YouGainProtectionUntilYourNextTurn,
+    /// The controller of the creature in the item's `extra` creates a `def` token that's tapped and
+    /// attacking (Najeela's Warriors).
+    ExtrasControllerCreatesAttackingToken {
+        def: usize,
+    },
+    /// Put the creature card in `slot` from a graveyard onto the battlefield under your control
+    /// with a corpse counter (`Object::corpse_counter`: exiled if it would leave) (From the
+    /// Catacombs).
+    ReanimateWithCorpseCounter(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -3510,6 +3527,9 @@ pub enum When {
     /// "Whenever you choose a creature as your Ring-bearer" (Call of the Ring), the same one again
     /// included (CR 701.54c); slot 0 (if `triggering`) is that creature.
     YouChooseRingBearer,
+    /// "Whenever a [subtype] attacks", any player's (Najeela: Warrior); the attacker is the item's
+    /// `extra`.
+    CreatureOfSubtypeAttacks(&'static str),
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -373,3 +373,94 @@ fn gisa_exiles_opponents_dying_creatures_and_remembers_them() {
         .iter()
         .any(|&(s, _, c, z)| s == gisa && c == theirs && z == g.obj(theirs).zcc));
 }
+
+// ---- Pieces for lane C's cards: Torbran, Inkshield, The One Ring (2026-11-27) ----
+
+#[test]
+fn torbrans_red_sources_deal_two_more_to_opponents() {
+    let mut g = table_with(|defs| defs[cid("Savannah Lions")].red_sources_deal_two_more = true);
+    put(&mut g, 0, "Savannah Lions"); // standing in for Torbran
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[Target::Player(1)], &[]);
+    assert_eq!(g.players[1].life, 35, "3 plus 2");
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let shock = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, shock, false, &[Target::Object(elves)], &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Graveyard);
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[Target::Player(0)], &[]);
+    assert_eq!(g.players[0].life, 37, "not to you");
+}
+
+#[test]
+fn inkshield_prevents_combat_damage_to_you_and_makes_inklings() {
+    let t = bolt_cards::scripts::Tokens::starting_at(set("CMD").unwrap().card_count());
+    let mut g = table_with(|defs| {
+        defs[cid("Inkshield")].spell = Some(bolt_core::Ability::new(
+            vec![],
+            vec![bolt_core::Effect::PreventCombatDamageToYouMakingTokens { def: t.inkling }],
+        ));
+    });
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let shield = hand(&mut g, 0, "Inkshield");
+    g.start_turn(4, 1);
+    while g.pending != Pending::DeclareAttackers(1) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(lions));
+    act(&mut g, Action::FinishAttacks);
+    while g.pending != Pending::Priority(0) {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    act(&mut g, Action::Cast(shield));
+    while g.step != Step::Main2 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[0].life, 40, "prevented");
+    let inklings: Vec<ObjId> = g
+        .permanents(0)
+        .filter(|&x| g.is_token(x) && g.def_of(x).name == "Inkling")
+        .collect();
+    assert_eq!(inklings.len(), 2, "one per point prevented");
+    assert_eq!(g.colors_of(inklings[0]), [true, false, true, false, false]);
+    assert!(g.keywords(inklings[0]).has(Keywords::FLYING));
+}
+
+#[test]
+fn protection_from_everything_until_your_next_turn_stops_damage_and_targeting() {
+    let mut g = table_with(|defs| {
+        defs[cid("Inkshield")].spell = Some(bolt_core::Ability::new(
+            vec![],
+            vec![bolt_core::Effect::YouGainProtectionUntilYourNextTurn],
+        ));
+    });
+    let shield = hand(&mut g, 0, "Inkshield"); // standing in for The One Ring's enters trigger
+    play(&mut g, shield, false, &[], &[]);
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    act(&mut g, Action::Cast(bolt));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(Target::Player(0))),
+        "can't be targeted"
+    );
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    let lions = put(&mut g, 1, "Savannah Lions");
+    g.start_turn(4, 1);
+    while g.pending != Pending::DeclareAttackers(1) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(lions));
+    act(&mut g, Action::FinishAttacks);
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.players[0].life, 40, "damage prevented until your next turn");
+}

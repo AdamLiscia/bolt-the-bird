@@ -3853,3 +3853,81 @@ fn metallic_mimic_is_the_chosen_type_and_grows_the_others() {
     play(&mut g, lions, false, &[], &[]);
     assert_eq!(g.obj(lions).counters, 0, "not an Elf");
 }
+
+#[test]
+fn ojer_taq_triples_creature_tokens_and_returns_as_its_temple() {
+    let mut g = table();
+    let ojer = put(
+        &mut g,
+        0,
+        "Ojer Taq, Deepest Foundation // Temple of Civilization",
+    );
+    let port = put(&mut g, 0, "Fountainport");
+    act(&mut g, Action::Activate(port, 1)); // a Fish: three
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Fish").len(), 3);
+    let damn = hand(&mut g, 0, "Damn");
+    play(&mut g, damn, false, &[Target::Object(ojer)], &[]);
+    assert_eq!(g.obj(ojer).zone, Zone::Battlefield, "returned");
+    assert!(g.obj(ojer).transformed && g.obj(ojer).tapped);
+    assert!(g.types_of(ojer).land);
+}
+
+#[test]
+fn najeela_makes_attacking_warriors_and_only_activates_in_combat() {
+    let mut g = table();
+    let najeela = put(&mut g, 0, "Najeela, the Blade-Blossom"); // a Human Warrior
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(najeela, 0)),
+        "only during combat"
+    );
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(najeela));
+    act(&mut g, Action::FinishAttacks);
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            Pending::Decide(_) => Action::Yes,
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    let warriors = tokens(&g, 0, "Warrior");
+    assert_eq!(warriors.len(), 1);
+    assert_eq!(
+        g.colors_of(warriors[0]),
+        [true, false, false, false, false],
+        "white"
+    );
+    assert_eq!(g.players[1].life, 40 - 3 - 1, "it attacked too");
+}
+
+#[test]
+fn from_the_catacombs_reanimates_with_a_corpse_counter_and_the_initiative() {
+    let mut g = table();
+    let lions = g.add_card(1, cid("Savannah Lions"), Zone::Graveyard); // theirs
+    let cat = hand(&mut g, 0, "From the Catacombs");
+    act(&mut g, Action::Cast(cat));
+    act(&mut g, Action::Target(Target::Object(lions)));
+    while !g.items.is_empty() || matches!(g.pending, Pending::Decide(_) | Pending::ChooseTarget(_)) {
+        let a = match g.pending {
+            Pending::Decide(_) | Pending::ChooseTarget(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a); // the initiative's room
+    }
+    assert_eq!(
+        (g.obj(lions).zone, g.obj(lions).controller),
+        (Zone::Battlefield, 0)
+    );
+    assert_eq!(g.initiative.map(|(q, _)| q), Some(0));
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[Target::Object(lions)], &[]);
+    assert_eq!(g.obj(lions).zone, Zone::Exile, "exiled instead of dying");
+}

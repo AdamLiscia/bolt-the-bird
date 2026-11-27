@@ -2176,6 +2176,49 @@ pub fn script(name: &str) -> Option<Script> {
                 d.others_of_chosen_type_enter_with_counter = true;
             },
         ),
+        "Ojer Taq, Deepest Foundation // Temple of Civilization" => s(
+            &[
+                "If one or more creature tokens would be created under your control, three times that many of those tokens are created instead.",
+                "When Ojer Taq dies, return it to the battlefield tapped and transformed under its owner's control.",
+                "Back: {T}: Add {W}.",
+                "Back: {2}{W}, {T}: Transform this land. Activate only if you attacked with three or more creatures this turn and only as a sorcery.",
+            ],
+            |d, _| {
+                d.triples_creature_tokens = true;
+                on(d, When::Dies, vec![], vec![Effect::ReturnSelfTappedTransformed]);
+                let b = d.back.as_mut().expect("Temple of Civilization");
+                b.mana = Some(ManaSource::of(&[Color::White]));
+                let n = activated(b, "{2}{W}", true, vec![], vec![Effect::TransformSelf]);
+                b.activated[n].sorcery = true;
+                b.activated[n].min_attackers_this_turn = 3;
+            },
+        ),
+        "Najeela, the Blade-Blossom" => s(
+            &[
+                "Whenever a Warrior attacks, you may have its controller create a 1/1 white Warrior creature token that's tapped and attacking.",
+                "{W}{U}{B}{R}{G}: Untap all attacking creatures. They gain trample, lifelink, and haste until end of turn. After this phase, there is an additional combat phase. Activate only during combat.",
+            ],
+            |d, t| {
+                let warrior = Effect::ExtrasControllerCreatesAttackingToken { def: t.warrior_white };
+                may(d, When::CreatureOfSubtypeAttacks("Warrior"), vec![], vec![warrior]);
+                let keywords = Keywords::TRAMPLE.with(Keywords::LIFELINK).with(Keywords::HASTE);
+                let effects = vec![Effect::UntapAttackersAndGrant(keywords), Effect::AdditionalCombatAfterThisPhase];
+                let n = activated(d, "{W}{U}{B}{R}{G}", false, vec![], effects);
+                d.activated[n].only_during_combat = true;
+            },
+        ),
+        "From the Catacombs" => s(
+            &[
+                "Put target creature card from a graveyard onto the battlefield under your control with a corpse counter on it. You take the initiative. If that creature would leave the battlefield, exile it instead of putting it anywhere else.",
+                "Escape\u{2014}{3}{B}{B}, Exile five other cards from your graveyard.",
+            ],
+            |d, _| {
+                let card = graveyard_cards(true, Controller::Any);
+                let initiative = Effect::Subsystem(bolt_core::SubsystemEffect::TakeInitiative);
+                spell(d, vec![card], vec![Effect::ReanimateWithCorpseCounter(0), initiative]);
+                d.mana_ext.escape = Some((ManaCost::parse("{3}{B}{B}").expect("cost"), 5, 0));
+            },
+        ),
         _ => None,
     }
 }
@@ -2428,6 +2471,9 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Dauthi Voidwalker",
     "Damn",
     "Metallic Mimic",
+    "Ojer Taq, Deepest Foundation // Temple of Civilization",
+    "Najeela, the Blade-Blossom",
+    "From the Catacombs",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",
