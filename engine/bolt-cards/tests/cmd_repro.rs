@@ -67,20 +67,40 @@ fn misdirection_in_hand_while_a_permanent_spell_is_on_the_stack() {
     assert_eq!(g.obj(ring).zone, Zone::Battlefield);
 }
 
+/// Nissa at 6 lands; Awaken the Woods makes two Forest Dryads, so two land triggers go on the stack.
+/// The first exiles her and returns her transformed. By then she's a new object (CR 400.7), so the
+/// second can't find her and does nothing: she isn't flickered back to her front face.
 #[test]
 fn nissa_with_a_second_land_trigger_after_she_transforms() {
-    let mut g = table();
+    let plains = vec![cid("Plains"); 99];
+    let mut g = Game::new_commander(
+        set("CMD").unwrap().defs.clone(),
+        [&plains, &plains],
+        [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+        7,
+        0,
+    );
+    g.auto_pass = false;
+    for _ in 0..6 {
+        g.add_card(0, cid("Forest"), Zone::Battlefield);
+    }
+    g.start_turn(3, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
     let nissa = g.add_card(
         0,
         cid("Nissa, Vastwood Seer // Nissa, Sage Animist"),
         Zone::Battlefield,
     );
     let woods = g.add_card(0, cid("Awaken the Woods"), Zone::Hand);
-    // Two Forest Dryads: two lands enter at once, two of Nissa's land triggers.
+    let zcc = g.obj(nissa).zcc;
     act(&mut g, Action::CastX(woods, 2));
     resolve_all(&mut g, &[]);
     assert_eq!(g.obj(nissa).zone, Zone::Battlefield);
     assert_eq!(g.def_of(nissa).name, "Nissa, Sage Animist");
+    assert_eq!(g.obj(nissa).zcc, zcc + 2, "exiled and returned once, not twice");
+    assert_eq!(g.obj(nissa).loyalty, 3);
 }
 
 /// A playgroup deck from tests/data/cmd_repro_decks.txt: (commanders, the other cards).
@@ -174,6 +194,7 @@ fn a_panicking_playout_scores_as_a_loss() {
         alt: false,
         x: 0,
         division: Vec::new(),
+        source_zcc: None,
     });
     let legal = g.legal_actions();
     assert!(legal.len() > 1, "a real choice: {legal:?}");

@@ -815,6 +815,10 @@ pub struct StackItem {
     pub x: u8,
     /// How divided damage is split among the targets, in target order (CR 601.2d).
     pub division: Vec<u8>,
+    /// The source's zone-change count as the entry went on the stack (`Game::push_item`): an effect
+    /// on "this" object does nothing once that object has left and come back as a new one (CR 400.7).
+    /// `None`: not recorded.
+    pub source_zcc: Option<u32>,
 }
 
 /// `CastMode::mode` (and `StackItem::mode`) for a spell cast as its Omen half.
@@ -4382,6 +4386,7 @@ impl Game {
                         alt: false,
                         x: 0,
                         division: Vec::new(),
+                        source_zcc: None,
                     });
                 }
             }
@@ -5615,6 +5620,7 @@ impl Game {
                             alt: false,
                             x: 0,
                             division: Vec::new(),
+                            source_zcc: None,
                         });
                     }
                 }
@@ -5705,6 +5711,7 @@ impl Game {
                                     alt: false,
                                     x: 0,
                                     division: Vec::new(),
+                                    source_zcc: None,
                                 });
                             }
                         }
@@ -6109,6 +6116,7 @@ impl Game {
                                 alt: false,
                                 x: 0,
                                 division: Vec::new(),
+                                source_zcc: None,
                             });
                         }
                     }
@@ -6135,6 +6143,7 @@ impl Game {
                                     alt: false,
                                     x: 0,
                                     division: Vec::new(),
+                                    source_zcc: None,
                                 });
                             }
                         }
@@ -6186,6 +6195,7 @@ impl Game {
                     alt: false,
                     x: 0,
                     division: Vec::new(),
+                    source_zcc: None,
                 });
             }
         }
@@ -6231,6 +6241,7 @@ impl Game {
                     alt: false,
                     x: 0,
                     division: Vec::new(),
+                    source_zcc: None,
                 });
             }
         }
@@ -7086,6 +7097,20 @@ impl Game {
     }
 
     /// A stack entry for a spell about to be cast, for target checks.
+    /// Puts an entry on the stack, recording which object its source is now (CR 400.7).
+    fn push_item(&mut self, mut item: StackItem) {
+        if item.source_zcc.is_none() {
+            item.source_zcc = Some(self.obj(item.source).zcc);
+        }
+        self.items.push(item);
+    }
+
+    /// Whether the entry's source is still the object it was as the entry went on the stack: a
+    /// permanent that left and came back is a new object its old abilities can't find (CR 400.7).
+    fn still_same_source(&self, item: &StackItem) -> bool {
+        item.source_zcc.is_none_or(|z| z == self.obj(item.source).zcc)
+    }
+
     fn casting(card: ObjId, p: PlayerId) -> StackItem {
         StackItem {
             source: card,
@@ -7100,6 +7125,7 @@ impl Game {
             alt: false,
             x: 0,
             division: Vec::new(),
+            source_zcc: None,
         }
     }
 
@@ -9175,7 +9201,7 @@ impl Game {
         self.passes = 0;
         if ability.targets.is_empty() {
             self.pay_loyalty(id, cost);
-            self.items.push(item);
+            self.push_item(item);
             self.give_priority(p);
         } else {
             self.choosing = Some(Choosing {
@@ -9730,6 +9756,7 @@ impl Game {
             alt: false,
             x: 0,
             division: Vec::new(),
+            source_zcc: None,
         };
         let mut item = item;
         if let (true, Some(v)) = (self.activated_of(id, n).amount_from_victim_toughness, victim) {
@@ -9744,7 +9771,7 @@ impl Game {
         self.passes = 0;
         if self.activated_of(id, n).ability.targets.is_empty() {
             self.pay_activation(p, id, n, victim, 0);
-            self.items.push(item);
+            self.push_item(item);
             self.give_priority(p);
         } else {
             self.choosing = Some(Choosing {
@@ -9770,7 +9797,7 @@ impl Game {
         let a = &self.activated_of(id, n).ability;
         if a.targets.is_empty() || (a.targets_exactly_x && x == 0) {
             self.pay_activation(p, id, n, victim, x);
-            self.items.push(item);
+            self.push_item(item);
             self.give_priority(p);
         } else {
             self.choosing = Some(Choosing {
@@ -11402,6 +11429,7 @@ impl Game {
                             alt: false,
                             x: 0,
                             division: Vec::new(),
+                            source_zcc: None,
                         });
                     }
                 }
@@ -11845,6 +11873,7 @@ impl Game {
             alt: mode.alt,
             x: mode.x,
             division: Vec::new(),
+            source_zcc: None,
         };
         let def = self.def_of(card);
         let ability = match mode.mode {
@@ -12265,7 +12294,7 @@ impl Game {
         if instant_or_sorcery || casts_this {
             self.cast_snapshots.push(item.clone());
         }
-        self.items.push(item);
+        self.push_item(item);
         if casts_this {
             // Storm counts the spells cast before this one, as it's cast (CR 702.40a).
             let before = self.triggered.len();
@@ -12361,6 +12390,7 @@ impl Game {
                         alt: false,
                         x: 0,
                         division: Vec::new(),
+                        source_zcc: None,
                     });
                 }
             }
@@ -12393,6 +12423,7 @@ impl Game {
                             alt: false,
                             x: 0,
                             division: Vec::new(),
+                            source_zcc: None,
                         });
                     }
                 }
@@ -12526,7 +12557,7 @@ impl Game {
                 self.pay_activation(c.item.controller, c.item.source, n, victim, c.item.x);
             }
             self.ward_check(&c.item);
-            self.items.push(c.item);
+            self.push_item(c.item);
             self.give_priority(c.then);
         }
     }
@@ -12646,6 +12677,7 @@ impl Game {
                         alt: false,
                         x: 0,
                         division: Vec::new(),
+                        source_zcc: None,
                     });
                 }
                 if self.def_of(id).ward_discard {
@@ -12699,6 +12731,7 @@ impl Game {
                         alt: false,
                         x: 0,
                         division: Vec::new(),
+                        source_zcc: None,
                     });
                 }
             }
@@ -13076,7 +13109,7 @@ impl Game {
                 }
             }
             self.ward_check(&copy);
-            self.items.push(copy);
+            self.push_item(copy);
         }
         self.give_priority(self.active);
     }
@@ -15542,7 +15575,7 @@ impl Game {
                     targets: vec![Chosen::Player(t as PlayerId)],
                     ..Game::casting(source, p)
                 };
-                self.items.push(copy);
+                self.push_item(copy);
             }
             (Decision::ChainCopy { .. }, Action::No) => {}
             (Decision::PickOneOf { to_hand, .. }, Action::Pick(c)) => {
@@ -18221,7 +18254,7 @@ impl Game {
                             controller: item.controller,
                             ..snap.clone()
                         };
-                        self.items.push(copy);
+                        self.push_item(copy);
                         self.copied_or_cast_instant_sorcery(item.controller, snap.source);
                     }
                 }
@@ -18355,7 +18388,7 @@ impl Game {
                 });
                 if let Some(spell) = spell {
                     let c = spell.source;
-                    self.items.push(StackItem {
+                    self.push_item(StackItem {
                         kind: StackKind::SpellCopy,
                         controller: item.controller,
                         ..spell
@@ -18570,7 +18603,7 @@ impl Game {
                 }
             }
             Effect::ExileSelfReturn { transformed } => {
-                if self.obj(src).zone == Zone::Battlefield {
+                if self.obj(src).zone == Zone::Battlefield && self.still_same_source(item) {
                     self.move_to(src, Zone::Exile);
                     // CR 712.14: only a double-faced card can return transformed.
                     if self.obj(src).zone == Zone::Exile
@@ -21756,7 +21789,7 @@ impl Game {
                 self.high_tide = (turn, n + 1);
             }
             Effect::FlickerSelf => {
-                if self.obj(src).zone == Zone::Battlefield {
+                if self.obj(src).zone == Zone::Battlefield && self.still_same_source(item) {
                     self.move_to(src, Zone::Exile);
                     let zcc = self.obj(src).zcc;
                     self.delayed_returns.push((src, zcc, 0));
@@ -21841,7 +21874,7 @@ impl Game {
                             ..snap.clone()
                         };
                         self.ward_check(&copy);
-                        self.items.push(copy);
+                        self.push_item(copy);
                         self.copied_or_cast_instant_sorcery(item.controller, snap.source);
                     }
                 }
@@ -22225,6 +22258,7 @@ impl Game {
                     alt: false,
                     x: 0,
                     division: Vec::new(),
+                    source_zcc: None,
                 });
             }
             Effect::GrantDiesTrigger { slot, trigger } => {
@@ -25583,7 +25617,7 @@ impl Game {
                 self.events.push(Event::Triggered { source: item.source });
             }
             if ability.targets.len() == item.targets.len() {
-                self.items.push(item);
+                self.push_item(item);
             } else if self.trigger_can_target(&item, &ability) {
                 let who = item.controller;
                 self.choosing = Some(Choosing {
@@ -26045,6 +26079,7 @@ impl Game {
                                 alt: false,
                                 x: 0,
                                 division: Vec::new(),
+                                source_zcc: None,
                             });
                         }
                     }
@@ -26758,6 +26793,7 @@ impl Game {
                     alt: false,
                     x: 0,
                     division: Vec::new(),
+                    source_zcc: None,
                 });
             }
         }
