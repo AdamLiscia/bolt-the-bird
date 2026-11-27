@@ -460,8 +460,13 @@ pub fn token_defs() -> Vec<CardDef> {
         black(token("Rogue", "Rogue", 2, 2, Keywords::NONE)),
         // 109, lane d2: Toxrill, the Corrosive's "1/1 black Slug creature token".
         black(token("Slug", "Slug", 1, 1, Keywords::NONE)),
-        // 110: a placeholder for lane d1's Phyrexian Horror, swapped in at the merge.
-        token("Placeholder 110", "", 0, 0, Keywords::NONE),
+        {
+            // 110, lane d1: Nissa, Ascended Animist's "X/X green Phyrexian Horror creature token"
+            // (0/0, its P/T set from X).
+            let mut t = token("Phyrexian Horror", "Phyrexian Horror", 0, 0, Keywords::NONE);
+            t.colors = [false, false, false, false, true];
+            t
+        },
         {
             // 111, lane d2: Horizon Explorer's Lander, "an artifact with '{2}, {T}, Sacrifice this
             // token: Search your library for a basic land card, put it onto the battlefield tapped,
@@ -746,7 +751,8 @@ pub struct Tokens {
     pub rogue_2: usize,
     /// 109: d2's Toxrill Slug, a 1/1 black.
     pub slug: usize,
-    pub placeholder_110: usize,
+    /// 110: Nissa, Ascended Animist's X/X green Phyrexian Horror (0/0, P/T set from X).
+    pub phyrexian_horror_x: usize,
     /// 111: d2's Lander (Horizon Explorer): "{2}, {T}, Sacrifice: fetch a basic land, tapped".
     pub lander: usize,
     /// 112: d2's Kinbinding Kithkin, a 1/1 green and white.
@@ -880,7 +886,7 @@ impl Tokens {
             spirit_cleric: base + 107,
             rogue_2: base + 108,
             slug: base + 109,
-            placeholder_110: base + 110,
+            phyrexian_horror_x: base + 110,
             lander: base + 111,
             kithkin: base + 112,
             zombie_decayed: base + 113,

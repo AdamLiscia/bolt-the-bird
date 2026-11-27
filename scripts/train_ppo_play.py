@@ -30,11 +30,34 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from bolt.backup import upload_quietly  # noqa: E402
 from bolt.play_data import concat  # noqa: E402
+from bolt.play_net import pad_optimizer, pad_state  # noqa: E402
 from bolt.play_ppo import gae, league, ppo_step  # noqa: E402
 from bolt.play_runner import run_parallel  # noqa: E402
 
-# One deck per line (card numbers of BOLT_PLAY_SET): lines 0-511 train, 512-1023 evaluate.
+# One deck per line (card numbers of BOLT_PLAY_SET): lines 0-511 train, 512-1023 evaluate. In Commander
+# (BOLT_PLAY_FORMAT=commander) a bolt.cmd_decks file, every deck both trained and evaluated on: the
+# playgroup's decks are the decks it will play, and there are only a handful.
 DECKS = Path(os.environ.get("BOLT_DECKS", str(ROOT / "data" / "m7" / "decks.txt")))
+COMMANDER = os.environ.get("BOLT_PLAY_FORMAT", "").lower() == "commander"
+
+
+def deck_sets():
+    """(training decks, evaluation decks)."""
+    if COMMANDER:
+        from bolt.cmd_decks import read
+
+        decks = read(DECKS)
+        if len(decks) < 2:
+            raise SystemExit(f"{DECKS}: Commander needs at least two decks, found {len(decks)}")
+        return decks, decks
+    lines = DECKS.read_text().split("\n")
+    return [list(map(int, x.split())) for x in lines[:512]], [list(map(int, x.split())) for x in lines[512:1024]]
+
+
+def eval_jobs(decks, pairs):
+    """Evaluation games: each deck against each other in turn (never itself), seeds fixed."""
+    n = len(decks)
+    return [(decks[i % n], decks[(i + 1 + (i // n) % (n - 1)) % n], 9_000 + i, i % 2) for i in range(pairs)]
 
 
 def load_net(path):
@@ -52,9 +75,7 @@ def save_atomic(obj, path: Path):
 def evaluate(net, pairs, workers):
     from eval_play import match, summary
 
-    lines = DECKS.read_text().split("\n")
-    decks = [list(map(int, x.split())) for x in lines[512:1024]]
-    jobs = [(decks[i % 512], decks[(i + 1) % 512], 9_000 + i, i % 2) for i in range(pairs)]
+    jobs = eval_jobs(deck_sets()[1], pairs)
     net.eval()
     return {opp: summary(match(net, "net", opp, jobs, workers))["win_rate"] for opp in ("rules", "smart")}
 
@@ -101,8 +122,9 @@ def main():
     state = {"iter": 0, "history": [], "evals": [], "past": [], "best": None}
     if a.resume and (ck / "state.pt").exists():
         s = torch.load(ck / "state.pt", map_location="cpu", weights_only=False)
-        net.load_state_dict(s["model"])
+        net.load_state_dict(pad_state(s["model"]))
         opt.load_state_dict(s["opt"])
+        pad_optimizer(opt, net)
         state = s["state"]
         print(f"resumed at iteration {state['iter']}", flush=True)
     # On the farm (BOLT_JOB set by farm.py): power-cut-safe checkpoints on S3 (bolt.jobs), resumed first.
@@ -113,8 +135,9 @@ def main():
         job = Job(os.environ["BOLT_JOB"])
         s = job.resume()
         if s is not None:
-            net.load_state_dict(s["model"])
+            net.load_state_dict(pad_state(s["model"]))  # saved before inputs were appended: grown
             opt.load_state_dict(s["opt"])
+            pad_optimizer(opt, net)
             state = s["state"]
             for f in state["past"]:  # a fresh disk: fetch the past opponents too
                 if not (ck / f).exists():
@@ -123,8 +146,7 @@ def main():
                         (ck / f).write_bytes(data)
             state["past"] = [f for f in state["past"] if (ck / f).exists()]
             print(f"resumed from S3 at iteration {state['iter']}", flush=True)
-    lines = DECKS.read_text().split("\n")
-    decks = [list(map(int, x.split())) for x in lines[:512]]
+    decks = deck_sets()[0]
 
     beat = {"t": time.time()}
 
@@ -158,7 +180,7 @@ def main():
         for k, (seats, n) in enumerate(league(a.games, state["past"], self_only=a.self_play)):
             jobs = []
             for i in range(n):
-                d1, d2 = rng.sample(range(512), 2)
+                d1, d2 = rng.sample(range(len(decks)), 2)
                 jobs.append((decks[d1], decks[d2], 20_000_000 + it * 10_000 + k * 1_000 + i, i % 2))
             opp = load_net(ck / rng.choice(state["past"])) if "opp" in seats else None
             record = tuple(i for i, s in enumerate(seats) if s == "net")

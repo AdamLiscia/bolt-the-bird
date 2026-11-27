@@ -1077,3 +1077,78 @@ Built on the merge of tarkir 8a4b5cf (lane B's dredge and The Necrobloom): confl
 `Effect`, `Decision` and test_decision_labels.py (tarkir's first, then lane C's); tokens are tarkir's exactly;
 needs_core.json union (835). Built cold: 2,245 Rust tests pass (core_objects 62, play.rs 3 ignored), every
 binary's count equals its `#[test]` count; clippy, fmt, ruff clean; pytest 177. No fixes were needed.
+
+## Batch 17 (unbuilt): live-missing and idea quick wins in objects and zones
+
+tarkir-c fast-forwarded to local tarkir bffcfdd (the 100 new cards' oracle). Token 104 now goes to lane B.
+Core (appended): `Effect::{GainLifePerCreatureYouControl, DestroyAllOtherPermanentsExceptLandsAndTokens}` (Elspeth
+Tirel; zones.rs `destroy_all_other_nonland_nontoken`).
+Cards (6), all on existing pieces except Elspeth: Silundi Vision // Silundi Isle (Ghyrson; `LookAtTop` +
+`modal_back`), Slip Out the Back (Najeela; `Counters` + `PhaseOutSlot`), City of Shadows (Atraxa; storage counters are
+`kind_counters`, `exile_creature_you_control`, `mana_per_kind_counter`), Elspeth Tirel (Atraxa), Ramunap Excavator
+(Hearthhull, idea; `lands_from_graveyard`), Aquitect's Defenses (Niv-Mizzet, idea). Tests in core_objects (68).
+needs_core.json: the four entries marked, and Ramunap and Aquitect's Defenses added as lane C's claims.
+Left in the named decks, by blocker (lane C's theme, not done):
+- Tandem Lookout (Ghyrson): soulbond's granted "deals damage to an opponent, draw" needs a d2 emit for granted
+  triggers (the pairing exists).
+- Invasion of Arcavios (Ghyrson): battles aren't in the engine.
+- Urza (Lonis): d1 (tap an artifact for mana). Briarbridge Patrol (Lonis): d2. The Earth Crystal (Korvold): Mac B
+  doubling and d1 discount. Flitterwing Nuisance and Glen Elendra Guardian (Raffine): d1 (remove a counter as a
+  cost). Mausoleum Wanderer, Skycat Sovereign (Raffine): d3. Veil of Summer, Derevi, Druids' Repository (Najeela):
+  mixed / merger / d1. Vraska, Tekuthal, Ichormoon Gauntlet, Nissa (Atraxa): proliferate and compleated, not started.
+- Idea decks, possible next in this theme: Arthur, Marigold Knight (Zinnia: top six onto the battlefield attacking,
+  returned at end of combat), Morningtide's Light (exile and return at the next end step), Mirrorform (needs a
+  non-Aura target filter, d3), Goliath Daydreamer (cast from exile with dream counters), Ashling's transform.
+Likely failure spots when built: Silundi's `Pick` answer, Elspeth's loyalty indexes (+2 is 0, −2 is 1, −5 is 2) and
+setting `loyalty` directly, City of Shadows paying Sol Ring with only its stored {C}.
+
+## Batch 18 (unbuilt): Arthur, Goliath Daydreamer; Ashling held
+
+Core (appended):
+- `LookTo::BattlefieldAttackingReturnAtEndOfCombat` (one arm in the `Decision::LookPick` answer) and
+  `Game::hand_at_end_combat`, emptied by `return_hand_at_end_combat` from one call at the top of the
+  `Step::EndCombat` block (next to decayed and Delina's exile). **Merger: that call is in turn structure.**
+- `Effect::{DreamExileExtraIfCastFromHand, MayCastDreamCardFree}` with `Game::{dream_marked, dream_counters}`.
+  The resolution site's `leave_stack` branch is now `else if !self.exile_with_dream_counter(source)`: a marked
+  spell is exiled with a dream counter instead (zone destination, lane C's). The attack trigger opens a one-spell
+  free-cast window (`free_casts_one`) over the dream cards the controller owns.
+Cards (2): Arthur, Marigold Knight (`GateAttackingAtLeast(2)` then `LookAtTop`), Goliath Daydreamer. Tests in
+core_objects (71). Shortcut: the dream cards not cast keep `cast_free` while they stay in exile; nothing else
+reads it outside a free-cast window.
+Held: Ashling, Rekindled // Ashling, Rimebound needs "whenever this transforms into [face]" (d2) and mana spendable
+only on spells with mana value 4 or greater (d1). Its transform (`MayPay` then `TransformSelf` on
+`When::FirstMainPhaseYourTurn`) exists. Recorded in needs_core.json.
+Likely failure spots when built: Arthur's `resolve_all` answer (the LookPick `Pick`), the `combat` check, and
+Goliath's free-cast window after the attack trigger (`Pending::FreeCast`).
+Merger approved (2026-11-27): the `return_hand_at_end_combat()` call at the top of `Step::EndCombat`, and the `else if !self.exile_with_dream_counter(source)` branch at resolution. Ashling held as recorded. Build after d3 (Mikaeus) and lane B, on the go.
+
+## Handoff (2026-11-27, context full): for the next lane C
+
+State: tarkir-c at the commit after 584431f (notes only). Built and on tarkir: everything through 096072f.
+**Unbuilt WIP on top: 662042a (batch 17) and 389f90e (batch 18), both accepted by the merger; build on its go**
+(order: merger verification, d3 Mikaeus, lane B, then lane C). Full check as in the batch 12 handoff above;
+core_objects should count 71. Likely failure spots are listed under batches 17 and 18.
+
+Queued by the merger, **once d3 b30 is on tarkir** (not there at b7d3a48). Write unbuilt, merge tarkir first:
+- Pippin, Guard of the Citadel (Bruna's deck, lane C's): d3's `Effect::ProtectionFromCardTypeEot { slot, kind }`,
+  kind in ChooseCardType order (0 artifact, 1 creature, 2 enchantment, 3 instant, 4 land, 5 planeswalker,
+  6 sorcery).
+- Toxrill, the Corrosive (Sefris): `Effect::SlimeCounterOnEachCreatureYouDontControl` at each end step
+  (`When::EndStep { your_turn_only: false }`), the static `Static { scope: Scope::OpponentsCreatures, power: -1,
+  toughness: -1, scale: Some(Scale::PerSlimeCounterOnIt) }`, d2's dies trigger (reads `last_slime > 0`, makes the
+  Slug, token 109), and "{U}{B}, Sacrifice a Slug: Draw a card" from existing pieces (`sacrifice_subtype`).
+Token 104 is lane B's now; ask the merger for any token. Report to the merger with hashes and totals; never push.
+
+## Merge of tarkir 1eaaf4e; batches 17 and 18 built; Pippin and Toxrill (2026-11-27)
+
+Merge c4735d0: tarkir 1eaaf4e (219ba6e plus d1 b23-b27, d2 b25-b29, d3 b30-b31, lane T) into tarkir-c.
+Conflicts only at the end of `Effect` (tarkir's first, then lane C's) and needs_core.json (three-way union by
+card; Goliath Daydreamer keeps lane C's claim, since d2 didn't script it). Tokens are tarkir's exactly (109
+`slug`, 110 `phyrexian_horror_x`). No duplicate members in any enum or struct.
+Cards (2), on d3 b30's pieces: Pippin, Guard of the Citadel (`ProtectionChosenCardTypeEot(Some(0))`, the type
+asked with `Decision::ProtectionCardType` as it resolves), Toxrill, the Corrosive (end-step slime, the scaled
+static, the slimed-creature-dies Slug, and `sacrifice_subtype = "Slug"` for the draw). Sefris is finished.
+Built cold, two test fixes: Aquitect's Defenses now passes through cleanup (start_turn skips it, so
+`until_eot` was never cleared), and Elspeth Tirel's test sets her loyalty to 4 first. 2,335 Rust tests pass
+(core_objects 73, 4 ignored: 3 play.rs, 1 rollout); every binary's count equals its `#[test]` count; clippy,
+fmt, ruff (check and format) clean; pytest 194 passed, 1 skipped.

@@ -34,6 +34,7 @@ fn smart() -> Pilot {
         max_candidates: 2,
         max_actions: 3_000,
         max_objects: 2_000,
+        time_limit: None,
     })
 }
 

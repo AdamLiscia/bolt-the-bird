@@ -6686,6 +6686,310 @@
    "owner": "d4"
   },
   {
+   "card": "Badlands",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "claimed by lane B 2026-11-27: scripted (a dual land, no core needed)",
+   "lane": "mac-b",
+   "theme": "merger_delegated",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Bayou",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "claimed by lane B 2026-11-27: scripted (a dual land, no core needed)",
+   "lane": "mac-b",
+   "theme": "merger_delegated",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Plateau",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "claimed by lane B 2026-11-27: scripted (a dual land, no core needed)",
+   "lane": "mac-b",
+   "theme": "merger_delegated",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Savannah",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "claimed by lane B 2026-11-27: scripted (a dual land, no core needed)",
+   "lane": "mac-b",
+   "theme": "merger_delegated",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Scrubland",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "claimed by lane B 2026-11-27: scripted (a dual land, no core needed)",
+   "lane": "mac-b",
+   "theme": "merger_delegated",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Taiga",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "claimed by lane B 2026-11-27: scripted (a dual land, no core needed)",
+   "lane": "mac-b",
+   "theme": "merger_delegated",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Tundra",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "claimed by lane B 2026-11-27: scripted (a dual land, no core needed)",
+   "lane": "mac-b",
+   "theme": "merger_delegated",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Morningtide's Light",
+   "deck": "Neriv, Heart of the Storm (idea)",
+   "missing": "claimed by lane B 2026-11-27: Effect::ExileSlotReturnTappedAtEnd and Effect::PreventDamageToYouUntilYourNextTurn, scripted",
+   "lane": "mac-b",
+   "theme": "replace_filter",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Mirrormind Crown",
+   "deck": "Zurgo, Thunder's Decree (idea)",
+   "missing": "claimed by lane B 2026-11-27: scripted",
+   "lane": "mac-b",
+   "theme": "replace_filter",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Glen Elendra's Answer",
+   "deck": "Niv-Mizzet, Visionary (idea)",
+   "missing": "claimed by lane B 2026-11-27: scripted",
+   "lane": "mac-b",
+   "theme": "replace_filter",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Bogslither's Embrace",
+   "deck": "Neriv, Heart of the Storm",
+   "missing": "blight N or pay {3} as an additional cost [claimed by d1, idea decks]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Firdoch Core",
+   "deck": "Neriv, Heart of the Storm",
+   "missing": "{T}: any color; {4}: becomes a 4/4 artifact creature until end of turn [claimed by d1, idea decks]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Lavaleaper",
+   "deck": "Neriv, Heart of the Storm",
+   "missing": "basic lands add one more mana of a type they produced [claimed by d1, idea decks]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Iridescent Vinelasher",
+   "deck": "Hearthhull, the Worldseed",
+   "missing": "offspring {2} [claimed by d1, idea decks]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Orcish Lumberjack",
+   "deck": "Hearthhull, the Worldseed",
+   "missing": "{T}, Sacrifice a Forest: three mana in any combination of {R} and/or {G} [claimed by d1, idea decks]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Pyrrhic Strike",
+   "deck": "Zurgo, Thundering Ascent",
+   "missing": "an optional blight 2 additional cost that chooses both modes [claimed by d1, idea decks]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Wild Unraveling",
+   "deck": "Niv-Mizzet, Visionary",
+   "missing": "blight 2 or pay {1} as an additional cost [claimed by d1, idea decks]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Disruptor of Currents",
+   "deck": "Niv-Mizzet, Visionary",
+   "missing": "convoke (in); flash; its enters bounce [claimed by d1, idea decks]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Cabal Ritual",
+   "deck": "Sephiroth, Fabled SOLDIER",
+   "missing": "add {B}{B}{B}, or five with threshold [claimed by d1, idea decks]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Flare of Malice",
+   "deck": "Sephiroth, Fabled SOLDIER",
+   "missing": "alternative cost: sacrifice a nontoken black creature [claimed by d1, idea decks]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Snuff Out",
+   "deck": "Sephiroth, Fabled SOLDIER",
+   "missing": "alternative cost: 4 life if you control a Swamp [claimed by d1, idea decks]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Spymaster's Vault",
+   "deck": "Sephiroth, Fabled SOLDIER",
+   "missing": "enters tapped unless you control a Swamp; connive X [claimed by d1, idea decks]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "The Black Gate",
+   "deck": "Sephiroth, Fabled SOLDIER",
+   "missing": "pay 3 life or enters tapped (shock-like) [claimed by d1, idea decks]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Volrath's Stronghold",
+   "deck": "Sephiroth, Fabled SOLDIER",
+   "missing": "{1}{B},{T}: creature card from graveyard on top [claimed by d1, idea decks]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Westvale Abbey // Ormendahl, Profane Prince",
+   "deck": "Sephiroth, Fabled SOLDIER",
+   "missing": "costed activations: pay 1 life, sacrifice five creatures [claimed by d1, idea decks]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Brokers Hideout",
+   "deck": "Tifa Lockhart",
+   "missing": "enters: sacrifice, fetch a basic tapped, gain 1 [claimed by d1, idea decks]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Riveteers Overlook",
+   "deck": "Tifa Lockhart",
+   "missing": "enters: sacrifice, fetch a basic tapped, gain 1 [claimed by d1, idea decks]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Crop Rotation",
+   "deck": "Tifa Lockhart",
+   "missing": "sacrifice a land as an additional cost [claimed by d1, idea decks]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Escape Tunnel",
+   "deck": "Tifa Lockhart",
+   "missing": "sacrifice-self fetch; unblockable mode [claimed by d1, idea decks]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Invigorate",
+   "deck": "Tifa Lockhart",
+   "missing": "alternative cost: an opponent gains 3 life, if you control a Forest [claimed by d1, idea decks]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Tifa's Limit Break",
+   "deck": "Tifa Lockhart",
+   "missing": "tiered additional costs [claimed by d1, idea decks]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Chrome Mox",
+   "deck": "Kenrith, the Returned King",
+   "missing": "imprint; mana of the exiled card's colors [claimed by d1, idea decks]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Deathrite Shaman",
+   "deck": "Kenrith, the Returned King",
+   "missing": "exile a land card from a graveyard as a mana ability [claimed by d1, idea decks]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Elvish Spirit Guide",
+   "deck": "Kenrith, the Returned King",
+   "missing": "exile from hand: add {G} [claimed by d1, idea decks]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Forbidden Orchard",
+   "deck": "Kenrith, the Returned King",
+   "missing": "any color; the opponent gets a Spirit when tapped [claimed by d1, idea decks]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Gemstone Caverns",
+   "deck": "Kenrith, the Returned King",
+   "missing": "opening-hand start; luck counter mana [claimed by d1, idea decks]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Lion's Eye Diamond",
+   "deck": "Kenrith, the Returned King",
+   "missing": "discard your hand, sacrifice: three of one color [claimed by d1, idea decks]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Mox Diamond",
+   "deck": "Kenrith, the Returned King",
+   "missing": "discard a land or it goes to the graveyard [claimed by d1, idea decks]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
    "card": "Horizon Explorer",
    "deck": "Hearthhull, the Worldseed",
    "missing": "whenever you attack a player: a Lander token (needs a token number)",
@@ -6872,84 +7176,28 @@
    "owner": "d2"
   },
   {
-   "card": "Badlands",
-   "deck": "Najeela, the Blade-Blossom",
-   "missing": "claimed by lane B 2026-11-27: scripted (a dual land, no core needed)",
-   "lane": "mac-b",
-   "theme": "merger_delegated",
-   "owner": "mac-b"
+   "card": "Ramunap Excavator",
+   "deck": "Hearthhull, the Worldseed",
+   "missing": "idea quick win: claimed by lane C 2026-11-27, scripted in pg_c, batch 17 (unbuilt)",
+   "lane": "mac-c",
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
-   "card": "Bayou",
-   "deck": "Najeela, the Blade-Blossom",
-   "missing": "claimed by lane B 2026-11-27: scripted (a dual land, no core needed)",
-   "lane": "mac-b",
-   "theme": "merger_delegated",
-   "owner": "mac-b"
+   "card": "Aquitect's Defenses",
+   "deck": "Niv-Mizzet, Visionary",
+   "missing": "idea quick win: claimed by lane C 2026-11-27, scripted in pg_c, batch 17 (unbuilt)",
+   "lane": "mac-c",
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
-   "card": "Plateau",
-   "deck": "Najeela, the Blade-Blossom",
-   "missing": "claimed by lane B 2026-11-27: scripted (a dual land, no core needed)",
-   "lane": "mac-b",
-   "theme": "merger_delegated",
-   "owner": "mac-b"
-  },
-  {
-   "card": "Savannah",
-   "deck": "Najeela, the Blade-Blossom",
-   "missing": "claimed by lane B 2026-11-27: scripted (a dual land, no core needed)",
-   "lane": "mac-b",
-   "theme": "merger_delegated",
-   "owner": "mac-b"
-  },
-  {
-   "card": "Scrubland",
-   "deck": "Najeela, the Blade-Blossom",
-   "missing": "claimed by lane B 2026-11-27: scripted (a dual land, no core needed)",
-   "lane": "mac-b",
-   "theme": "merger_delegated",
-   "owner": "mac-b"
-  },
-  {
-   "card": "Taiga",
-   "deck": "Najeela, the Blade-Blossom",
-   "missing": "claimed by lane B 2026-11-27: scripted (a dual land, no core needed)",
-   "lane": "mac-b",
-   "theme": "merger_delegated",
-   "owner": "mac-b"
-  },
-  {
-   "card": "Tundra",
-   "deck": "Najeela, the Blade-Blossom",
-   "missing": "claimed by lane B 2026-11-27: scripted (a dual land, no core needed)",
-   "lane": "mac-b",
-   "theme": "merger_delegated",
-   "owner": "mac-b"
-  },
-  {
-   "card": "Morningtide's Light",
-   "deck": "Neriv, Heart of the Storm (idea)",
-   "missing": "claimed by lane B 2026-11-27: Effect::ExileSlotReturnTappedAtEnd and Effect::PreventDamageToYouUntilYourNextTurn, scripted",
-   "lane": "mac-b",
-   "theme": "replace_filter",
-   "owner": "mac-b"
-  },
-  {
-   "card": "Mirrormind Crown",
-   "deck": "Zurgo, Thunder's Decree (idea)",
-   "missing": "claimed by lane B 2026-11-27: scripted",
-   "lane": "mac-b",
-   "theme": "replace_filter",
-   "owner": "mac-b"
-  },
-  {
-   "card": "Glen Elendra's Answer",
-   "deck": "Niv-Mizzet, Visionary (idea)",
-   "missing": "claimed by lane B 2026-11-27: scripted",
-   "lane": "mac-b",
-   "theme": "replace_filter",
-   "owner": "mac-b"
+   "card": "Ashling, Rekindled // Ashling, Rimebound",
+   "deck": "Niv-Mizzet, Visionary",
+   "missing": "claimed by lane C 2026-11-27, not scripted: needs a 'whenever this transforms into [face]' trigger (d2) and mana spendable only on spells with mana value 4 or greater (d1); the transform itself (TransformSelf after MayPay at the first main phase) exists",
+   "lane": "mac-c",
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
    "card": "Adept Watershaper",

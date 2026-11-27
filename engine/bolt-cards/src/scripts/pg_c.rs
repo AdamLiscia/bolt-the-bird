@@ -2320,6 +2320,125 @@ pub fn script(name: &str) -> Option<Script> {
                 on(b, When::DealtDamage, vec![], vec![Effect::DamageSourceControllerExilesRandomFromHand]);
             },
         ),
+        "Silundi Vision // Silundi Isle" => s(
+            &[
+                "Look at the top six cards of your library. You may reveal an instant or sorcery card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.",
+                "Back: This land enters tapped.",
+                "Back: {T}: Add {U}.",
+            ],
+            |d, _| {
+                let look = Effect::LookAtTop { n: 6, pick: Pick::InstantOrSorcery, chosen_to: LookTo::Hand, rest_to: LookRest::BottomRandom };
+                spell(d, vec![], vec![look]);
+                d.modal_back = true;
+                let b = d.back.as_mut().expect("Silundi Isle");
+                b.enters_tapped = true;
+                b.mana = Some(ManaSource::of(&[Color::Blue]));
+            },
+        ),
+        "Slip Out the Back" => s(
+            &["Put a +1/+1 counter on target creature. It phases out."],
+            |d, _| spell(d, vec![Filter::CREATURE], vec![Effect::Counters { slot: 0, n: 1 }, Effect::PhaseOutSlot(0)]),
+        ),
+        "City of Shadows" => s(
+            &["{T}, Exile a creature you control: Put a storage counter on this land.", "{T}: Add {C} for each storage counter on this land."],
+            |d, _| {
+                // Storage counters are the land's own kind (`kind_counters`).
+                let n = activated(d, "", true, vec![], vec![Effect::KindCounterSelf(1)]);
+                d.activated[n].exile_creature_you_control = true;
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                d.mana_ext.mana_per_kind_counter = true;
+            },
+        ),
+        "Elspeth Tirel" => s(
+            &[
+                "+2: You gain 1 life for each creature you control.",
+                "−2: Create three 1/1 white Soldier creature tokens.",
+                "−5: Destroy all other permanents except for lands and tokens.",
+            ],
+            |d, t| {
+                loyalty(d, 2, Ability::new(vec![], vec![Effect::GainLifePerCreatureYouControl]));
+                loyalty(d, -2, Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.soldier, n: 3 }]));
+                loyalty(d, -5, Ability::new(vec![], vec![Effect::DestroyAllOtherPermanentsExceptLandsAndTokens]));
+            },
+        ),
+        "Ramunap Excavator" => s(&["You may play lands from your graveyard."], |d, _| d.lands_from_graveyard = true),
+        "Aquitect's Defenses" => s(
+            &[
+                "Enchant creature you control",
+                "When this Aura enters, enchanted creature gains hexproof until end of turn.",
+                "Enchanted creature gets +1/+2.",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![YOUR_CREATURE], vec![]));
+                on(d, When::Enters, vec![], vec![Effect::GrantAttached(Keywords::HEXPROOF)]);
+                attached(d, false, 1, 2, Keywords::NONE);
+            },
+        ),
+        "Arthur, Marigold Knight" => s(
+            &["Whenever Arthur and at least one other creature attack, look at the top six cards of your library. You may put a creature card from among them onto the battlefield tapped and attacking. Put the rest on the bottom of your library in a random order. Return that creature to its owner's hand at end of combat."],
+            |d, _| {
+                let look = Effect::LookAtTop {
+                    n: 6,
+                    pick: Pick::CreaturePowerAtMost(i32::MAX),
+                    chosen_to: LookTo::BattlefieldAttackingReturnAtEndOfCombat,
+                    rest_to: LookRest::BottomRandom,
+                };
+                on(d, When::Attacks, vec![], vec![Effect::GateAttackingAtLeast(2), look]);
+            },
+        ),
+        "Goliath Daydreamer" => s(
+            &[
+                "Whenever you cast an instant or sorcery spell from your hand, exile that card with a dream counter on it instead of putting it into your graveyard as it resolves.",
+                "Whenever this creature attacks, you may cast a spell from among cards you own in exile with dream counters on them without paying its mana cost.",
+            ],
+            |d, _| {
+                on(d, When::YouCastInstantOrSorceryCounted, vec![], vec![Effect::DreamExileExtraIfCastFromHand]);
+                on(d, When::Attacks, vec![], vec![Effect::MayCastDreamCardFree]);
+            },
+        ),
+        "Pippin, Guard of the Citadel" => s(
+            &[
+                "Vigilance, ward {1}",
+                "{T}: Another target creature you control gains protection from the card type of your choice until end of turn.",
+            ],
+            |d, _| {
+                d.keywords = d.keywords.with(Keywords::VIGILANCE);
+                d.ward = ManaCost::parse("{1}");
+                // The type is chosen as it resolves (`Decision::ProtectionCardType`).
+                let another = Filter { other: true, ..YOUR_CREATURE };
+                activated(d, "", true, vec![another], vec![Effect::ProtectionChosenCardTypeEot(Some(0))]);
+            },
+        ),
+        "Toxrill, the Corrosive" => s(
+            &[
+                "At the beginning of each end step, put a slime counter on each creature you don't control.",
+                "Creatures you don't control get -1/-1 for each slime counter on them.",
+                "Whenever a creature you don't control with a slime counter on it dies, create a 1/1 black Slug creature token.",
+                "{U}{B}, Sacrifice a Slug: Draw a card.",
+            ],
+            |d, t| {
+                on(d, When::EndStep { your_turn_only: false }, vec![], vec![Effect::SlimeCounterOnEachCreatureYouDontControl]);
+                d.statics.push(Static {
+                    subtype: None,
+                    lose_abilities: false,
+                    base_pt: None,
+                    protection: [false; 5],
+                    scale: Some(Scale::PerSlimeCounterOnIt),
+                    scope: Scope::OpponentsCreatures,
+                    your_turn_only: false,
+                    condition: None,
+                    power: -1,
+                    toughness: -1,
+                    keywords: Keywords::NONE,
+                    set_colors: None,
+                    becomes_land: false,
+                });
+                on(d, When::CreatureYouDontControlWithSlimeDies, vec![], vec![Effect::CreateToken { who: Who::You, def: t.slug, n: 1 }]);
+                let n = activated(d, "{U}{B}", false, vec![], vec![draw(1)]);
+                d.activated[n].sacrifice_subtype = Some("Slug");
+            },
+        ),
         "Deep-Cavern Bat" => s(
             &["When this creature enters, look at target opponent's hand. You may exile a nonland card from it until this creature leaves the battlefield."],
             |d, _| {
@@ -2635,4 +2754,14 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "The One Ring",
     "Deep-Cavern Bat",
     "Rona, Herald of Invasion // Rona, Tolarian Obliterator",
+    "Silundi Vision // Silundi Isle",
+    "Slip Out the Back",
+    "City of Shadows",
+    "Elspeth Tirel",
+    "Ramunap Excavator",
+    "Aquitect's Defenses",
+    "Arthur, Marigold Knight",
+    "Goliath Daydreamer",
+    "Pippin, Guard of the Citadel",
+    "Toxrill, the Corrosive",
 ];

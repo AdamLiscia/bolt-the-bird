@@ -10,7 +10,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from bolt.play_encoding import FEATS
+from bolt.play_encoding import FEATS, GLOBAL_NAMES
 
 
 def to_arrays(steps: list[dict], results: list[dict]) -> dict:
@@ -105,14 +105,18 @@ def batch(arr: dict, idx, device="cpu"):
     for r, i in enumerate(idx):
         s, e = oo[i], oo[i + 1]
         n = e - s
-        card[r, :n], zone[r, :n], feats[r, :n] = arr["card"][s:e], arr["zone"][s:e], arr["feats"][s:e]
+        # shards recorded before features were appended are narrower: the new ones stay zero
+        card[r, :n], zone[r, :n] = arr["card"][s:e], arr["zone"][s:e]
+        feats[r, :n, : arr["feats"].shape[1]] = arr["feats"][s:e]
         obj_pad[r, :n] = False
         s, e = ao[i], ao[i + 1]
         m = e - s
         kind[r, :m], ptr[r, :m], acard[r, :m] = arr["act_kind"][s:e], arr["act_ptr"][s:e], arr["act_card"][s:e]
         num[r, :m], player[r, :m] = arr["act_num"][s:e], arr["act_player"][s:e]
         act_pad[r, :m] = False
-    x = {"card": card, "zone": zone, "feats": feats, "obj_pad": obj_pad, "globals": arr["globals"][idx],
+    glob = np.zeros((b, len(GLOBAL_NAMES)), np.float32)
+    glob[:, : arr["globals"].shape[1]] = arr["globals"][idx]
+    x = {"card": card, "zone": zone, "feats": feats, "obj_pad": obj_pad, "globals": glob,
          "act_kind": kind, "act_ptr": ptr, "act_card": acard, "act_num": num, "act_player": player,
          "act_pad": act_pad}  # fmt: skip
     x = {k: torch.as_tensor(v, device=device) for k, v in x.items()}

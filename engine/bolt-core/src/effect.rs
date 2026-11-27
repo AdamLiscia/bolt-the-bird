@@ -2643,9 +2643,10 @@ pub enum Effect {
     /// Saddle's effect: the source becomes saddled until end of turn by the creature in `extra`
     /// (`Game::saddled`).
     BecomeSaddled,
-    /// The Gitrog, Ravenous Ride: sacrifice a creature that saddled the source this turn (the
-    /// engine picks the most powerful); if you do, draw X cards, then put up to X land cards from
-    /// your hand onto the battlefield tapped (the engine puts as many as it can), X its power.
+    /// The Gitrog, Ravenous Ride: you may sacrifice a creature that saddled the source this turn
+    /// (`Decision::SacrificeSaddler`); if you do, draw X cards, then put up to X land cards from
+    /// your hand onto the battlefield tapped (`Decision::GitrogLandCount`, then
+    /// `Decision::GitrogLandPick`), X its power.
     SacrificeSaddlerDrawXLandsX,
     /// The defending player's life total becomes 1 (Master of Cruelties): they lose (or gain) the
     /// difference (CR 119.5).
@@ -2684,6 +2685,43 @@ pub enum Effect {
     ExileCrewersReturnTappedAtEnd,
     /// "Each player draws X cards." (Skyscribing), X the spell's X, you first.
     EachPlayerDrawsX,
+    /// Exile the creature in `slot`; return it to the battlefield tapped under its owner's control
+    /// at the beginning of the next end step (Morningtide's Light).
+    ExileSlotReturnTappedAtEnd(u8),
+    /// Until your next turn, prevent all damage that would be dealt to you (Morningtide's Light),
+    /// see `Game::damage_to_you_prevented_until`.
+    PreventDamageToYouUntilYourNextTurn,
+    /// Counter all spells and abilities your opponents control; create a `def` token for each one
+    /// countered this way (Glen Elendra's Answer: a 1/1 blue and black Faerie with flying).
+    CounterOpponentsSpellsAndAbilitiesTokenEach {
+        def: usize,
+    },
+    /// "Add N mana of any one color. Spend this mana only to cast creature spells." (Somberwald
+    /// Sage: 3, one ability per color): N mana of that color held for creature spells
+    /// (`Game::creature_color_mana`); it pays that color's pips, hybrid pips with it, and generic.
+    AddCreatureSpellMana(u8, crate::Color),
+    /// Exile the source; return it to the battlefield under its owner's control at the beginning
+    /// of the next end step (Argent Sphinx), as `Flicker`.
+    FlickerSelf,
+    /// Increment (Topiary Lecturer): if the mana spent on the spell in `extra` is greater than the
+    /// source's power or toughness, put a +1/+1 counter on the source.
+    IncrementSelf,
+    /// Will, Scion of Peace: white and/or blue spells you cast this turn cost {X} less, X the life
+    /// you've gained this turn (`Game::wu_discount_turn`).
+    WhiteBlueSpellsCostLessLifeGainedThisTurn,
+    /// High Tide: until end of turn, each Island tapped for mana adds an additional {U}
+    /// (`Game::high_tide`, counted per resolution).
+    IslandsAddExtraBlueThisTurn,
+    /// Replicate (CR 702.56): copy the source spell once for each time its replicate cost was paid
+    /// (scripted as `ManaExt::multikicker`, cast with `Action::CastX`; `Game::times_kicked`). The
+    /// copies keep the spell's targets (as `CopySourceSpell`).
+    CopySourceSpellPerReplicate,
+    /// Casualty: copy the source spell once if a creature was sacrificed as it was cast (its
+    /// snapshot's `extra`). The copy keeps the spell's targets (as `CopySourceSpell`).
+    CopySourceSpellIfCasualty,
+    /// Rain of Riches: stop unless the spell in `extra` was paid for with Treasure mana and is the
+    /// first such spell this turn for the source (`Game::treasure_spell_turn`).
+    StopUnlessFirstTreasureSpellThisTurn,
     /// The creature in `slot` (the source, with `None`) gains protection from card type `kind`
     /// until end of turn (`Decision::ChooseCardType`'s order: 0 artifact, 1 creature, 2
     /// enchantment, 3 instant, 4 land, 5 planeswalker, 6 sorcery), in
@@ -2773,17 +2811,6 @@ pub enum Effect {
         slot: u8,
         keywords: crate::Keywords,
     },
-    /// Exile the creature in `slot`; return it to the battlefield tapped under its owner's control
-    /// at the beginning of the next end step (Morningtide's Light).
-    ExileSlotReturnTappedAtEnd(u8),
-    /// Until your next turn, prevent all damage that would be dealt to you (Morningtide's Light),
-    /// see `Game::damage_to_you_prevented_until`.
-    PreventDamageToYouUntilYourNextTurn,
-    /// Counter all spells and abilities your opponents control; create a `def` token for each one
-    /// countered this way (Glen Elendra's Answer: a 1/1 blue and black Faerie with flying).
-    CounterOpponentsSpellsAndAbilitiesTokenEach {
-        def: usize,
-    },
     /// Discard a card (`Decision::DiscardMayCastFree`); if the source has `n` or more of its own
     /// kind of counter (`Object::kind_counters`), you may cast the discarded card without paying
     /// its mana cost (Malcolm, Alluring Scoundrel: chorus counters, 4).
@@ -2794,6 +2821,31 @@ pub enum Effect {
         n: u8,
         color: crate::Color,
     },
+    /// Nissa, Ascended Animist's +1: create the `def` token (printed 0/0) with base power and
+    /// toughness X/X, X the source's loyalty as it resolves.
+    CreateTokenXxSourceLoyalty {
+        def: usize,
+    },
+    /// Creatures you control get +1/+1 for each permanent you control with subtype `sub` and gain
+    /// `keywords` until end of turn (Nissa, Ascended Animist's −7: Forests, trample).
+    PumpYourCreaturesPerSubtype {
+        sub: &'static str,
+        keywords: crate::Keywords,
+    },
+    /// Wash Away: counter the spell in `slot` if it wasn't cast from its owner's hand, or any
+    /// spell if this was cast for its cleave cost (the item's `alt`).
+    CounterIfNotFromHandUnlessCleaved(u8),
+    /// "You gain 1 life for each creature you control." (Elspeth Tirel's +2)
+    GainLifePerCreatureYouControl,
+    /// "Destroy all other permanents except for lands and tokens." (Elspeth Tirel's −5)
+    DestroyAllOtherPermanentsExceptLandsAndTokens,
+    /// "exile that card with a dream counter on it instead of putting it into your graveyard as it
+    /// resolves" (Goliath Daydreamer), for the spell in the trigger's `extra` if it was cast from
+    /// your hand (`Game::dream_marked`, `Game::dream_counters`).
+    DreamExileExtraIfCastFromHand,
+    /// "You may cast a spell from among cards you own in exile with dream counters on them without
+    /// paying its mana cost." (Goliath Daydreamer): a one-spell free-cast window.
+    MayCastDreamCardFree,
     /// The creature in `slot` becomes a Treasure artifact with "{T}, Sacrifice this artifact: Add
     /// one mana of any color" and loses all other card types and abilities, for as long as it
     /// stays (Vraska, Betrayal's Sting's -2; `TypeChange::treasure_form`).
@@ -3171,6 +3223,9 @@ pub enum LookTo {
     BattlefieldTapped,
     /// Onto the battlefield with two +1/+1 counters.
     BattlefieldTwoCounters,
+    /// Onto the battlefield tapped and attacking; returned to its owner's hand at end of combat
+    /// (Arthur, Marigold Knight; `Game::hand_at_end_combat`).
+    BattlefieldAttackingReturnAtEndOfCombat,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -3833,6 +3888,9 @@ pub enum When {
     /// "Whenever [this] attacks a player and isn't blocked" (Master of Cruelties), once blockers are
     /// declared (`Game::fire_unblocked_at_player`).
     AttacksAndIsntBlocked,
+    /// Path of Ancestry: its mana was spent on a creature spell that shares a creature type with
+    /// your commander (fired on the land by the payment).
+    ManaSpentOnCommanderTypeCreature,
     /// Tandem Lookout's granted "whenever this creature deals damage to an opponent": fired on the
     /// card with `CardDef::soulbond_damage_draw` when it or the creature paired with it deals
     /// damage to an opponent (controlled by the damaging creature's controller).
