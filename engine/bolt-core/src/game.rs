@@ -6323,7 +6323,7 @@ impl Game {
             }
             let bonus = bonus + flat + non + chauffeur;
             if bonus > 0 {
-                let n = bonus * self.doubling(controller);
+                let n = bonus * self.doubling(controller) * self.creature_counter_doubling(id);
                 self.obj_mut(id).counters += n;
                 self.counters_placed(controller, n);
                 self.counter_put_on(id); // CR 122.6: entering with counters counts
@@ -6343,7 +6343,7 @@ impl Game {
                     _ => false,
                 };
                 if yes {
-                    let n = n * self.doubling(controller);
+                    let n = n * self.doubling(controller) * self.creature_counter_doubling(id);
                     self.obj_mut(id).counters += n;
                     self.counters_placed(controller, n);
                     self.counter_put_on(id);
@@ -13939,15 +13939,16 @@ impl Game {
         if n <= 0 || self.obj(id).zone != Zone::Battlefield {
             return;
         }
-        let n = n * self.doubling(self.obj(id).controller);
-        // Hardened Scales: "that many plus one" on a creature you control.
-        let n = n + if self.types_of(id).creature {
+        // Replacements in the order the controller would pick (CR 616.1): Hardened Scales' "that
+        // many plus one" on a creature you control first, then each doubler.
+        let plus = if self.types_of(id).creature {
             self.permanents(self.obj(id).controller)
                 .filter(|&x| self.def_of(x).counters_plus_one && !self.lost_abilities(x))
                 .count() as i32
         } else {
             0
         };
+        let n = (n + plus) * self.doubling(self.obj(id).controller) * self.creature_counter_doubling(id);
         self.obj_mut(id).counters += n;
         let controller = self.obj(id).controller;
         self.counters_placed(controller, n);
@@ -27135,6 +27136,19 @@ impl Game {
     }
 
     /// How many times over tokens and counters for `p` are made: 2 per Doubling Season.
+    /// The Earth Crystal: 2 for each one its controller controls if `id` is a creature they
+    /// control, else 1 (+1/+1 counters only).
+    fn creature_counter_doubling(&self, id: ObjId) -> i32 {
+        if !self.types_of(id).creature {
+            return 1;
+        }
+        let n = self
+            .permanents(self.obj(id).controller)
+            .filter(|&x| self.def_of(x).doubles_plus_counters_on_your_creatures && !self.lost_abilities(x))
+            .count();
+        1 << n.min(10)
+    }
+
     fn doubling(&self, p: PlayerId) -> i32 {
         let n = self
             .permanents(p)

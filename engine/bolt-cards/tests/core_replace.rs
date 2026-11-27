@@ -448,3 +448,36 @@ fn protection_from_everything_until_your_next_turn_stops_damage_and_targeting() 
     }
     assert_eq!(g.players[0].life, 40, "damage prevented until your next turn");
 }
+
+/// The Earth Crystal's doubling, on a flagged Sol Ring until d3's counter piece lets the card be
+/// scripted.
+fn crystal(g: &mut Game, p: usize) {
+    let ring = cid("Sol Ring");
+    std::sync::Arc::make_mut(&mut g.defs)[ring].doubles_plus_counters_on_your_creatures = true;
+    put(g, p, "Sol Ring");
+}
+
+#[test]
+fn the_earth_crystal_doubles_counters_on_your_creatures_after_hardened_scales() {
+    let mut g = table();
+    crystal(&mut g, 0);
+    let champ = put(&mut g, 0, "Setessan Champion");
+    let guardian = hand(&mut g, 0, "Grim Guardian");
+    play(&mut g, guardian, false, &[], &[]);
+    assert_eq!(g.obj(champ).counters, 2, "twice one");
+
+    put(&mut g, 0, "Hardened Scales");
+    let guardian = hand(&mut g, 0, "Grim Guardian");
+    play(&mut g, guardian, false, &[], &[]);
+    assert_eq!(g.obj(champ).counters, 2 + 4, "one plus one, then doubled");
+}
+
+#[test]
+fn the_earth_crystal_only_doubles_for_its_controller() {
+    let mut g = table();
+    crystal(&mut g, 1);
+    let champ = put(&mut g, 0, "Setessan Champion");
+    let guardian = hand(&mut g, 0, "Grim Guardian");
+    play(&mut g, guardian, false, &[], &[]);
+    assert_eq!(g.obj(champ).counters, 1, "not a creature its controller controls");
+}

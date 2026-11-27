@@ -1116,3 +1116,15 @@ One Ring's check in `deal_damage`). Claims recorded in needs_core.json.
 - Ral, Leyline Prodigy (d1 scripts the card): `CardDef::loyalty_plus_instants_sorceries_cast`
   adds `instants_sorceries_cast[controller]` to the printed loyalty as the walker enters, before
   loyalty doubling. Tested on a flagged Jace Beleren.
+
+### The Earth Crystal's counter doubling (2026-11-27)
+
+- `CardDef::doubles_plus_counters_on_your_creatures` (The Earth Crystal): +1/+1 counters going
+  onto a creature its controller controls are doubled once for each one, in `add_counters` and in
+  both enter-with-counters paths, through `Game::creature_counter_doubling`.
+- Order: `add_counters` now applies Hardened Scales' +1 first and then every doubler, Doubling
+  Season included, which is the order the controller would pick (CR 616.1). It used to double
+  first, so Scales together with Doubling Season now gives (n + 1) × 2 rather than 2n + 1. The two
+  enter-with-counters paths still don't apply Hardened Scales; that is unchanged.
+- The card waits for d3's "distribute two +1/+1 counters among one or two target creatures you
+  control". The green discount is `green_spell_discount`. The tests use a flagged Sol Ring.
