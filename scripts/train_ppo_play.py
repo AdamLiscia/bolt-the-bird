@@ -110,7 +110,8 @@ def evaluate(net, pairs, workers, smart_ms=None):
     return out
 
 
-def main():
+def parser() -> argparse.ArgumentParser:
+    """The trainer's flags; tests/test_job_files.py parses every jobs/*.json command line with it."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--name", default="ppo1")
     ap.add_argument("--init", default="checkpoints/play/distill2/step_17353.pt")
@@ -138,13 +139,23 @@ def main():
         help="cap on every smart-player move in training games (0 = none): uncapped, one move can take minutes",
     )
     ap.add_argument("--eval-smart-ms", type=int, default=None, help="the same cap in evaluations (default --smart-ms)")
+    ap.add_argument(
+        "--max-objects",
+        type=int,
+        default=256,
+        help="drop positions with more objects than this from the update, whole (0 keeps all)",
+    )
     ap.add_argument("--resume", action="store_true")
     ap.add_argument(
         "--self-play",
         action="store_true",
         help="train only against itself and its past checkpoints (no rules or smart opponents)",
     )
-    a = ap.parse_args()
+    return ap
+
+
+def main():
+    a = parser().parse_args()
     if a.eval_smart_ms is None:
         a.eval_smart_ms = a.smart_ms or None
     if os.environ.get("BOLT_THREADS"):  # farm.py --job-threads (the 12-thread nights)
