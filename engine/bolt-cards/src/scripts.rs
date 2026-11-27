@@ -496,6 +496,24 @@ pub fn token_defs() -> Vec<CardDef> {
         black(token("Snake", "Snake", 1, 1, Keywords::DEATHTOUCH)),
         // 115, lane d2: Bitterblossom's "1/1 black Faerie Rogue creature token with flying".
         black(token("Faerie Rogue", "Faerie Rogue", 1, 1, Keywords::FLYING)),
+        {
+            // 116, lane d2: Atla Palani's "0/1 green Egg creature token with defender".
+            let mut t = token("Egg", "Egg", 0, 1, Keywords::DEFENDER);
+            t.colors = [false, false, false, false, true];
+            t
+        },
+        {
+            // 117, lane d2: Palani's Hatcher's "0/1 green Dinosaur Egg creature tokens".
+            let mut t = token("Dinosaur Egg", "Dinosaur Egg", 0, 1, Keywords::NONE);
+            t.colors = [false, false, false, false, true];
+            t
+        },
+        {
+            // 118, lane d2: Palani's Hatcher's "3/3 green Dinosaur creature token".
+            let mut t = token("Dinosaur", "Dinosaur", 3, 3, Keywords::NONE);
+            t.colors = [false, false, false, false, true];
+            t
+        },
     ]
 }
 
@@ -733,6 +751,12 @@ pub struct Tokens {
     pub snake_deathtouch: usize,
     /// 115: d2's Bitterblossom Faerie Rogue, a 1/1 black flier.
     pub faerie_rogue: usize,
+    /// 116: d2's Atla Palani Egg, a 0/1 green with defender.
+    pub egg: usize,
+    /// 117: d2's Palani's Hatcher Dinosaur Egg, a 0/1 green.
+    pub dinosaur_egg: usize,
+    /// 118: d2's Palani's Hatcher Dinosaur, a 3/3 green.
+    pub dinosaur_3: usize,
 }
 
 impl Tokens {
@@ -854,6 +878,9 @@ impl Tokens {
             zombie_decayed: base + 113,
             snake_deathtouch: base + 114,
             faerie_rogue: base + 115,
+            egg: base + 116,
+            dinosaur_egg: base + 117,
+            dinosaur_3: base + 118,
         }
     }
 }

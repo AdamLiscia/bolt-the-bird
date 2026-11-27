@@ -621,7 +621,8 @@
    "missing": "a 0/1 green Egg creature token with defender; an 'Egg you control dies' reveal-until-creature trigger",
    "lane": "d1",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 32 (token 116)"
   },
   {
    "card": "Elesh Norn, Mother of Machines",
@@ -677,7 +678,8 @@
    "missing": "blocking restriction by power; trigger doubling for power 2 or less",
    "lane": "d1",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "waiting: 'creatures you control with power 2 or less can't be blocked by power 3 or greater' (d1, block legality); d2 adds the trigger doubling with the card"
   },
   {
    "card": "Dinosaur Egg",
@@ -749,7 +751,8 @@
    "missing": "a 0/1 green Dinosaur Egg creature token; a 3/3 green Dinosaur creature token; sacrifice an Egg",
    "lane": "d1",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 32 (tokens 117, 118)"
   },
   {
    "card": "Spawning Pit",
@@ -5195,7 +5198,8 @@
    "missing": "BLC (lane B's routing, 2026-11-26)",
    "lane": "mac-b",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "waiting: 'Sacrifice an artifact or creature' as one activation cost (d1); its trigger needs a d2 'you sacrifice an artifact or creature' arm, added with the card"
   },
   {
    "card": "Simic Ascendancy",
@@ -5203,7 +5207,8 @@
    "missing": "BLC (lane B's routing, 2026-11-26)",
    "lane": "mac-b",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 32"
   },
   {
    "card": "Grothama, All-Devouring",
@@ -5228,7 +5233,8 @@
    "missing": "BLC (lane B's routing, 2026-11-26)",
    "lane": "mac-b",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 32"
   },
   {
    "card": "Bootleggers' Stash",

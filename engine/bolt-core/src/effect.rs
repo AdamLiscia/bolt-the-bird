@@ -2747,6 +2747,15 @@ pub enum Effect {
     /// turn (Sephiroth, Fabled SOLDIER: "If this is the fourth time this ability has resolved this
     /// turn, ...").
     StopUnlessNthResolutionThisTurn(u32),
+    /// Reveal cards from the top of your library until a creature card; put it onto the
+    /// battlefield and the rest on the bottom in a random order (Atla Palani, Nest Tender).
+    RevealUntilCreatureOntoBattlefield,
+    /// "Sacrifice a [subtype]": the engine picks one you control, tokens first, then the lowest
+    /// power (Palani's Hatcher: an Egg); nothing happens if you control none.
+    SacrificeYourSubtype(&'static str),
+    /// Put kind counters (`Object::kind_counters`) equal to the trigger's amount on the source
+    /// (Simic Ascendancy's growth counters).
+    KindCountersSelfAmount,
     /// Exile the creature in `slot`; return it to the battlefield tapped under its owner's control
     /// at the beginning of the next end step (Morningtide's Light).
     ExileSlotReturnTappedAtEnd(u8),
@@ -3233,6 +3242,9 @@ pub enum Condition {
     ControlNoSubtype(&'static str),
     /// Its controller controls no creature with decayed (Jadar, Ghoulcaller of Nephalia).
     ControlNoCreatureWithDecayed,
+    /// The source has at least this many kind counters (`Object::kind_counters`; Simic Ascendancy:
+    /// twenty growth counters).
+    SourceKindCountersAtLeast(i32),
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -3766,6 +3778,12 @@ pub enum When {
     /// "When the Nth [kind] counter is put on this" (Claim the Kingdom: the fourth plan counter), on
     /// `Object::kind_counters` reaching N as counters are put on it.
     KindCountersReachOnThis(i32),
+    /// "Whenever you sacrifice an artifact" (Moonstone Eulogist), each one.
+    YouSacrificeArtifact,
+    /// "Whenever one or more +1/+1 counters are put on a creature you control": once for each
+    /// placement by an effect (`Game::add_counters`), the number put in the trigger's amount (Simic
+    /// Ascendancy: "that many").
+    PlusCountersOnYourCreature,
 }
 
 #[derive(Clone, Debug, PartialEq)]

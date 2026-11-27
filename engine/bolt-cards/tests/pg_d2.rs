@@ -3484,3 +3484,103 @@ fn sephiroth_one_winged_angel_sacrifices_any_number_on_attack_to_draw() {
     // Their deaths drain only with the emblem (not made here: it was transformed by hand).
     assert_eq!(g.players[1].life, 40);
 }
+
+// ---- Core: triggers, batch 32 (Atla Palani; tokens 116-118) ----
+
+#[test]
+fn atla_palani_makes_eggs_that_hatch_into_the_next_creature_in_your_library() {
+    let mut g = table();
+    let atla = put(&mut g, 0, "Atla Palani, Nest Tender");
+    let lions = library_top(&mut g, "Savannah Lions");
+    let forest = library_top(&mut g, "Forest"); // revealed first, then bottom
+    act(&mut g, Action::Activate(atla, 0));
+    drain(&mut g);
+    let eggs = tokens(&g, 0, "Egg");
+    assert_eq!(eggs.len(), 1);
+    assert!(g.keywords(eggs[0]).has(Keywords::DEFENDER));
+    assert_eq!((g.power(eggs[0]), g.toughness(eggs[0])), (0, 1));
+    for _ in 0..3 {
+        put(&mut g, 0, "Swamp");
+    }
+    let kill = hand(&mut g, 0, "Hero's Downfall");
+    act(&mut g, Action::Cast(kill));
+    act(&mut g, Action::Target(Target::Object(eggs[0])));
+    drain(&mut g);
+    assert_eq!(
+        g.obj(lions).zone,
+        Zone::Battlefield,
+        "the first creature card revealed"
+    );
+    assert_eq!(
+        g.players[0].library.first(),
+        Some(&forest),
+        "the rest on the bottom"
+    );
+}
+
+fn library_top(g: &mut Game, name: &str) -> ObjId {
+    g.add_card(0, cid(name), Zone::Library)
+}
+
+#[test]
+fn palanis_hatcher_makes_eggs_and_hatches_one_into_a_hasty_dinosaur_each_combat() {
+    let mut g = table();
+    let hatcher = hand(&mut g, 0, "Palani's Hatcher");
+    play(&mut g, hatcher, false, &[], &[]);
+    assert_eq!(tokens(&g, 0, "Dinosaur Egg").len(), 2);
+    to_step(&mut g, 5, 0, Step::BeginCombat);
+    assert_eq!(tokens(&g, 0, "Dinosaur Egg").len(), 1, "one Egg sacrificed");
+    let dino = tokens(&g, 0, "Dinosaur");
+    assert_eq!(dino.len(), 1);
+    assert_eq!((g.power(dino[0]), g.toughness(dino[0])), (3, 3));
+    assert!(
+        g.keywords(dino[0]).has(Keywords::HASTE),
+        "other Dinosaurs have haste"
+    );
+    assert!(!g.keywords(hatcher).has(Keywords::HASTE), "other Dinosaurs only");
+}
+
+#[test]
+fn moonstone_eulogist_bleeds_on_their_deaths_and_grows_on_artifact_sacrifices() {
+    let mut g = table();
+    let bat = put(&mut g, 0, "Moonstone Eulogist");
+    let theirs = put(&mut g, 1, "Savannah Lions");
+    for _ in 0..3 {
+        put(&mut g, 0, "Swamp");
+    }
+    let kill = hand(&mut g, 0, "Hero's Downfall");
+    act(&mut g, Action::Cast(kill));
+    act(&mut g, Action::Target(Target::Object(theirs)));
+    drain(&mut g);
+    let blood = tokens(&g, 0, "Blood");
+    assert_eq!(blood.len(), 1);
+    let spare = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::ActivateWith(blood[0], 0, spare)); // discard the Forest
+    drain(&mut g);
+    assert_eq!(g.obj(bat).counters, 1, "the Blood was a sacrificed artifact");
+    assert_eq!(g.players[0].life, 41);
+}
+
+#[test]
+fn simic_ascendancy_grows_with_counters_and_wins_at_twenty() {
+    let mut g = table();
+    let asc = put(&mut g, 0, "Simic Ascendancy");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    act(&mut g, Action::Activate(asc, 0));
+    act(&mut g, Action::Target(Target::Object(lions)));
+    drain(&mut g);
+    assert_eq!(g.obj(lions).counters, 1);
+    assert_eq!(g.obj(asc).kind_counters, 1, "that many growth counters");
+    to_step(&mut g, 5, 0, Step::Main1);
+    assert!(!g.is_over(), "one growth counter");
+    g.objects[asc.0 as usize].kind_counters = 20;
+    g.start_turn(7, 0);
+    while !g.is_over() && g.step != Step::Main1 {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) | Pending::Decide(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert!(g.is_over(), "twenty growth counters at your upkeep");
+}

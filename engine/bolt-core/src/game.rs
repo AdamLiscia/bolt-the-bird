@@ -4628,6 +4628,9 @@ impl Game {
     /// a player sacrifices" triggers.
     fn sacrificed(&mut self, id: ObjId, p: PlayerId) {
         self.fire(p, When::YouSacrifice, None);
+        if self.types_of(id).artifact {
+            self.fire(p, When::YouSacrificeArtifact, None);
+        }
         for q in 0..2 {
             self.fire(q, When::PlayerSacrificesAnother, Some(id));
         }
@@ -12898,6 +12901,14 @@ impl Game {
         let controller = self.obj(id).controller;
         self.counters_placed(controller, n);
         self.counter_put_on(id);
+        if self.types_of(id).creature {
+            // Simic Ascendancy: "that many".
+            let before = self.triggered.len();
+            self.fire(controller, When::PlusCountersOnYourCreature, None);
+            for t in &mut self.triggered[before..] {
+                t.amount = n;
+            }
+        }
         if self.types_of(id).creature && !self.has_subtype(id, "Hydra") {
             let controller = self.obj(id).controller;
             self.fire(controller, When::CountersOnAnotherNonHydraYouControl, Some(id));
@@ -21153,6 +21164,46 @@ impl Game {
                     }
                 }
             }
+            Effect::RevealUntilCreatureOntoBattlefield => {
+                let p = item.controller;
+                let mut revealed = Vec::new();
+                let mut found = None;
+                while let Some(&c) = self.players[p].library.last() {
+                    self.players[p].library.pop();
+                    if self.types_of(c).creature {
+                        found = Some(c);
+                        break;
+                    }
+                    revealed.push(c);
+                }
+                if let Some(c) = found {
+                    self.players[p].library.push(c);
+                    self.move_to(c, Zone::Battlefield);
+                }
+                self.rng.shuffle(&mut revealed);
+                for c in revealed {
+                    self.players[p].library.insert(0, c);
+                }
+            }
+            Effect::KindCountersSelfAmount => {
+                if self.obj(src).zone == Zone::Battlefield && item.amount > 0 {
+                    let before = self.obj(src).kind_counters;
+                    self.obj_mut(src).kind_counters += item.amount;
+                    self.counters_placed(item.controller, item.amount);
+                    self.kind_counters_reached(src, before);
+                }
+            }
+            Effect::SacrificeYourSubtype(sub) => {
+                let p = item.controller;
+                let pick = self
+                    .permanents(p)
+                    .filter(|&x| self.has_subtype(x, sub) && !self.cant_be_sacrificed(x))
+                    .min_by_key(|&x| (!self.is_token(x), self.power(x)));
+                if let Some(x) = pick {
+                    self.move_to(x, Zone::Graveyard);
+                    self.sacrificed(x, p);
+                }
+            }
             Effect::StopUnlessNthResolutionThisTurn(n) => {
                 let turn = self.turn;
                 let o = self.obj_mut(src);
@@ -24784,6 +24835,7 @@ impl Game {
             Some(Condition::ControlNoSubtype(sub)) => {
                 !self.permanents(controller).any(|x| self.has_subtype(x, sub))
             }
+            Some(Condition::SourceKindCountersAtLeast(n)) => self.obj(source).kind_counters >= *n,
             Some(Condition::ControlNoCreatureWithDecayed) => !self
                 .creatures(controller)
                 .any(|c| self.def_of(c).decayed || self.obj(c).decayed),

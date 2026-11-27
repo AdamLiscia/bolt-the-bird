@@ -1556,6 +1556,53 @@ pub fn script(name: &str) -> Option<Script> {
                 on(b, When::Attacks, vec![], any);
             },
         ),
+        // ---- Core: triggers, batch 32 (Atla Palani; tokens 116-118) ----
+        "Atla Palani, Nest Tender" => s(
+            &[
+                "{2}, {T}: Create a 0/1 green Egg creature token with defender.",
+                "Whenever an Egg you control dies, reveal cards from the top of your library until you reveal a creature card. Put that card onto the battlefield and the rest on the bottom of your library in a random order.",
+            ],
+            |d, t| {
+                activated(d, "{2}", true, vec![], vec![Effect::CreateToken { who: Who::You, def: t.egg, n: 1 }]);
+                on(d, When::ThisOrAnotherYouControlDiesWithSubtype("Egg"), vec![], vec![Effect::RevealUntilCreatureOntoBattlefield]);
+            },
+        ),
+        "Palani's Hatcher" => s(
+            &[
+                "Other Dinosaurs you control have haste.",
+                "When this creature enters, create two 0/1 green Dinosaur Egg creature tokens.",
+                "At the beginning of combat on your turn, if you control one or more Eggs, sacrifice an Egg, then create a 3/3 green Dinosaur creature token.",
+            ],
+            |d, t| {
+                static_on(d, Scope::OtherYourSubtype("Dinosaur"), false, Keywords::HASTE);
+                on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.dinosaur_egg, n: 2 }]);
+                let hatch = vec![Effect::SacrificeYourSubtype("Egg"), Effect::CreateToken { who: Who::You, def: t.dinosaur_3, n: 1 }];
+                conditional(d, When::BeginCombatYourTurn, Condition::ControlSubtypeAtLeast("Egg", 1), vec![], hatch);
+            },
+        ),
+        "Moonstone Eulogist" => s(
+            &[
+                "Whenever a creature an opponent controls dies, you create a Blood token.",
+                "Whenever you sacrifice an artifact, put a +1/+1 counter on this creature and you gain 1 life.",
+            ],
+            |d, t| {
+                on(d, When::OpponentCreatureDies, vec![], vec![Effect::CreateToken { who: Who::You, def: t.blood, n: 1 }]);
+                on(d, When::YouSacrificeArtifact, vec![], vec![Effect::CountersSelf { n: 1 }, Effect::GainLife { who: Who::You, n: 1 }]);
+            },
+        ),
+        "Simic Ascendancy" => s(
+            &[
+                "{1}{G}{U}: Put a +1/+1 counter on target creature you control.",
+                "Whenever one or more +1/+1 counters are put on a creature you control, put that many growth counters on this enchantment.",
+                "At the beginning of your upkeep, if this enchantment has twenty or more growth counters on it, you win the game.",
+            ],
+            |d, _| {
+                activated(d, "{1}{G}{U}", false, vec![YOUR_CREATURE], vec![Effect::Counters { slot: 0, n: 1 }]);
+                on(d, When::PlusCountersOnYourCreature, vec![], vec![Effect::KindCountersSelfAmount]);
+                let twenty = Condition::SourceKindCountersAtLeast(20);
+                conditional(d, When::Upkeep { your_turn_only: true }, twenty, vec![], vec![Effect::WinTheGame]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1812,4 +1859,9 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Scythecat Cub",
     "Claim the Kingdom",
     "Sephiroth, Fabled SOLDIER // Sephiroth, One-Winged Angel",
+    // Core: triggers, batch 32
+    "Atla Palani, Nest Tender",
+    "Palani's Hatcher",
+    "Moonstone Eulogist",
+    "Simic Ascendancy",
 ];
