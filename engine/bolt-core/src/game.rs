@@ -1389,7 +1389,8 @@ pub enum Decision {
         source: ObjId,
         zcc: u32,
     },
-    /// Crew N (CR 702.122a): tap any number of other untapped creatures with total power N or more.
+    /// Crew N and saddle N (CR 702.122a, 702.171a): tap any number of other untapped creatures with
+    /// total power N or more.
     /// `Pick` another creature to tap, `Yes` (offered once their total power is N or more) to crew
     /// with `chosen`, or `No` to not crew. Asked when the first creature named alone isn't enough.
     CrewTap {
@@ -1869,6 +1870,12 @@ pub struct Game {
     /// Saddled Mounts (CR 702.171b) and the creatures that saddled them: (mount, its zcc, rider,
     /// its zcc, turn); only this turn's count.
     pub saddled: Vec<(ObjId, u32, ObjId, u32, u32)>,
+    /// Creatures that assign no combat damage this combat: (creature, its zcc, turn) (Master of
+    /// Cruelties).
+    pub no_combat_damage_from: Vec<(ObjId, u32, u32)>,
+    /// Saddle: the other creatures that saddled a Mount with its named one, as (mount, riders),
+    /// recorded as the cost is paid for `Effect::BecomeSaddled`.
+    saddle_extra: Vec<(ObjId, Vec<ObjId>)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -2158,6 +2165,8 @@ impl Game {
             player_protected_until: [None; 2],
             plus_two_to_players: (0, 0),
             crew_extra: Vec::new(),
+            no_combat_damage_from: Vec::new(),
+            saddle_extra: Vec::new(),
             hand_links: Vec::new(),
             saddled: Vec::new(),
         }
@@ -2187,6 +2196,17 @@ impl Game {
     /// aren't blocked, "whenever one or more creatures an opponent controls attack you and aren't
     /// blocked" triggers.
     fn fire_unblocked_at_player(&mut self) {
+        // Master of Cruelties: "Whenever [this] attacks a player and isn't blocked".
+        let lone: Vec<ObjId> = self.combat.as_ref().map_or(Vec::new(), |c| {
+            c.attackers
+                .iter()
+                .copied()
+                .filter(|&a| !c.is_blocked(a) && !c.at_planeswalker.iter().any(|&(x, _)| x == a))
+                .collect()
+        });
+        for a in lone {
+            self.fire_source(a, When::AttacksAndIsntBlocked);
+        }
         let unblocked = self.combat.as_ref().is_some_and(|c| {
             c.attackers
                 .iter()
@@ -9098,12 +9118,13 @@ impl Game {
                             .map(|c| Action::ActivateWith(id, n, c)),
                     );
                 } else if a.saddle > 0 {
-                    // Saddle: tap another untapped creature with enough power, as a sorcery.
-                    v.extend(
-                        self.creatures(p)
-                            .filter(|&c| c != id && !self.obj(c).tapped && self.power(c) >= a.saddle as i32)
-                            .map(|c| Action::ActivateWith(id, n, c)),
-                    );
+                    // Saddle N (CR 702.171a): any number of other untapped creatures with total power
+                    // N or more, as a sorcery; the rest picked with `Decision::CrewTap`, as crew.
+                    let riders: Vec<ObjId> = self.crew_candidates(p, id, &[]);
+                    let total: i32 = riders.iter().map(|&c| self.power(c).max(0)).sum();
+                    if total >= a.saddle as i32 {
+                        v.extend(riders.into_iter().map(|c| Action::ActivateWith(id, n, c)));
+                    }
                 } else if a.crew > 0 {
                     // Crew N (CR 702.122a): any number of other untapped creatures with total power N
                     // or more (summoning sickness doesn't matter). The one named first; more are
@@ -9388,8 +9409,13 @@ impl Game {
                 }
             } else if a.crew > 0 || a.saddle > 0 {
                 self.become_tapped(v); // crew and saddle tap, they don't sacrifice
-                for c in std::mem::take(&mut self.crew_extra) {
+                let extra = std::mem::take(&mut self.crew_extra);
+                for &c in &extra {
                     self.become_tapped(c); // the others picked with Decision::CrewTap
+                }
+                if a.saddle > 0 && !extra.is_empty() {
+                    self.saddle_extra.retain(|e| e.0 != id);
+                    self.saddle_extra.push((id, extra)); // they saddled it too
                 }
             } else if a.sacrifice_two_others {
                 if self.obj(v).zone == Zone::Battlefield {
@@ -10687,7 +10713,8 @@ impl Game {
             ),
             (Pending::Priority(p), Action::Activate(id, n)) => self.activate(p, id, n, None),
             (Pending::Priority(p), Action::ActivateWith(id, n, victim)) => {
-                let crew = self.activated_of(id, n).crew as i32;
+                let a = self.activated_of(id, n);
+                let crew = a.crew.max(a.saddle) as i32; // saddle uses the same summed-power cost
                 if crew > 0 && self.power(victim).max(0) < crew {
                     // Crew with more than one creature: pick the rest first (CR 702.122a).
                     let chosen = vec![victim];
@@ -12719,7 +12746,8 @@ impl Game {
             Decision::ChooseEnterMode { .. } => vec![Action::Mode(0), Action::Mode(1)],
             Decision::Riot { .. } => vec![Action::Mode(0), Action::Mode(1)],
             Decision::CrewTap { source, n, chosen } => {
-                let need = self.activated_of(*source, *n).crew as i32;
+                let a = self.activated_of(*source, *n);
+                let need = a.crew.max(a.saddle) as i32;
                 let have: i32 = chosen.iter().map(|&c| self.power(c).max(0)).sum();
                 let mut v: Vec<Action> = self
                     .crew_candidates(p, *source, chosen)
@@ -19669,6 +19697,22 @@ impl Game {
                     }
                 }
             }
+            Effect::OpponentLifeBecomesOne => {
+                let q = opponent(item.controller);
+                let life = self.players[q].life;
+                if life > 1 {
+                    self.lose_life(q, life - 1);
+                } else if life < 1 {
+                    self.gain_life(q, 1 - life);
+                }
+            }
+            Effect::SourceAssignsNoCombatDamage => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    let entry = (src, self.obj(src).zcc, self.turn);
+                    self.no_combat_damage_from.retain(|e| e.2 == self.turn);
+                    self.no_combat_damage_from.push(entry);
+                }
+            }
             Effect::DamageToPlayersPlusTwoThisTurn => {
                 let (t, n) = self.plus_two_to_players;
                 self.plus_two_to_players = (self.turn, if t == self.turn { n + 1 } else { 1 });
@@ -21614,6 +21658,17 @@ impl Game {
                         let (mz, rz, turn) = (self.obj(src).zcc, self.obj(r).zcc, self.turn);
                         self.saddled.retain(|e| e.4 == turn);
                         self.saddled.push((src, mz, r, rz, turn));
+                        // The other creatures that saddled it with the named one.
+                        let others = self
+                            .saddle_extra
+                            .iter()
+                            .position(|e| e.0 == src)
+                            .map(|i| self.saddle_extra.remove(i).1)
+                            .unwrap_or_default();
+                        for o in others {
+                            let oz = self.obj(o).zcc;
+                            self.saddled.push((src, mz, o, oz, turn));
+                        }
                     }
                 }
             }
@@ -25013,6 +25068,10 @@ impl Game {
         let mut assigned: Vec<(ObjId, Target, i32)> = Vec::new();
         for &a in &combat.attackers {
             let power = self.power(a);
+            let (az, turn) = (self.obj(a).zcc, self.turn);
+            if self.no_combat_damage_from.contains(&(a, az, turn)) {
+                continue; // Master of Cruelties: "assigns no combat damage this combat"
+            }
             if power <= 0 || !self.deals_damage_now(a, first_strike_step) {
                 continue;
             }

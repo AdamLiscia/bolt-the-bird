@@ -1005,3 +1005,11 @@ when their total power reaches N; if `c` alone is enough it crews at once as bef
 `Decision::CrewTap` asks for more (`Pick` another, `Yes` once the total reaches N, `No` to not
 crew, with nothing paid). The others are tapped with the named one in `pay_activation`
 (`Game::crew_extra`). Saddle will use the same cost once d1 batch 19 is on tarkir.
+- Saddle (d1 batch 19's `Activated::saddle`) now uses the same summed-power cost: listed like crew,
+  as a sorcery, `Decision::CrewTap` for more creatures (labels now say "crew or saddle"); every
+  creature that saddled it is recorded in `Game::saddled` (`saddle_extra` carries the others to
+  `Effect::BecomeSaddled`).
+- Master of Cruelties' pieces: `When::AttacksAndIsntBlocked` (fired once blockers are declared, in
+  `fire_unblocked_at_player`), `Effect::OpponentLifeBecomesOne`, `Effect::SourceAssignsNoCombatDamage`
+  (`Game::no_combat_damage_from`, skipped in `combat_damage`). The card waits for d1 batch 20's
+  attacks-alone.

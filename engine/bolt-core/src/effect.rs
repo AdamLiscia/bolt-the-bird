@@ -2642,6 +2642,12 @@ pub enum Effect {
     /// engine picks the most powerful); if you do, draw X cards, then put up to X land cards from
     /// your hand onto the battlefield tapped (the engine puts as many as it can), X its power.
     SacrificeSaddlerDrawXLandsX,
+    /// The defending player's life total becomes 1 (Master of Cruelties): they lose (or gain) the
+    /// difference (CR 119.5).
+    OpponentLifeBecomesOne,
+    /// The source assigns no combat damage this combat (Master of Cruelties), see
+    /// `Game::no_combat_damage_from`.
+    SourceAssignsNoCombatDamage,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -3602,6 +3608,9 @@ pub enum When {
     /// With `Effect::DelayedThisTurn`: "until end of turn, whenever a player casts an instant or
     /// sorcery spell" (Bonus Round), controlled by that player, with the spell in `extra`.
     PlayerCastsInstantOrSorceryThisTurn,
+    /// "Whenever [this] attacks a player and isn't blocked" (Master of Cruelties), once blockers are
+    /// declared (`Game::fire_unblocked_at_player`).
+    AttacksAndIsntBlocked,
 }
 
 #[derive(Clone, Debug, PartialEq)]
