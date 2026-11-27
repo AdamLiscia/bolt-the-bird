@@ -1918,6 +1918,12 @@ pub struct Game {
     /// The turn each player last cast a creature spell from their graveyard with Karador's
     /// permission (`ManaExt::creature_from_graveyard_once_each_turn`).
     pub karador_turn: [u32; 2],
+    /// Crewed Vehicles and the creatures that crewed them: (vehicle, its zcc, crewer, its zcc,
+    /// turn), as `Game::saddled` (Golden Argosy).
+    pub crewed: Vec<(ObjId, u32, ObjId, u32, u32)>,
+    /// Exiled cards returned tapped under their owner's control at the beginning of the next end
+    /// step: (card, its zcc in exile) (Golden Argosy).
+    pub delayed_returns_tapped: Vec<(ObjId, u32)>,
     /// Will, Scion of Peace: the turn each player's white and/or blue spells cost less by the life
     /// they gained this turn.
     pub wu_discount_turn: [u32; 2],
@@ -2221,6 +2227,8 @@ impl Game {
             crew_extra: Vec::new(),
             no_combat_damage_from: Vec::new(),
             saddle_extra: Vec::new(),
+            crewed: Vec::new(),
+            delayed_returns_tapped: Vec::new(),
             hand_links: Vec::new(),
             saddled: Vec::new(),
             karador_turn: [0; 2],
@@ -9567,6 +9575,15 @@ impl Game {
                 let extra = std::mem::take(&mut self.crew_extra);
                 for &c in &extra {
                     self.become_tapped(c); // the others picked with Decision::CrewTap
+                }
+                if a.crew > 0 {
+                    // Every creature that crewed it, for "each creature that crewed it this turn".
+                    let (vz, turn) = (self.obj(id).zcc, self.turn);
+                    self.crewed.retain(|e| e.4 == turn);
+                    for &c in std::iter::once(&v).chain(extra.iter()) {
+                        let cz = self.obj(c).zcc;
+                        self.crewed.push((id, vz, c, cz, turn));
+                    }
                 }
                 if a.saddle > 0 && !extra.is_empty() {
                     self.saddle_extra.retain(|e| e.0 != id);
@@ -20197,6 +20214,23 @@ impl Game {
                 let def = if names.len() >= 7 { seven } else { fewer };
                 self.create_token(p, def);
             }
+            Effect::ExileCrewersReturnTappedAtEnd => {
+                let (sz, turn) = (self.obj(src).zcc, self.turn);
+                let crewers: Vec<ObjId> = self
+                    .crewed
+                    .iter()
+                    .filter(|e| e.0 == src && e.1 == sz && e.4 == turn)
+                    .filter(|e| self.obj(e.2).zone == Zone::Battlefield && self.obj(e.2).zcc == e.3)
+                    .map(|e| e.2)
+                    .collect();
+                for c in crewers {
+                    self.move_to(c, Zone::Exile);
+                    if self.obj(c).zone == Zone::Exile {
+                        let zcc = self.obj(c).zcc;
+                        self.delayed_returns_tapped.push((c, zcc));
+                    }
+                }
+            }
             Effect::OpponentLifeBecomesOne => {
                 let q = opponent(item.controller);
                 let life = self.players[q].life;
@@ -25334,6 +25368,15 @@ impl Game {
                         o.revival = n;
                         let owner = self.obj(c).owner;
                         self.counters_placed(owner, n);
+                    }
+                }
+                // Golden Argosy: its crewers come back tapped.
+                for (c, zcc) in std::mem::take(&mut self.delayed_returns_tapped) {
+                    if self.obj(c).zcc == zcc && self.obj(c).zone == Zone::Exile {
+                        self.move_to(c, Zone::Battlefield);
+                        let o = self.obj_mut(c);
+                        o.controller = o.owner;
+                        o.tapped = true;
                     }
                 }
                 self.delayed_end_step_exiled_due(a); // Dragonhawk (game/zones.rs)

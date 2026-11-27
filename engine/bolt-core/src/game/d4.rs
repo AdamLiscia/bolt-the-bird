@@ -408,9 +408,61 @@ impl Game {
         });
     }
 
+    /// "Commander creatures you own have \"[trigger]\"" (`SubsystemExt::commanders_have_trigger`, a
+    /// Background): `fire()` has just put that trigger on `triggered` once for the Background; it
+    /// triggers instead once for each commander creature `p` owns and controls, and not at all
+    /// without one. A commander that left the battlefield in the event being fired still counts
+    /// (leaves-the-battlefield abilities look back, CR 603.10a). Handled copies are marked with
+    /// `amount` 1 so a later `fire()` doesn't count them again.
+    fn commanders_have_triggers(&mut self, p: PlayerId, when: When) {
+        let granted = |g: &Game, t: &StackItem| {
+            let StackKind::Trigger(n) = t.kind else {
+                return false;
+            };
+            let def = g.def_of(t.source);
+            t.controller == p
+                && t.amount == 0
+                && def.subsystems.commanders_have_trigger == Some(n)
+                && def.triggers.get(n).is_some_and(|tr| tr.when == when)
+        };
+        if !self.triggered.iter().any(|t| granted(self, t)) {
+            return;
+        }
+        let just_left = match self.events.last() {
+            Some(&Event::Moved {
+                card,
+                from: Zone::Battlefield,
+                ..
+            }) => Some(card),
+            _ => None,
+        };
+        let k = [self.commanders[p], self.partners[p]]
+            .into_iter()
+            .flatten()
+            .filter(|&c| {
+                let o = self.obj(c);
+                let here = o.zone == Zone::Battlefield && o.controller == p;
+                o.owner == p && (here || Some(c) == just_left) && self.types_of(c).creature
+            })
+            .count();
+        for t in std::mem::take(&mut self.triggered) {
+            if granted(self, &t) {
+                for _ in 0..k {
+                    self.triggered.push(StackItem {
+                        amount: 1,
+                        ..t.clone()
+                    });
+                }
+            } else {
+                self.triggered.push(t);
+            }
+        }
+    }
+
     /// The subsystems' share of `fire(p, when)`: emblems' triggered abilities, the initiative's
     /// upkeep venture, and taking the initiative by combat damage (CR 725.2). Called by `fire()`.
     pub fn fire_subsystems(&mut self, p: PlayerId, when: When) {
+        self.commanders_have_triggers(p, when);
         for (owner, kind, card) in self.emblems.clone() {
             if let EmblemKind::Triggered { when: w, trigger } = kind {
                 if owner == p && w == when {
@@ -610,6 +662,17 @@ impl Game {
                         let zcc = self.obj(c).zcc;
                         self.obj_mut(src).attached_to = Some((c, zcc));
                     }
+                }
+            }
+            SubsystemEffect::DamageEachOpponentTotalManaValueOfOthers => {
+                let src = item.source;
+                let n: u32 = self
+                    .permanents(p)
+                    .filter(|&x| x != src)
+                    .map(|x| self.stack_mana_cost(x).mana_value())
+                    .sum();
+                if n > 0 {
+                    self.deal_damage(src, Target::Player(opponent(p)), n as i32);
                 }
             }
         }

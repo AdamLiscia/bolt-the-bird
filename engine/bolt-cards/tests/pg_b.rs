@@ -4121,3 +4121,39 @@ fn the_necrobloom_makes_a_plant_or_with_seven_land_names_a_zombie() {
         "green"
     );
 }
+
+#[test]
+fn golden_argosy_exiles_its_crew_on_attack_and_returns_them_tapped_at_end_step() {
+    let mut g = table();
+    let argosy = put(&mut g, 0, "Golden Argosy");
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::ActivateWith(argosy, 0, elves)); // Crew 1
+    resolve_all(&mut g, &[]);
+    assert!(g.types_of(argosy).creature);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(argosy));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Exile, "the crewer is exiled");
+    assert_eq!(
+        g.obj(lions).zone,
+        Zone::Battlefield,
+        "a creature that didn't crew stays"
+    );
+    while g.step != Step::Cleanup && g.turn == 5 {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield, "back at the end step");
+    assert!(g.obj(elves).tapped, "tapped");
+}

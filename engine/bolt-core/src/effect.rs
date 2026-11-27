@@ -2675,6 +2675,9 @@ pub enum Effect {
         land: usize,
         nonland: usize,
     },
+    /// Exile each creature that crewed the source this turn; return them to the battlefield tapped
+    /// under their owner's control at the beginning of the next end step (Golden Argosy).
+    ExileCrewersReturnTappedAtEnd,
     /// "Add N mana of any one color. Spend this mana only to cast creature spells." (Somberwald
     /// Sage: 3, one ability per color): N mana of that color held for creature spells
     /// (`Game::creature_color_mana`); it pays that color's pips, hybrid pips with it, and generic.
@@ -3743,4 +3746,7 @@ pub enum SubsystemEffect {
     /// controller controls. The ability is offered only while there is one
     /// (`Game::lacks_chapter_activated`), so it takes no target slot.
     AttachToYourCommander,
+    /// "This creature deals damage equal to the total mana value of other permanents you control
+    /// to each opponent." (Summon: Bahamut's chapter IV, Mega Flare)
+    DamageEachOpponentTotalManaValueOfOthers,
 }

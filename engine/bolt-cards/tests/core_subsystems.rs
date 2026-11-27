@@ -806,3 +806,100 @@ fn colors_outside_the_commanders_identity_count_a_partner_and_no_commander() {
     g.partners[0] = Some(g.add_card(0, cid(CARD), Zone::Command));
     assert_eq!(outside(&g), [false, true, true, false, false], "and white");
 }
+
+// ---- Backgrounds: a trigger granted to commander creatures (Agent of the Iron Throne) ----
+
+/// Agent of the Iron Throne's grant, written on its definition: "Commander creatures you own have
+/// 'Whenever an artifact or creature you control is put into a graveyard from the battlefield, each
+/// opponent loses 1 life.'"
+fn background_game() -> Game {
+    let mut g = game_with(vec![], vec![], |defs| {
+        let agent = &mut defs[cid("Agent of the Iron Throne")];
+        agent.triggers = vec![Trigger {
+            when: When::ThisOrAnotherCreatureOrArtifactYouControlDies,
+            ability: Ability::new(
+                vec![],
+                vec![Effect::LoseLife {
+                    who: Who::EachOpponent,
+                    n: 1,
+                }],
+            ),
+        }];
+        agent.subsystems.commanders_have_trigger = Some(0);
+    });
+    g.add_card(0, cid("Agent of the Iron Throne"), Zone::Battlefield);
+    g
+}
+
+fn bolt(g: &mut Game, x: ObjId) {
+    let b = g.add_card(0, cid("Lightning Bolt"), Zone::Hand);
+    common::play(g, b, false, &[Target::Object(x)], &[]);
+    assert_ne!(g.obj(x).zone, Zone::Battlefield, "bolted");
+}
+
+#[test]
+fn a_backgrounds_granted_trigger_needs_a_commander_creature_you_own() {
+    let mut g = background_game();
+    g.commanders[0] = Some(g.add_card(0, cid("Bello, Bard of the Brambles"), Zone::Command));
+    let life = g.players[1].life;
+    let lions = g.add_card(0, cid(CARD), Zone::Battlefield);
+    bolt(&mut g, lions);
+    assert_eq!(g.players[1].life, life, "the commander isn't on the battlefield");
+    let theirs = g.add_card(1, cid("Bello, Bard of the Brambles"), Zone::Battlefield);
+    g.commanders[1] = Some(theirs);
+    let lions = g.add_card(0, cid(CARD), Zone::Battlefield);
+    bolt(&mut g, lions);
+    assert_eq!(g.players[1].life, life, "an opponent's commander doesn't count");
+}
+
+#[test]
+fn a_backgrounds_granted_trigger_triggers_once_per_commander_creature() {
+    let mut g = background_game();
+    let bello = g.add_card(0, cid("Bello, Bard of the Brambles"), Zone::Battlefield);
+    g.commanders[0] = Some(bello);
+    let life = g.players[1].life;
+    let lions = g.add_card(0, cid(CARD), Zone::Battlefield);
+    bolt(&mut g, lions);
+    assert_eq!(g.players[1].life, life - 1, "a creature you control died");
+    g.partners[0] = Some(g.add_card(0, cid("Sakura-Tribe Elder"), Zone::Battlefield));
+    let lions = g.add_card(0, cid(CARD), Zone::Battlefield);
+    bolt(&mut g, lions);
+    assert_eq!(g.players[1].life, life - 3, "two commander creatures: twice");
+}
+
+#[test]
+fn a_dying_commander_sees_its_own_death() {
+    let mut g = background_game();
+    g.commander_choice = true; // it goes to the graveyard, so it dies
+    let bello = g.add_card(0, cid("Bello, Bard of the Brambles"), Zone::Battlefield);
+    g.commanders[0] = Some(bello);
+    let life = g.players[1].life;
+    let b = g.add_card(0, cid("Lightning Bolt"), Zone::Hand);
+    // Yes: the commander moves to the command zone (after it died).
+    common::play(&mut g, b, false, &[Target::Object(bello)], &[Action::Yes]);
+    assert_eq!(g.obj(bello).zone, Zone::Command);
+    assert_eq!(g.players[1].life, life - 1, "leaves-the-battlefield look-back");
+}
+
+// ---- Summon: Bahamut's Mega Flare ----
+
+#[test]
+fn damage_equal_to_the_total_mana_value_of_your_other_permanents() {
+    let mut g = game_with(
+        vec![],
+        vec![sub(SubsystemEffect::DamageEachOpponentTotalManaValueOfOthers)],
+        |_| {},
+    );
+    let lions = g.add_card(0, cid(CARD), Zone::Battlefield);
+    g.add_card(0, cid("Sol Ring"), Zone::Battlefield); // 1
+    g.add_card(0, cid("Sakura-Tribe Elder"), Zone::Battlefield); // 2
+    g.add_card(1, cid("Sakura-Tribe Elder"), Zone::Battlefield); // not yours
+    let (me, them) = (g.players[0].life, g.players[1].life);
+    activate(&mut g, lions, &[]);
+    assert_eq!(
+        g.players[1].life,
+        them - 3,
+        "lands are 0, Lions itself doesn't count"
+    );
+    assert_eq!(g.players[0].life, me);
+}
