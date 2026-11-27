@@ -2949,9 +2949,6 @@ pub enum Effect {
     /// "An opponent gains control of this artifact." (Wishclaw Talisman): the source, if you control
     /// it, passes to the opponent for good.
     OpponentGainsControlOfSource,
-    /// "You may sacrifice an artifact or creature. If you do, ..." (Midgar's Reactor Raid): the rest
-    /// only if one is sacrificed, as `Decision::MaySacrificeArtifactOrCreature`.
-    MaySacrificeArtifactOrCreature,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

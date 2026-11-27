@@ -1163,28 +1163,4 @@ impl Game {
             self.counters_placed(controller, n);
         }
     }
-
-    /// Midgar's Reactor Raid: the artifacts and creatures `p` can sacrifice, then `No`.
-    pub(super) fn artifact_or_creature_sacrifice_actions(&self, p: PlayerId) -> Vec<Action> {
-        let mut v: Vec<Action> = self
-            .permanents(p)
-            .filter(|&c| {
-                let t = self.types_of(c);
-                (t.artifact || t.creature) && !self.cant_be_sacrificed(c)
-            })
-            .map(Action::Pick)
-            .collect();
-        v.push(Action::No);
-        v
-    }
-
-    /// The answer to `Decision::MaySacrificeArtifactOrCreature`: sacrifice it, or stop the ability.
-    pub(super) fn artifact_or_creature_sacrifice_decide(&mut self, p: PlayerId, a: Action) {
-        if let Action::Pick(c) = a {
-            self.move_to(c, Zone::Graveyard);
-            self.sacrificed(c, p);
-        } else {
-            self.resolving.as_mut().expect("resolving").remaining.clear();
-        }
-    }
 }

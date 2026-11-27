@@ -192,8 +192,6 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         return f"Return {card_name} to your hand"
     if kind == "No" and d == "ReturnLandOrSacrifice":
         return f"Sacrifice {src} instead" if src else "Sacrifice it instead"
-    if kind == "No" and d == "MaySacrificeArtifactOrCreature":
-        return "Don't sacrifice (no cards drawn)"
     if kind == "Pick":
         verb = {"SacrificeCreatures": "Sacrifice", "SacrificeAnother": "Sacrifice", "Search": "Take",
                 "LookPick": "Take", "KeepOfType": "Keep", "ScryOrder": "Put on top:", "GenesisPick": "Put onto the battlefield:", "PutPicksOntoBattlefield": "Put onto the battlefield:", "LandFromHandTapped": "Put onto the battlefield tapped:",
@@ -218,7 +216,6 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"ReanimateTotalManaValue": "Put onto the battlefield under your control:"}.get(d)
         verb = verb or {"SacrificeNontokenCreatureEach": "Sacrifice"}.get(d)
         verb = verb or {"SacrificeNontokenCreatureOrPlaneswalker": "Sacrifice"}.get(d)
-        verb = verb or {"MaySacrificeArtifactOrCreature": "Sacrifice (then draw two):"}.get(d)
         verb = verb or {"SacrificeNontokenArtifact": "Sacrifice", "ExileThreeForFood": "Exile (three for a Food):"}.get(d)  # fmt: skip
         verb = verb or {"SylvanPick": "Choose (pay 4 life or put it back):"}.get(d)
         verb = verb or {"CrewTap": "Also tap (to crew or saddle):"}.get(d)

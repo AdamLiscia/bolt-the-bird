@@ -1234,8 +1234,9 @@ Core (appended; functions in game/zones.rs):
 - Midgar: in `priority_actions`' cast list, a land with an Omen/Adventure half no longer `continue`s before the
   Omen block (`def.types.land && def.omen.is_none()`), and a `continue` after it keeps the land itself from being
   offered as a `Cast`. After the Adventure the card is `playable` from exile, played as a land.
-- `Effect::MaySacrificeArtifactOrCreature` with `Decision::MaySacrificeArtifactOrCreature` (Pick, or No: the rest
-  stops); labelled in service_view, tested in test_decision_labels.
+- Reactor Raid uses **d2's** `Effect::MaySacrificeArtifactOrCreature` and `Decision::MaySacrificeArtifactOrCreature
+  { source }` (lane-d2 b35, 592dc7b, with its labels): lane C's same-named pair was dropped (merger, 2026-11-27).
+  **Doesn't compile until d2's b35 is on tarkir.**
 Cards (2): Wishclaw Talisman, Midgar, City of Mako // Reactor Raid. Tests in core_objects (87).
 Likely failure spots when built: the Talisman's activation legality for player 1 after `to_main1(6, 1)` (it must
 untap in their untap step), the Midgar hand-count arithmetic.

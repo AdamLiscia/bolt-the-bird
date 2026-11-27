@@ -356,9 +356,3 @@ def test_land_sacrifice_and_ad_nauseam_labels():
 def test_flare_of_malice_sacrifices_the_greatest():
     dec = {"kind": "SacrificeGreatestMv"}
     assert sv._decision_label(dec, "Pick", 0, "Sol Ring") == "Sacrifice Sol Ring"
-
-
-def test_reactor_raid_may_sacrifice_an_artifact_or_creature():
-    dec = {"kind": "MaySacrificeArtifactOrCreature"}
-    assert sv._decision_label(dec, "Pick", 0, "Sol Ring") == "Sacrifice (then draw two): Sol Ring"
-    assert label(dec, "No", 0) == "Don't sacrifice (no cards drawn)"

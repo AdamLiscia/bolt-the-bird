@@ -1493,9 +1493,6 @@ pub enum Decision {
     /// `Pick` one of your creatures or planeswalkers tied for the greatest mana value to sacrifice
     /// (Flare of Malice).
     SacrificeGreatestMv,
-    /// `Pick` an artifact or creature you control to sacrifice, or `No` (the rest of the ability
-    /// doesn't happen): Midgar's Reactor Raid.
-    MaySacrificeArtifactOrCreature,
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -15031,7 +15028,6 @@ impl Game {
             Decision::PatronOfChaosSacrifice { first, .. } => self.patron_of_chaos_actions(p, *first),
             Decision::ExileFromHandUntilSourceLeaves { victim, .. } => self.hand_link_actions(*victim),
             Decision::MayPutExiledLandOntoBattlefield { .. } => vec![Action::Yes, Action::No],
-            Decision::MaySacrificeArtifactOrCreature => self.artifact_or_creature_sacrifice_actions(p),
             Decision::SacrificeNontokenCreatureOrPlaneswalker => self
                 .nontoken_creature_or_planeswalker_options(p)
                 .into_iter()
@@ -16877,7 +16873,6 @@ impl Game {
             (Decision::ExileFromHandUntilSourceLeaves { source, zcc, .. }, a) => {
                 self.hand_link_decide(source, zcc, a)
             }
-            (Decision::MaySacrificeArtifactOrCreature, a) => self.artifact_or_creature_sacrifice_decide(p, a),
             (Decision::SacrificeNontokenCreatureOrPlaneswalker, Action::Pick(c)) => {
                 self.move_to(c, Zone::Graveyard);
                 self.sacrificed(c, p);
@@ -25947,13 +25942,7 @@ impl Game {
             }
             Effect::HideawayAnother(n) => self.hideaway_another(src, item.controller, n),
             Effect::OpponentGainsControlOfSource => self.give_source_to_opponent(src, item.controller),
-            Effect::MaySacrificeArtifactOrCreature => {
-                if self.artifact_or_creature_sacrifice_actions(item.controller).len() > 1 {
-                    self.ask(item.controller, Decision::MaySacrificeArtifactOrCreature);
-                } else {
-                    self.resolving.as_mut().expect("resolving").remaining.clear();
-                }
-            }
+
             Effect::CountersOnAttachedBySubtype { n, subtype, n_if } => {
                 self.counters_on_attached_by_subtype(src, n, subtype, n_if)
             }
