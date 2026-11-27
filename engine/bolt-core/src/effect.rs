@@ -2772,6 +2772,9 @@ pub enum SearchTo {
     BattlefieldTappedUnder(u8),
     /// Onto the battlefield with an additional +1/+1 counter (Neoform).
     BattlefieldPlusCounter,
+    /// Onto the battlefield tapped; then, if you control `n` or more lands, untap it (Fabled
+    /// Passage: 4).
+    BattlefieldTappedUntapIfLands(u8),
 }
 
 /// What a static ability affects.

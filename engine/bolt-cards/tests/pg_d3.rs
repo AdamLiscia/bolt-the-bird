@@ -4091,3 +4091,35 @@ fn skyscribing_each_player_draws_x_and_forecasts_a_card_each() {
         "once each turn"
     );
 }
+
+/// Activates Fabled Passage beside `others` and returns the basic it found.
+fn fabled_passage_with(others: &[&str]) -> (Game, ObjId) {
+    let mut lands = vec!["Fabled Passage"];
+    lands.extend_from_slice(others);
+    let mut g = game(&lands);
+    let fp = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Fabled Passage")
+        .unwrap();
+    let forest = g.add_card(0, cid("Forest"), Zone::Library);
+    act(&mut g, Action::Activate(fp, 0));
+    assert_eq!(g.obj(fp).zone, Zone::Graveyard, "sacrificed as a cost");
+    resolve_all(&mut g, &[Action::Pick(forest)]);
+    assert_eq!(g.obj(forest).zone, Zone::Battlefield);
+    (g, forest)
+}
+
+#[test]
+fn fabled_passage_untaps_the_land_with_four_lands() {
+    let (g, forest) = fabled_passage_with(&["Plains", "Plains", "Plains"]);
+    assert!(
+        !g.obj(forest).tapped,
+        "four lands (the found one included): untapped"
+    );
+}
+
+#[test]
+fn fabled_passage_leaves_the_land_tapped_with_three_lands() {
+    let (g, forest) = fabled_passage_with(&["Plains", "Plains"]);
+    assert!(g.obj(forest).tapped, "only three lands: stays tapped");
+}

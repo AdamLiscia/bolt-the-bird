@@ -5834,7 +5834,7 @@
   {
    "card": "Fabled Passage",
    "deck": "Bruna, Light of Alabaster (DonSpider)",
-   "missing": "lane C's Bruna routing (2026-11-26)",
+   "missing": "lane C's Bruna routing (2026-11-26) [done by d3 batch 29: scripted (pg_d3), SearchTo::BattlefieldTappedUntapIfLands(4)]",
    "lane": "mac-c",
    "theme": "effects",
    "owner": "d3"

@@ -1867,6 +1867,13 @@ pub fn script(name: &str) -> Option<Script> {
                 });
             },
         ),
+        "Fabled Passage" => s(
+            &["{T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle. Then if you control four or more lands, untap that land."],
+            |d, _| {
+                let n = activated(d, "", true, vec![], vec![search(SearchFor::BasicLand, SearchTo::BattlefieldTappedUntapIfLands(4))]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
         "Skyscribing" => s(
             &[
                 "Each player draws X cards.",
@@ -2139,4 +2146,6 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     // Core theme d3, batch 27
     "Mikaeus, the Unhallowed",
     "Skyscribing",
+    // Core theme d3, batch 29
+    "Fabled Passage",
 ];

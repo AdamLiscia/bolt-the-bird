@@ -14759,6 +14759,16 @@ impl Game {
                         }
                     }
                     SearchTo::BattlefieldPlusCounter => self.enter_with_plus_counter(c),
+                    SearchTo::BattlefieldTappedUntapIfLands(n) => {
+                        self.move_to(c, Zone::Battlefield);
+                        if self.obj(c).zone == Zone::Battlefield {
+                            self.obj_mut(c).tapped = true;
+                            let lands = self.permanents(p).filter(|&x| self.types_of(x).land).count();
+                            if lands >= n as usize {
+                                self.obj_mut(c).tapped = false;
+                            }
+                        }
+                    }
                     SearchTo::ExileCastFreeThisTurn => {
                         self.move_to(c, Zone::Exile);
                         let turn = self.turn;
