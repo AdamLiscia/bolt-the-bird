@@ -5314,6 +5314,11 @@ fn lathliss_makes_a_dragon_for_each_nontoken_dragon_and_pumps_dragons() {
     let dragons = tokens(&g, 0, "Dragon");
     assert_eq!(dragons.len(), 1, "not again for the token");
     assert_eq!((g.power(dragons[0]), g.toughness(dragons[0])), (5, 5));
+    assert_eq!(
+        g.colors_of(dragons[0]),
+        [false, false, false, true, false],
+        "a red Dragon"
+    );
     act(&mut g, Action::Activate(l, 0));
     resolve_all(&mut g, &[]);
     assert_eq!((g.power(a), g.power(dragons[0]), g.power(l)), (7, 6, 7));
@@ -5333,4 +5338,72 @@ fn scourge_of_the_throne_dethrones_and_attacks_again() {
     g.players[1].life = 30;
     assert_eq!(attack_once_count_combats(&mut g, s), 1, "not the most life");
     assert_eq!(g.obj(s).counters, 0);
+}
+
+/// Broodcaller Scourge's put-from-hand, on a stand-in trigger until d2's damage amount lands: the
+/// limit is the trigger's `amount`, the pick is the player's, and Kodama still sees the card enter.
+fn broodcaller_put(amount: i32) -> (Game, [ObjId; 3]) {
+    use bolt_core::effect::{Ability, Effect, Trigger, When};
+    use bolt_core::game::{StackItem, StackKind};
+    use std::sync::Arc;
+    let mut g = table();
+    let carrier = put(&mut g, 0, "Savannah Lions");
+    let def = g.obj(carrier).def;
+    Arc::make_mut(&mut g.defs)[def].triggers.insert(
+        0,
+        Trigger {
+            when: When::YourSubtypeDealCombatDamageToPlayer("Dragon"),
+            ability: Ability::new(vec![], vec![Effect::MayPutPermanentFromHandMvAtMostAmount]),
+        },
+    );
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    let pippin = hand(&mut g, 0, "Pippin, Guard of the Citadel");
+    let kodama = hand(&mut g, 0, "Kodama of the East Tree");
+    g.triggered.push(StackItem {
+        source: carrier,
+        controller: 0,
+        kind: StackKind::Trigger(0),
+        targets: Vec::new(),
+        kicked: false,
+        flashback: false,
+        extra: None,
+        mode: None,
+        amount,
+        alt: false,
+        x: 0,
+        division: Vec::new(),
+        source_zcc: None,
+    });
+    for _ in 0..6 {
+        if matches!(g.pending, Pending::Decide(_)) || g.triggered.is_empty() && g.items.is_empty() {
+            break;
+        }
+        act(&mut g, Action::PassPriority);
+    }
+    (g, [elves, pippin, kodama])
+}
+
+#[test]
+fn broodcaller_puts_a_permanent_with_mana_value_up_to_the_damage() {
+    let (mut g, [elves, pippin, kodama]) = broodcaller_put(2);
+    assert_eq!(g.pending, Pending::Decide(0));
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(elves)) && legal.contains(&Action::Pick(pippin)));
+    assert!(!legal.contains(&Action::Pick(kodama)), "mana value 5 is over 2");
+    assert!(legal.contains(&Action::No), "a may");
+    act(&mut g, Action::Pick(pippin));
+    assert_eq!(g.obj(pippin).zone, Zone::Battlefield);
+    assert!(!g.obj(pippin).put_by_kodama, "Kodama can still trigger on it");
+    assert_eq!(g.obj(elves).zone, Zone::Hand);
+}
+
+#[test]
+fn broodcaller_may_decline_and_asks_nothing_without_damage() {
+    let (mut g, [elves, pippin, _]) = broodcaller_put(2);
+    assert_eq!(g.pending, Pending::Decide(0));
+    act(&mut g, Action::No);
+    assert_eq!((g.obj(elves).zone, g.obj(pippin).zone), (Zone::Hand, Zone::Hand));
+    let (g, [elves, ..]) = broodcaller_put(0);
+    assert!(!matches!(g.pending, Pending::Decide(_)));
+    assert_eq!(g.obj(elves).zone, Zone::Hand);
 }

@@ -344,6 +344,8 @@ def test_hand_to_battlefield_and_exile_from_hand_picks():
     )
     kodama = {"kind": "PermanentFromHandMaxMv", "max": 3}
     assert sv._decision_label(kodama, "Pick", 0, "Sol Ring") == "Put onto the battlefield: Sol Ring"
+    brood = {"kind": "PermanentFromHandMvAtMost", "max": 5}
+    assert sv._decision_label(brood, "Pick", 0, "Sol Ring") == "Put onto the battlefield: Sol Ring"
     ashiok = {"kind": "ExileCardFromHand"}
     assert sv._decision_label(ashiok, "Pick", 0, "Opt") == "Exile from your hand: Opt"
 

@@ -1528,6 +1528,10 @@ pub enum Decision {
         rolls: [u32; 2],
         def: usize,
     },
+    /// `Pick` a permanent card in your hand with mana value at most `max` to put onto the
+    /// battlefield, or `No` (Broodcaller Scourge). Unlike `PermanentFromHandMaxMv`, it doesn't
+    /// mark the card as put by Kodama.
+    PermanentFromHandMvAtMost { max: u32 },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -15565,7 +15569,7 @@ impl Game {
                 v.push(Action::No);
                 v
             }
-            Decision::PermanentFromHandMaxMv { max } => {
+            Decision::PermanentFromHandMaxMv { max } | Decision::PermanentFromHandMvAtMost { max } => {
                 let mut v: Vec<Action> = self
                     .hand_cards_mv_at_most(p, *max, false)
                     .into_iter()
@@ -17557,6 +17561,12 @@ impl Game {
                     if self.obj(c).zone == Zone::Battlefield {
                         self.obj_mut(c).put_by_kodama = true;
                     }
+                }
+            }
+            (Decision::PermanentFromHandMvAtMost { .. }, a) => {
+                if let Action::Pick(c) = a {
+                    self.obj_mut(c).controller = p;
+                    self.move_to(c, Zone::Battlefield);
                 }
             }
             (Decision::ExileCardFromHand, Action::Pick(c)) => self.move_to(c, Zone::Exile),
@@ -25501,6 +25511,15 @@ impl Game {
                     let max = self.def_of(e).cost.mana_value();
                     if !self.hand_cards_mv_at_most(p, max, false).is_empty() {
                         self.ask(p, Decision::PermanentFromHandMaxMv { max });
+                    }
+                }
+            }
+            Effect::MayPutPermanentFromHandMvAtMostAmount => {
+                let p = item.controller;
+                if item.amount > 0 {
+                    let max = item.amount as u32;
+                    if !self.hand_cards_mv_at_most(p, max, false).is_empty() {
+                        self.ask(p, Decision::PermanentFromHandMvAtMost { max });
                     }
                 }
             }

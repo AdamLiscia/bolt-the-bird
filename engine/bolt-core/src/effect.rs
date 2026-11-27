@@ -3059,6 +3059,10 @@ pub enum Effect {
     /// Stop here unless an opponent has the most life or is tied for it (dethrone, CR 702.105; one
     /// opponent: their life is at least yours).
     StopUnlessOpponentHasMostLife,
+    /// "You may put a permanent card with mana value less than or equal to that damage from your
+    /// hand onto the battlefield" (Broodcaller Scourge): the limit is the item's `amount`, and
+    /// nothing happens when it's 0 or less. As `Decision::PermanentFromHandMvAtMost`.
+    MayPutPermanentFromHandMvAtMostAmount,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

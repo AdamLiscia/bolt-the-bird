@@ -6306,7 +6306,7 @@
   {
    "card": "Lathliss, Dragon Queen",
    "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
-   "missing": "lane C's routing (2026-11-26) [d3 batch 43: Effect::PumpYourSubtypeEot, scripted (pg_d3); known limit: the 5/5 Dragon is the shared t.dragon_5 token, which is colorless (not red)]",
+   "missing": "lane C's routing (2026-11-26) [d3 batch 43: Effect::PumpYourSubtypeEot, scripted (pg_d3); d3 batch 44: the 5/5 Dragon is now the red t.red_dragon_5 (token 132)] [known limit, accepted for the demo: the enters trigger covers creature Dragons only]",
    "lane": "mac-c",
    "theme": "triggers",
    "owner": "d3"
@@ -7600,7 +7600,7 @@
   {
    "card": "Nim Deathmantle",
    "deck": "IDEA Rocco, Cabaretti Caterer",
-   "missing": "d3 batch 43 (routed from d2, 2026-11-27): CardDef::attached_colors_become + enchanted_creature_type_becomes, MayPay {4} then ReanimateAttachSource, scripted (pg_d3); 1v1: 'put into your graveyard' is a nontoken creature you control dying",
+   "missing": "d3 batch 43 (routed from d2, 2026-11-27): CardDef::attached_colors_become + enchanted_creature_type_becomes, MayPay {4} then ReanimateAttachSource, scripted (pg_d3) [known limit, accepted for the demo: 'put into your graveyard' is read as a nontoken creature you control dying (differs only for stolen creatures)]",
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"

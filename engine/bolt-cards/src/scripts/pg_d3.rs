@@ -2499,7 +2499,7 @@ pub fn script(name: &str) -> Option<Script> {
             |d, t| {
                 // The entering creature fills slot 0; a non-Dragon makes it fizzle.
                 let it = Filter { triggering: true, subtype: Some("Dragon"), ..CREATURE };
-                on(d, When::AnotherNontokenCreatureYouControlEnters, vec![it], vec![Effect::CreateToken { who: Who::You, def: t.dragon_5, n: 1 }]);
+                on(d, When::AnotherNontokenCreatureYouControlEnters, vec![it], vec![Effect::CreateToken { who: Who::You, def: t.red_dragon_5, n: 1 }]);
                 activated(d, "{1}{R}", false, vec![], vec![Effect::PumpYourSubtypeEot { sub: "Dragon", power: 1, toughness: 0 }]);
             },
         ),

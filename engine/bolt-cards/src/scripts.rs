@@ -582,8 +582,12 @@ pub fn token_defs() -> Vec<CardDef> {
         token("Placeholder 130", "Placeholder", 0, 0, Keywords::NONE),
         // 131: another lane's token, a placeholder until it lands on tarkir.
         token("Placeholder 131", "Placeholder", 0, 0, Keywords::NONE),
-        // 132: another lane's token, a placeholder until it lands on tarkir.
-        token("Placeholder 132", "Placeholder", 0, 0, Keywords::NONE),
+        // 132, lane d3: Lathliss, Dragon Queen's "5/5 red Dragon creature token with flying".
+        {
+            let mut t = token("Dragon", "Dragon", 5, 5, Keywords::FLYING);
+            t.colors = [false, false, false, true, false];
+            t
+        },
         // 133: another lane's token, a placeholder until it lands on tarkir.
         token("Placeholder 133", "Placeholder", 0, 0, Keywords::NONE),
         // 134: another lane's token, a placeholder until it lands on tarkir.
@@ -865,8 +869,8 @@ pub struct Tokens {
     pub placeholder_130: usize,
     /// 131: another lane's token, a placeholder until it lands on tarkir.
     pub placeholder_131: usize,
-    /// 132: another lane's token, a placeholder until it lands on tarkir.
-    pub placeholder_132: usize,
+    /// 132, lane d3: Lathliss, Dragon Queen's 5/5 red Dragon with flying.
+    pub red_dragon_5: usize,
     /// 133: another lane's token, a placeholder until it lands on tarkir.
     pub placeholder_133: usize,
     /// 134: another lane's token, a placeholder until it lands on tarkir.
@@ -1010,7 +1014,7 @@ impl Tokens {
             placeholder_129: base + 129,
             placeholder_130: base + 130,
             placeholder_131: base + 131,
-            placeholder_132: base + 132,
+            red_dragon_5: base + 132,
             placeholder_133: base + 133,
             placeholder_134: base + 134,
             wurm_6: base + 135,
