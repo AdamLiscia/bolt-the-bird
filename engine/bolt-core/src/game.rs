@@ -2079,6 +2079,9 @@ pub struct Game {
     /// Ral, Storm Conduit's "when you next cast an instant or sorcery spell this turn": (source, its
     /// trigger number, controller, the turn).
     pub copy_next_instant_sorcery: Vec<(ObjId, usize, PlayerId, u32)>,
+    /// Ral, Leyline Prodigy's +1: (player, the first turn it no longer applies, {N} less) for
+    /// that player's instant and sorcery spells, "until your next turn".
+    pub instant_sorcery_discount_until: Vec<(PlayerId, u32, u8)>,
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2400,6 +2403,7 @@ impl Game {
             creatures_entered: [(0, 0); 2],
             triggered_once_turn: Vec::new(),
             copy_next_instant_sorcery: Vec::new(),
+            instant_sorcery_discount_until: Vec::new(),
         }
     }
 
@@ -8661,6 +8665,14 @@ impl Game {
                 let from_hand = o.zone == Zone::Hand || (o.zone == Zone::Stack && o.from_hand);
                 if !from_hand && self.class_level(x) >= level {
                     n += less as usize;
+                }
+            }
+        }
+        // Ral, Leyline Prodigy's +1: until your next turn.
+        if t.instant || t.sorcery || mode.mode == Some(OMEN_MODE) {
+            for &(q, until, k) in &self.instant_sorcery_discount_until {
+                if q == p && self.turn < until {
+                    n += k as usize;
                 }
             }
         }
@@ -26226,6 +26238,24 @@ impl Game {
                             n,
                         },
                     );
+                }
+            }
+            Effect::InstantSorceryDiscountUntilYourNextTurn(k) => {
+                let p = item.controller;
+                let until = self.next_turn_of(p); // "until your next turn"
+                let turn = self.turn;
+                self.instant_sorcery_discount_until.retain(|e| e.1 > turn);
+                self.instant_sorcery_discount_until.push((p, until, k));
+            }
+            Effect::AddManaOneColorPerChosenType => {
+                let p = item.controller;
+                let n = match self.obj(src).chosen_type.clone() {
+                    Some(t) => self.creatures(p).filter(|&x| self.has_subtype(x, &t)).count(),
+                    None => 0,
+                };
+                if n > 0 {
+                    let n = n.min(255) as u8;
+                    self.ask(p, Decision::ManaOfOneColor { source: src, n });
                 }
             }
             Effect::AddManaOneColor(n) => {

@@ -4192,3 +4192,28 @@ fn forbidden_orchard_gives_the_opponent_a_spirit_when_tapped() {
         1
     );
 }
+
+#[test]
+fn three_tree_city_names_a_type_as_it_enters_and_taps_for_one_color_per_creature() {
+    let mut g = table();
+    for _ in 0..3 {
+        put(&mut g, 0, "Llanowar Elves");
+    }
+    let city = hand(&mut g, 0, "Three Tree City");
+    act(&mut g, Action::PlayLand(city));
+    let elf = match &g.decision {
+        Some(bolt_core::Decision::ChooseCreatureType { options, .. }) => {
+            options.iter().position(|o| o == "Elf").expect("Elf is an option")
+        }
+        d => panic!("expected the creature type choice, got {d:?}"),
+    };
+    act(&mut g, Action::Mode(elf as u8));
+    assert_eq!(g.obj(city).chosen_type.as_deref(), Some("Elf"));
+    act(&mut g, Action::Activate(city, 0));
+    resolve_all(&mut g, &[Action::Mode(4)]);
+    assert_eq!(g.players[0].pool.len(), 3, "three Elves: three green");
+    assert!(g.players[0]
+        .pool
+        .iter()
+        .all(|m| m.colors == [false, false, false, false, true]));
+}

@@ -2035,6 +2035,20 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::TappedForMana, vec![Filter::PLAYER.controlled_by(Controller::Opponent)], vec![Effect::CreateToken { who: Who::TargetPlayer(0), def: t.spirit_1, n: 1 }]);
             },
         ),
+        // ---- Vaevictis ----
+        "Three Tree City" => s(
+            &[
+                "As Three Tree City enters, choose a creature type.",
+                "{T}: Add {C}.",
+                "{2}, {T}: Choose a color. Add an amount of mana of that color equal to the number of creatures you control of the chosen type.",
+            ],
+            |d, _| {
+                // The second ability goes on the stack, like Phyrexian Altar.
+                d.choose_creature_type = true;
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                activated(d, "{2}", true, vec![], vec![Effect::AddManaOneColorPerChosenType]);
+            },
+        ),
         // ---- Ral ----
         "Braid of Fire" => s(&["Cumulative upkeep—Add {R}."], |d, _| {
             on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::CumulativeUpkeepAddMana(Color::Red)]);
@@ -2298,4 +2312,5 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Reaping Willow",
     "Flitterwing Nuisance",
     "Forbidden Orchard",
+    "Three Tree City",
 ];

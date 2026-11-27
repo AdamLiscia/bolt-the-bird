@@ -3017,6 +3017,13 @@ pub enum Effect {
         subtype: &'static str,
         n_if: i32,
     },
+    /// "Until your next turn, instant and sorcery spells you cast cost {N} less to cast." (Ral,
+    /// Leyline Prodigy's +1: 1), kept in `Game::instant_sorcery_discount_until`.
+    InstantSorceryDiscountUntilYourNextTurn(u8),
+    /// "Choose a color. Add an amount of mana of that color equal to the number of creatures you
+    /// control of the chosen type." (Three Tree City: the source's `chosen_type`), as
+    /// `Decision::ManaOfOneColor`.
+    AddManaOneColorPerChosenType,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

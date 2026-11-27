@@ -3363,3 +3363,55 @@ mod delney_blocks_and_artifact_or_creature_sacrifice {
         assert!(legal.contains(&Action::ActivateWith(e, n, elf)), "or a creature");
     }
 }
+
+/// `Effect::InstantSorceryDiscountUntilYourNextTurn` (Ral, Leyline Prodigy's +1).
+mod instant_sorcery_discount_until_your_next_turn {
+    use bolt_cards::set;
+    use bolt_core::{Ability, Action, Activated, Effect, Game, Step, Zone};
+
+    fn cid(name: &str) -> usize {
+        set("CMD").unwrap().index_of(name).unwrap()
+    }
+
+    #[test]
+    fn instants_cost_one_less_until_your_next_turn() {
+        let mut defs = (*set("CMD").unwrap().defs).clone();
+        let ral = cid("Ornithopter");
+        defs[ral].activated.push(Activated {
+            ability: Ability::new(vec![], vec![Effect::InstantSorceryDiscountUntilYourNextTurn(1)]),
+            ..Activated::default()
+        });
+        let plains = vec![cid("Plains"); 99];
+        let mut g = Game::new_commander(
+            std::sync::Arc::new(defs),
+            [&plains, &plains],
+            [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+            7,
+            0,
+        );
+        g.auto_pass = false;
+        g.start_turn(3, 0);
+        while g.step != Step::Main1 {
+            g.apply(Action::PassPriority).unwrap();
+        }
+        let r = g.add_card(0, ral, Zone::Battlefield);
+        g.add_card(0, cid("Mountain"), Zone::Battlefield);
+        let pyro = g.add_card(0, cid("Pyromatics"), Zone::Hand); // {1}{R}
+        assert!(!g
+            .legal_actions()
+            .iter()
+            .any(|a| matches!(a, Action::CastX(c, 0) if *c == pyro)));
+        let n = g.def_of(r).activated.len() - 1;
+        g.apply(Action::Activate(r, n)).unwrap();
+        while !g.items.is_empty() {
+            g.apply(Action::PassPriority).unwrap();
+        }
+        assert!(
+            g.legal_actions()
+                .iter()
+                .any(|a| matches!(a, Action::CastX(c, 0) | Action::Cast(c) if *c == pyro)),
+            "{{1}} less"
+        );
+        assert_eq!(g.instant_sorcery_discount_until.len(), 1);
+    }
+}
