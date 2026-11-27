@@ -11872,6 +11872,7 @@ impl Game {
             }
         }
         self.ward_check(&item);
+        self.crime_check(&item);
         let instant_or_sorcery = self.types_of(card).instant || self.types_of(card).sorcery;
         let casts_this = self
             .def_of(card)
@@ -12142,6 +12143,7 @@ impl Game {
                 self.pay_activation(c.item.controller, c.item.source, n, victim, c.item.x);
             }
             self.ward_check(&c.item);
+            self.crime_check(&c.item);
             self.items.push(c.item);
             self.give_priority(c.then);
         }
@@ -12174,6 +12176,39 @@ impl Game {
                 self.obj(id).zcc == zcc
                     && self.slot_ok(item, f, Target::Object(id))
                     && self.target_ok(f, item.controller, Target::Object(id))
+            }
+        }
+    }
+
+    /// CR 700.13: a spell or ability that targets an opponent, anything they control, or a card in
+    /// their graveyard is a crime its controller commits ("Whenever you commit a crime", once per
+    /// spell or ability), for their permanents and the cards in their graveyard (Forsaken Miner).
+    fn crime_check(&mut self, item: &StackItem) {
+        let p = item.controller;
+        let crime = item.targets.iter().any(|&t| match t {
+            Chosen::Player(q) => q != p,
+            Chosen::Object(id, _) => {
+                let o = self.obj(id);
+                match o.zone {
+                    Zone::Battlefield | Zone::Stack => o.controller != p,
+                    Zone::Graveyard => o.owner != p,
+                    _ => false,
+                }
+            }
+        });
+        if !crime {
+            return;
+        }
+        self.fire(p, When::YouCommitCrime, None);
+        for g in self.players[p].graveyard.clone() {
+            let whens: Vec<When> = self.def_of(g).triggers.iter().map(|tr| tr.when).collect();
+            for (n, w) in whens.into_iter().enumerate() {
+                if w == When::YouCommitCrime {
+                    self.triggered.push(StackItem {
+                        kind: StackKind::Trigger(n),
+                        ..Game::casting(g, p)
+                    });
+                }
             }
         }
     }
@@ -20869,6 +20904,11 @@ impl Game {
                     self.obj_mut(src).tapped = true;
                 }
             }
+            Effect::ReturnSelfFromGraveyard => {
+                if self.obj(src).zone == Zone::Graveyard {
+                    self.move_to(src, Zone::Battlefield);
+                }
+            }
             Effect::LookAtTop {
                 n,
                 pick,
@@ -24483,6 +24523,12 @@ impl Game {
                 !self.battlefield.iter().any(|&c| self.types_of(c).creature)
             }
             Some(Condition::YouLostLifeThisTurn) => self.life_lost_this_turn[controller],
+            Some(Condition::ControlNoSubtype(sub)) => {
+                !self.permanents(controller).any(|x| self.has_subtype(x, sub))
+            }
+            Some(Condition::ControlNoCreatureWithDecayed) => !self
+                .creatures(controller)
+                .any(|c| self.def_of(c).decayed || self.obj(c).decayed),
         }
     }
 
@@ -24891,6 +24937,9 @@ impl Game {
                 self.events.push(Event::Triggered { source: item.source });
             }
             if ability.targets.len() == item.targets.len() {
+                if !item.targets.is_empty() {
+                    self.crime_check(&item);
+                }
                 self.items.push(item);
             } else if self.trigger_can_target(&item, &ability) {
                 let who = item.controller;

@@ -455,6 +455,42 @@ pub fn token_defs() -> Vec<CardDef> {
         black(token("Rogue", "Rogue", 2, 2, Keywords::NONE)),
         // 109, lane d2: Toxrill, the Corrosive's "1/1 black Slug creature token".
         black(token("Slug", "Slug", 1, 1, Keywords::NONE)),
+        // 110: a placeholder for lane d1's Phyrexian Horror, swapped in at the merge.
+        token("Placeholder 110", "", 0, 0, Keywords::NONE),
+        {
+            // 111, lane d2: Horizon Explorer's Lander, "an artifact with '{2}, {T}, Sacrifice this
+            // token: Search your library for a basic land card, put it onto the battlefield tapped,
+            // then shuffle.'"
+            let mut d = artifact_token("Lander");
+            let n = activated(
+                &mut d,
+                "{2}",
+                true,
+                vec![],
+                vec![search(
+                    SearchFor::BasicLand,
+                    SearchTo::Battlefield { tapped: true },
+                )],
+            );
+            d.activated[n].sacrifice_self = true;
+            d
+        },
+        {
+            // 112, lane d2: Kinbinding's "1/1 green and white Kithkin creature token".
+            let mut t = token("Kithkin", "Kithkin", 1, 1, Keywords::NONE);
+            t.colors = [true, false, false, false, true];
+            t
+        },
+        {
+            // 113, lane d2: Jadar's "2/2 black Zombie creature token with decayed".
+            let mut t = black(token("Zombie", "Zombie", 2, 2, Keywords::NONE));
+            t.decayed = true;
+            t
+        },
+        // 114, lane d2: Ophiomancer's "1/1 black Snake creature token with deathtouch".
+        black(token("Snake", "Snake", 1, 1, Keywords::DEATHTOUCH)),
+        // 115, lane d2: Bitterblossom's "1/1 black Faerie Rogue creature token with flying".
+        black(token("Faerie Rogue", "Faerie Rogue", 1, 1, Keywords::FLYING)),
     ]
 }
 
@@ -681,6 +717,17 @@ pub struct Tokens {
     pub rogue_2: usize,
     /// 109: d2's Toxrill Slug, a 1/1 black.
     pub slug: usize,
+    pub placeholder_110: usize,
+    /// 111: d2's Lander (Horizon Explorer): "{2}, {T}, Sacrifice: fetch a basic land, tapped".
+    pub lander: usize,
+    /// 112: d2's Kinbinding Kithkin, a 1/1 green and white.
+    pub kithkin: usize,
+    /// 113: d2's Jadar Zombie, a 2/2 black with decayed.
+    pub zombie_decayed: usize,
+    /// 114: d2's Ophiomancer Snake, a 1/1 black with deathtouch.
+    pub snake_deathtouch: usize,
+    /// 115: d2's Bitterblossom Faerie Rogue, a 1/1 black flier.
+    pub faerie_rogue: usize,
 }
 
 impl Tokens {
@@ -796,6 +843,12 @@ impl Tokens {
             spirit_cleric: base + 107,
             rogue_2: base + 108,
             slug: base + 109,
+            placeholder_110: base + 110,
+            lander: base + 111,
+            kithkin: base + 112,
+            zombie_decayed: base + 113,
+            snake_deathtouch: base + 114,
+            faerie_rogue: base + 115,
         }
     }
 }

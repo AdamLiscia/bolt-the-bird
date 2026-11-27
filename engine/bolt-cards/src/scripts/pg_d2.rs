@@ -1382,6 +1382,105 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::YouAttack, vec![party], vec![Effect::ProtectionFromCardTypeEot { slot: Some(0), kind: 1 }, Effect::Explore(0)]);
             },
         ),
+        // ---- Core: triggers, batch 30 (idea decks: Sephiroth, Tifa) ----
+        "Greedy Freebooter" => s(&["When this creature dies, scry 1 and create a Treasure token."], |d, t| {
+            on(d, When::Dies, vec![], vec![Effect::Scry { n: 1 }, Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }]);
+        }),
+        "Bitterblossom" => s(
+            &["At the beginning of your upkeep, you lose 1 life and create a 1/1 black Faerie Rogue creature token with flying."],
+            |d, t| {
+                let effects = vec![Effect::LoseLife { who: Who::You, n: 1 }, Effect::CreateToken { who: Who::You, def: t.faerie_rogue, n: 1 }];
+                on(d, When::Upkeep { your_turn_only: true }, vec![], effects);
+            },
+        ),
+        "Jadar, Ghoulcaller of Nephalia" => s(
+            &["At the beginning of your end step, if you control no creatures with decayed, create a 2/2 black Zombie creature token with decayed."],
+            |d, t| {
+                let zombie = Effect::CreateToken { who: Who::You, def: t.zombie_decayed, n: 1 };
+                conditional(d, When::EndStep { your_turn_only: true }, Condition::ControlNoCreatureWithDecayed, vec![], vec![zombie]);
+            },
+        ),
+        "Ophiomancer" => s(
+            &["At the beginning of each upkeep, if you control no Snakes, create a 1/1 black Snake creature token with deathtouch."],
+            |d, t| {
+                let snake = Effect::CreateToken { who: Who::You, def: t.snake_deathtouch, n: 1 };
+                conditional(d, When::Upkeep { your_turn_only: false }, Condition::ControlNoSubtype("Snake"), vec![], vec![snake]);
+            },
+        ),
+        "Forsaken Miner" => s(
+            &[
+                "This creature can't block.",
+                "Whenever you commit a crime, you may pay {B}. If you do, return this card from your graveyard to the battlefield.",
+            ],
+            |d, _| {
+                d.cant_block = true;
+                let b = ManaCost::parse("{B}").expect("a mana cost");
+                let back = vec![Effect::MayPay(b), Effect::ReturnSelfFromGraveyard];
+                conditional(d, When::YouCommitCrime, Condition::SourceInGraveyardOrExile, vec![], back);
+            },
+        ),
+        "Tifa Lockhart" => s(
+            &["Landfall — Whenever a land you control enters, double Tifa Lockhart's power until end of turn."],
+            |d, _| on(d, When::LandYouControlEnters, vec![], vec![Effect::DoublePowerSelf]),
+        ),
+        "Bristly Bill, Spine Sower" => s(
+            &[
+                "Landfall — Whenever a land you control enters, put a +1/+1 counter on target creature.",
+                "{3}{G}{G}: Double the number of +1/+1 counters on each creature you control.",
+            ],
+            |d, _| {
+                on(d, When::LandYouControlEnters, vec![CREATURE], vec![Effect::Counters { slot: 0, n: 1 }]);
+                activated(d, "{3}{G}{G}", false, vec![], vec![Effect::DoubleCountersEachYours]);
+            },
+        ),
+        "Mightform Harmonizer" => s(
+            &[
+                "Landfall — Whenever a land you control enters, double the power of target creature you control until end of turn.",
+                "Warp {2}{G}",
+            ],
+            |d, _| {
+                on(d, When::LandYouControlEnters, vec![YOUR_CREATURE], vec![Effect::DoublePower(0)]);
+                d.warp = ManaCost::parse("{2}{G}");
+            },
+        ),
+        "Skyclave Pick-Axe" => s(
+            &[
+                "When this Equipment enters, attach it to target creature you control.",
+                "Landfall — Whenever a land you control enters, equipped creature gets +2/+2 until end of turn.",
+                "Equip {2}{G}",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![YOUR_CREATURE], vec![Effect::Attach { slot: 0 }]);
+                on(d, When::LandYouControlEnters, vec![], vec![Effect::PumpAttached { power: 2, toughness: 2 }]);
+                equip(d, "{2}{G}");
+            },
+        ),
+        "Staff of Titania" => s(
+            &[
+                "Equipped creature gets +X/+X, where X is the number of Forests you control.",
+                "Whenever equipped creature attacks, create a 1/1 green Forest Dryad land creature token.",
+                "Equip {3}",
+            ],
+            |d, t| {
+                d.statics.push(Static {
+                    subtype: None,
+                    lose_abilities: false,
+                    base_pt: None,
+                    protection: [false; 5],
+                    scale: Some(Scale::PerYouControlSubtype("Forest")),
+                    scope: Scope::Attached,
+                    your_turn_only: false,
+                    condition: None,
+                    power: 1,
+                    toughness: 1,
+                    keywords: Keywords::NONE,
+                    set_colors: None,
+                    becomes_land: false,
+                });
+                on(d, When::EquippedAttacks, vec![], vec![Effect::CreateToken { who: Who::You, def: t.forest_dryad, n: 1 }]);
+                equip(d, "{3}");
+            },
+        ),
         _ => None,
     }
 }
@@ -1621,4 +1720,15 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Sabotender",
     "Tannuk, Memorial Ensign",
     "Seasoned Dungeoneer",
+    // Core: triggers, batch 30
+    "Greedy Freebooter",
+    "Bitterblossom",
+    "Jadar, Ghoulcaller of Nephalia",
+    "Ophiomancer",
+    "Forsaken Miner",
+    "Tifa Lockhart",
+    "Bristly Bill, Spine Sower",
+    "Mightform Harmonizer",
+    "Skyclave Pick-Axe",
+    "Staff of Titania",
 ];

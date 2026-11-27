@@ -2065,3 +2065,57 @@ fn a_creature_you_dont_control_with_slime_dies() {
     resolve_all(&mut g, &[]);
     assert_eq!(slugs(&g), 1, "slime counter, as it last existed");
 }
+
+#[test]
+fn you_commit_a_crime_once_per_spell_that_targets_the_opponent_or_their_things() {
+    let crime = trigger(When::YouCommitCrime, None, gain_one());
+    let mut g = game_with(ring_with(crime));
+    g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    let mine = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    kill(&mut g, mine);
+    assert_eq!(g.players[0].life, 40, "your own creature: no crime");
+    let theirs = g.add_card(1, cid("Savannah Lions"), Zone::Battlefield);
+    kill(&mut g, theirs);
+    assert_eq!(g.players[0].life, 41, "the opponent's creature");
+    let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Hand);
+    play(&mut g, bolt, false, &[bolt_core::Target::Player(1)], &[]);
+    assert_eq!(g.players[0].life, 42, "the opponent");
+    let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Hand);
+    play(&mut g, bolt, false, &[bolt_core::Target::Player(0)], &[]);
+    assert_eq!(g.players[0].life, 42 - 3, "yourself: no crime");
+}
+
+#[test]
+fn control_no_subtype_and_no_decayed_conditions() {
+    let none = trigger(
+        When::YouCast,
+        Some(Condition::ControlNoSubtype("Cat")),
+        gain_one(),
+    );
+    let no_decayed = trigger(
+        When::YouCast,
+        Some(Condition::ControlNoCreatureWithDecayed),
+        gain_one(),
+    );
+    let mut g = game_with(move |defs: &mut Vec<CardDef>| {
+        ring_with(none.clone())(defs);
+        ring_with(no_decayed.clone())(defs);
+    });
+    g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    let cast = |g: &mut Game| {
+        let c = g.add_card(0, cid("Llanowar Elves"), Zone::Hand);
+        play(g, c, false, &[], &[]);
+    };
+    cast(&mut g);
+    assert_eq!(g.players[0].life, 42, "both hold");
+    g.add_card(0, cid("Savannah Lions"), Zone::Battlefield); // a Cat
+    cast(&mut g);
+    assert_eq!(g.players[0].life, 43, "a Cat now");
+    let elf = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Llanowar Elves")
+        .expect("an Elf");
+    g.objects[elf.0 as usize].decayed = true;
+    cast(&mut g);
+    assert_eq!(g.players[0].life, 43, "a Cat and a creature with decayed");
+}

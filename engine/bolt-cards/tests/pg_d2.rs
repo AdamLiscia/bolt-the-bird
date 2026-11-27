@@ -3093,3 +3093,212 @@ fn seasoned_dungeoneer_takes_the_initiative_and_protects_an_attacking_warrior() 
         }
     ));
 }
+
+// ---- Core: triggers, batch 30 (idea decks: Sephiroth, Tifa) ----
+
+/// Passes (answering targets and decisions with the first legal choice) until `p`'s turn `turn`
+/// reaches `step` with an empty stack.
+fn to_step(g: &mut Game, turn: u32, p: usize, step: Step) {
+    g.start_turn(turn, p);
+    loop {
+        if g.step == step
+            && g.items.is_empty()
+            && !matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_))
+        {
+            return;
+        }
+        let a = match g.pending {
+            Pending::ChooseTarget(_) | Pending::Decide(_) => g.legal_actions()[0],
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+/// Passes until the stack is empty, answering every question with its first legal choice.
+fn drain(g: &mut Game) {
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) | Pending::Decide(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn greedy_freebooter_dies_into_a_scry_and_a_treasure() {
+    let mut g = table();
+    let f = put(&mut g, 0, "Greedy Freebooter");
+    let kill = hand(&mut g, 0, "Hero's Downfall");
+    act(&mut g, Action::Cast(kill));
+    act(&mut g, Action::Target(Target::Object(f)));
+    drain(&mut g);
+    assert!(in_graveyard(&g, 0, f));
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 1);
+}
+
+#[test]
+fn bitterblossom_costs_a_life_for_a_flying_faerie_rogue_each_upkeep() {
+    let mut g = table();
+    put(&mut g, 0, "Bitterblossom");
+    to_step(&mut g, 5, 0, Step::Main1);
+    assert_eq!(g.players[0].life, 39);
+    let rogue = tokens(&g, 0, "Faerie Rogue");
+    assert_eq!(rogue.len(), 1);
+    assert!(g.keywords(rogue[0]).has(Keywords::FLYING));
+    assert_eq!((g.power(rogue[0]), g.toughness(rogue[0])), (1, 1));
+    assert!(g.has_subtype(rogue[0], "Faerie") && g.has_subtype(rogue[0], "Rogue"));
+    to_step(&mut g, 6, 1, Step::Main1);
+    assert_eq!(g.players[0].life, 39, "your upkeep only");
+}
+
+#[test]
+fn jadar_makes_a_decayed_zombie_only_while_you_control_none() {
+    let mut g = table();
+    put(&mut g, 0, "Jadar, Ghoulcaller of Nephalia");
+    to_step(&mut g, 5, 0, Step::End);
+    let z = tokens(&g, 0, "Zombie");
+    assert_eq!(z.len(), 1);
+    assert!(g.def_of(z[0]).decayed);
+    assert_eq!((g.power(z[0]), g.toughness(z[0])), (2, 2));
+    to_step(&mut g, 7, 0, Step::End);
+    assert_eq!(
+        tokens(&g, 0, "Zombie").len(),
+        1,
+        "you already control a creature with decayed"
+    );
+}
+
+#[test]
+fn ophiomancer_makes_a_deathtouch_snake_each_upkeep_if_you_have_none() {
+    let mut g = table();
+    put(&mut g, 0, "Ophiomancer");
+    to_step(&mut g, 4, 1, Step::Main1); // the opponent's upkeep counts
+    let s = tokens(&g, 0, "Snake");
+    assert_eq!(s.len(), 1);
+    assert!(g.keywords(s[0]).has(Keywords::DEATHTOUCH));
+    to_step(&mut g, 5, 0, Step::Main1);
+    assert_eq!(tokens(&g, 0, "Snake").len(), 1, "you control a Snake");
+}
+
+#[test]
+fn forsaken_miner_returns_when_you_commit_a_crime() {
+    let mut g = table();
+    let miner = g.add_card(0, cid("Forsaken Miner"), Zone::Graveyard);
+    // Targeting your own creature is no crime.
+    let mine = put(&mut g, 0, "Savannah Lions");
+    let kill = hand(&mut g, 0, "Hero's Downfall");
+    act(&mut g, Action::Cast(kill));
+    act(&mut g, Action::Target(Target::Object(mine)));
+    drain(&mut g);
+    assert_eq!(g.obj(miner).zone, Zone::Graveyard);
+    // Targeting the opponent's creature is: pay {B} to return it.
+    let theirs = put(&mut g, 1, "Savannah Lions");
+    let kill = hand(&mut g, 0, "Hero's Downfall");
+    act(&mut g, Action::Cast(kill));
+    act(&mut g, Action::Target(Target::Object(theirs)));
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::Decide(_) => Action::Yes,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(miner).zone, Zone::Battlefield);
+    assert!(!g.obj(miner).tapped);
+    assert!(in_graveyard(&g, 1, theirs));
+}
+
+#[test]
+fn tifa_lockhart_doubles_her_power_on_landfall() {
+    let mut g = table();
+    let tifa = put(&mut g, 0, "Tifa Lockhart");
+    let forest = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(forest));
+    drain(&mut g);
+    assert_eq!((g.power(tifa), g.toughness(tifa)), (2, 2));
+}
+
+#[test]
+fn bristly_bill_counts_on_landfall_and_doubles_counters() {
+    let mut g = table();
+    let bill = put(&mut g, 0, "Bristly Bill, Spine Sower");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let forest = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(forest));
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) => Action::Target(Target::Object(lions)),
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(lions).counters, 1);
+    act(&mut g, Action::Activate(bill, 0));
+    drain(&mut g);
+    assert_eq!(g.obj(lions).counters, 2);
+    assert_eq!(g.power(lions), 4);
+}
+
+#[test]
+fn mightform_harmonizer_doubles_a_creatures_power_on_landfall() {
+    let mut g = table();
+    put(&mut g, 0, "Mightform Harmonizer");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let forest = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(forest));
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) => Action::Target(Target::Object(lions)),
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!((g.power(lions), g.toughness(lions)), (4, 1));
+    assert!(g.def_of(cid_obj(&g, "Mightform Harmonizer")).warp.is_some());
+}
+
+fn cid_obj(g: &Game, name: &str) -> ObjId {
+    g.permanents(0)
+        .find(|&x| g.def_of(x).name == name)
+        .expect("on the battlefield")
+}
+
+#[test]
+fn skyclave_pick_axe_attaches_as_it_enters_and_pumps_on_landfall() {
+    let mut g = table();
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let axe = hand(&mut g, 0, "Skyclave Pick-Axe");
+    act(&mut g, Action::Cast(axe));
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) => Action::Target(Target::Object(lions)),
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(axe).attached_to.map(|a| a.0), Some(lions));
+    let forest = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(forest));
+    drain(&mut g);
+    assert_eq!((g.power(lions), g.toughness(lions)), (4, 3));
+}
+
+#[test]
+fn staff_of_titania_pumps_per_forest_and_makes_a_dryad_on_attack() {
+    let mut g = table();
+    let staff = put(&mut g, 0, "Staff of Titania");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    act(&mut g, Action::Activate(staff, 0));
+    act(&mut g, Action::Target(Target::Object(lions)));
+    drain(&mut g);
+    assert_eq!((g.power(lions), g.toughness(lions)), (7, 6), "five Forests");
+    attack(&mut g, &[lions]);
+    drain(&mut g);
+    let dryads = tokens(&g, 0, "Forest Dryad");
+    assert_eq!(dryads.len(), 1);
+    assert_eq!(g.power(lions), 8, "the Dryad is a Forest too");
+}

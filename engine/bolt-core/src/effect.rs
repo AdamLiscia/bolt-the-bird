@@ -2727,6 +2727,8 @@ pub enum Effect {
         treasure: usize,
         slot: u8,
     },
+    /// Return the source from your graveyard to the battlefield (untapped; Forsaken Miner).
+    ReturnSelfFromGraveyard,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -3193,6 +3195,11 @@ pub enum Condition {
     LifeAtLeastStartingPlus(i32),
     /// The source has one or more +1/+1 counters on it (The Ozolith).
     SourceHasCounters,
+    /// Its controller controls no permanent with this subtype (Ophiomancer: "if you control no
+    /// Snakes").
+    ControlNoSubtype(&'static str),
+    /// Its controller controls no creature with decayed (Jadar, Ghoulcaller of Nephalia).
+    ControlNoCreatureWithDecayed,
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -3714,6 +3721,11 @@ pub enum When {
     /// Corrosive), from d3's `Object::last_slime` as it left the battlefield; slot 0 (if
     /// `triggering`) is the creature card.
     CreatureYouDontControlWithSlimeDies,
+    /// "Whenever you commit a crime" (CR 700.13): as a spell you cast, or an ability you activate or
+    /// put on the stack, targets an opponent, anything they control, or a card in their graveyard;
+    /// once for each spell or ability. Fired for your permanents and for the cards in your graveyard
+    /// (Forsaken Miner).
+    YouCommitCrime,
 }
 
 #[derive(Clone, Debug, PartialEq)]

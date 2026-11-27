@@ -2069,7 +2069,8 @@
    "missing": "needs core: a 1/1 black Faerie Rogue creature token with flying",
    "lane": "d2",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "d2",
+   "status": "done: d2 batch 30 (token 115)"
   },
   {
    "card": "Bloodchief Ascension",
@@ -5429,7 +5430,8 @@
    "missing": "BLC (lane B's routing, 2026-11-26)",
    "lane": "mac-b",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "mac-c",
+   "status": "done: lane C batch 18 (389f90e)"
   },
   {
    "card": "Coveted Jewel",
@@ -6693,7 +6695,8 @@
    "missing": "cast-from-hand instant/sorcery exiled with a dream counter; attacks: cast one free",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "mac-c",
+   "status": "done: lane C batch 18 (389f90e)"
   },
   {
    "card": "Forsaken Miner",
@@ -6701,7 +6704,8 @@
    "missing": "a commit-a-crime trigger from the graveyard",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 30"
   },
   {
    "card": "Greedy Freebooter",
@@ -6709,7 +6713,8 @@
    "missing": "dies: scry 1 and a Treasure",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 30"
   },
   {
    "card": "Jadar, Ghoulcaller of Nephalia",
@@ -6717,7 +6722,8 @@
    "missing": "end step, if you control no decayed creatures: a 2/2 decayed Zombie (token)",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 30 (token 113)"
   },
   {
    "card": "Ophiomancer",
@@ -6725,7 +6731,8 @@
    "missing": "each upkeep, if you control no Snakes: a 1/1 deathtouch Snake (token)",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 30 (token 114)"
   },
   {
    "card": "Rev, Tithe Extractor",
@@ -6749,7 +6756,8 @@
    "missing": "landfall counter on target creature",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 30"
   },
   {
    "card": "Claim the Kingdom",
@@ -6765,7 +6773,8 @@
    "missing": "landfall: double target creature power",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 30"
   },
   {
    "card": "Ride the Shoopuf",
@@ -6797,7 +6806,8 @@
    "missing": "enters attach; landfall pump equipped",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 30"
   },
   {
    "card": "Staff of Titania",
@@ -6805,7 +6815,8 @@
    "missing": "equipped attacks: a Forest Dryad land creature token",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 30"
   },
   {
    "card": "Tifa Lockhart",
@@ -6813,7 +6824,8 @@
    "missing": "landfall: double Tifa's power",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 30"
   },
   {
    "card": "Beza, the Bounding Spring",
