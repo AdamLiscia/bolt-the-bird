@@ -8400,6 +8400,14 @@
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"
+  },
+  {
+   "card": "Devour (enters-with timing)",
+   "deck": "-",
+   "missing": "devour should be an enters-with replacement (CR 702.82a); d1's Decision::Devour asks just after it enters (accepted for the demo). Post-demo.",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "mac-b"
   }
  ]
 }

@@ -3239,6 +3239,15 @@ pub enum Effect {
     /// and phases end." (Klauth, Unrivaled Ancient): held in `Game::spell_mana_eot` as any-color
     /// mana, its colors fixed as it's spent.
     AddSpellManaUntilEotPerAttackingPower,
+    /// "Each player may pay any amount of mana. Then each player creates a number of [`def`]
+    /// tokens equal to the amount of mana they paid this way." (Liege of the Hollows: Squirrels),
+    /// as `Decision::PayAnyAmountForTokens`, starting with the active player.
+    EachPlayerMayPayAnyManaForTokens {
+        def: usize,
+    },
+    /// "Lands you control enter tapped this turn." (Nahiri's Lithoforming), as
+    /// `Game::lands_enter_tapped_turn`.
+    YourLandsEnterTappedThisTurn,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -4407,6 +4416,11 @@ pub enum When {
     OpponentCastsChosenNumber,
     /// "Whenever you cast a spell from exile", the spell in `extra` (Passionate Archaeologist).
     YouCastSpellFromExile,
+    /// "Whenever you cast your first noncreature spell each turn" (Valeria Richards, Precocious).
+    YouCastFirstNoncreature,
+    /// "Whenever another creature or artifact you control enters" (Weftstalker Ardent), once per
+    /// permanent.
+    AnotherCreatureOrArtifactYouControlEnters,
 }
 
 #[derive(Clone, Debug, PartialEq)]

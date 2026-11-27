@@ -1629,6 +1629,23 @@ pub enum Decision {
     /// Devour `n` for `card`: `Pick` another creature you control to sacrifice (`card` gets `n`
     /// +1/+1 counters for it), or `No` to stop.
     Devour { card: ObjId, n: u8 },
+    /// Liege of the Hollows: `Amount` the mana `player` pays (0 up to what they can pay); then the
+    /// next player is asked, and after the last each creates that many `def` tokens. `paid` holds
+    /// the earlier answers (player, amount).
+    PayAnyAmountForTokens {
+        player: PlayerId,
+        max: u8,
+        def: usize,
+        paid: Vec<(PlayerId, u8)>,
+    },
+    /// `tap_named_count`: `Pick` another untapped permanent matching `source`'s ability `n`'s
+    /// `tap_named_permanent` to tap (`chosen` so far, `need` in all), or `No` to cancel.
+    TapNamedForCost {
+        source: ObjId,
+        n: usize,
+        chosen: Vec<ObjId>,
+        need: u8,
+    },
 }
 
 /// One batch of a "one or more tokens ... enter" trigger (`Game::token_enter_batches`): (source,
@@ -2248,6 +2265,11 @@ pub struct Game {
     /// priority (`give_priority`), as riot is.
     pub devour_pending: Vec<(ObjId, u32)>,
     devour_then: PlayerId,
+    /// The turn each player's lands enter tapped (Nahiri's Lithoforming); 0 for none.
+    pub lands_enter_tapped_turn: [u32; 2],
+    /// The open free-cast window may also play one of its land cards as the caster's land play,
+    /// during their turn with a land play left (Evercoat Ursine: "you may play one of them"; CR 305.2).
+    pub free_casts_lands: bool,
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2593,6 +2615,8 @@ impl Game {
             spell_mana_eot: [(0, 0); 2],
             devour_pending: Vec::new(),
             devour_then: 0,
+            lands_enter_tapped_turn: [0; 2],
+            free_casts_lands: false,
         }
     }
 
@@ -4736,6 +4760,43 @@ impl Game {
         v
     }
 
+    /// Liege of the Hollows: asks `q` how much mana to pay (up to what they can pay now).
+    fn ask_pay_any_amount(&mut self, q: PlayerId, def: usize, paid: Vec<(PlayerId, u8)>) {
+        let mut max = 0u8;
+        while max < 40
+            && self.can_pay_for(
+                q,
+                &ManaCost {
+                    generic: max + 1,
+                    ..ManaCost::default()
+                },
+                None,
+                PayFor::Other,
+            )
+        {
+            max += 1;
+        }
+        self.ask(
+            q,
+            Decision::PayAnyAmountForTokens {
+                player: q,
+                max,
+                def,
+                paid,
+            },
+        );
+    }
+
+    /// The untapped permanents `p` could tap for `id`'s ability `n`'s `tap_named_permanent` cost.
+    fn tap_named_options(&self, p: PlayerId, id: ObjId, n: usize) -> Vec<ObjId> {
+        let Some(f) = self.activated_of(id, n).tap_named_permanent else {
+            return Vec::new();
+        };
+        self.permanents(p)
+            .filter(|&c| c != id && !self.obj(c).tapped && self.target_ok(&f, p, Target::Object(c)))
+            .collect()
+    }
+
     /// Whether `card`'s controller has another creature it could devour.
     fn devour_options(&self, card: ObjId) -> bool {
         let p = self.obj(card).controller;
@@ -6750,6 +6811,10 @@ impl Game {
             for t in &mut self.triggered[entering..] {
                 t.extra = Some(id); // the entering permanent (Kodama of the East Tree)
             }
+            if self.types_of(id).creature || self.types_of(id).artifact {
+                self.fire(c, When::AnotherCreatureOrArtifactYouControlEnters, Some(id));
+                // Weftstalker
+            }
             let before = self.triggered.len();
             if self.types_of(id).artifact {
                 self.fire(c, When::ArtifactYouControlEnters, None);
@@ -8342,18 +8407,7 @@ impl Game {
                 def.modal_back && !def.types.land && def.back.as_ref().is_some_and(|b| b.types.land);
             if def.types.land || mdfc_land {
                 // CR 305.2: one land per turn, at sorcery timing.
-                let drops = 1
-                    + self.extra_lands_this_turn[p]
-                    + self
-                        .permanents(p)
-                        .map(|x| self.def_of(x).extra_land_drops)
-                        .sum::<u8>()
-                    + self
-                        .battlefield
-                        .iter()
-                        .filter(|&&x| self.def_of(x).extra_land_drop_each_player && !self.lost_abilities(x))
-                        .count() as u8;
-                if sorcery_timing && self.players[p].lands_played < drops {
+                if sorcery_timing && self.land_play_left(p) {
                     v.push(Action::PlayLand(c));
                 }
                 if def.types.land {
@@ -9439,6 +9493,9 @@ impl Game {
             n += e.spell_discount_all as usize;
             if t.instant || t.sorcery || mode.mode == Some(OMEN_MODE) {
                 n += e.instant_sorcery_discount as usize; // Case of the Ransacked Lab
+            }
+            if !creature {
+                n += e.noncreature_spell_discount as usize; // Valeria Richards
             }
             if let Some((sub, less)) = e.subtype_spell_discount {
                 if mode.mode != Some(OMEN_MODE) && def.subtypes.iter().any(|s| s == sub) {
@@ -10925,8 +10982,10 @@ impl Game {
                     // Earthcraft, The Shire, Urza: an untapped permanent you control matching `f`, the
                     // player's pick, as long as the mana can still be paid without it.
                     let cost = Game::ability_discounted(a, ability_discount, a.mana);
+                    let enough = self.tap_named_options(p, id, n).len() >= a.tap_named_count.max(1) as usize;
                     v.extend(
                         self.permanents(p)
+                            .filter(|_| enough)
                             .filter(|&c| {
                                 c != id && !self.obj(c).tapped && self.target_ok(&f, p, Target::Object(c))
                             })
@@ -11002,6 +11061,10 @@ impl Game {
                     v.extend(
                         self.creatures(p)
                             .filter(|&c| c != id && !self.cant_be_sacrificed(c))
+                            .filter(|&c| {
+                                a.sacrifice_other_color
+                                    .is_none_or(|k| self.colors_of(c)[k as usize])
+                            })
                             .map(|c| Action::ActivateWith(id, n, c)),
                     );
                 } else if let Some(sub) = a.sacrifice_subtype {
@@ -12520,6 +12583,9 @@ impl Game {
     /// The d1 theme's "enters tapped unless" rules (see [`crate::card::ManaExt`]): whether `id`,
     /// entering under `p`'s control, enters tapped.
     fn mana_ext_enters_tapped(&self, id: ObjId, p: PlayerId) -> bool {
+        if self.types_of(id).land && self.lands_enter_tapped_turn[p] == self.turn && self.turn > 0 {
+            return true; // Nahiri's Lithoforming: "Lands you control enter tapped this turn."
+        }
         let e = &self.def_of(id).mana_ext;
         let other_lands = self
             .permanents(p)
@@ -12679,6 +12745,8 @@ impl Game {
             (Pending::Priority(p), Action::PassPriority) => self.pass(p),
             (Pending::Priority(p), Action::TapForMana(id, c)) => self.tap_for_mana(p, id, c),
             (Pending::Priority(p), Action::PlayLand(c)) => {
+                // Evercoat Ursine's window: the land play is the one card it allows.
+                let from_window = matches!(self.pending, Pending::FreeCast(_));
                 if self.obj(c).zone == Zone::Graveyard && !self.siege_graveyard_lands(p) {
                     self.graveyard_types_used[p][3] = true; // Muldrotha's land
                 }
@@ -12691,6 +12759,9 @@ impl Game {
                 self.passes = 0;
                 for q in 0..2 {
                     self.fire(q, When::PlayerPlaysLand, None); // Horn of Greed
+                }
+                if from_window {
+                    self.close_free_casts(); // the rest stay hidden away
                 }
                 // "As this land enters, choose a creature type" (Secluded Courtyard).
                 let options = if self.def_of(c).choose_creature_type {
@@ -12707,7 +12778,9 @@ impl Game {
                     // "As it enters, choose a color" (the Thriving lands).
                     self.ask(p, Decision::ChooseColor { card: c });
                 } else if options.is_empty() {
-                    self.give_priority(p);
+                    if !from_window {
+                        self.give_priority(p);
+                    }
                 } else {
                     self.ask(p, Decision::ChooseCreatureType { card: c, options });
                 }
@@ -12881,7 +12954,20 @@ impl Game {
             (Pending::Priority(p), Action::ActivateWith(id, n, victim)) => {
                 let a = self.activated_of(id, n);
                 let crew = a.crew.max(a.saddle) as i32; // saddle uses the same summed-power cost
-                if crew > 0 && self.power(victim).max(0) < crew {
+                if a.tap_named_permanent.is_some() && a.tap_named_count > 1 {
+                    // The Cabbage Merchant: name the other Food(s) too.
+                    let need = a.tap_named_count;
+                    let chosen = vec![victim];
+                    self.ask(
+                        p,
+                        Decision::TapNamedForCost {
+                            source: id,
+                            n,
+                            chosen,
+                            need,
+                        },
+                    );
+                } else if crew > 0 && self.power(victim).max(0) < crew {
                     // Crew with more than one creature: pick the rest first (CR 702.122a).
                     let chosen = vec![victim];
                     self.ask(
@@ -14012,6 +14098,7 @@ impl Game {
             }
         }
         if noncreature && self.noncreature_casts[p] == (self.turn, 1) {
+            self.fire(p, When::YouCastFirstNoncreature, None);
             self.fire(opponent(p), When::OpponentCastsFirstNoncreature, None);
         }
         if self.types_of(card).legendary {
@@ -14271,7 +14358,24 @@ impl Game {
         }
     }
 
-    /// The casts open in a free-cast window: spells only (no lands), any timing (CR 608.2g).
+    /// Whether `p` has a land play left this turn (CR 305.2: one, plus any extra land drops).
+    fn land_play_left(&self, p: PlayerId) -> bool {
+        let drops = 1
+            + self.extra_lands_this_turn[p]
+            + self
+                .permanents(p)
+                .map(|x| self.def_of(x).extra_land_drops)
+                .sum::<u8>()
+            + self
+                .battlefield
+                .iter()
+                .filter(|&&x| self.def_of(x).extra_land_drop_each_player && !self.lost_abilities(x))
+                .count() as u8;
+        self.players[p].lands_played < drops
+    }
+
+    /// The casts open in a free-cast window: spells only, any timing (CR 608.2g); with
+    /// `free_casts_lands`, an exiled land too, as a land play on `p`'s turn (CR 305.2, 305.3).
     fn free_cast_actions(&self, p: PlayerId) -> Vec<Action> {
         let mut v = Vec::new();
         if self.cant_cast_now(p) {
@@ -14288,8 +14392,16 @@ impl Game {
         }
         for &c in &self.free_casts {
             let def = self.def_of(c);
+            if def.types.land {
+                // Evercoat Ursine: a hidden land, played (not cast) with a land play left.
+                let zone = self.obj(c).zone;
+                if self.free_casts_lands && zone == Zone::Exile && p == self.active && self.land_play_left(p)
+                {
+                    v.push(Action::PlayLand(c));
+                }
+                continue;
+            }
             if !free_zone(self.obj(c).zone)
-                || def.types.land
                 || self.cast_zone_blocked(p, self.obj(c).zone)
                 || self.legendary_sorcery_blocked(p, c)
             {
@@ -14328,6 +14440,7 @@ impl Game {
         let to_hand = std::mem::take(&mut self.free_casts_to_hand);
         let to_bottom = std::mem::take(&mut self.free_casts_to_bottom);
         self.free_casts_one = false;
+        self.free_casts_lands = false;
         self.free_casts_max = 0;
         for c in std::mem::take(&mut self.free_casts_rest_to_graveyard) {
             if self.obj(c).zone == Zone::Exile {
@@ -15467,6 +15580,19 @@ impl Game {
             }
             Decision::ChooseEnterMode { .. } => vec![Action::Mode(0), Action::Mode(1)],
             Decision::Riot { .. } => vec![Action::Mode(0), Action::Mode(1)],
+            Decision::PayAnyAmountForTokens { max, .. } => (0..=*max).map(Action::Amount).collect(),
+            Decision::TapNamedForCost {
+                source, n, chosen, ..
+            } => {
+                let mut v: Vec<Action> = self
+                    .tap_named_options(p, *source, *n)
+                    .into_iter()
+                    .filter(|c| !chosen.contains(c))
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::Devour { card, .. } => {
                 let mut v: Vec<Action> = self
                     .creatures(p)
@@ -16876,6 +17002,38 @@ impl Game {
             }
             return;
         }
+        if let Decision::TapNamedForCost {
+            source,
+            n,
+            mut chosen,
+            need,
+        } = d.clone()
+        {
+            match a {
+                Action::Pick(x) => {
+                    chosen.push(x);
+                    if chosen.len() < need as usize {
+                        self.ask(
+                            p,
+                            Decision::TapNamedForCost {
+                                source,
+                                n,
+                                chosen,
+                                need,
+                            },
+                        );
+                    } else {
+                        // The first is the activation's victim (tapped as it's paid); tap the rest now.
+                        for &c in &chosen[1..] {
+                            self.become_tapped(c);
+                        }
+                        self.activate(p, source, n, Some(chosen[0]));
+                    }
+                }
+                _ => self.give_priority(p), // cancelled: nothing was tapped
+            }
+            return;
+        }
         if let Decision::SacrificeCreaturesForCost {
             source,
             n,
@@ -17022,6 +17180,38 @@ impl Game {
             let then = self.riot_then;
             self.give_priority(then);
             return;
+        }
+        if let Decision::PayAnyAmountForTokens {
+            player,
+            def,
+            mut paid,
+            ..
+        } = d.clone()
+        {
+            if let Action::Amount(x) = a {
+                if x > 0 {
+                    let cost = ManaCost {
+                        generic: x,
+                        ..ManaCost::default()
+                    };
+                    self.pay_mana(player, &cost, None);
+                }
+                paid.push((player, x));
+                if paid.len() < 2 {
+                    self.ask_pay_any_amount(opponent(player), def, paid);
+                    return;
+                }
+                // "Then each player creates" that many tokens.
+                for (q, n) in paid {
+                    for _ in 0..n {
+                        self.create_token(q, def);
+                    }
+                }
+                if self.decision.is_none() {
+                    self.continue_resolving();
+                }
+                return;
+            }
         }
         if let Decision::Devour { card, n } = d {
             if let Action::Pick(x) = a {
@@ -19833,6 +20023,13 @@ impl Game {
                 } else {
                     self.fabricate_servos(item.controller, n, servo); // CR 702.123b
                 }
+            }
+            Effect::YourLandsEnterTappedThisTurn => {
+                self.lands_enter_tapped_turn[item.controller] = self.turn;
+            }
+            Effect::EachPlayerMayPayAnyManaForTokens { def } => {
+                let first = self.active;
+                self.ask_pay_any_amount(first, def, Vec::new());
             }
             Effect::AddSpellManaUntilEotPerAttackingPower => {
                 let p = item.controller;

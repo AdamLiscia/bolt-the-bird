@@ -148,6 +148,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         if d == "ChooseKickCount":
             times = "once" if value == 1 else f"{value} times"
             return f"Kick {card} {times}" if card else f"Kick {times}"
+        if d == "PayAnyAmountForTokens":
+            return f"Pay {value} mana ({value} Squirrels)" if value else "Pay nothing"
         return None
     if d in ("ChooseCounterKind", "MoveCounterKind") and kind == "Mode":
         kinds = ("+1/+1", "-1/-1", "stun", "incubation", "soul", "revival", "fellowship", "bait")
@@ -236,6 +238,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"RemoveCountersFromOthers": "Remove a counter from"}.get(d)
         verb = verb or {"ImprintNonartifactNonland": "Exile (imprint):", "DiscardLandOrGraveyard": "Discard (it stays):"}.get(d)  # fmt: skip
         verb = verb or {"SacrificeCreaturesForCost": "Sacrifice (for the cost):"}.get(d)
+        verb = verb or {"TapNamedForCost": "Tap (for the cost):"}.get(d)
         if d == "IterationPick":
             verb = "Put into your hand:" if dec.get("to_hand") else "Put on the bottom:"
         verb = verb or {"ChooseRingBearer": "Choose as your Ring-bearer:"}.get(d)
@@ -304,6 +307,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         "RemoveCountersFromOthers": ("Remove a counter", "Don't activate it"),
         "ImprintNonartifactNonland": ("Exile a card", "Don't exile a card"),
         "SacrificeCreaturesForCost": ("Sacrifice it", "Don't activate it"),
+        "TapNamedForCost": ("Tap it", "Don't activate it"),
         "UpkeepAddManaOrSacrifice": (
             f"Add {dec.get('n', 1)} mana (keep {subject or 'it'})",
             f"Sacrifice {subject or 'it'}",

@@ -5008,3 +5008,187 @@ fn cradle_clearcutter_casts_as_a_prototype_and_taps_for_its_power() {
     resolve_all(&mut g, &[]);
     assert_eq!(g.players[0].pool.len(), 3);
 }
+
+#[test]
+fn valeria_discounts_noncreature_spells_and_draws_on_the_first() {
+    let mut g = table();
+    put(&mut g, 0, "Valeria Richards, Precocious");
+    tap_all_but_swamps(&mut g, 1);
+    let nw = hand(&mut g, 0, "Night's Whisper");
+    assert!(
+        g.legal_actions().contains(&Action::Cast(nw)),
+        "{{1}}{{B}} less {{1}}"
+    );
+    let hand_before = g.players[0].hand.len();
+    act(&mut g, Action::Cast(nw));
+    resolve_all(&mut g, &[]);
+    // Night's Whisper draws two, Valeria's trigger one; the cast card left the hand.
+    assert_eq!(g.players[0].hand.len(), hand_before - 1 + 2 + 1);
+}
+
+#[test]
+fn ayara_drains_on_black_entries_and_sacrifices_a_named_black_creature() {
+    let mut g = table();
+    let life = (g.players[0].life, g.players[1].life);
+    let ayara = hand(&mut g, 0, "Ayara, First of Locthwain");
+    act(&mut g, Action::Cast(ayara));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        (g.players[0].life, g.players[1].life),
+        (life.0 + 1, life.1 - 1),
+        "Ayara itself"
+    );
+    let seer = hand(&mut g, 0, "Viscera Seer");
+    act(&mut g, Action::Cast(seer));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, life.1 - 2, "another black creature");
+    let elf = put(&mut g, 0, "Llanowar Elves");
+    g.objects[ayara.0 as usize].since_turn = 0;
+    let legal = g.legal_actions();
+    assert!(
+        legal.contains(&Action::ActivateWith(ayara, 0, seer)),
+        "a black creature"
+    );
+    assert!(!legal.contains(&Action::ActivateWith(ayara, 0, elf)), "not green");
+    let hand_before = g.players[0].hand.len();
+    act(&mut g, Action::ActivateWith(ayara, 0, seer));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(seer).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].hand.len(), hand_before + 1);
+}
+
+#[test]
+fn weftstalker_ardent_pings_for_creatures_and_artifacts_and_has_warp() {
+    let mut g = table();
+    let w = hand(&mut g, 0, "Weftstalker Ardent");
+    assert!(
+        g.legal_actions().contains(&Action::CastAlternative(w)),
+        "warp {{R}}"
+    );
+    act(&mut g, Action::CastAlternative(w));
+    resolve_all(&mut g, &[]);
+    let life = g.players[1].life;
+    let altar = hand(&mut g, 0, "Ashnod's Altar");
+    act(&mut g, Action::Cast(altar));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, life - 1, "an artifact");
+    let elf = hand(&mut g, 0, "Llanowar Elves");
+    act(&mut g, Action::Cast(elf));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, life - 2, "a creature");
+}
+
+#[test]
+fn liege_of_the_hollows_lets_each_player_pay_for_squirrels() {
+    let mut g = table();
+    let liege = put(&mut g, 0, "Liege of the Hollows");
+    g.move_card(liege, Zone::Graveyard);
+    act(&mut g, Action::PassPriority); // the trigger goes on the stack
+                                       // Player 0 (active) pays 2, then player 1 pays 1.
+    resolve_all(&mut g, &[Action::Amount(2), Action::Amount(1)]);
+    assert_eq!(tokens(&g, 0, "Squirrel").len(), 2);
+    assert_eq!(tokens(&g, 1, "Squirrel").len(), 1);
+}
+
+#[test]
+fn nahiris_lithoforming_sacrifices_draws_and_lands_enter_tapped() {
+    let mut g = table();
+    let hand0 = g.players[0].hand.len();
+    let nl = hand(&mut g, 0, "Nahiri's Lithoforming");
+    act(&mut g, Action::CastX(nl, 1));
+    while !matches!(g.pending, Pending::Decide(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let pick = *g
+        .legal_actions()
+        .iter()
+        .find(|a| matches!(a, Action::Pick(_)))
+        .expect("a land");
+    resolve_all(&mut g, &[pick]);
+    assert_eq!(
+        g.players[0].hand.len(),
+        hand0 + 1,
+        "one land sacrificed, one card drawn"
+    );
+    assert_eq!(g.extra_lands_this_turn[0], 1);
+    let f = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(f));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(f).tapped, "lands enter tapped this turn");
+}
+
+// ---- Evercoat Ursine (Bello): its free play includes a hidden land, as the land play ----
+
+/// Evercoat Ursine on the battlefield with a Forest and a Lightning Bolt hidden away, at player 0's
+/// declare-attackers step on turn 5 (after `main1` runs in that turn's first main phase).
+fn ursine_with_forest_and_bolt(main1: impl Fn(&mut Game)) -> (Game, ObjId, ObjId, ObjId) {
+    let mut g = table();
+    let lib = |g: &mut Game, name: &str| g.add_card(0, cid(name), Zone::Library);
+    let forest = lib(&mut g, "Forest");
+    for _ in 0..2 {
+        lib(&mut g, "Plains");
+    }
+    let bolt = lib(&mut g, "Lightning Bolt");
+    for _ in 0..2 {
+        lib(&mut g, "Plains");
+    }
+    let bear = hand(&mut g, 0, "Evercoat Ursine");
+    play(
+        &mut g,
+        bear,
+        false,
+        &[],
+        &[Action::Pick(bolt), Action::Pick(forest)],
+    );
+    assert_eq!((g.obj(forest).zone, g.obj(bolt).zone), (Zone::Exile, Zone::Exile));
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    main1(&mut g);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(bear));
+    act(&mut g, Action::FinishAttacks);
+    while !matches!(g.pending, Pending::FreeCast(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    (g, bear, forest, bolt)
+}
+
+#[test]
+fn evercoat_ursine_plays_a_hidden_land_as_its_land_play() {
+    let (mut g, _, forest, bolt) = ursine_with_forest_and_bolt(|_| {});
+    assert_eq!(g.players[1].life, 34, "6 trample damage");
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::PlayLand(forest)) && legal.contains(&Action::Cast(bolt)));
+    act(&mut g, Action::PlayLand(forest));
+    assert_eq!(g.obj(forest).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].lands_played, 1, "it used the land play");
+    assert!(!matches!(g.pending, Pending::FreeCast(_)), "one of them");
+    assert!(!g.legal_actions().contains(&Action::Cast(bolt)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(bolt).zone, Zone::Exile, "the other stays hidden");
+}
+
+#[test]
+fn evercoat_ursine_casts_a_hidden_spell_and_no_land_without_a_land_play() {
+    let (mut g, _, forest, bolt) = ursine_with_forest_and_bolt(|g| {
+        let land = hand(g, 0, "Mountain");
+        act(g, Action::PlayLand(land));
+    });
+    let legal = g.legal_actions();
+    assert!(
+        !legal.contains(&Action::PlayLand(forest)),
+        "the land play is used"
+    );
+    assert!(legal.contains(&Action::Cast(bolt)));
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    assert!(!matches!(g.pending, Pending::FreeCast(_)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 31, "6 combat, 3 free Bolt");
+    assert_eq!(g.obj(bolt).zone, Zone::Graveyard);
+    assert_eq!(g.obj(forest).zone, Zone::Exile);
+}

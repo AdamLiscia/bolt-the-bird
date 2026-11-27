@@ -491,3 +491,15 @@ def test_devour_picks_each_creature_or_stops():
     dec = {"kind": "Devour", "card": [3, 1], "n": 2}
     assert sv._decision_label(dec, "Pick", 0, "Llanowar Elves") == "Devour (sacrifice): Llanowar Elves"
     assert label(dec, "No", 0) == "Done devouring"
+
+
+def test_liege_of_the_hollows_asks_how_much_mana():
+    dec = {"kind": "PayAnyAmountForTokens", "player": 0, "max": 3, "def": 9, "paid": []}
+    assert label(dec, "Amount", 2) == "Pay 2 mana (2 Squirrels)"
+    assert label(dec, "Amount", 0) == "Pay nothing"
+
+
+def test_the_cabbage_merchant_names_each_food_to_tap():
+    dec = {"kind": "TapNamedForCost", "source": [3, 1], "n": 0, "chosen": [[4, 1]], "need": 2}
+    assert sv._decision_label(dec, "Pick", 0, "Food") == "Tap (for the cost): Food"
+    assert label(dec, "No", 0) == "Don't activate it"
