@@ -2468,6 +2468,17 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::YouCastNoncreature, vec![permanent], vec![Effect::AddCounterOfChosenKind(0)]);
             },
         ),
+        "Ingenious Artillerist" => s(
+            &["Whenever one or more artifacts you control enter, this creature deals that much damage to each opponent."],
+            |d, _| on(d, When::OneOrMoreArtifactsYouControlEnter, vec![], vec![Effect::DamageEachOpponentAmount]),
+        ),
+        "Thalisse, Reverent Medium" => s(
+            &["At the beginning of each end step, create X 1/1 white Spirit creature tokens with flying, where X is the number of tokens you created this turn."],
+            |d, t| {
+                let spirits = Effect::CreateTokensPerTokenCreatedThisTurn { def: t.spirit };
+                on(d, When::EndStep { your_turn_only: false }, vec![], vec![spirits]);
+            },
+        ),
         _ => None,
     }
 }
@@ -2750,6 +2761,8 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Urza's Ruinous Blast",
     "Medomai the Ageless",
     "Ichormoon Gauntlet",
+    "Ingenious Artillerist",
+    "Thalisse, Reverent Medium",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",

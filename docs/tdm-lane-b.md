@@ -1169,3 +1169,15 @@ One Ring's check in `deal_damage`). Claims recorded in needs_core.json.
   `ExtraTurn`) and d3's `AddCounterOfChosenKind(0)`, triggered by `When::YouCastNoncreature`.
 - The oracle row says "target permanent", so the trigger targets any permanent, not only yours.
   The player picks the kind (`Decision::ChooseCounterKind`) only when it has more than one.
+
+### Malik: Ingenious Artillerist, Thalisse (on d2's af3e77f pieces; branch tarkir-b-malik)
+
+- Ingenious Artillerist: d2's batched `When::OneOrMoreArtifactsYouControlEnter`, with
+  `Effect::DamageEachOpponentAmount` ("that much damage").
+- Thalisse, Reverent Medium: `When::EndStep { your_turn_only: false }` ("each end step") and
+  `CreateTokensPerTokenCreatedThisTurn { def: t.spirit }`. The `spirit` slot is the 1/1 flying
+  Spirit every white-Spirit maker uses (Kaya, Geist Hunter; Hanged Executioner; Ethereal
+  Investigator), but its def sets no color, so these Spirits are colorless. That's a token-data
+  gap shared by all of them, not something new here; I left token_defs as tarkir has it.
+- These need d2's pieces, so they sit on `tarkir-b-malik`, which isn't merged into tarkir-b until
+  tarkir has af3e77f.

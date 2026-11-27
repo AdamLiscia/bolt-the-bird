@@ -4731,3 +4731,42 @@ fn ichormoon_gauntlet_adds_a_counter_of_the_chosen_kind_on_a_noncreature_cast() 
     act(&mut g, Action::Cast(lions));
     assert!(!matches!(g.pending, Pending::ChooseTarget(_)));
 }
+
+// ---- Malik: Ingenious Artillerist, Thalisse, Reverent Medium (d2's pieces) ----
+
+#[test]
+fn ingenious_artillerist_deals_damage_per_artifact_entering_together() {
+    let mut g = table();
+    put(&mut g, 0, "Ingenious Artillerist");
+    let life = g.players[1].life;
+    let ring = hand(&mut g, 0, "Sol Ring");
+    play(&mut g, ring, false, &[], &[]);
+    assert_eq!(g.players[1].life, life - 1, "one artifact");
+    let rain = hand(&mut g, 0, "Rain of Riches"); // enters: two Treasures at once
+    play(&mut g, rain, false, &[], &[]);
+    assert_eq!(
+        g.players[1].life,
+        life - 3,
+        "two artifacts in one event: 2 damage"
+    );
+}
+
+#[test]
+fn thalisse_makes_a_spirit_per_token_you_created_this_turn() {
+    let mut g = table();
+    put(&mut g, 0, "Thalisse, Reverent Medium");
+    g.tokens_created_count[0] = (g.turn, 2);
+    g.tokens_created_count[1] = (g.turn, 5);
+    while g.step != Step::End {
+        let a = if matches!(g.pending, Pending::DeclareAttackers(_)) {
+            Action::FinishAttacks
+        } else {
+            Action::PassPriority
+        };
+        act(&mut g, a);
+    }
+    resolve_all(&mut g, &[]);
+    let spirits = tokens(&g, 0, "Spirit");
+    assert_eq!(spirits.len(), 2, "yours, not the opponent's");
+    assert!(spirits.iter().all(|&s| g.keywords(s).has(Keywords::FLYING)));
+}
