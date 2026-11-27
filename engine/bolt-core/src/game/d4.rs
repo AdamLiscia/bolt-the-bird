@@ -705,6 +705,30 @@ impl Game {
                     self.deal_damage(src, Target::Player(opponent(p)), n as i32);
                 }
             }
+            SubsystemEffect::RollDiePutTargetBeneathTop { sides, slot } => {
+                let roll = self.roll_die(sides) as usize;
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    if self.obj(id).zone == Zone::Battlefield {
+                        let owner = self.obj(id).owner;
+                        self.move_to(id, Zone::Library);
+                        // A token or a commander sent elsewhere isn't in the library.
+                        let lib = &mut self.players[owner].library;
+                        if let Some(pos) = lib.iter().position(|&x| x == id) {
+                            let card = lib.remove(pos);
+                            let at = lib.len().saturating_sub(roll); // the top is the end
+                            lib.insert(at, card);
+                        }
+                    }
+                }
+            }
+            SubsystemEffect::FlipCoinLoseDamageYouElseContinue(n) => {
+                if !self.flip_coin() {
+                    self.deal_damage(item.source, Target::Player(p), n);
+                    if let Some(r) = self.resolving.as_mut() {
+                        r.remaining.clear();
+                    }
+                }
+            }
         }
     }
 

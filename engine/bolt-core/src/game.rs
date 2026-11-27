@@ -3472,6 +3472,18 @@ impl Game {
                                 let (turn, n) = self.creatures_entered[so.controller];
                                 Some(if turn == self.turn { n as usize } else { 0 })
                             }
+                            Some(Scale::PerOtherYourCreatureWithFlying) => Some(
+                                // Printed or granted until end of turn, as `PerOtherCreatureWithFlying`.
+                                self.creatures(so.controller)
+                                    .filter(|&x| {
+                                        x != src
+                                            && self
+                                                .modifiers(x)
+                                                .fold(self.def_of(x).keywords, |k, m| k.with(m.keywords))
+                                                .has(Keywords::FLYING)
+                                    })
+                                    .count(),
+                            ),
                             _ => None,
                         };
                         if let Some(n) = scaled {
@@ -25362,6 +25374,97 @@ impl Game {
                 self.ask(item.controller, Decision::Search { what, to, left: n });
             }
             Effect::AdNauseam => self.ad_nauseam_step(item.controller),
+            Effect::DestroyAllCreaturesWithSubtype(sub) => {
+                let all: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.types_of(c).creature && self.has_subtype(c, sub))
+                    .collect();
+                for c in all {
+                    self.destroy(c);
+                }
+            }
+            Effect::ExileAllPermanents => {
+                for x in self.battlefield.clone() {
+                    if self.obj(x).zone == Zone::Battlefield {
+                        self.move_to(x, Zone::Exile);
+                    }
+                }
+            }
+            Effect::YouDiscardHand => {
+                let p = item.controller;
+                for c in self.players[p].hand.clone() {
+                    self.move_to(c, Zone::Graveyard);
+                }
+            }
+            Effect::GainControlAllSubtypeThenUntap(sub) => {
+                let me = item.controller;
+                let turn = self.turn;
+                let all: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&x| self.has_subtype(x, sub))
+                    .collect();
+                for &x in &all {
+                    if self.obj(x).controller != me {
+                        let o = self.obj_mut(x);
+                        o.controller = me;
+                        o.since_turn = turn; // CR 302.6
+                    }
+                }
+                for x in all {
+                    self.untap_by_effect(x);
+                }
+            }
+            Effect::SacrificeTargetsRevealTopPermanent(n) => {
+                let me = item.controller;
+                let mut who = Vec::new();
+                for slot in 0..n {
+                    if let Some(x) = Game::slot_object(item, legal, slot) {
+                        let p = self.obj(x).controller;
+                        if self.obj(x).zone == Zone::Battlefield && !self.cant_be_sacrificed_by(x, me) {
+                            self.move_to(x, Zone::Graveyard);
+                            self.sacrificed(x, p);
+                            if !who.contains(&p) {
+                                who.push(p);
+                            }
+                        }
+                    }
+                }
+                for p in who {
+                    if let Some(&top) = self.players[p].library.last() {
+                        if self.def_of(top).types.is_permanent() {
+                            self.move_to(top, Zone::Battlefield);
+                        }
+                    }
+                }
+            }
+            Effect::CounterUnlessPaysSourcePower(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let payer = self
+                        .items
+                        .iter()
+                        .rev()
+                        .find(|i| i.kind == StackKind::Spell && i.source == id)
+                        .map(|t| t.controller);
+                    if let Some(payer) = payer {
+                        if !self.uncounterable(id) {
+                            let power = if self.obj(src).zone == Zone::Battlefield {
+                                self.power(src)
+                            } else {
+                                self.obj(src).last_power
+                            };
+                            let cost = ManaCost {
+                                generic: power.clamp(0, 255) as u8,
+                                ..ManaCost::default()
+                            };
+                            self.ask(payer, Decision::PayOrCountered { cost, against: id });
+                        }
+                    }
+                }
+            }
             Effect::OpponentSacrificesGreatestMvCreatureOrPlaneswalker => {
                 let q = opponent(item.controller);
                 if !self.greatest_mv_sacrifice_options(q).is_empty() {

@@ -498,6 +498,18 @@ pub fn token_defs() -> Vec<CardDef> {
             t.changeling = true;
             t
         },
+        // 122: lane d1's Human Cleric, a placeholder until it lands on tarkir.
+        token("Placeholder 122", "Placeholder", 0, 0, Keywords::NONE),
+        // 123: lane C's Dragon Egg, a placeholder until it lands on tarkir.
+        token("Placeholder 123", "Placeholder", 0, 0, Keywords::NONE),
+        // 124: lane C's Dragon, a placeholder until it lands on tarkir.
+        token("Placeholder 124", "Placeholder", 0, 0, Keywords::NONE),
+        {
+            // 125, lane d3: Skycat Sovereign's "1/1 white Cat Bird creature token with flying".
+            let mut t = token("Cat Bird", "Cat Bird", 1, 1, Keywords::FLYING);
+            t.colors = [true, false, false, false, false];
+            t
+        },
     ]
 }
 
@@ -741,6 +753,13 @@ pub struct Tokens {
     pub placeholder_120: usize,
     /// 121: d3's Maskwood Nexus Shapeshifter, a 2/2 blue with changeling.
     pub shapeshifter_changeling_blue: usize,
+    /// 122: lane d1's Human Cleric, a placeholder until it lands on tarkir.
+    pub placeholder_122: usize,
+    /// 123-124: lane C's Dragon Egg and Dragon, placeholders until they land on tarkir.
+    pub placeholder_123: usize,
+    pub placeholder_124: usize,
+    /// 125, lane d3: Skycat Sovereign's 1/1 white Cat Bird with flying.
+    pub cat_bird: usize,
 }
 
 impl Tokens {
@@ -868,6 +887,10 @@ impl Tokens {
             shapeshifter_changeling_1: base + 119,
             placeholder_120: base + 120,
             shapeshifter_changeling_blue: base + 121,
+            placeholder_122: base + 122,
+            placeholder_123: base + 123,
+            placeholder_124: base + 124,
+            cat_bird: base + 125,
         }
     }
 }
