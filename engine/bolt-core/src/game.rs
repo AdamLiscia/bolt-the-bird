@@ -1546,6 +1546,11 @@ pub enum Decision {
     /// `Pick` one of `cards` (just exiled); until the end of your next turn, you may play it
     /// (End-Blaze Epiphany).
     ChooseExiledToPlay { cards: Vec<ObjId> },
+    /// Kindred Summons: `Mode(i)` names `options[i]` as the creature type.
+    KindredSummonsType { options: Vec<String> },
+    /// Nahiri's Lithoforming: `Pick` a land to sacrifice (`left` more after this one); `drawn` lands
+    /// are sacrificed so far, and that many cards are drawn after the last.
+    SacrificeLandsDraw { left: u8, drawn: u8 },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -2122,6 +2127,9 @@ pub struct Game {
     /// End-Blaze Epiphany's "when that creature dies this turn": (creature, its zcc, source, the
     /// source's trigger number, controller, the turn), once.
     pub delayed_slot_dies: Vec<(ObjId, u32, ObjId, usize, PlayerId, u32)>,
+    /// The turn each player's permanents lose hexproof and indestructible until end of turn
+    /// (Shadowspear's activation, on its controller's opponents); 0 for none.
+    pub lose_hexproof_indestructible_turn: [u32; 2],
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2452,6 +2460,7 @@ impl Game {
             creature_ability_color_mana: [([0; 5], 0, Step::PreGame); 2],
             clues_sacrificed: [(0, 0); 2],
             delayed_slot_dies: Vec::new(),
+            lose_hexproof_indestructible_turn: [0; 2],
         }
     }
 
@@ -3596,6 +3605,11 @@ impl Game {
                                     })
                                     .count(),
                             ),
+                            Some(Scale::PerLandYouControl) => Some(
+                                self.permanents(so.controller)
+                                    .filter(|&x| self.types_of(x).land)
+                                    .count(),
+                            ),
                             _ => None,
                         };
                         if let Some(n) = scaled {
@@ -3609,10 +3623,23 @@ impl Game {
 
     /// Keywords after granting effects (layer 6).
     pub fn keywords(&self, id: ObjId) -> Keywords {
-        let k = self.keywords_inner(id);
+        let k = self.keywords_lost_to_effects(id, self.keywords_inner(id));
         let o = self.obj(id);
         if o.suspend_haste && o.zone == Zone::Battlefield {
             return k.with(Keywords::HASTE);
+        }
+        k
+    }
+
+    /// Keywords `id` loses to a resolved effect, taken out of `k` (Shadowspear: hexproof and
+    /// indestructible, until end of turn, for permanents of the player it was used against).
+    fn keywords_lost_to_effects(&self, id: ObjId, k: Keywords) -> Keywords {
+        let o = self.obj(id);
+        if o.zone == Zone::Battlefield
+            && self.turn > 0
+            && self.lose_hexproof_indestructible_turn[o.controller] == self.turn
+        {
+            return k.without(Keywords::HEXPROOF.with(Keywords::INDESTRUCTIBLE));
         }
         k
     }
@@ -3939,6 +3966,28 @@ impl Game {
                 return;
             }
         }
+    }
+
+    /// Kindred Summons, once `t` is chosen: reveal from the top until X creature cards of type `t`
+    /// (X the creatures `p` controls of that type), put those onto the battlefield, then shuffle the
+    /// rest of the revealed cards in (the whole library, the same thing).
+    fn kindred_summons(&mut self, p: PlayerId, t: &str) {
+        let x = self.creatures(p).filter(|&c| self.has_subtype(c, t)).count();
+        if x == 0 {
+            return;
+        }
+        let found: Vec<ObjId> = self.players[p]
+            .library
+            .iter()
+            .rev()
+            .copied()
+            .filter(|&c| self.def_of(c).types.creature && self.has_subtype(c, t))
+            .take(x)
+            .collect();
+        for c in found {
+            self.move_to(c, Zone::Battlefield);
+        }
+        self.shuffle_library(p);
     }
 
     /// Primal Surge: exile the top card; a permanent card may go onto the battlefield (and repeat).
@@ -4297,6 +4346,27 @@ impl Game {
             && self
                 .permanents(opponent(p))
                 .any(|x| self.def_of(x).opponents_cast_only_from_hand && !self.lost_abilities(x))
+    }
+
+    /// Nahiri's Lithoforming: asks `p` to sacrifice one of `left` more lands, if they have one;
+    /// once done, draws a card for each of the `drawn` lands sacrificed.
+    fn ask_sacrifice_lands_draw(&mut self, p: PlayerId, left: u8, drawn: u8) {
+        let any = self
+            .permanents(p)
+            .any(|x| self.types_of(x).land && !self.cant_be_sacrificed(x));
+        if left > 0 && any {
+            self.ask(
+                p,
+                Decision::SacrificeLandsDraw {
+                    left: left - 1,
+                    drawn,
+                },
+            );
+        } else {
+            for _ in 0..drawn {
+                self.draw(p);
+            }
+        }
     }
 
     /// Asks `p` to sacrifice one of `left` more lands, if they have one.
@@ -15745,6 +15815,12 @@ impl Game {
                 .map(Action::Pick)
                 .collect(),
             Decision::AdNauseamAgain => vec![Action::Yes, Action::No],
+            Decision::SacrificeLandsDraw { .. } => self
+                .permanents(p)
+                .filter(|&x| self.types_of(x).land && !self.cant_be_sacrificed(x))
+                .map(Action::Pick)
+                .collect(),
+            Decision::KindredSummonsType { options } => (0..options.len() as u8).map(Action::Mode).collect(),
             Decision::SacrificeGreatestMv => self
                 .greatest_mv_sacrifice_options(p)
                 .into_iter()
@@ -17814,6 +17890,16 @@ impl Game {
                 self.ask_sacrifice_lands(p, left);
             }
             (Decision::AdNauseamAgain, Action::Yes) => self.ad_nauseam_step(p),
+            (Decision::SacrificeLandsDraw { left, drawn }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Graveyard);
+                self.sacrificed(c, p);
+                self.ask_sacrifice_lands_draw(p, left, drawn + 1);
+            }
+            (Decision::KindredSummonsType { options }, Action::Mode(i)) => {
+                if let Some(t) = options.get(i as usize).cloned() {
+                    self.kindred_summons(p, &t);
+                }
+            }
             (Decision::SacrificeGreatestMv, Action::Pick(c)) => {
                 self.move_to(c, Zone::Graveyard);
                 self.sacrificed(c, p);
@@ -26847,6 +26933,11 @@ impl Game {
                 }
             }
             Effect::SacrificeLands(n) => self.ask_sacrifice_lands(item.controller, n),
+            Effect::SacrificeXLandsDrawEach => self.ask_sacrifice_lands_draw(item.controller, item.x, 0),
+            Effect::ExtraLandsThisTurnX => {
+                let p = item.controller;
+                self.extra_lands_this_turn[p] = self.extra_lands_this_turn[p].saturating_add(item.x);
+            }
             Effect::SearchMoreIfControlPower {
                 what,
                 to,
@@ -26859,6 +26950,16 @@ impl Game {
                 self.ask(item.controller, Decision::Search { what, to, left: n });
             }
             Effect::AdNauseam => self.ad_nauseam_step(item.controller),
+            Effect::OpponentsPermanentsLoseHexproofIndestructibleEot => {
+                self.lose_hexproof_indestructible_turn[opponent(item.controller)] = self.turn;
+            }
+            Effect::KindredSummons => {
+                let p = item.controller;
+                let options = self.creature_types_known_to(p);
+                if !options.is_empty() {
+                    self.ask(p, Decision::KindredSummonsType { options });
+                }
+            }
             Effect::DestroyAllCreaturesWithSubtype(sub) => {
                 let all: Vec<ObjId> = self
                     .battlefield

@@ -428,3 +428,13 @@ def test_scuzzback_scrounger_blights_a_creature_or_declines():
 def test_end_blaze_epiphany_chooses_an_exiled_card_to_play():
     dec = {"kind": "ChooseExiledToPlay"}
     assert sv._decision_label(dec, "Pick", 0, "Sol Ring") == "You may play until the end of your next turn: Sol Ring"
+
+
+def test_kindred_summons_names_a_creature_type():
+    dec = {"kind": "KindredSummonsType", "options": ["Dragon", "Elf"]}
+    assert label(dec, "Mode", 1) == "Kindred Summons: choose Elf"
+
+
+def test_lithoforming_sacrifices_a_land_to_draw():
+    dec = {"kind": "SacrificeLandsDraw", "left": 1, "drawn": 0}
+    assert sv._decision_label(dec, "Pick", 0, "Mountain") == "Sacrifice (draw a card) Mountain"

@@ -3078,6 +3078,19 @@ pub enum Effect {
     /// Return the card in `slot` (in a graveyard or exile) to the battlefield under its owner's
     /// control at the beginning of the next end step (`Game::delayed_returns`; Lifeline).
     ReturnSlotAtNextEndStep(u8),
+    /// Kindred Summons: choose a creature type (`Decision::KindredSummonsType`), then reveal from
+    /// the top until X creature cards of it, X the creatures you control of that type; those go onto
+    /// the battlefield, the rest are shuffled in.
+    KindredSummons,
+    /// "Permanents your opponents control lose hexproof and indestructible until end of turn."
+    /// (Shadowspear), as `Game::lose_hexproof_indestructible_turn`.
+    OpponentsPermanentsLoseHexproofIndestructibleEot,
+    /// "Sacrifice X lands. For each land sacrificed this way, draw a card." (Nahiri's
+    /// Lithoforming; X the spell's X), as `Decision::SacrificeLandsDraw`: the cards are drawn once
+    /// all the lands are sacrificed.
+    SacrificeXLandsDrawEach,
+    /// "You may play X additional lands this turn." (Nahiri's Lithoforming; X the spell's X)
+    ExtraLandsThisTurnX,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -3284,6 +3297,8 @@ pub enum Scale {
     /// Other creatures you control with flying, printed or granted until end of turn (Skycat
     /// Sovereign).
     PerOtherYourCreatureWithFlying,
+    /// Lands you control (Blackblade Reforged).
+    PerLandYouControl,
 }
 
 /// A condition on a static ability ("as long as ...").

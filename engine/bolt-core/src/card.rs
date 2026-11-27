@@ -2470,6 +2470,13 @@ pub struct ZonesExt {
     pub top_cards_if_cast_spell_at_level: u8,
 }
 
+impl Keywords {
+    /// These keywords taken away (Shadowspear: "lose hexproof and indestructible").
+    pub fn without(self, k: Keywords) -> Keywords {
+        Keywords(self.0 & !k.0)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
