@@ -98,3 +98,21 @@ def test_every_iteration_row_reports_entropy_and_ratio_deviation(trainer, monkey
     assert len(rows) == 2
     for r in rows:
         assert r["entropy"] > 0 and r["ratio_dev"] >= 0, r
+
+
+def test_a_changed_lr_applies_to_the_resumed_optimizer(monkeypatch):
+    sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "scripts"))
+    import train_ppo_play as t
+
+    monkeypatch.setattr(t, "PLAY_SET", None)
+    net = PlayNet(n_cards=8, dim=16, layers=1, heads=2)
+    opt = torch.optim.AdamW(net.parameters(), lr=2e-5)
+    net.value.weight.grad = torch.ones_like(net.value.weight)
+    opt.step()
+    saved = t.snapshot(net, opt, {"iter": 20})
+    net2 = PlayNet(n_cards=8, dim=16, layers=1, heads=2)
+    opt2 = torch.optim.AdamW(net2.parameters(), lr=5e-5)
+    t.resume_into(net2, opt2, saved, lr=5e-5)
+    assert [g["lr"] for g in opt2.param_groups] == [5e-5], "load_state_dict alone would restore 2e-5"
+    m, m2 = opt.state[net.value.weight]["exp_avg"], opt2.state[net2.value.weight]["exp_avg"]
+    assert torch.equal(m, m2), "Adam's moments carry over"

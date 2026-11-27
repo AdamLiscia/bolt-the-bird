@@ -70,9 +70,10 @@ def load_net(path):
     return load_checkpoint(path, set_name=PLAY_SET)
 
 
-def resume_into(net, opt, s):
+def resume_into(net, opt, s, lr=None):
     """A saved {"model", "opt", ...} into net and opt: inputs grown, card rows moved to today's pool (by the names
-    it was saved with, or for a state saved before names were kept, the pool of its size; bolt.play_net)."""
+    it was saved with, or for a state saved before names were kept, the pool of its size; bolt.play_net).
+    Adam's moments carry over; `lr` (this run's --lr) replaces the saved one, which load_state_dict restores."""
     from bolt.play_net import legacy_names
 
     names = s.get("card_names")
@@ -81,6 +82,9 @@ def resume_into(net, opt, s):
     rows = load_into(net, s["model"], names)
     opt.load_state_dict(s["opt"])
     pad_optimizer(opt, net, rows)
+    if lr is not None:
+        for group in opt.param_groups:
+            group["lr"] = lr
 
 
 def snapshot(net, opt, state):
@@ -178,7 +182,7 @@ def main():
     state = {"iter": 0, "history": [], "evals": [], "past": [], "best": None}
     if a.resume and (ck / "state.pt").exists():
         s = torch.load(ck / "state.pt", map_location="cpu", weights_only=False)
-        resume_into(net, opt, s)
+        resume_into(net, opt, s, lr=a.lr)
         state = s["state"]
         print(f"resumed at iteration {state['iter']}", flush=True)
     # On the farm (BOLT_JOB set by farm.py): power-cut-safe checkpoints on S3 (bolt.jobs), resumed first.
@@ -189,7 +193,7 @@ def main():
         job = Job(os.environ["BOLT_JOB"])
         s = job.resume()
         if s is not None:
-            resume_into(net, opt, s)
+            resume_into(net, opt, s, lr=a.lr)
             state = s["state"]
             for f in state["past"]:  # a fresh disk: fetch the past opponents too
                 if not (ck / f).exists():
