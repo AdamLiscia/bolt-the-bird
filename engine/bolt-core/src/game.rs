@@ -1520,6 +1520,9 @@ pub enum Decision {
     /// `Pick` one of `cards` (just exiled); until the end of your next turn, you may play it
     /// (End-Blaze Epiphany).
     ChooseExiledToPlay { cards: Vec<ObjId> },
+    /// `Yes` taps `card` (yours, which just entered untapped); `No` leaves it untapped and the
+    /// opponent creates a `def` token (Charismatic Conqueror).
+    MayTapElseOpponentToken { card: ObjId, def: usize },
 }
 
 /// One batch of a "one or more tokens ... enter" trigger (`Game::token_enter_batches`): (source,
@@ -5855,6 +5858,28 @@ impl Game {
         if to == Zone::Battlefield && from != Zone::Battlefield && self.types_of(id).enchantment {
             let c = self.obj(id).controller;
             self.fire(c, When::EnchantmentYouControlEnters, None); // constellation
+        }
+        if to == Zone::Battlefield
+            && from != Zone::Battlefield
+            && !self.obj(id).tapped
+            && (self.types_of(id).artifact || self.types_of(id).creature)
+        {
+            // Charismatic Conqueror: "an artifact or creature an opponent controls enters untapped".
+            let c = self.obj(id).controller;
+            let before = self.triggered.len();
+            self.fire(
+                opponent(c),
+                When::ArtifactOrCreatureOpponentControlsEntersUntapped,
+                None,
+            );
+            for t in &mut self.triggered[before..] {
+                t.extra = Some(id);
+            }
+        }
+        if to == Zone::Exile && matches!(from, Zone::Library | Zone::Graveyard) {
+            // Laelia: "one or more cards are put into exile from your library and/or graveyard".
+            let owner = self.obj(id).owner;
+            self.fire_batched(owner, |w| w == When::CardsExiledFromYourLibraryOrGraveyard);
         }
         if to == Zone::Battlefield && from != Zone::Battlefield {
             let c = self.obj(id).controller;
@@ -12233,6 +12258,25 @@ impl Game {
                 let before = self.triggered.len();
                 if self.combat.as_ref().is_some_and(|c| !c.attackers.is_empty()) {
                     self.fire(self.active, When::YouAttack, None);
+                    // Hermes: "Whenever you attack with one or more Birds".
+                    let attackers = self.combat.as_ref().map_or(Vec::new(), |c| c.attackers.clone());
+                    for id in self.permanents(self.active).collect::<Vec<_>>() {
+                        if self.lost_abilities(id) {
+                            continue;
+                        }
+                        let whens: Vec<When> = self.def_of(id).triggers.iter().map(|tr| tr.when).collect();
+                        for (n, w) in whens.into_iter().enumerate() {
+                            if let When::YouAttackWithSubtype(sub) = w {
+                                if attackers.iter().any(|&a| self.has_subtype(a, sub)) {
+                                    let p = self.active;
+                                    self.triggered.push(StackItem {
+                                        kind: StackKind::Trigger(n),
+                                        ..Game::casting(id, p)
+                                    });
+                                }
+                            }
+                        }
+                    }
                     let n = self.combat.as_ref().map_or(0, |c| c.attackers.len());
                     for _ in 0..n {
                         self.fire(self.active, When::CreatureYouControlAttacks, None);
@@ -15147,6 +15191,7 @@ impl Game {
                 v
             }
             Decision::ChooseExiledToPlay { cards } => cards.iter().copied().map(Action::Pick).collect(),
+            Decision::MayTapElseOpponentToken { .. } => vec![Action::Yes, Action::No],
             Decision::NameCardInLibrary { .. } => {
                 let mut seen: Vec<&str> = Vec::new();
                 let mut v = Vec::new();
@@ -15993,6 +16038,12 @@ impl Game {
             (Decision::MaySacrificeLand { .. }, _) | (Decision::MaySacrificeArtifactOrCreature { .. }, _) => {
                 self.resolving.as_mut().expect("resolving").remaining.clear();
             }
+            (Decision::MayTapElseOpponentToken { card, .. }, Action::Yes) => {
+                if self.obj(card).zone == Zone::Battlefield {
+                    self.obj_mut(card).tapped = true;
+                }
+            }
+            (Decision::MayTapElseOpponentToken { def, .. }, _) => self.create_token(opponent(p), def),
             (Decision::ChooseExiledToPlay { .. }, Action::Pick(c)) => {
                 // Until the end of your next turn (CR 611.2c).
                 let until = if self.active == p {
@@ -26429,6 +26480,16 @@ impl Game {
                     let o = self.obj(c);
                     if matches!(o.zone, Zone::Graveyard | Zone::Exile) && !self.is_token(c) {
                         self.delayed_returns.push((c, o.zcc, 0));
+                    }
+                }
+            }
+            Effect::ExtrasControllerMayTapElseToken { def } => {
+                if let Some(card) = item.extra {
+                    if self.obj(card).zone == Zone::Battlefield && !self.obj(card).tapped {
+                        let q = self.obj(card).controller;
+                        self.ask(q, Decision::MayTapElseOpponentToken { card, def });
+                    } else {
+                        self.create_token(item.controller, def); // they can't tap it
                     }
                 }
             }

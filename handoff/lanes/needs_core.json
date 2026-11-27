@@ -7529,7 +7529,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 44 (token 126 Glimmer; Effect::CreateTokensTappedAndAttacking)"
   },
   {
    "card": "Ayara, First of Locthwain",
@@ -7583,7 +7583,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 44 (token 128 Vampire; When::ArtifactOrCreatureOpponentControlsEntersUntapped, Decision::MayTapElseOpponentToken)"
   },
   {
    "card": "Knuckles the Echidna",
@@ -7655,7 +7655,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 44 (token 130 Bird; When::YouAttackWithSubtype)"
   },
   {
    "card": "Kambal, Consul of Allocation",
@@ -7961,7 +7961,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 44 (When::CardsExiledFromYourLibraryOrGraveyard, batched)"
   },
   {
    "card": "Passionate Archaeologist",
@@ -7979,7 +7979,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "done: d2 batch 43 (Effect::CreateTappedTokensPerOpponentArtifact; the Treasure-mana check is on resolution, StopUnlessTreasureManaSpentOnExtra)"
+   "status": "done: d2 batch 43 (Effect::CreateTappedTokensPerOpponentArtifact). Known limit (OK for the demo): the Treasure-mana check is on resolution only (StopUnlessTreasureManaSpentOnExtra), no intervening-if check as it triggers"
   },
   {
    "card": "Weftstalker Ardent",

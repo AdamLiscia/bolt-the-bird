@@ -570,6 +570,29 @@ pub fn token_defs() -> Vec<CardDef> {
             t.colors = [true, false, false, false, false];
             t
         },
+        {
+            // 126, lane d2: Soaring Lightbringer's "1/1 white Glimmer enchantment creature token".
+            let mut t = token("Glimmer", "Glimmer", 1, 1, Keywords::NONE);
+            t.colors = [true, false, false, false, false];
+            t.types.enchantment = true;
+            t
+        },
+        // 127: back in the pool, a placeholder.
+        token("Placeholder 127", "Placeholder", 0, 0, Keywords::NONE),
+        {
+            // 128, lane d2: Charismatic Conqueror's "1/1 white Vampire creature token with lifelink".
+            let mut t = token("Vampire", "Vampire", 1, 1, Keywords::LIFELINK);
+            t.colors = [true, false, false, false, false];
+            t
+        },
+        // 129, lane d2: G'raha Tia's "1/1 colorless Hero creature token".
+        token("Hero", "Hero", 1, 1, Keywords::NONE),
+        {
+            // 130, lane d2: Hermes's "1/1 blue Bird creature token with flying and vigilance".
+            let mut t = token("Bird", "Bird", 1, 1, Keywords::FLYING.with(Keywords::VIGILANCE));
+            t.colors = [false, true, false, false, false];
+            t
+        },
     ]
 }
 
@@ -829,6 +852,16 @@ pub struct Tokens {
     pub dragon_2_firebreathing: usize,
     /// 125, lane d3: Skycat Sovereign's 1/1 white Cat Bird with flying.
     pub cat_bird: usize,
+    /// 126, lane d2: Soaring Lightbringer's 1/1 white Glimmer enchantment creature.
+    pub glimmer: usize,
+    /// 127: a placeholder (back in the pool).
+    pub placeholder_127: usize,
+    /// 128, lane d2: Charismatic Conqueror's 1/1 white Vampire with lifelink.
+    pub vampire_lifelink: usize,
+    /// 129, lane d2: G'raha Tia's 1/1 colorless Hero.
+    pub hero: usize,
+    /// 130, lane d2: Hermes's 1/1 blue Bird with flying and vigilance.
+    pub bird_flying_vigilance: usize,
 }
 
 impl Tokens {
@@ -960,6 +993,11 @@ impl Tokens {
             dragon_egg: base + 123,
             dragon_2_firebreathing: base + 124,
             cat_bird: base + 125,
+            glimmer: base + 126,
+            placeholder_127: base + 127,
+            vampire_lifelink: base + 128,
+            hero: base + 129,
+            bird_flying_vigilance: base + 130,
         }
     }
 }

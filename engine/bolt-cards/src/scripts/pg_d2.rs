@@ -2131,6 +2131,46 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].remove_plus_counters = 1;
             },
         ),
+        // ---- Core: triggers, batch 44 (idea decks: Sythis, Baylen, Y'shtola, Prosper; tokens 126, 128-130) ----
+        "Soaring Lightbringer" => s(
+            &[
+                "Other enchantment creatures you control have flying.",
+                "Whenever you attack a player, create a 1/1 white Glimmer enchantment creature token that's tapped and attacking that player.",
+            ],
+            |d, t| {
+                // Flying on a noncreature enchantment does nothing, so "your other enchantments" is the same.
+                static_on(d, Scope::OtherYourEnchantments, false, Keywords::FLYING);
+                // 1v1: "you attack a player" is "you attack".
+                on(d, When::YouAttack, vec![], vec![Effect::CreateTokensTappedAndAttacking { def: t.glimmer, n: 1 }]);
+            },
+        ),
+        "Hermes, Overseer of Elpis" => s(
+            &[
+                "Whenever you cast a noncreature spell, create a 1/1 blue Bird creature token with flying and vigilance.",
+                "Whenever you attack with one or more Birds, scry 2.",
+            ],
+            |d, t| {
+                on(d, When::YouCastNoncreature, vec![], vec![Effect::CreateToken { who: Who::You, def: t.bird_flying_vigilance, n: 1 }]);
+                on(d, When::YouAttackWithSubtype("Bird"), vec![], vec![Effect::Scry { n: 2 }]);
+            },
+        ),
+        "Charismatic Conqueror" => s(
+            &["Whenever an artifact or creature an opponent controls enters untapped, they may tap that permanent. If they don't, you create a 1/1 white Vampire creature token with lifelink."],
+            |d, t| {
+                let ask = Effect::ExtrasControllerMayTapElseToken { def: t.vampire_lifelink };
+                on(d, When::ArtifactOrCreatureOpponentControlsEntersUntapped, vec![], vec![ask]);
+            },
+        ),
+        "Laelia, the Blade Reforged" => s(
+            &[
+                "Whenever Laelia attacks, exile the top card of your library. You may play that card this turn.",
+                "Whenever one or more cards are put into exile from your library and/or your graveyard, put a +1/+1 counter on Laelia.",
+            ],
+            |d, _| {
+                on(d, When::Attacks, vec![], vec![Effect::ExileTopToPlayThisTurn(1)]);
+                on(d, When::CardsExiledFromYourLibraryOrGraveyard, vec![], vec![Effect::CountersSelf { n: 1 }]);
+            },
+        ),
         _ => None,
     }
 }
@@ -2459,4 +2499,9 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Crime Novelist",
     "Smaug, Wicked Worm",
     "Twilight Drover",
+    // Core: triggers, batch 44
+    "Soaring Lightbringer",
+    "Hermes, Overseer of Elpis",
+    "Charismatic Conqueror",
+    "Laelia, the Blade Reforged",
 ];

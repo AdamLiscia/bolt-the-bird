@@ -287,6 +287,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         "ExpropriateVote": ("Vote time (an extra turn)", "Vote money (a permanent)"),
         "PayUpkeep": (f"Pay the upkeep {dec.get('cost', '')}", f"Don't pay (sacrifice {subject or src})"),
         "MayShuffle": ("Shuffle your library", "Don't shuffle"),
+        "MayTapElseOpponentToken": (f"Tap {subject}", f"Don't tap {subject} (they create a token)"),
         "TaintedPact": ("Put it into your hand", "Exile the next card"),
         "MayPayLife": (
             f"Pay {dec.get('life', 0)} life ({src})" if src else f"Pay {dec.get('life', 0)} life",

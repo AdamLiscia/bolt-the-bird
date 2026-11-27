@@ -387,3 +387,9 @@ def test_demonic_consultation_names_a_card():
 def test_end_blaze_epiphany_chooses_an_exiled_card_to_play():
     dec = {"kind": "ChooseExiledToPlay"}
     assert sv._decision_label(dec, "Pick", 0, "Sol Ring") == "You may play until the end of your next turn: Sol Ring"
+
+
+def test_charismatic_conqueror_asks_to_tap_the_permanent_or_give_a_token():
+    dec = {"kind": "MayTapElseOpponentToken", "card": [7, 2], "def": 300}
+    assert label(dec, "Yes", 0) == "Tap Secluded Courtyard"
+    assert label(dec, "No", 0) == "Don't tap Secluded Courtyard (they create a token)"

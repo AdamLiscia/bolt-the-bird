@@ -2880,3 +2880,75 @@ fn a_player_lost_life_and_no_other_subtype_conditions() {
     play(&mut g, lions, false, &[], &[]);
     assert_eq!(life(&g, 0), 52, "the opponent lost 4");
 }
+
+// ---- batch 44: attacking with a subtype, an opponent's untapped entries, exile from library or graveyard ----
+
+#[test]
+fn you_attack_with_subtype_triggers_once_if_any_attacker_has_it() {
+    let mut g = game_with(blood_with(vec![trigger(
+        When::YouAttackWithSubtype("Cat"),
+        None,
+        gain(1),
+    )]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let a = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let b = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    attack_with(&mut g, &[a, b]);
+    resolve_all(&mut g, &[]);
+    assert_eq!(life(&g, 0), 41, "once for two Cats");
+    let mut g2 = game_with(blood_with(vec![trigger(
+        When::YouAttackWithSubtype("Cat"),
+        None,
+        gain(1),
+    )]));
+    g2.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let elves2 = g2.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    attack_with(&mut g2, &[elves2]);
+    resolve_all(&mut g2, &[]);
+    assert_eq!(life(&g2, 0), 40, "no Cat");
+    let _ = elves;
+}
+
+#[test]
+fn an_opponents_artifact_or_creature_entering_untapped_carries_it() {
+    let tap = trigger(
+        When::ArtifactOrCreatureOpponentControlsEntersUntapped,
+        None,
+        gain(1),
+    );
+    let mut g = game_with(blood_with(vec![tap]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    g.start_turn(4, 1);
+    to_main(&mut g);
+    let ring = g.add_card(1, cid("Sol Ring"), Zone::Hand);
+    play(&mut g, ring, false, &[], &[]);
+    assert_eq!(life(&g, 0), 41);
+    let tapland = g.add_card(1, cid("Savage Lands"), Zone::Hand); // enters tapped
+    act(&mut g, Action::PlayLand(tapland));
+    resolve_all(&mut g, &[]);
+    assert_eq!(life(&g, 0), 41, "a land, and tapped");
+}
+
+#[test]
+fn cards_exiled_from_your_library_or_graveyard_batch() {
+    let mut g = game_with(blood_with(vec![trigger(
+        When::CardsExiledFromYourLibraryOrGraveyard,
+        None,
+        vec![Effect::GainLifeAmount],
+    )]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    for _ in 0..3 {
+        g.add_card(0, cid("Lightning Bolt"), Zone::Graveyard);
+    }
+    // Nihil Spellbomb exiles your own graveyard: one batch of three.
+    let bomb = g.add_card(0, cid("Nihil Spellbomb"), Zone::Battlefield);
+    act(&mut g, Action::Activate(bomb, 0));
+    act(&mut g, Action::Target(bolt_core::Target::Player(0)));
+    resolve_all(&mut g, &[Action::No]);
+    assert_eq!(
+        life(&g, 0),
+        44,
+        "one trigger: three Bolts and the sacrificed Spellbomb"
+    );
+}

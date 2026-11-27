@@ -4583,3 +4583,75 @@ fn twilight_drover_grows_when_any_creature_token_leaves_and_makes_spirits() {
     assert_eq!(g.obj(drover).counters, 0);
     assert_eq!(tokens(&g, 0, "Spirit").len(), 2);
 }
+
+// ---- Core: triggers, batch 44 ----
+
+#[test]
+fn soaring_lightbringer_gives_enchantment_creatures_flying_and_makes_attacking_glimmers() {
+    let mut g = table();
+    put(&mut g, 0, "Soaring Lightbringer");
+    let courser = put(&mut g, 0, "Courser of Kruphix"); // an enchantment creature
+    assert!(g.keywords(courser).has(Keywords::FLYING));
+    let lions = put(&mut g, 0, "Savannah Lions");
+    assert!(!g.keywords(lions).has(Keywords::FLYING));
+    attack(&mut g, &[lions]);
+    drain(&mut g);
+    let glimmers = tokens(&g, 0, "Glimmer");
+    assert_eq!(glimmers.len(), 1);
+    assert!(g.def_of(glimmers[0]).types.enchantment);
+    assert!(
+        g.keywords(glimmers[0]).has(Keywords::FLYING),
+        "an enchantment creature"
+    );
+    assert!(g
+        .combat
+        .as_ref()
+        .expect("in combat")
+        .attackers
+        .contains(&glimmers[0]));
+}
+
+#[test]
+fn hermes_makes_birds_on_noncreature_spells_and_scries_when_birds_attack() {
+    let mut g = table();
+    put(&mut g, 0, "Hermes, Overseer of Elpis");
+    let ring = hand(&mut g, 0, "Sol Ring");
+    play(&mut g, ring, false, &[], &[]);
+    let birds = tokens(&g, 0, "Bird");
+    assert_eq!(birds.len(), 1);
+    assert!(g.keywords(birds[0]).has(Keywords::FLYING) && g.keywords(birds[0]).has(Keywords::VIGILANCE));
+    attack(&mut g, &birds);
+    assert!(
+        matches!(g.pending, Pending::Decide(_)) || !g.items.is_empty(),
+        "the scry trigger"
+    );
+    drain(&mut g);
+}
+
+#[test]
+fn charismatic_conqueror_makes_a_vampire_unless_the_opponent_taps_their_permanent() {
+    let mut g = table();
+    put(&mut g, 0, "Charismatic Conqueror");
+    to_step(&mut g, 4, 1, Step::Main1);
+    let ring = hand(&mut g, 1, "Sol Ring");
+    act(&mut g, Action::Cast(ring));
+    resolve_all(&mut g, &[Action::No]);
+    assert_eq!(tokens(&g, 0, "Vampire").len(), 1, "they didn't tap it");
+    let signet = hand(&mut g, 1, "Arcane Signet");
+    act(&mut g, Action::Cast(signet));
+    resolve_all(&mut g, &[Action::Yes]);
+    assert!(g.obj(signet).tapped);
+    assert_eq!(tokens(&g, 0, "Vampire").len(), 1, "tapped: no token");
+    assert!(g.keywords(tokens(&g, 0, "Vampire")[0]).has(Keywords::LIFELINK));
+}
+
+#[test]
+fn laelia_exiles_the_top_card_to_play_and_grows_once_per_exile() {
+    let mut g = table();
+    let laelia = put(&mut g, 0, "Laelia, the Blade Reforged");
+    attack(&mut g, &[laelia]);
+    drain(&mut g);
+    assert_eq!(g.obj(laelia).counters, 1, "one card from the library");
+    fight(&mut g);
+    assert_eq!(g.players[1].life, 37, "a 3/3 by damage");
+}

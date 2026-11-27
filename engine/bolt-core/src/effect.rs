@@ -3059,6 +3059,12 @@ pub enum Effect {
     CreateTappedTokensPerOpponentArtifact {
         def: usize,
     },
+    /// The controller of the permanent in the item's `extra` may tap it
+    /// (`Decision::MayTapElseOpponentToken`); if they don't, you create a `def` token
+    /// (Charismatic Conqueror).
+    ExtrasControllerMayTapElseToken {
+        def: usize,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -4191,6 +4197,15 @@ pub enum When {
     /// "Whenever you cast a noncreature spell", with the mana spent to cast it as the amount
     /// (Uncover the Moon-Letters: "draw X cards, where X is the amount of mana spent").
     YouCastNoncreatureManaSpent,
+    /// "Whenever you attack with one or more [subtype]" (Hermes, Overseer of Elpis: Birds): once
+    /// as attackers are declared, if any attacker has the subtype.
+    YouAttackWithSubtype(&'static str),
+    /// "Whenever an artifact or creature an opponent controls enters untapped" (Charismatic
+    /// Conqueror), with that permanent as the trigger's `extra`.
+    ArtifactOrCreatureOpponentControlsEntersUntapped,
+    /// "Whenever one or more cards are put into exile from your library and/or your graveyard"
+    /// (Laelia, the Blade Reforged): batched (`Game::fire_batched`), the count as the amount.
+    CardsExiledFromYourLibraryOrGraveyard,
 }
 
 #[derive(Clone, Debug, PartialEq)]
