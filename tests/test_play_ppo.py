@@ -173,3 +173,66 @@ def test_a_uniform_policy_has_normalized_entropy_one_whatever_its_move_count():
     assert abs(st["entropy_norm"] - 1) < 1e-5, "normalized: 1 for any uniform policy"
     k = st["by_kind"]["Priority"]
     assert k[0] == 4 and abs(k[2] / k[0] - 1) < 1e-5
+
+
+def _rows(n, results=("p0",)):
+    from test_play_commander import obs
+
+    from bolt.play_data import to_arrays
+    from bolt.play_encoding import encode
+
+    steps = [{"game": i % len(results), "seat": 0, "enc": encode(obs(), 0), "action": 1, "logp": -0.7, "value": 0.1}
+             for i in range(n)]  # fmt: skip
+    return to_arrays(steps, [{"result": r} for r in results])
+
+
+def test_games_ending_in_draws_timeouts_or_panics_give_finite_advantages():
+    import numpy as np
+
+    from bolt.play_ppo import gae
+
+    arr = _rows(12, results=("draw", "timeout", "error"))  # board-too-large draws, caps, hangs, panics
+    adv, ret = gae(arr, lam=0.95)
+    assert np.isfinite(adv).all() and np.isfinite(ret).all()
+
+
+def test_a_group_with_a_non_finite_loss_is_skipped_and_reported():
+    import numpy as np
+    import torch
+
+    from bolt.play_data import finite_rows, groups
+    from bolt.play_net import PlayNet
+    from bolt.play_ppo import gae, ppo_step
+
+    arr = _rows(130)
+    arr["logp"][3] = np.nan
+    assert finite_rows(arr).sum() == 129 and not finite_rows(arr)[3]
+    adv, ret = gae(arr)
+    idx = np.arange(130)
+    assert len(groups(arr, idx)) == 3
+    net = PlayNet(n_cards=8, dim=16, layers=1, heads=2)
+    before = [p.clone() for p in net.parameters()]
+    seen = []
+    st = ppo_step(net, None, torch.optim.AdamW(net.parameters(), lr=1e-3), arr, idx, torch.as_tensor(adv),
+                  ret=torch.as_tensor(ret), on_bad=lambda rows, x, parts: seen.append(list(rows)))  # fmt: skip
+    assert st["bad_groups"] == 1 and st["bad_grad"] == 0 and np.isfinite(st["loss"])
+    assert len(seen) == 1 and 3 in seen[0]
+    assert all(torch.isfinite(p).all() for p in net.parameters())
+    assert any(not torch.equal(a, b) for a, b in zip(before, net.parameters(), strict=True)), "the rest stepped"
+
+
+def test_huge_numbers_are_capped_so_storage_stays_finite():
+    import numpy as np
+    from test_play_commander import obs
+
+    from bolt.play_data import finite_rows, to_arrays
+    from bolt.play_encoding import CAP, FEATS, encode
+
+    o = obs()
+    o["battlefield"][0]["power"] = 2**40  # doubled turn after turn
+    o["players"][0]["life"] = 10**9
+    e = encode(o, 0)
+    assert max(max(f) for f in e["feats"]) == CAP and max(e["globals"]) == CAP
+    assert e["feats"][1][FEATS.index("power")] == CAP or e["feats"][0][FEATS.index("power")] <= CAP
+    arr = to_arrays([{"game": 0, "seat": 0, "enc": e, "action": 0, "logp": -0.7, "value": 0.0}], [{"result": "p0"}])
+    assert np.isfinite(arr["feats"].astype(np.float32)).all() and finite_rows(arr).all()
