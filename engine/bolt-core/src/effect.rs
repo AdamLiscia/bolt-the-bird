@@ -2460,6 +2460,65 @@ pub enum Effect {
     CreateTokenIfTopIsLandThenDraw {
         def: usize,
     },
+    /// The creature in `slot` can't block for as long as you control the source (There and Back
+    /// Again's chapter I), see `Game::cant_block_while_controlled`.
+    TargetCantBlockWhileYouControlSource(u8),
+    /// Gisa, Glorious Resurrector: put all creature cards exiled with the source
+    /// (`Game::exiled_with`) onto the battlefield under your control; they gain decayed.
+    ReturnExiledWithSourceDecayed,
+    /// The player in `slot` loses `life` life unless they sacrifice a nonland permanent or discard a
+    /// card (Tergrid's Lantern: 3), as `Decision::SacrificeDiscardOrLoseLife`.
+    TargetPlayerLosesUnlessSacrificesOrDiscards {
+        slot: u8,
+        life: i32,
+    },
+    /// Discard a card (`Decision::DiscardThenIfInstantOrSorcery`); the rest of the effects happen
+    /// only if it was an instant or sorcery card (Vohar, Vodalian Desecrator).
+    DiscardThenIfInstantOrSorcery,
+    /// Prevent the next `n` damage that would be dealt to the permanent in `slot` this turn (Eiganjo
+    /// Castle: 2), see `Game::damage_shields_on`.
+    PreventNextDamageToTargetThisTurn {
+        slot: u8,
+        n: i32,
+    },
+    /// The source deals X damage to the target in `to`, X the permanents with subtype `sub` you
+    /// control (Smaug the Magnificent: Treasures), counted on resolution.
+    SourceDamagePerSubtypeYouControl {
+        to: u8,
+        sub: &'static str,
+    },
+    /// Create a `def` token for each creature that died this turn, tokens included (Mahadi).
+    CreateTokenPerCreatureDiedThisTurn {
+        def: usize,
+    },
+    /// Breath of Fury: sacrifice the creature the source Aura enchants and attach the Aura to a
+    /// creature you control (`Decision::MoveAuraTo`); the rest of the effects happen only if it's
+    /// attached ("If you do").
+    SacrificeEnchantedMoveAura,
+    /// Kaalia of the Vast: you may put a creature card with one of these subtypes from your hand onto
+    /// the battlefield tapped and attacking (`Decision::CreatureFromHandAttacking`).
+    CreatureFromHandAttacking(&'static [&'static str]),
+    /// Command Beacon: put your commander into your hand from the command zone.
+    CommanderFromCommandZoneToHand,
+    /// Exile the top `n` cards of your library (Mystic Forge: 1).
+    ExileTopCards(u8),
+    /// Lithoform Engine: copy the activated or triggered ability in `slot` (targeted as its source,
+    /// `Filter::abilities`) if you control it; its controller may choose new targets for the copy.
+    CopyTargetAbilityYouControl(u8),
+    /// Lithoform Engine: copy the spell in `slot` if you control it; you may choose new targets for
+    /// the copy. With `permanent`, only a permanent spell is copied, and the copy becomes a token
+    /// (CR 707.10f).
+    CopyTargetSpellYouControl {
+        slot: u8,
+        permanent: bool,
+    },
+    /// The source becomes a copy of the permanent in `slot` for good (The Mycosynth Gardens). With
+    /// `keep_own`, the copy keeps the source card's `copy_only` activated abilities (Thespian's
+    /// Stage: "except it has this ability"; the card needs `copy_keeps_abilities`).
+    SourceBecomesCopyOfSlot {
+        slot: u8,
+        keep_own: bool,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -2531,6 +2590,8 @@ pub enum SearchFor {
     ArtifactManaCostZeroOrOne,
     /// A colorless creature card (Sanctum of Ugin).
     ColorlessCreature,
+    /// An artifact card (Inventors' Fair, Goblin Engineer, Reckless Handling).
+    Artifact,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -2676,6 +2737,8 @@ pub enum StaticCondition {
     /// The source Class is at this level or higher (CR 716: a Class's level 2 and 3 statics), see
     /// `Game::class_level`.
     ClassLevelAtLeast(u8),
+    /// Another Aura is attached to the creature the source is attached to (Face of Divinity).
+    AttachedHasAnotherAura,
     /// This color (WUBRG index) isn't in the source's controller's commander's color identity
     /// (with a partner, either's); with no commander, no color is (Commander's Plate).
     OutsideCommanderIdentity(u8),
@@ -2897,6 +2960,8 @@ pub enum Condition {
     /// At least this much colorless mana was spent to cast the spell (Desecrate Reality's
     /// adamant: 3), with `Effect::StopUnlessCondition` before the adamant part.
     ColorlessSpentAtLeast(u32),
+    /// Its controller created a token this turn (Bennie Bracks), from `Game::token_created_turn`.
+    YouCreatedTokenThisTurn,
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -3371,6 +3436,12 @@ pub enum When {
     /// resolves onto the battlefield (`Game::cast_aura_entered`, game/zones.rs), with the Aura in a
     /// triggering first slot.
     CastAuraYouControlEnters,
+    /// "Whenever [this] deals combat damage to a player for the first time each turn" (Raphael, Tag
+    /// Team Tough), with the damage as the amount; see `Game::combat_damaged_player`.
+    DealsCombatDamageToPlayerFirstTimeEachTurn,
+    /// "Whenever you play a card from exile" (Prosper, Tome-Bound): a land played or a spell cast
+    /// from exile, fired by `Game::played_from_exile` (game/zones.rs).
+    YouPlayCardFromExile,
 }
 
 #[derive(Clone, Debug, PartialEq)]
