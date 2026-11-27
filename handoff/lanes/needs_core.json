@@ -322,10 +322,10 @@
   {
    "card": "Rhythm of the Wild",
    "deck": "Raggadragga, Goreguts Boss",
-   "missing": "creature spells you control can't be countered; riot for nontoken creatures",
+   "missing": "creature spells you control can't be countered; riot for nontoken creatures [lane C 2026-11-26: blocked on mac-b: riot for nontoken creatures, and 'creature spells you control can't be countered' (lane B, merger share); lane C's part: none]",
    "lane": "d1",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "mac-b"
   },
   {
    "card": "Chord of Calling",
@@ -362,10 +362,10 @@
   {
    "card": "Walking Ballista",
    "deck": "Raggadragga, Goreguts Boss",
-   "missing": "'Remove a +1/+1 counter from this creature' as a cost",
+   "missing": "'Remove a +1/+1 counter from this creature' as a cost [lane C 2026-11-26: blocked on d1: 'Remove a +1/+1 counter from this creature' as an activation cost; lane C's part: none; enters_with_x_counters and the {4} counter exist]",
    "lane": "d1",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "d1"
   },
   {
    "card": "Inkmoth Nexus",
@@ -850,10 +850,10 @@
   {
    "card": "Karador, Ghost Chieftain",
    "deck": "Karador, Ghost Chieftain",
-   "missing": "cost reduction per creature card in graveyard; cast a creature from your graveyard once each turn",
+   "missing": "cost reduction per creature card in graveyard; cast a creature from your graveyard once each turn [lane C 2026-11-26: blocked on d1: costs {1} less per creature card in your graveyard; lane C's part: once during each of your turns, cast a creature spell from your graveyard]",
    "lane": "d1",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "d1"
   },
   {
    "card": "Loxodon Hierarch",
@@ -3418,10 +3418,10 @@
   {
    "card": "Elder Brain",
    "deck": "Sheoldred, the Apocalypse",
-   "missing": "needs core: exile the attacked player's hand, they draw that many, and you may play the exiled cards",
+   "missing": "needs core: exile the attacked player's hand, they draw that many, and you may play the exiled cards [lane C 2026-11-26: blocked on d1: spend mana as though it were mana of any color; lane C's part: exile the hand, they draw that many, play the exiled cards while exiled (uses playable)]",
    "lane": "d3",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "d1"
   },
   {
    "card": "Feed the Swarm",
@@ -3626,18 +3626,18 @@
   {
    "card": "The Ozolith",
    "deck": "Animar, Soul of Elements",
-   "missing": "needs core: keep the counters of creatures leaving and move them",
+   "missing": "needs core: keep the counters of creatures leaving and move them [lane C 2026-11-26: blocked on d2: a 'creature you control leaves the battlefield, if it had counters' trigger with its last-known counters; lane C's part: keeping the counters on The Ozolith and moving them at the beginning of combat]",
    "lane": "d3",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "d2"
   },
   {
    "card": "Vizier of the Menagerie",
    "deck": "Animar, Soul of Elements",
-   "missing": "needs core: cast creature spells from the top of your library, and spend mana as any type for them",
+   "missing": "needs core: cast creature spells from the top of your library, and spend mana as any type for them [lane C 2026-11-26: blocked on d1: spend mana of any type to cast creature spells; lane C's part: none; top_spells_creatures exists]",
    "lane": "d3",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "d1"
   },
   {
    "card": "Ancestral Statue",
@@ -3730,10 +3730,10 @@
   {
    "card": "Somberwald Sage",
    "deck": "Animar, Soul of Elements",
-   "missing": "needs core: three mana of one chosen color (the payer would split the colors)",
+   "missing": "needs core: three mana of one chosen color (the payer would split the colors) [lane C 2026-11-26: blocked on d1: three mana of one chosen color, spendable only on creature spells; lane C's part: none]",
    "lane": "d3",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "d1"
   },
   {
    "card": "Spellskite",

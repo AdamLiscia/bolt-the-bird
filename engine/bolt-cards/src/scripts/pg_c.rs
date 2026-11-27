@@ -2223,7 +2223,7 @@ pub fn script(name: &str) -> Option<Script> {
         "Gilded Drake" => s(
             &["When this creature enters, exchange control of this creature and up to one target creature an opponent controls. If you don't or can't make an exchange, sacrifice this creature. This ability still resolves if its target becomes illegal."],
             |d, _| {
-                // Shortcut: with its one target illegal, the trigger fizzles and the Drake stays.
+                // With its one target illegal, the ability doesn't resolve (CR 608.2b): no sacrifice.
                 d.triggers.push(Trigger {
                     when: When::Enters,
                     ability: up_to(vec![OPP_CREATURE], vec![Effect::ExchangeControlWithSlotOrSacrifice(0)]),

@@ -895,9 +895,10 @@ EachPlayerDrawsPerKindCounter, SearchCreatureBySacrificedMvPlusCounter, Exchange
 `SearchTo::BattlefieldPlusCounter` (one arm in the `Decision::Search` answer).
 Cards (6, listed): Blood Money, Peer into the Abyss, Otherworld Atlas (charge counters are `kind_counters`), Neoform,
 Gilded Drake, Hornet Queen. Tests in core_objects (47).
-Shortcuts: Gilded Drake's trigger fizzles if its one target becomes illegal, so the Drake isn't sacrificed then
-("This ability still resolves if its target becomes illegal"). Neoform's counter is put on just after the card
-enters.
+Shortcut: Neoform's counter is put on just after the card enters. (Gilded Drake with its one target illegal
+doesn't resolve, CR 608.2b, so it isn't sacrificed: correct, per the merger.)
+needs_core.json: the 7 blocked entries now name the blocker's owner (d1: Elder Brain, Walking Ballista, Somberwald
+Sage, Vizier, Karador; d2: The Ozolith; mac-b: Rhythm of the Wild), each with lane C's part noted.
 Waiting on others:
 - Elder Brain: d1 ("spend mana as though it were mana of any color"). The exile-hand, draw-that-many and
   play-while-exiled part is lane C's and needs no new piece beyond `playable`.
