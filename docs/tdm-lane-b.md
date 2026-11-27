@@ -1075,3 +1075,7 @@ One Ring's check in `deal_damage`). Claims recorded in needs_core.json.
 - `Effect::CopySourceSpell` (storm, Sage of the Skies, Flusterstorm) now puts its copies through
   `pending_copies`, so each copy with targets chooses new ones (CR 707.10c), as
   `CopySpellNewTargets` does. Grapeshot's storm copies no longer keep the original's target.
+- Granted loyalty abilities: `CardDef::your_planeswalkers_have_loyalty` (Ichormoon Gauntlet's "[0]:
+  Proliferate" and "[−12]: Take an extra turn"), listed after a planeswalker's own in
+  `Game::loyalty_list` (offering, activation, X), recorded as activated in `Game::loyalty_snapshots`
+  so a granted one resolves without its granter. The card waits for d3's counter trigger.

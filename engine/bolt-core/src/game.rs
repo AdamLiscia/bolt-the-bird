@@ -1926,6 +1926,9 @@ pub struct Game {
     pub damage_to_you_prevented_until: [Option<u32>; 2],
     /// Mirrormind Crown: the turn each player's first token creation was replaced (once each turn).
     pub mirrormind_used: [u32; 2],
+    /// Granted loyalty abilities as they were activated: (planeswalker, ability number, the
+    /// ability), so one still resolves if its granter leaves (Ichormoon Gauntlet).
+    pub loyalty_snapshots: Vec<(ObjId, usize, Ability)>,
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2225,6 +2228,7 @@ impl Game {
             delayed_returns_tapped: Vec::new(),
             damage_to_you_prevented_until: [None; 2],
             mirrormind_used: [0; 2],
+            loyalty_snapshots: Vec::new(),
             hand_links: Vec::new(),
             saddled: Vec::new(),
             karador_turn: [0; 2],
@@ -6354,6 +6358,19 @@ impl Game {
             // again; its ability still resolves from the back face it was activated on.
             StackKind::Loyalty(n) => match def.loyalty_abilities.get(n) {
                 Some(a) => &a.1,
+                // A granted one (Ichormoon Gauntlet), as it was activated.
+                None if self
+                    .loyalty_snapshots
+                    .iter()
+                    .any(|e| e.0 == item.source && e.1 == n) =>
+                {
+                    let e = self
+                        .loyalty_snapshots
+                        .iter()
+                        .rev()
+                        .find(|e| e.0 == item.source && e.1 == n);
+                    &e.expect("a snapshot").2
+                }
                 None => {
                     let printed = &self.defs[self.obj(item.source).def];
                     &printed.back.as_ref().expect("a back face").loyalty_abilities[n].1
@@ -8809,7 +8826,8 @@ impl Game {
             if !sorcery_timing && !any_time {
                 continue;
             }
-            for (n, (cost, ability)) in self.def_of(id).loyalty_abilities.iter().enumerate() {
+            for (n, (cost, ability)) in self.loyalty_list(id).into_iter().enumerate() {
+                let (cost, ability) = (&cost, &ability);
                 let item = StackItem {
                     kind: StackKind::Loyalty(n),
                     ..Game::casting(id, p)
@@ -8817,6 +8835,21 @@ impl Game {
                 let affordable = *cost == crate::card::LOYALTY_MINUS_X || o.loyalty + cost >= 0;
                 if affordable && self.trigger_can_target(&item, ability) {
                     v.push(Action::Loyalty(id, n));
+                }
+            }
+        }
+        v
+    }
+
+    /// A planeswalker's loyalty abilities: its own, then those granted by permanents its controller
+    /// controls (Ichormoon Gauntlet).
+    fn loyalty_list(&self, id: ObjId) -> Vec<(i32, Ability)> {
+        let mut v = self.def_of(id).loyalty_abilities.clone();
+        if self.obj(id).zone == Zone::Battlefield && self.types_of(id).planeswalker {
+            let p = self.obj(id).controller;
+            for x in self.permanents(p).collect::<Vec<_>>() {
+                if !self.lost_abilities(x) {
+                    v.extend(self.def_of(x).your_planeswalkers_have_loyalty.iter().cloned());
                 }
             }
         }
@@ -8839,7 +8872,7 @@ impl Game {
     }
 
     fn activate_loyalty(&mut self, p: PlayerId, id: ObjId, n: usize) {
-        if self.def_of(id).loyalty_abilities[n].0 == crate::card::LOYALTY_MINUS_X {
+        if self.loyalty_list(id)[n].0 == crate::card::LOYALTY_MINUS_X {
             self.ask(p, Decision::ChooseLoyaltyX { source: id, n });
             return;
         }
@@ -8848,7 +8881,11 @@ impl Game {
 
     /// Activates loyalty ability `n` of `id`, with X (a −X cost removes that much).
     fn activate_loyalty_x(&mut self, p: PlayerId, id: ObjId, n: usize, x: u8) {
-        let (cost, ability) = self.def_of(id).loyalty_abilities[n].clone();
+        let (cost, ability) = self.loyalty_list(id)[n].clone();
+        if n >= self.def_of(id).loyalty_abilities.len() {
+            self.loyalty_snapshots.retain(|e| !(e.0 == id && e.1 == n));
+            self.loyalty_snapshots.push((id, n, ability.clone()));
+        }
         let cost = if cost == crate::card::LOYALTY_MINUS_X {
             -(x as i32)
         } else {

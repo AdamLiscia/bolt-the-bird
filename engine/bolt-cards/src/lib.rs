@@ -539,6 +539,7 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         triples_creature_tokens: false,
         lands_in_graveyard_have_dredge: None,
         first_tokens_copy_equipped: false,
+        your_planeswalkers_have_loyalty: Vec::new(),
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;

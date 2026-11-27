@@ -1081,6 +1081,9 @@ pub struct CardDef {
     /// would create one or more tokens each turn, you may instead create that many tokens that are
     /// copies of equipped creature." (`Game::mirrormind_crown`; the engine always takes the copies)
     pub first_tokens_copy_equipped: bool,
+    /// Loyalty abilities planeswalkers you control have (Ichormoon Gauntlet: "[0]: Proliferate" and
+    /// "[−12]: Take an extra turn after this one."), after their own (`Game::loyalty_ability`).
+    pub your_planeswalkers_have_loyalty: Vec<(i32, crate::effect::Ability)>,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1639,6 +1642,7 @@ impl CardDef {
             triples_creature_tokens: false,
             lands_in_graveyard_have_dredge: None,
             first_tokens_copy_equipped: false,
+            your_planeswalkers_have_loyalty: Vec::new(),
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1933,6 +1937,7 @@ impl CardDef {
             triples_creature_tokens: false,
             lands_in_graveyard_have_dredge: None,
             first_tokens_copy_equipped: false,
+            your_planeswalkers_have_loyalty: Vec::new(),
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2227,6 +2232,7 @@ impl CardDef {
             triples_creature_tokens: false,
             lands_in_graveyard_have_dredge: None,
             first_tokens_copy_equipped: false,
+            your_planeswalkers_have_loyalty: Vec::new(),
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
