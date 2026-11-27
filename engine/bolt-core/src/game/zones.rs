@@ -1358,4 +1358,19 @@ impl Game {
             }
         }
     }
+
+    /// Kambal: for each token in `batch` still on the battlefield as that object, a tapped token copy
+    /// of it for `p` (doubled like any token).
+    pub(super) fn tapped_token_copies(&mut self, p: PlayerId, batch: Vec<(ObjId, u32)>) {
+        for (t, zcc) in batch {
+            if self.obj(t).zone != Zone::Battlefield || self.obj(t).zcc != zcc {
+                continue;
+            }
+            for _ in 0..self.token_doubling(p) {
+                if let Some(id) = self.token_copy_of(p, t) {
+                    self.obj_mut(id).tapped = true;
+                }
+            }
+        }
+    }
 }

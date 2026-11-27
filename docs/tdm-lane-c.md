@@ -1314,3 +1314,11 @@ Merger approved (2026-11-27) both edits and the window. View check: the free-cas
 `Cast` actions, labelled from `legal_cards`; bolt-py's `seen()` hides only face-down cards, so the revealed
 library card is named ("Cast Gravecrawler") exactly as cascade's exiled card is. No view change needed;
 re-check in the service view at build.
+
+## Batch 27 (unbuilt): Kambal, Profiteering Mayor (unblocked by d2 cdc7082)
+
+On d2's `When::{OneOrMoreTokensOpponentsControlEnter { once_each_turn: true }, OneOrMoreTokensYouControlEnter}`
+and `Game::token_batch` (lane-d2 cdc7082, **doesn't compile until it's on tarkir**). Core (appended):
+`Effect::TappedTokenCopiesOfBatch` (zones.rs `tapped_token_copies`: each batch token still there as that
+object, `token_copy_of` per `token_doubling`, tapped). The drain is the existing LoseLife/GainLife pair. Test in
+core_objects (96, on an edited Inkshield making two Soldiers for player 1). needs_core entry marked unblocked.

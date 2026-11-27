@@ -25991,6 +25991,10 @@ impl Game {
             Effect::BecomeMonarch => self.monarch = Some((item.controller, src)),
             Effect::VividRevealExileByColor => self.vivid_reveal(item.controller),
             Effect::RevealTopCastFreeIfSharesCreatureType => self.descendants_path(item.controller),
+            Effect::TappedTokenCopiesOfBatch => {
+                let batch = self.token_batch(item);
+                self.tapped_token_copies(item.controller, batch);
+            }
             Effect::YourNonlandPermanentsBecomeCopyOf(slot) => {
                 if let Some(t) = Game::slot_object(item, legal, slot) {
                     self.nonland_permanents_become_copy(item.controller, t);

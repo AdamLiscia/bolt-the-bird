@@ -2972,6 +2972,9 @@ pub enum Effect {
     /// creature type with a creature you control, you may cast it free (a one-spell free-cast window
     /// over the library card); if you don't cast it, it goes to the bottom.
     RevealTopCastFreeIfSharesCreatureType,
+    /// "For each of them, create a tapped token that's a copy of it." (Kambal, Profiteering Mayor):
+    /// the tokens of the resolving trigger's batch (d2's `Game::token_batch`) still on the battlefield.
+    TappedTokenCopiesOfBatch,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

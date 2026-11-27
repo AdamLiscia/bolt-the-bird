@@ -2584,6 +2584,19 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::RevealTopCastFreeIfSharesCreatureType]);
             },
         ),
+        "Kambal, Profiteering Mayor" => s(
+            &[
+                "Whenever one or more tokens your opponents control enter, for each of them, create a tapped token that's a copy of it. This ability triggers only once each turn.",
+                "Whenever one or more tokens you control enter, each opponent loses 1 life and you gain 1 life.",
+            ],
+            |d, _| {
+                // d2's batched token triggers (`Game::token_batch`).
+                let theirs = When::OneOrMoreTokensOpponentsControlEnter { once_each_turn: true };
+                on(d, theirs, vec![], vec![Effect::TappedTokenCopiesOfBatch]);
+                let drain = vec![Effect::LoseLife { who: Who::EachOpponent, n: 1 }, Effect::GainLife { who: Who::You, n: 1 }];
+                on(d, When::OneOrMoreTokensYouControlEnter, vec![], drain);
+            },
+        ),
         "Fortune Teller's Talent" => s(
             &[
                 "You may look at the top card of your library any time.",
@@ -2950,5 +2963,6 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Sanar, Innovative First-Year",
     "Druids' Repository",
     "Descendants' Path",
+    "Kambal, Profiteering Mayor",
     // Not "Evercoat Ursine" (unclaimed: a hidden land must be playable as a land play).
 ];

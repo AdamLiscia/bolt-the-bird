@@ -2283,3 +2283,39 @@ fn descendants_path_counts_changeling_as_every_creature_type() {
     assert!(upkeep_window(&mut g), "a changeling shares every creature type");
     assert!(g.legal_actions().contains(&Action::Cast(elves)));
 }
+
+// ---- Kambal, Profiteering Mayor (batch 27, on d2's batched token triggers) ----
+
+#[test]
+fn kambal_copies_an_opponents_token_batch_tapped_once_a_turn_and_drains_for_its_own() {
+    let mut g = table_with(|defs| {
+        let soldier = defs
+            .iter()
+            .position(|d| d.token && d.name == "Soldier")
+            .expect("Soldier");
+        defs[cid("Inkshield")].spell = Some(bolt_core::Ability::new(
+            vec![],
+            vec![bolt_core::Effect::CreateToken {
+                who: bolt_core::Who::You,
+                def: soldier,
+                n: 2,
+            }],
+        ));
+    });
+    put(&mut g, 0, "Kambal, Profiteering Mayor");
+    to_main1(&mut g, 6, 1);
+    let (mine, theirs) = (g.players[0].life, g.players[1].life);
+    let raise = hand(&mut g, 1, "Inkshield"); // standing in for two Soldier tokens
+    play(&mut g, raise, false, &[], &[]);
+    let copies = tokens(&g, 0, "Soldier");
+    assert_eq!(copies.len(), 2, "a copy of each");
+    assert!(copies.iter().all(|&c| g.obj(c).tapped), "tapped");
+    assert_eq!(
+        (g.players[0].life, g.players[1].life),
+        (mine + 1, theirs - 1),
+        "one drain for the batch of copies"
+    );
+    let again = hand(&mut g, 1, "Inkshield");
+    play(&mut g, again, false, &[], &[]);
+    assert_eq!(tokens(&g, 0, "Soldier").len(), 2, "only once each turn");
+}
