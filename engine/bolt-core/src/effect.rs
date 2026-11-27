@@ -3004,6 +3004,9 @@ pub enum Condition {
     ColorlessSpentAtLeast(u32),
     /// Its controller created a token this turn (Bennie Bracks), from `Game::token_created_turn`.
     YouCreatedTokenThisTurn,
+    /// Its controller controls at least this many lands with different names (The Necrobloom, Field
+    /// of the Dead: seven).
+    ControlLandsWithDifferentNamesAtLeast(u8),
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.

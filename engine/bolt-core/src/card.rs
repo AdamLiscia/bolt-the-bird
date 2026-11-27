@@ -1028,6 +1028,14 @@ pub struct CardDef {
     /// Activated abilities every other creature has, whoever controls it (Ygra, Eater of All: "{2},
     /// {T}, Sacrifice this permanent: You gain 3 life."), in `Game::borrowed_activated`.
     pub other_creatures_have: Vec<Activated>,
+    /// "Creature spells you control can't be countered." (Rhythm of the Wild, Surrak Dragonclaw), in
+    /// `Game::uncounterable`.
+    pub your_creature_spells_uncounterable: bool,
+    /// "[Color] spells you control can't be countered." (Allosaurus Shepherd: green, WUBRG index 4).
+    pub your_color_spells_uncounterable: Option<u8>,
+    /// "Nontoken creatures you control have riot." (Rhythm of the Wild): a nontoken creature spell
+    /// you control resolving onto the battlefield asks `Decision::Riot`.
+    pub your_nontoken_creatures_have_riot: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1537,6 +1545,9 @@ impl CardDef {
             exiles_opponents_cards_to_play: false,
             loyalty_at_instant_speed: false,
             other_creatures_have: Vec::new(),
+            your_creature_spells_uncounterable: false,
+            your_color_spells_uncounterable: None,
+            your_nontoken_creatures_have_riot: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1821,6 +1832,9 @@ impl CardDef {
             exiles_opponents_cards_to_play: false,
             loyalty_at_instant_speed: false,
             other_creatures_have: Vec::new(),
+            your_creature_spells_uncounterable: false,
+            your_color_spells_uncounterable: None,
+            your_nontoken_creatures_have_riot: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2105,6 +2119,9 @@ impl CardDef {
             exiles_opponents_cards_to_play: false,
             loyalty_at_instant_speed: false,
             other_creatures_have: Vec::new(),
+            your_creature_spells_uncounterable: false,
+            your_color_spells_uncounterable: None,
+            your_nontoken_creatures_have_riot: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

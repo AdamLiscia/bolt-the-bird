@@ -3666,3 +3666,48 @@ fn titans_presence_reveals_a_colorless_creature_and_exiles_by_its_power() {
     resolve_all(&mut g, &[]);
     assert_eq!(g.obj(titan).zone, Zone::Battlefield, "power 6 is more than 5");
 }
+
+// ---- Can't-be-countered statics and riot (2026-11-27) ----
+
+/// Player 0 casts `card`; player 1 answers with Counterspell on it; everything resolves (with
+/// `answers` for decisions). Returns the Counterspell.
+fn cast_into_counterspell(g: &mut Game, card: ObjId, answers: &[Action]) -> ObjId {
+    let counter = hand(g, 1, "Counterspell");
+    act(g, Action::Cast(card));
+    act(g, Action::PassPriority); // to player 1
+    act(g, Action::Cast(counter));
+    act(g, Action::Target(Target::Object(card)));
+    resolve_all(g, answers);
+    counter
+}
+
+#[test]
+fn rhythm_of_the_wild_makes_creature_spells_uncounterable_and_gives_riot() {
+    let mut g = table();
+    put(&mut g, 0, "Rhythm of the Wild");
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    let counter = cast_into_counterspell(&mut g, elves, &[Action::Mode(1)]); // riot: haste
+    assert_eq!(g.obj(counter).zone, Zone::Graveyard);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield, "can't be countered");
+    assert!(g.keywords(elves).has(Keywords::HASTE));
+    let lions = hand(&mut g, 0, "Savannah Lions");
+    play(&mut g, lions, false, &[], &[Action::Mode(0)]); // riot: a +1/+1 counter
+    assert_eq!(g.obj(lions).counters, 1);
+    assert!(!g.keywords(lions).has(Keywords::HASTE));
+    // A noncreature spell can still be countered.
+    let ring = hand(&mut g, 0, "Sol Ring");
+    cast_into_counterspell(&mut g, ring, &[]);
+    assert_eq!(g.obj(ring).zone, Zone::Graveyard);
+}
+
+#[test]
+fn surrak_dragonclaw_protects_creature_spells_and_tramples_the_team() {
+    let mut g = table();
+    let surrak = put(&mut g, 0, "Surrak Dragonclaw");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    assert!(g.keywords(lions).has(Keywords::TRAMPLE));
+    assert!(!g.keywords(surrak).has(Keywords::TRAMPLE), "other creatures");
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    cast_into_counterspell(&mut g, elves, &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+}

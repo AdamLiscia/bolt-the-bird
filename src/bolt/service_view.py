@@ -149,6 +149,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         if d == "ChooseCardType" and 0 <= value < 7:
             kinds = ("artifacts", "creatures", "enchantments", "instants", "lands", "planeswalkers", "sorceries")
             return f"{src or 'It'}: protection from {kinds[value]}"
+        if d == "Riot" and value in (0, 1):
+            return f"{card or 'It'}: riot, " + ("a +1/+1 counter" if value == 0 else "haste")
         if d == "TargetToSource":
             return f"Change target {value + 1} to {src or 'this creature'}"
         if d == "ChooseDungeon" and 0 <= value < len(dec.get("options", [])):

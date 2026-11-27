@@ -958,3 +958,15 @@ allow, so I don't recommend it.
 
 The Necrobloom also needs "if you control seven or more lands with different names" for its
 landfall Zombie (a small Condition, about 10 lines).
+
+### Can't-be-countered statics, riot, lands with different names (2026-11-27)
+
+- `CardDef::your_creature_spells_uncounterable`, `your_color_spells_uncounterable` (WUBRG index),
+  read in `Game::uncounterable` through `statically_uncounterable` (a spell on the stack whose
+  controller controls one): Rhythm of the Wild, Surrak Dragonclaw. Allosaurus Shepherd waits: its
+  Elves activation (base 5/5 and a Dinosaur until end of turn) has no effect yet (d3).
+- Riot from `CardDef::your_nontoken_creatures_have_riot`: `Decision::Riot` (Mode 0 a +1/+1 counter,
+  Mode 1 haste, labelled), asked as a nontoken creature spell you control resolves onto the
+  battlefield, as the Sieges' modes are; a creature put onto the battlefield another way gets no
+  choice (known limit).
+- `Condition::ControlLandsWithDifferentNamesAtLeast(n)` (The Necrobloom, Field of the Dead).

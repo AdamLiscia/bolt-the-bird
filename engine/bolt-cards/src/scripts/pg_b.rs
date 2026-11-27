@@ -2096,6 +2096,25 @@ pub fn script(name: &str) -> Option<Script> {
                 spell(d, vec![CREATURE], vec![Effect::ExileIfPowerAtMostExtra(0)]);
             },
         ),
+        "Rhythm of the Wild" => s(
+            &["Creature spells you control can't be countered.", "Nontoken creatures you control have riot."],
+            |d, _| {
+                d.your_creature_spells_uncounterable = true;
+                d.your_nontoken_creatures_have_riot = true;
+            },
+        ),
+        "Surrak Dragonclaw" => s(
+            &[
+                "This spell can't be countered.",
+                "Creature spells you control can't be countered.",
+                "Other creatures you control have trample.",
+            ],
+            |d, _| {
+                d.uncounterable = true;
+                d.your_creature_spells_uncounterable = true;
+                static_on(d, Scope::OtherYourCreatures, false, Keywords::TRAMPLE);
+            },
+        ),
         _ => None,
     }
 }
@@ -2340,6 +2359,8 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Valgavoth, Terror Eater",
     "Teferi, Master of Time",
     "Titan's Presence",
+    "Rhythm of the Wild",
+    "Surrak Dragonclaw",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",

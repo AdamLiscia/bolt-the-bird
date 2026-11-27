@@ -1356,6 +1356,8 @@ pub enum Decision {
     /// "You may pay {X}, where X is at most `max`. If you do, draw X cards." (Well of Lost Dreams):
     /// `Amount(x)` pays {x} and draws x (offered for each x you can pay); `Amount(0)` declines.
     PayXDrawX { max: u8 },
+    /// Riot (CR 702.136): `Mode(0)` for a +1/+1 counter on `card`, `Mode(1)` for haste.
+    Riot { card: ObjId },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -3720,7 +3722,24 @@ impl Game {
 
     /// "Can't be countered": printed, or from an effect as it was cast.
     fn uncounterable(&self, id: ObjId) -> bool {
-        self.def_of(id).uncounterable || self.obj(id).cast_uncounterable
+        self.def_of(id).uncounterable || self.obj(id).cast_uncounterable || self.statically_uncounterable(id)
+    }
+
+    /// "[Creature / color] spells you control can't be countered." (Rhythm of the Wild, Surrak
+    /// Dragonclaw, Allosaurus Shepherd): from a permanent its controller controls.
+    fn statically_uncounterable(&self, id: ObjId) -> bool {
+        if self.obj(id).zone != Zone::Stack {
+            return false;
+        }
+        let (creature, colors) = (self.types_of(id).creature, self.colors_of(id));
+        self.permanents(self.obj(id).controller)
+            .filter(|&x| !self.lost_abilities(x))
+            .any(|x| {
+                let d = self.def_of(x);
+                (d.your_creature_spells_uncounterable && creature)
+                    || d.your_color_spells_uncounterable
+                        .is_some_and(|k| colors[k as usize])
+            })
     }
 
     /// Clarion Conqueror: activated abilities of this artifact, creature or planeswalker on the
@@ -11811,6 +11830,20 @@ impl Game {
                     return;
                 }
             }
+            // Riot from Rhythm of the Wild: a nontoken creature spell you control, as it resolves
+            // onto the battlefield (one put onto the battlefield another way gets no choice).
+            if r.acts
+                && self.obj(source).zone == Zone::Battlefield
+                && self.types_of(source).creature
+                && !self.is_token(source)
+                && self
+                    .permanents(self.obj(source).controller)
+                    .any(|x| self.def_of(x).your_nontoken_creatures_have_riot && !self.lost_abilities(x))
+            {
+                let p = self.obj(source).controller;
+                self.ask(p, Decision::Riot { card: source });
+                return;
+            }
         }
         if self.end_turn {
             self.end_the_turn();
@@ -12147,6 +12180,7 @@ impl Game {
                 (0..5).filter(|&c| Some(c) != not).map(Action::Mode).collect()
             }
             Decision::ChooseEnterMode { .. } => vec![Action::Mode(0), Action::Mode(1)],
+            Decision::Riot { .. } => vec![Action::Mode(0), Action::Mode(1)],
             Decision::ChooseLandFace { .. } => vec![Action::Mode(0), Action::Mode(1)],
             Decision::ChooseCreatureType { options, .. } => {
                 (0..options.len() as u8).map(Action::Mode).collect()
@@ -13239,6 +13273,19 @@ impl Game {
         if let (Decision::ChooseLandFace { card }, Action::Mode(m)) = (&d, a) {
             self.obj_mut(*card).transformed = m == 1;
             self.give_priority(p);
+            return;
+        }
+        if let (Decision::Riot { card }, Action::Mode(m)) = (&d, a) {
+            if m == 0 {
+                self.add_counters(*card, 1);
+            } else {
+                self.obj_mut(*card).suspend_haste = true; // haste, as Hall of the Bandit Lord gives
+            }
+            if self.end_turn {
+                self.end_the_turn();
+            } else {
+                self.give_priority(self.active);
+            }
             return;
         }
         if let (Decision::ChooseEnterMode { card }, Action::Mode(m)) = (&d, a) {
@@ -22823,6 +22870,16 @@ impl Game {
             }
             Some(Condition::Kicked) => self.obj(source).kicked,
             Some(Condition::YouCreatedTokenThisTurn) => self.token_created_turn[controller] == self.turn,
+            Some(Condition::ControlLandsWithDifferentNamesAtLeast(n)) => {
+                let mut names: Vec<&str> = self
+                    .permanents(controller)
+                    .filter(|&x| self.types_of(x).land)
+                    .map(|x| self.def_of(x).name.as_str())
+                    .collect();
+                names.sort_unstable();
+                names.dedup();
+                names.len() >= *n as usize
+            }
             Some(Condition::ColorlessSpentAtLeast(n)) => {
                 self.colorless_spent.iter().any(|&(c, k)| c == source && k >= *n)
             }
