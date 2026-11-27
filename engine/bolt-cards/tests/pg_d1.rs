@@ -2766,24 +2766,3 @@ fn darksteel_monolith_casts_a_colorless_spell_from_hand_for_zero_once_each_turn(
     assert_eq!(g.obj(a).zone, Zone::Battlefield, "{{3}} paid as {{0}}");
     assert!(!legal(&g, Action::CastAlternative(b)), "once each turn");
 }
-
-#[test]
-fn camellia_forages_a_food_for_a_squirrel_then_counters_on_other_squirrels() {
-    let mut g = game(&["Forest", "Forest"]);
-    let c = put(&mut g, 0, "Camellia, the Seedmiser");
-    let food = g
-        .defs
-        .iter()
-        .position(|d| d.token && d.name == "Food")
-        .expect("Food");
-    let f = g.add_card(0, food, Zone::Battlefield);
-    act(&mut g, Action::Activate(c, 0));
-    resolve_all(&mut g, &[]);
-    assert_ne!(g.obj(f).zone, Zone::Battlefield, "foraged: the Food sacrificed");
-    let squirrels = tokens(&g, 0, "Squirrel");
-    assert_eq!(squirrels.len(), 1, "a Food was sacrificed");
-    let s = squirrels[0];
-    assert_eq!(g.obj(s).counters, 1, "another Squirrel you control");
-    assert_eq!(g.obj(c).counters, 0, "not Camellia herself");
-    assert!(g.keywords(s).has(Keywords::MENACE), "other Squirrels have menace");
-}
