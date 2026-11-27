@@ -1038,3 +1038,6 @@ the draw in `Decision::MayDrawGainOne`.
 The Necrobloom: landfall `Effect::CreateTokenBySevenLandNames` (a 0/1 Plant, or a 2/2 Zombie with
 seven or more land names) and dredge 2 for its controller's land cards. Tokens 52 (Plant) and 20
 (Zombie) are now green and black, as every card that makes them says.
+- Crewers are recorded like saddlers: `Game::crewed` (vehicle, zcc, crewer, zcc, turn), the named
+  creature and the CrewTap picks. Golden Argosy (pg_b): `Effect::ExileCrewersReturnTappedAtEnd`,
+  returned tapped through `Game::delayed_returns_tapped` at the next end step.
