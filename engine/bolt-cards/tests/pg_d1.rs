@@ -2766,3 +2766,50 @@ fn darksteel_monolith_casts_a_colorless_spell_from_hand_for_zero_once_each_turn(
     assert_eq!(g.obj(a).zone, Zone::Battlefield, "{{3}} paid as {{0}}");
     assert!(!legal(&g, Action::CastAlternative(b)), "once each turn");
 }
+
+// ---- The Gitrog, Ravenous Ride (RuricMo) ----
+
+#[test]
+fn witchs_cottage_enters_tapped_unless_three_other_swamps_then_tops_a_creature_card() {
+    let mut g = game(&["Swamp", "Swamp"]);
+    let c = hand(&mut g, 0, "Witch's Cottage");
+    act(&mut g, Action::PlayLand(c));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(c).tapped, "two other Swamps");
+    let mut g = game(&["Swamp", "Swamp", "Swamp"]);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Graveyard);
+    let c = hand(&mut g, 0, "Witch's Cottage");
+    act(&mut g, Action::PlayLand(c));
+    resolve_all(&mut g, &[Action::Target(Target::Object(elves)), Action::Yes]);
+    assert!(!g.obj(c).tapped, "three other Swamps");
+    assert_eq!(g.obj(elves).zone, Zone::Library);
+    assert_eq!(*g.players[0].library.last().unwrap(), elves, "on top");
+}
+
+#[test]
+fn jarad_drains_the_sacrificed_power_and_returns_for_a_swamp_and_a_forest() {
+    let mut g = table();
+    let jarad = put(&mut g, 0, "Jarad, Golgari Lich Lord");
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    g.add_card(0, cid("Llanowar Elves"), Zone::Graveyard);
+    assert_eq!(g.power(jarad), 3, "one creature card in the graveyard");
+    let life = g.players[1].life;
+    act(&mut g, Action::ActivateWith(jarad, 0, elves));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, life - 1, "the Elves' power");
+    // From the graveyard: a Swamp and a Forest.
+    let mut g2 = table();
+    let jarad = g2.add_card(0, cid("Jarad, Golgari Lich Lord"), Zone::Graveyard);
+    let swamps = |g: &Game| g.permanents(0).filter(|&x| g.def_of(x).name == "Swamp").count();
+    let forests = |g: &Game| g.permanents(0).filter(|&x| g.def_of(x).name == "Forest").count();
+    let (s, f) = (swamps(&g2), forests(&g2));
+    let ret = g2
+        .legal_actions()
+        .into_iter()
+        .find(|a| matches!(a, Action::Activate(c, _) if *c == jarad))
+        .expect("its graveyard ability");
+    act(&mut g2, ret);
+    resolve_all(&mut g2, &[]);
+    assert_eq!(g2.obj(jarad).zone, Zone::Hand);
+    assert_eq!((swamps(&g2), forests(&g2)), (s - 1, f - 1));
+}
