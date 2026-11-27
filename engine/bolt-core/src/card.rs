@@ -147,6 +147,10 @@ pub enum ExtraCost {
     /// or greater." Cast with `Action::Cast` (none) or `Action::CastWith` naming it (it's the
     /// spell's `extra`); `Effect::CopySourceSpellIfCasualty` makes the copy.
     Casualty(u8),
+    /// "As an additional cost to cast this spell, blight N or pay [mana]." (Bogslither's Embrace:
+    /// 1, {3}; Wild Unraveling: 2, {1}): `Action::Cast` pays the mana, `Action::CastWith` names a
+    /// creature you control to put N -1/-1 counters on (to blight N).
+    BlightOrPay(u8, ManaCost),
 }
 
 /// "This spell costs {N} less to cast if ..." (CR 601.2f).
@@ -390,6 +394,16 @@ pub struct Activated {
     pub remove_plus_counters: u8,
     /// The stack item's amount is the sacrificed creature's toughness (Miren, the Moaning Well).
     pub amount_from_victim_toughness: bool,
+    /// "Remove N counters from among other artifacts, creatures, and planeswalkers you control" in
+    /// the cost (Tekuthal, Inquiry Dominus: 3): the player picks each permanent
+    /// (`Decision::RemoveCountersFromOthers`) before the ability is activated. Demo rule for the
+    /// kind (until it's a Mode pick): the kind with the most counters on that permanent, never
+    /// loyalty (or lore) while another kind is present (`Game::remove_any_counter`).
+    pub remove_counters_from_others: u8,
+    /// "Sacrifice an artifact or creature" in the cost (Ravenous Squirrel): one
+    /// `Action::ActivateWith` per artifact or creature you control (the player's pick), kept out of
+    /// the mana payment.
+    pub sacrifice_artifact_or_creature: bool,
 }
 
 /// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,
@@ -1102,6 +1116,27 @@ pub struct CardDef {
     /// "If you would proliferate, proliferate twice instead." (Tekuthal, Inquiry Dominus), in
     /// `Effect::Proliferate`.
     pub proliferate_twice: bool,
+    /// "[This] can't be the target of abilities your opponents control." (Shanna, Sisay's
+    /// Legacy), in `target_legal`.
+    pub untargetable_by_opponents_abilities: bool,
+    /// An Aura: "Enchanted creature ... is a [type]" losing all other creature types (Noggle the
+    /// Mind: "Noggle"), in `Game::has_subtype`; its static gives the rest.
+    pub enchanted_creature_type_becomes: Option<&'static str>,
+    /// "Creatures you control are every creature type. The same is true for creature spells you
+    /// control and creature cards you own that aren't on the battlefield." (Maskwood Nexus)
+    pub your_creatures_every_creature_type: bool,
+    /// "Your opponents can't cast spells from anywhere other than their hands." (Drannith
+    /// Magistrate), in the priority and free-cast actions.
+    pub opponents_cast_only_from_hand: bool,
+    /// "If one or more -1/-1 counters would be put on a creature you control, that many -1/-1
+    /// counters minus one are put on it instead." (Vizier of Remedies), `Game::minus_counters_for`.
+    pub your_minus_counters_minus_one: bool,
+    /// Opposition Agent: "While an opponent is searching their library, they exile each card they
+    /// find. You may play those cards for as long as they remain exiled, and you may spend mana as
+    /// though it were mana of any color to cast them." (`SearchTo::ExiledForOpponent`). Not
+    /// modeled: "You control your opponents while they're searching their libraries" (1v1, the
+    /// searcher still chooses).
+    pub opponents_searches_exiled_for_you: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1312,6 +1347,25 @@ pub struct ManaExt {
     /// Cleave (CR 702.148): cast for this cost with `Action::CastAlternative`; the spell's effect
     /// reads the item's `alt` (Wash Away: {1}{U}{U}).
     pub cleave: Option<ManaCost>,
+    /// Sorcerer Class, level 2: "Creatures you control have '{T}: Add {U} or {R}. Spend this mana
+    /// only to cast an instant or sorcery spell or to gain a Class level.'" as (Class level
+    /// needed, colors): each untapped creature you control that could tap is a source of those
+    /// colors when paying for an instant or sorcery spell or a Class's level-up.
+    pub creatures_tap_for_instant_sorcery: Option<(u8, [bool; 5])>,
+    /// "Whenever a player taps a basic land for mana, that player adds one mana of any type that
+    /// land produced." (Lavaleaper): each basic land makes one more of its mana.
+    pub basic_lands_add_extra: bool,
+    /// "Lands you control enter untapped." (Horizon Explorer): overrides every "enters tapped".
+    pub your_lands_enter_untapped: bool,
+    /// "Instant and sorcery spells you cast cost {N} less to cast." (Case of the Ransacked Lab: 1)
+    pub instant_sorcery_discount: u8,
+    /// With `ExtraCost::BlightOrPay` on a modal spell: "If this spell's additional cost was paid,
+    /// choose both instead." (Pyrrhic Strike). `Action::CastModal` offers every mode but the last
+    /// (both); `Action::CastWith` naming a creature to blight casts the last mode.
+    pub blight_chooses_last_mode: bool,
+    /// "Creatures you control with power 2 or less can't be blocked by creatures with power 3 or
+    /// greater." (Delney, Streetwise Lookout)
+    pub small_creatures_evade_big: bool,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana
@@ -1335,6 +1389,11 @@ pub struct AltCostExt {
     /// Only while you haven't cast a spell this game (Once Upon a Time: "If this spell is the first
     /// spell you've cast this game, you may cast it without paying its mana cost.").
     pub first_spell_this_game: bool,
+    /// Only while you control a permanent with this subtype (Snuff Out: "If you control a Swamp").
+    pub if_you_control: Option<&'static str>,
+    /// Instead of paying, the opponent gains this much life (Invigorate: "you may have an opponent
+    /// gain 3 life"; one opponent).
+    pub opponent_gains: i32,
 }
 
 /// Which events don't cause abilities to trigger (see [`CardDef::suppresses_triggers`]).
@@ -1679,6 +1738,12 @@ impl CardDef {
             soulbond_damage_draw: false,
             your_subtypes_tap_for_green: &[],
             proliferate_twice: false,
+            untargetable_by_opponents_abilities: false,
+            enchanted_creature_type_becomes: None,
+            your_creatures_every_creature_type: false,
+            opponents_cast_only_from_hand: false,
+            your_minus_counters_minus_one: false,
+            opponents_searches_exiled_for_you: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1977,6 +2042,12 @@ impl CardDef {
             soulbond_damage_draw: false,
             your_subtypes_tap_for_green: &[],
             proliferate_twice: false,
+            untargetable_by_opponents_abilities: false,
+            enchanted_creature_type_becomes: None,
+            your_creatures_every_creature_type: false,
+            opponents_cast_only_from_hand: false,
+            your_minus_counters_minus_one: false,
+            opponents_searches_exiled_for_you: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2275,6 +2346,12 @@ impl CardDef {
             soulbond_damage_draw: false,
             your_subtypes_tap_for_green: &[],
             proliferate_twice: false,
+            untargetable_by_opponents_abilities: false,
+            enchanted_creature_type_becomes: None,
+            your_creatures_every_creature_type: false,
+            opponents_cast_only_from_hand: false,
+            your_minus_counters_minus_one: false,
+            opponents_searches_exiled_for_you: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2321,6 +2398,10 @@ pub struct ZonesExt {
     /// "You may cast spells with flash or flying from the top of your library." (Errant and Giada):
     /// printed flash or flying.
     pub top_spells_flash_or_flying: bool,
+    /// "As long as you've cast a spell this turn, you may play cards from the top of your library."
+    /// (Fortune Teller's Talent, level 2): while this permanent is at this Class level or higher (1:
+    /// always). 0: none.
+    pub top_cards_if_cast_spell_at_level: u8,
 }
 
 #[cfg(test)]
