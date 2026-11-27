@@ -700,8 +700,9 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
         humans = body.human_seats if body.human_seats is not None else [body.human_seat]
         if not humans or not set(humans) <= {0, 1} or len(set(humans)) != len(humans):
             raise ApiError(422, "human_seats must be [0], [1] or [0, 1] (or human_seat 0 or 1)")
-        if len(humans) == 1 and kit.net is None:
-            raise ApiError(422, f"{SET} bot play isn't trained yet: use human_seats [0, 1]")
+        if len(humans) == 1 and kit.net is None and body.pilot == "network":
+            # No trained network for this set (CMD): the smart and rules pilots don't need one.
+            raise ApiError(422, f"{SET} has no trained network yet: use pilot smart, smart_strong or rules")
         if len(humans) == 1 and body.pilot not in ("network", "smart", "smart_strong", "rules"):
             raise ApiError(422, "pilot must be network, smart, smart_strong or rules")
         commander = body.format == "commander"

@@ -1080,6 +1080,10 @@ pub struct CardDef {
     /// Tandem Lookout: while paired (soulbond), each of the pair has "Whenever this creature deals
     /// damage to an opponent, draw a card.": this card's `When::PairedDealsDamageToOpponent` trigger.
     pub soulbond_damage_draw: bool,
+    /// Mirrormind Crown: "As long as this Equipment is attached to a creature, the first time you
+    /// would create one or more tokens each turn, you may instead create that many tokens that are
+    /// copies of equipped creature." (`Game::mirrormind_crown`; the engine always takes the copies)
+    pub first_tokens_copy_equipped: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1639,6 +1643,7 @@ impl CardDef {
             lands_in_graveyard_have_dredge: None,
             fights_only_if_creature_died: false,
             soulbond_damage_draw: false,
+            first_tokens_copy_equipped: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1934,6 +1939,7 @@ impl CardDef {
             lands_in_graveyard_have_dredge: None,
             fights_only_if_creature_died: false,
             soulbond_damage_draw: false,
+            first_tokens_copy_equipped: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2229,6 +2235,7 @@ impl CardDef {
             lands_in_graveyard_have_dredge: None,
             fights_only_if_creature_died: false,
             soulbond_damage_draw: false,
+            first_tokens_copy_equipped: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

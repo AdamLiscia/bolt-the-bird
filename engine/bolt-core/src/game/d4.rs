@@ -472,6 +472,21 @@ impl Game {
                     });
                 }
             }
+            if let EmblemKind::OnYourColorSpellCast { color, trigger } = kind {
+                // `fire(p, YouCast)` comes from `finish_cast` with the spell already moved to the stack
+                // zone and before anything else can be: it's the newest card there. (`fire` passes no
+                // `extra` here; the cast code sets the triggers' `extra` to the spell only after
+                // `fire` returns, too late for this color check, so this assumes that ordering.)
+                let spell = self.stack.last().copied();
+                let hit = spell.is_some_and(|s| self.colors_of(s).get(color).copied().unwrap_or(false));
+                if owner == p && when == When::YouCast && hit {
+                    self.triggered.push(StackItem {
+                        kind: StackKind::Trigger(trigger),
+                        extra: spell,
+                        ..Game::casting(card, owner)
+                    });
+                }
+            }
         }
         self.fire_ring(p, when);
         match (when, self.initiative) {
@@ -662,6 +677,21 @@ impl Game {
                         let zcc = self.obj(c).zcc;
                         self.obj_mut(src).attached_to = Some((c, zcc));
                     }
+                }
+            }
+            SubsystemEffect::CastSpellsFromAnyGraveyardThisTurn => {
+                self.any_graveyard_spells_turn[p] = self.turn;
+            }
+            SubsystemEffect::DamageManaSpentOnThatSpell(slot) => {
+                let n = item.extra.map_or(0, |s| self.obj(s).mana_spent) as i32;
+                let ok = n > 0 && legal.get(slot as usize).copied().unwrap_or(false);
+                let t = match item.targets.get(slot as usize) {
+                    Some(&Chosen::Player(q)) if ok => Some(Target::Player(q)),
+                    Some(&Chosen::Object(o, _)) if ok => Some(Target::Object(o)),
+                    _ => None,
+                };
+                if let Some(t) = t {
+                    self.deal_damage(item.source, t, n);
                 }
             }
             SubsystemEffect::DamageEachOpponentTotalManaValueOfOthers => {
@@ -889,6 +919,35 @@ impl Game {
 
     /// Whether the Saga `id` has its chapter-`n` grants now: that chapter's grant resolved while
     /// it's been on the battlefield (CR 714; Urza's Saga).
+    /// Whether `p` may cast the instant or sorcery card `c` from a graveyard now, exiled instead
+    /// (`SubsystemEffect::CastSpellsFromAnyGraveyardThisTurn`, this turn only).
+    pub fn casts_from_any_graveyard(&self, p: PlayerId, c: ObjId) -> bool {
+        let t = self.def_of(c).types;
+        self.turn > 0
+            && self.any_graveyard_spells_turn[p] == self.turn
+            && self.obj(c).zone == Zone::Graveyard
+            && (t.instant || t.sorcery)
+    }
+
+    /// The Great Work's normal-cost route: instant and sorcery cards with their own flashback in any
+    /// graveyard, castable now for their mana cost (`Action::Cast`) besides their flashback cost
+    /// (`Action::CastFlashback`). Either way the spell is exiled instead of going to a graveyard.
+    pub(super) fn any_graveyard_mana_cost_casts(&self, p: PlayerId) -> Vec<ObjId> {
+        (0..2)
+            .flat_map(|q| self.players[q].graveyard.iter().copied())
+            .filter(|&c| self.def_of(c).flashback.is_some() && self.casts_from_any_graveyard(p, c))
+            .collect()
+    }
+
+    /// Whether the spell `id` leaving the stack was cast through `any_graveyard_mana_cost_casts`
+    /// (and forgets it): it's exiled instead.
+    pub(super) fn take_any_graveyard_cast(&mut self, id: ObjId) -> bool {
+        let zcc = self.obj(id).zcc;
+        let before = self.any_graveyard_casts.len();
+        self.any_graveyard_casts.retain(|&e| e != (id, zcc));
+        self.any_graveyard_casts.len() != before
+    }
+
     pub fn has_chapter_grant(&self, id: ObjId, n: u8) -> bool {
         let o = self.obj(id);
         o.zone == Zone::Battlefield

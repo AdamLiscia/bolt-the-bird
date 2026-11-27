@@ -846,3 +846,138 @@ fn fishers_talent_makes_a_fish_for_a_land_on_top_then_sharks_and_octopuses_by_le
     assert_eq!(named_tokens(&g, 0, "Shark"), 1, "level 3: no new Shark");
     assert_eq!(named_tokens(&g, 0, "Octopus"), 1, "Fish to Shark to Octopus");
 }
+
+// ---- Sagas on a transforming card's back face ----
+
+/// Answers each target or decision with `answers` in order, then the first legal answer, and passes
+/// priority until the stack is empty and nothing is pending.
+fn run(g: &mut Game, answers: &[Action]) {
+    let mut answers = answers.iter();
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) | Pending::Decide(_) => match answers.next() {
+                Some(&a) => a,
+                None => g.legal_actions()[0],
+            },
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+    assert!(answers.next().is_none(), "unused answers");
+}
+
+/// Starts player 0's turn `turn` and plays it to its first main phase, resolving what triggers
+/// (a Saga's lore counter after the draw step) with `answers`, then the first legal answers.
+fn next_main(g: &mut Game, turn: u32, answers: &[Action]) {
+    g.start_turn(turn, 0);
+    let mut answers = answers.iter();
+    while g.step != Step::Main1
+        || !g.items.is_empty()
+        || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_))
+    {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) | Pending::Decide(_) => match answers.next() {
+                Some(&a) => a,
+                None => g.legal_actions()[0],
+            },
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn sheoldred_transforms_with_eight_in_their_graveyard_and_the_true_scriptures_runs_its_chapters() {
+    let mut g = table();
+    let sheoldred = put(&mut g, 0, "Sheoldred // The True Scriptures");
+    let elves = put(&mut g, 1, "Llanowar Elves");
+    for _ in 0..7 {
+        g.add_card(1, cid("Plains"), Zone::Graveyard);
+    }
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(sheoldred, 0)),
+        "seven cards"
+    );
+    let bears = g.add_card(1, cid("Savannah Lions"), Zone::Graveyard);
+    assert!(g.legal_actions().contains(&Action::Activate(sheoldred, 0)));
+    act(&mut g, Action::Activate(sheoldred, 0));
+    // Chapter I: destroy up to one target creature or planeswalker that opponent controls.
+    run(&mut g, &[Action::Target(obj(elves))]);
+    assert!(g.obj(sheoldred).transformed);
+    assert_eq!(g.def_of(sheoldred).name, "The True Scriptures");
+    assert_eq!(g.obj(elves).zone, Zone::Graveyard, "chapter I");
+    // Chapter II: they discard three and mill three.
+    for _ in 0..4 {
+        g.add_card(1, cid("Island"), Zone::Hand);
+    }
+    let hand1 = g.players[1].hand.len();
+    let grave1 = g.players[1].graveyard.len();
+    next_main(&mut g, 5, &[]);
+    assert_eq!(g.obj(sheoldred).lore, 2);
+    assert_eq!(g.players[1].hand.len(), hand1 - 3, "three discarded");
+    assert_eq!(
+        g.players[1].graveyard.len(),
+        grave1 + 6,
+        "three discarded, three milled"
+    );
+    // Chapter III: every creature card from every graveyard is put onto the battlefield under
+    // player 0's control, and the Saga returns as Sheoldred.
+    let mine = g.add_card(0, cid("Llanowar Elves"), Zone::Graveyard);
+    next_main(&mut g, 7, &[]);
+    for c in [elves, bears, mine] {
+        assert_eq!(g.obj(c).zone, Zone::Battlefield);
+        assert_eq!(g.obj(c).controller, 0);
+    }
+    assert_eq!(g.obj(sheoldred).zone, Zone::Battlefield);
+    assert!(!g.obj(sheoldred).transformed, "front face up");
+    assert_eq!(g.def_of(sheoldred).name, "Sheoldred // The True Scriptures");
+}
+
+#[test]
+fn urabrask_pings_on_instants_transforms_after_three_and_the_great_work_casts_from_any_graveyard() {
+    let mut g = table();
+    let urabrask = put(&mut g, 0, "Urabrask // The Great Work");
+    let life = g.players[1].life;
+    for i in 0..3 {
+        assert!(
+            !g.legal_actions().contains(&Action::Activate(urabrask, 0)),
+            "{i} instants cast"
+        );
+        let bolt = hand(&mut g, 0, "Lightning Bolt");
+        act(&mut g, Action::Cast(bolt));
+        act(&mut g, Action::Target(Target::Player(1)));
+        run(&mut g, &[Action::Target(Target::Player(1))]);
+    }
+    assert_eq!(g.players[1].life, life - 3 * 4, "three Bolts and three pings");
+    let elves = put(&mut g, 1, "Llanowar Elves");
+    act(&mut g, Action::Activate(urabrask, 0));
+    // Chapter I: 3 damage to the target opponent and each creature they control.
+    run(&mut g, &[Action::Target(Target::Player(1))]);
+    assert!(g.obj(urabrask).transformed);
+    assert_eq!(g.def_of(urabrask).name, "The Great Work");
+    assert_eq!(g.players[1].life, life - 15);
+    assert_eq!(g.obj(elves).zone, Zone::Graveyard, "chapter I");
+    // Chapter II: three Treasures.
+    next_main(&mut g, 5, &[]);
+    let treasures = g
+        .permanents(0)
+        .filter(|&x| g.is_token(x) && g.def_of(x).name == "Treasure")
+        .count();
+    assert_eq!(treasures, 3);
+    // Chapter III: instants and sorceries in either graveyard can be cast this turn, and are exiled
+    // instead of going back to a graveyard.
+    let theirs = g.add_card(1, cid("Lightning Bolt"), Zone::Graveyard);
+    let creature = g.add_card(1, cid("Savannah Lions"), Zone::Graveyard);
+    assert!(!g.legal_actions().contains(&Action::CastFlashback(theirs)));
+    next_main(&mut g, 7, &[]);
+    assert!(!g.obj(urabrask).transformed, "front face up");
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::CastFlashback(theirs)));
+    assert!(!legal.contains(&Action::CastFlashback(creature)));
+    let before = g.players[1].life;
+    act(&mut g, Action::CastFlashback(theirs));
+    act(&mut g, Action::Target(Target::Player(1)));
+    run(&mut g, &[Action::Target(Target::Player(1))]);
+    assert_eq!(g.players[1].life, before - 4, "the Bolt and Urabrask's ping");
+    assert_eq!(g.obj(theirs).zone, Zone::Exile, "exiled instead");
+}

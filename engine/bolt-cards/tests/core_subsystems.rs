@@ -903,3 +903,133 @@ fn damage_equal_to_the_total_mana_value_of_your_other_permanents() {
     );
     assert_eq!(g.players[0].life, me);
 }
+
+// ---- The Great Work's chapter III; Chandra, Dressed to Kill's emblem ----
+
+#[test]
+fn instants_and_sorceries_in_any_graveyard_are_castable_this_turn_and_exiled_instead() {
+    let mut g = game_with(
+        vec![],
+        vec![sub(SubsystemEffect::CastSpellsFromAnyGraveyardThisTurn)],
+        |_| {},
+    );
+    let x = g.add_card(0, cid(CARD), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Lightning Bolt"), Zone::Graveyard);
+    let mine = g.add_card(0, cid("Lightning Bolt"), Zone::Graveyard);
+    let creature = g.add_card(1, cid("Llanowar Elves"), Zone::Graveyard);
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::CastFlashback(theirs)));
+    assert!(!legal.contains(&Action::CastFlashback(mine)));
+    activate(&mut g, x, &[]);
+    assert!(g.casts_from_any_graveyard(0, theirs));
+    assert!(!g.casts_from_any_graveyard(1, theirs), "only its controller");
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::CastFlashback(theirs)));
+    assert!(legal.contains(&Action::CastFlashback(mine)));
+    assert!(!legal.contains(&Action::CastFlashback(creature)));
+    let life = g.players[1].life;
+    for c in [theirs, mine] {
+        act(&mut g, Action::CastFlashback(c));
+        act(&mut g, Action::Target(Target::Player(1)));
+        settle(&mut g, &[]);
+        assert_eq!(g.obj(c).zone, Zone::Exile, "exiled instead");
+    }
+    assert_eq!(g.players[1].life, life - 6);
+    // Only this turn.
+    let late = g.add_card(1, cid("Lightning Bolt"), Zone::Graveyard);
+    assert!(
+        g.casts_from_any_graveyard(0, late),
+        "any card, while the turn lasts"
+    );
+    g.any_graveyard_spells_turn[0] = g.turn - 1;
+    assert!(!g.casts_from_any_graveyard(0, late), "an earlier turn's");
+    assert!(!g.legal_actions().contains(&Action::CastFlashback(late)));
+}
+
+#[test]
+fn a_color_spell_emblem_triggers_on_its_owners_spells_of_that_color_for_the_mana_spent() {
+    let mut g = game_with(vec![], vec![], |defs| {
+        defs[cid(CARD)].triggers.push(Trigger {
+            when: When::Never,
+            ability: Ability::new(
+                vec![Filter::ANY],
+                vec![sub(SubsystemEffect::DamageManaSpentOnThatSpell(0))],
+            ),
+        });
+    });
+    let x = g.add_card(0, cid(CARD), Zone::Graveyard);
+    let n = g.def_of(x).triggers.len() - 1;
+    g.emblems
+        .push((0, EmblemKind::OnYourColorSpellCast { color: 3, trigger: n }, x));
+    let life = g.players[1].life;
+    // A green spell: no trigger.
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Hand);
+    act(&mut g, Action::Cast(elves));
+    assert!(
+        !matches!(g.pending, Pending::ChooseTarget(_)),
+        "no trigger to target"
+    );
+    settle(&mut g, &[]);
+    assert_eq!(g.players[1].life, life);
+    // A red spell with mana value 1: 1 damage, to the target chosen for the emblem's trigger.
+    let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Hand);
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    settle(&mut g, &[Action::Target(Target::Player(1))]);
+    assert_eq!(g.players[1].life, life - 4, "the Bolt's 3 and the emblem's 1");
+    // The opponent's red spells don't trigger it.
+    let theirs = g.add_card(1, cid("Lightning Bolt"), Zone::Hand);
+    g.fire_subsystems(1, When::YouCast);
+    assert!(g.triggered.is_empty());
+    let _ = theirs;
+}
+
+#[test]
+fn a_card_with_its_own_flashback_is_castable_from_any_graveyard_for_either_cost() {
+    let mut g = game_with(
+        vec![],
+        vec![sub(SubsystemEffect::CastSpellsFromAnyGraveyardThisTurn)],
+        |_| {},
+    );
+    let x = g.add_card(0, cid(CARD), Zone::Battlefield);
+    let normal = g.add_card(1, cid("Think Twice"), Zone::Graveyard);
+    let flashback = g.add_card(1, cid("Think Twice"), Zone::Graveyard);
+    let own = g.add_card(0, cid("Think Twice"), Zone::Graveyard);
+    assert!(!g.legal_actions().contains(&Action::Cast(normal)));
+    activate(&mut g, x, &[]);
+    let legal = g.legal_actions();
+    for c in [normal, flashback, own] {
+        assert!(legal.contains(&Action::Cast(c)), "its mana cost");
+        assert!(legal.contains(&Action::CastFlashback(c)), "its flashback cost");
+    }
+    let untapped = |g: &Game| {
+        g.permanents(0)
+            .filter(|&l| g.def_of(l).types.land && !g.obj(l).tapped)
+            .count()
+    };
+    let hand = g.players[0].hand.len();
+    let lands = untapped(&g);
+    act(&mut g, Action::Cast(normal));
+    settle(&mut g, &[]);
+    assert_eq!(untapped(&g), lands - 2, "{{1}}{{U}}");
+    assert_eq!(g.obj(normal).zone, Zone::Exile, "exiled instead");
+    let lands = untapped(&g);
+    act(&mut g, Action::CastFlashback(flashback));
+    settle(&mut g, &[]);
+    assert_eq!(untapped(&g), lands - 3, "{{2}}{{U}}");
+    assert_eq!(g.obj(flashback).zone, Zone::Exile);
+    assert_eq!(g.players[0].hand.len(), hand + 2);
+    assert!(g.any_graveyard_casts.is_empty(), "forgotten as it left the stack");
+    // Its own graveyard too; a cast from hand still goes to the graveyard.
+    act(&mut g, Action::Cast(own));
+    settle(&mut g, &[]);
+    assert_eq!(g.obj(own).zone, Zone::Exile);
+    let from_hand = g.add_card(0, cid("Think Twice"), Zone::Hand);
+    act(&mut g, Action::Cast(from_hand));
+    settle(&mut g, &[]);
+    assert_eq!(
+        g.obj(from_hand).zone,
+        Zone::Graveyard,
+        "cast from hand: to the graveyard"
+    );
+}

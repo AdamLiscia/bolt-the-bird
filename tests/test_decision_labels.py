@@ -284,3 +284,9 @@ def test_rose_room_treasurer_pays_x_for_x_damage():
     dec = {"kind": "PayXDamage", "max": 4}
     assert label(dec, "Amount", 0) == "Don't pay"
     assert label(dec, "Amount", 3) == "Pay {3}: 3 damage"
+
+
+def test_mirrormind_crown_asks_copies_or_the_tokens():
+    dec = {"kind": "MirrormindCopies"}
+    assert label(dec, "Yes", 0) == "Make copies of the equipped creature instead"
+    assert label(dec, "No", 0) == "Make the tokens"
