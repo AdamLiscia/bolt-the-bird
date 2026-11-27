@@ -3962,6 +3962,10 @@ pub enum When {
     TappedForMana,
     /// "Whenever you sacrifice an artifact or creature" (Ravenous Squirrel), each one.
     YouSacrificeArtifactOrCreature,
+    /// Only as a delayed trigger (`Effect::DelayedThisTurn`): "Whenever a creature you control deals
+    /// combat damage to a player or planeswalker this turn" (Flitterwing Nuisance), once for each
+    /// creature and each player or planeswalker it deals combat damage to.
+    YourCreatureDealsCombatDamageToPlayerOrPlaneswalkerThisTurn,
 }
 
 #[derive(Clone, Debug, PartialEq)]

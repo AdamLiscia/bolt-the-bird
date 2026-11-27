@@ -27493,6 +27493,27 @@ impl Game {
                 Target::Object(_) => 0,
             };
             self.deal_damage(source, target, amount);
+            // Flitterwing Nuisance's delayed "a creature you control deals combat damage to a player
+            // or planeswalker this turn".
+            let at_player_or_walker = match target {
+                Target::Player(_) => true,
+                Target::Object(w) => self.types_of(w).planeswalker,
+            };
+            if amount > 0 && at_player_or_walker {
+                let (by, turn) = (self.obj(source).controller, self.turn);
+                for (w, src, n, who, t) in self.delayed_this_turn.clone() {
+                    if w == When::YourCreatureDealsCombatDamageToPlayerOrPlaneswalkerThisTurn
+                        && who == by
+                        && t == turn
+                    {
+                        self.triggered.push(StackItem {
+                            kind: StackKind::Trigger(n),
+                            extra: Some(source),
+                            ..Game::casting(src, who)
+                        });
+                    }
+                }
+            }
             if let Target::Player(d) = target {
                 // CR 903.10a: combat damage from the opponent's commander.
                 if self.is_commander(source) && self.obj(source).owner != d {
