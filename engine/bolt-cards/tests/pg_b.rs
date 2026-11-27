@@ -4167,7 +4167,7 @@ fn the_original_duals_tap_for_their_two_colors() {
     assert_eq!(
         colors_of(&g, tundra),
         [[true, true, false, false, false]],
-        "{W} or {U}"
+        "{{W}} or {{U}}"
     );
     assert!(g.has_subtype(tundra, "Plains") && g.has_subtype(tundra, "Island"));
     for name in ["Badlands", "Bayou", "Plateau", "Savannah", "Scrubland", "Taiga"] {
