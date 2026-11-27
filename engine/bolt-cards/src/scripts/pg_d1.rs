@@ -1887,8 +1887,8 @@ pub fn script(name: &str) -> Option<Script> {
                 "{T}: Add one mana of any color.",
             ],
             |d, _| {
-                // Simplification: it's on the battlefield while the choice is asked (before anyone
-                // gets priority), so "whenever an artifact enters" abilities see it.
+                // Asked as the spell resolves, before it would enter (CR 614.1c). Simplification: put
+                // onto the battlefield by an effect instead of cast, it isn't asked.
                 d.mana_ext.enters_discard_land_or_graveyard = true;
                 d.mana = Some(ManaSource::of(&Color::ALL));
             },

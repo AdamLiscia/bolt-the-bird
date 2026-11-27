@@ -1357,8 +1357,8 @@ pub struct ManaExt {
     pub mana_imprinted_colors: bool,
     /// "If this artifact would enter, you may discard a land card instead. If you do, put this
     /// artifact onto the battlefield. If you don't, put it into its owner's graveyard." (Mox
-    /// Diamond): asked as it enters, before anyone gets priority, as
-    /// `Decision::DiscardLandOrGraveyard`.
+    /// Diamond): a replacement (CR 614.1c) asked as the spell resolves, before it would enter, as
+    /// `Decision::DiscardLandOrGraveyard`; declined, it goes from the stack to the graveyard.
     pub enters_discard_land_or_graveyard: bool,
     /// "Enchanted creature can attack as though it had haste." (Instill Energy)
     pub enchanted_attacks_as_haste: bool,

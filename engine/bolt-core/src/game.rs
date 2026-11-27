@@ -5866,9 +5866,6 @@ impl Game {
             if def.shock_land && !untapped {
                 self.obj_mut(id).shock_pending = true;
             }
-            if def.mana_ext.enters_discard_land_or_graveyard {
-                self.obj_mut(id).shock_pending = true; // Mox Diamond: asked like a shock land
-            }
             if def.zones.enters_as_land_copy_tapped {
                 self.obj_mut(id).land_copy_pending = true; // Vesuva
             }
@@ -13175,6 +13172,18 @@ impl Game {
                 let owner = self.obj(source).owner;
                 self.move_to(source, Zone::Library);
                 self.shuffle_library(owner);
+            } else if r.acts
+                && self.def_of(source).mana_ext.enters_discard_land_or_graveyard
+                && self.obj(source).zone == Zone::Stack
+            {
+                // Mox Diamond (CR 614.1c): the discard is chosen before it would enter; it stays on
+                // the stack until then, so nothing sees it enter unless a land is discarded.
+                self.events.push(Event::Resolved { card: source });
+                self.ask(
+                    r.item.controller,
+                    Decision::DiscardLandOrGraveyard { card: source },
+                );
+                return;
             } else if r.acts && self.types_of(source).is_permanent() {
                 self.move_to(source, Zone::Battlefield);
                 self.obj_mut(source).controller = r.item.controller;
@@ -15061,12 +15070,22 @@ impl Game {
             return;
         }
         if let Decision::DiscardLandOrGraveyard { card } = d {
-            match a {
-                Action::Pick(land) => self.move_to(land, Zone::Graveyard), // discarded; it stays
-                _ => self.move_to(card, Zone::Graveyard),
+            if self.obj(card).zone == Zone::Stack {
+                match a {
+                    Action::Pick(land) => {
+                        self.move_to(land, Zone::Graveyard); // discarded
+                        self.move_to(card, Zone::Battlefield);
+                        self.obj_mut(card).controller = p;
+                        self.obj_mut(card).was_cast = true;
+                    }
+                    _ => self.move_to(card, Zone::Graveyard), // straight from the stack
+                }
             }
-            let then = self.shock_then;
-            self.give_priority(then);
+            if self.end_turn {
+                self.end_the_turn();
+            } else {
+                self.give_priority(self.active);
+            }
             return;
         }
         if let Decision::ShockLand { card } = d {
@@ -26079,10 +26098,6 @@ impl Game {
                 self.obj_mut(c).shock_pending = false;
                 self.shock_then = p;
                 let owner = self.obj(c).controller;
-                if self.def_of(c).mana_ext.enters_discard_land_or_graveyard {
-                    self.ask(owner, Decision::DiscardLandOrGraveyard { card: c }); // Mox Diamond
-                    return;
-                }
                 self.ask(owner, Decision::ShockLand { card: c });
                 return;
             }

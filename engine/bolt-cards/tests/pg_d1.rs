@@ -3843,20 +3843,29 @@ fn chrome_mox_imprints_a_card_and_taps_for_its_colors() {
 
 #[test]
 fn mox_diamond_stays_only_if_you_discard_a_land() {
+    // Reckless Fireweaver: "Whenever an artifact you control enters, ... 1 damage to each opponent."
     let mut g = game(&[]);
+    put(&mut g, 0, "Reckless Fireweaver");
     let forest = hand(&mut g, 0, "Forest");
     let mox = hand(&mut g, 0, "Mox Diamond");
     act(&mut g, Action::Cast(mox));
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::PassPriority);
+    assert!(matches!(g.pending, Pending::Decide(_)));
+    assert_eq!(g.obj(mox).zone, Zone::Stack, "asked before it enters");
     resolve_all(&mut g, &[Action::Pick(forest)]);
     assert_eq!(g.obj(forest).zone, Zone::Graveyard, "discarded");
     assert_eq!(g.obj(mox).zone, Zone::Battlefield);
+    assert_eq!(g.players[1].life, 39, "it entered: the trigger fired");
 
     let mut g = game(&[]);
+    put(&mut g, 0, "Reckless Fireweaver");
     hand(&mut g, 0, "Forest");
     let mox = hand(&mut g, 0, "Mox Diamond");
     act(&mut g, Action::Cast(mox));
     resolve_all(&mut g, &[Action::No]);
     assert_eq!(g.obj(mox).zone, Zone::Graveyard, "no land discarded");
+    assert_eq!(g.players[1].life, 40, "it never entered: no trigger");
 }
 
 #[test]
