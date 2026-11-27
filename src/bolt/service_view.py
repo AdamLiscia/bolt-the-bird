@@ -146,6 +146,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         if d == "ChooseKickCount":
             times = "once" if value == 1 else f"{value} times"
             return f"Kick {card} {times}" if card else f"Kick {times}"
+        if d == "PayAnyAmountForTokens":
+            return f"Pay {value} mana ({value} Squirrels)" if value else "Pay nothing"
         return None
     if d in ("ChooseCounterKind", "MoveCounterKind") and kind == "Mode":
         kinds = ("+1/+1", "-1/-1", "stun", "incubation", "soul", "revival", "fellowship", "bait")

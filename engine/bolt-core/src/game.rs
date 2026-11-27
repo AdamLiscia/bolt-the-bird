@@ -1605,6 +1605,15 @@ pub enum Decision {
     /// Devour `n` for `card`: `Pick` another creature you control to sacrifice (`card` gets `n`
     /// +1/+1 counters for it), or `No` to stop.
     Devour { card: ObjId, n: u8 },
+    /// Liege of the Hollows: `Amount` the mana `player` pays (0 up to what they can pay); then the
+    /// next player is asked, and after the last each creates that many `def` tokens. `paid` holds
+    /// the earlier answers (player, amount).
+    PayAnyAmountForTokens {
+        player: PlayerId,
+        max: u8,
+        def: usize,
+        paid: Vec<(PlayerId, u8)>,
+    },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -2197,6 +2206,8 @@ pub struct Game {
     /// priority (`give_priority`), as riot is.
     pub devour_pending: Vec<(ObjId, u32)>,
     devour_then: PlayerId,
+    /// The turn each player's lands enter tapped (Nahiri's Lithoforming); 0 for none.
+    pub lands_enter_tapped_turn: [u32; 2],
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2533,6 +2544,7 @@ impl Game {
             spell_mana_eot: [(0, 0); 2],
             devour_pending: Vec::new(),
             devour_then: 0,
+            lands_enter_tapped_turn: [0; 2],
         }
     }
 
@@ -4567,6 +4579,33 @@ impl Game {
         v
     }
 
+    /// Liege of the Hollows: asks `q` how much mana to pay (up to what they can pay now).
+    fn ask_pay_any_amount(&mut self, q: PlayerId, def: usize, paid: Vec<(PlayerId, u8)>) {
+        let mut max = 0u8;
+        while max < 40
+            && self.can_pay_for(
+                q,
+                &ManaCost {
+                    generic: max + 1,
+                    ..ManaCost::default()
+                },
+                None,
+                PayFor::Other,
+            )
+        {
+            max += 1;
+        }
+        self.ask(
+            q,
+            Decision::PayAnyAmountForTokens {
+                player: q,
+                max,
+                def,
+                paid,
+            },
+        );
+    }
+
     /// Whether `card`'s controller has another creature it could devour.
     fn devour_options(&self, card: ObjId) -> bool {
         let p = self.obj(card).controller;
@@ -6390,6 +6429,10 @@ impl Game {
             self.fire(c, When::AnotherPermanentYouControlEnters, Some(id));
             for t in &mut self.triggered[entering..] {
                 t.extra = Some(id); // the entering permanent (Kodama of the East Tree)
+            }
+            if self.types_of(id).creature || self.types_of(id).artifact {
+                self.fire(c, When::AnotherCreatureOrArtifactYouControlEnters, Some(id));
+                // Weftstalker
             }
             let before = self.triggered.len();
             if self.types_of(id).artifact {
@@ -9069,6 +9112,9 @@ impl Game {
             if t.instant || t.sorcery || mode.mode == Some(OMEN_MODE) {
                 n += e.instant_sorcery_discount as usize; // Case of the Ransacked Lab
             }
+            if !creature {
+                n += e.noncreature_spell_discount as usize; // Valeria Richards
+            }
             if let Some((sub, less)) = e.subtype_spell_discount {
                 if mode.mode != Some(OMEN_MODE) && def.subtypes.iter().any(|s| s == sub) {
                     n += less as usize; // Nogi: Dragon spells
@@ -10631,6 +10677,10 @@ impl Game {
                     v.extend(
                         self.creatures(p)
                             .filter(|&c| c != id && !self.cant_be_sacrificed(c))
+                            .filter(|&c| {
+                                a.sacrifice_other_color
+                                    .is_none_or(|k| self.colors_of(c)[k as usize])
+                            })
                             .map(|c| Action::ActivateWith(id, n, c)),
                     );
                 } else if let Some(sub) = a.sacrifice_subtype {
@@ -12147,6 +12197,9 @@ impl Game {
     /// The d1 theme's "enters tapped unless" rules (see [`crate::card::ManaExt`]): whether `id`,
     /// entering under `p`'s control, enters tapped.
     fn mana_ext_enters_tapped(&self, id: ObjId, p: PlayerId) -> bool {
+        if self.types_of(id).land && self.lands_enter_tapped_turn[p] == self.turn && self.turn > 0 {
+            return true; // Nahiri's Lithoforming: "Lands you control enter tapped this turn."
+        }
         let e = &self.def_of(id).mana_ext;
         let other_lands = self
             .permanents(p)
@@ -13568,6 +13621,7 @@ impl Game {
             self.fire(opponent(p), When::OpponentCastsFirstMulticolored, None);
         }
         if noncreature && self.noncreature_casts[p] == (self.turn, 1) {
+            self.fire(p, When::YouCastFirstNoncreature, None);
             self.fire(opponent(p), When::OpponentCastsFirstNoncreature, None);
         }
         if self.types_of(card).legendary {
@@ -14991,6 +15045,7 @@ impl Game {
             }
             Decision::ChooseEnterMode { .. } => vec![Action::Mode(0), Action::Mode(1)],
             Decision::Riot { .. } => vec![Action::Mode(0), Action::Mode(1)],
+            Decision::PayAnyAmountForTokens { max, .. } => (0..=*max).map(Action::Amount).collect(),
             Decision::Devour { card, .. } => {
                 let mut v: Vec<Action> = self
                     .creatures(p)
@@ -16533,6 +16588,38 @@ impl Game {
             let then = self.riot_then;
             self.give_priority(then);
             return;
+        }
+        if let Decision::PayAnyAmountForTokens {
+            player,
+            def,
+            mut paid,
+            ..
+        } = d.clone()
+        {
+            if let Action::Amount(x) = a {
+                if x > 0 {
+                    let cost = ManaCost {
+                        generic: x,
+                        ..ManaCost::default()
+                    };
+                    self.pay_mana(player, &cost, None);
+                }
+                paid.push((player, x));
+                if paid.len() < 2 {
+                    self.ask_pay_any_amount(opponent(player), def, paid);
+                    return;
+                }
+                // "Then each player creates" that many tokens.
+                for (q, n) in paid {
+                    for _ in 0..n {
+                        self.create_token(q, def);
+                    }
+                }
+                if self.decision.is_none() {
+                    self.continue_resolving();
+                }
+                return;
+            }
         }
         if let Decision::Devour { card, n } = d {
             if let Action::Pick(x) = a {
@@ -19310,6 +19397,13 @@ impl Game {
                 } else {
                     self.fabricate_servos(item.controller, n, servo); // CR 702.123b
                 }
+            }
+            Effect::YourLandsEnterTappedThisTurn => {
+                self.lands_enter_tapped_turn[item.controller] = self.turn;
+            }
+            Effect::EachPlayerMayPayAnyManaForTokens { def } => {
+                let first = self.active;
+                self.ask_pay_any_amount(first, def, Vec::new());
             }
             Effect::AddSpellManaUntilEotPerAttackingPower => {
                 let p = item.controller;

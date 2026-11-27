@@ -2375,6 +2375,51 @@ pub fn script(name: &str) -> Option<Script> {
                 activated(d, "", true, vec![], vec![Effect::AddManaSourcePower(Color::Green)]);
             },
         ),
+        "Valeria Richards, Precocious" => s(
+            &["Noncreature spells you cast cost {1} less to cast.", "Whenever you cast your first noncreature spell each turn, draw a card."],
+            |d, _| {
+                d.mana_ext.noncreature_spell_discount = 1;
+                on(d, When::YouCastFirstNoncreature, vec![], vec![draw(1)]);
+            },
+        ),
+        "Ayara, First of Locthwain" => s(
+            &[
+                "Whenever Ayara or another black creature you control enters, each opponent loses 1 life and you gain 1 life.",
+                "{T}, Sacrifice another black creature: Draw a card.",
+            ],
+            |d, _| {
+                let drain = vec![Effect::LoseLife { who: Who::EachOpponent, n: 1 }, Effect::GainLife { who: Who::You, n: 1 }];
+                on(d, When::Enters, vec![], drain.clone());
+                on(d, When::AnotherCreatureYouControlEntersWithColor(Color::Black as usize), vec![], drain);
+                let n = activated(d, "", true, vec![], vec![draw(1)]);
+                d.activated[n].sacrifice_other_creature = true;
+                d.activated[n].sacrifice_other_color = Some(Color::Black as u8);
+            },
+        ),
+        "Weftstalker Ardent" => s(
+            &["Whenever another creature or artifact you control enters, this creature deals 1 damage to each opponent.", "Warp {R}"],
+            |d, _| {
+                on(d, When::AnotherCreatureOrArtifactYouControlEnters, vec![], vec![damage(1, Recipient::EachOpponent)]);
+                d.warp = ManaCost::parse("{R}");
+            },
+        ),
+        "Liege of the Hollows" => s(
+            &["When this creature dies, each player may pay any amount of mana. Then each player creates a number of 1/1 green Squirrel creature tokens equal to the amount of mana they paid this way."],
+            |d, t| {
+                on(d, When::Dies, vec![], vec![Effect::EachPlayerMayPayAnyManaForTokens { def: t.squirrel }]);
+            },
+        ),
+        "Nahiri's Lithoforming" => s(
+            &["Sacrifice X lands. For each land sacrificed this way, draw a card. You may play X additional lands this turn. Lands you control enter tapped this turn."],
+            |d, _| {
+                // d3's SacrificeXLandsDrawEach (the player picks each land) and ExtraLandsThisTurnX.
+                spell(
+                    d,
+                    vec![],
+                    vec![Effect::SacrificeXLandsDrawEach, Effect::ExtraLandsThisTurnX, Effect::YourLandsEnterTappedThisTurn],
+                );
+            },
+        ),
         "Castle Garenbrig" => s(
             &[
                 "This land enters tapped unless you control a Forest.",
@@ -2683,4 +2728,9 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Klauth, Unrivaled Ancient",
     "Dragon Broodmother",
     "Cradle Clearcutter",
+    "Valeria Richards, Precocious",
+    "Ayara, First of Locthwain",
+    "Weftstalker Ardent",
+    "Liege of the Hollows",
+    "Nahiri's Lithoforming",
 ];

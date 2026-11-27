@@ -7574,8 +7574,8 @@
    "missing": "this or another black creature you control enters",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "owner": "d1",
+   "status": "d1 batch 47: scripted (handback from d2): Activated::sacrifice_other_color, the player names the creature"
   },
   {
    "card": "Cruel Celebrant",
@@ -7655,8 +7655,8 @@
    "missing": "an opponent casts a noncreature spell; a creature deals combat damage to you (Food mana: d1)",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "owner": "d1",
+   "status": "handback to d1 for the Food mana (named taps, the player's choice); the 'creature deals combat damage to you' trigger is d2's"
   },
   {
    "card": "Fandaniel, Telophoroi Ascian",
@@ -7745,8 +7745,8 @@
    "missing": "your first noncreature spell each turn",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "owner": "d1",
+   "status": "d1 batch 47: scripted (handback from d2): ManaExt::noncreature_spell_discount, When::YouCastFirstNoncreature"
   },
   {
    "card": "Wizard's Staff",
@@ -7799,8 +7799,8 @@
    "missing": "dies: each player may pay any amount, Squirrels (needs token: 1/1 green Squirrel)",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "owner": "d1",
+   "status": "d1 batch 47: scripted (handback from d2): Effect::EachPlayerMayPayAnyManaForTokens, Decision::PayAnyAmountForTokens"
   },
   {
    "card": "Lifecrafter's Bestiary",
@@ -8300,6 +8300,14 @@
    "lane": "d1",
    "theme": "mana",
    "owner": "d3"
+  },
+  {
+   "card": "Devour (enters-with timing)",
+   "deck": "-",
+   "missing": "devour should be an enters-with replacement (CR 702.82a); d1's Decision::Devour asks just after it enters (accepted for the demo). Post-demo.",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "mac-b"
   }
  ]
 }

@@ -427,6 +427,9 @@ pub struct Activated {
     /// isn't the permanent's own {T}); it's tapped before the mana is paid, so it can't also tap for
     /// that mana. Matched with `Game::target_ok` (it isn't targeted, but your own permanents pass).
     pub tap_named_permanent: Option<crate::effect::Filter>,
+    /// With `sacrifice_other_creature`: only a creature of this color (WUBRG index) (Ayara, First
+    /// of Locthwain: "Sacrifice another black creature"), named via `Action::ActivateWith`.
+    pub sacrifice_other_color: Option<u8>,
 }
 
 /// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,
@@ -1460,6 +1463,8 @@ pub struct ManaExt {
     /// permanent is then this power, toughness and colors (`Object::prototyped`) (Cradle
     /// Clearcutter: {2}{G}, 1/3, green).
     pub prototype: Option<(crate::mana::ManaCost, i32, i32, [bool; 5])>,
+    /// "Noncreature spells you cast cost {N} less to cast." (Valeria Richards, Precocious: 1)
+    pub noncreature_spell_discount: u8,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana
