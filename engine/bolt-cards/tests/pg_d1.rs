@@ -4699,3 +4699,132 @@ fn ral_leyline_prodigy_minus_eight_casts_exiled_instants_and_sorceries_free() {
         "free, from exile, this turn"
     );
 }
+
+/// Taps every land of player 0's except `keep`.
+fn tap_lands_except(g: &mut Game, keep: &[ObjId]) {
+    for l in g.permanents(0).collect::<Vec<_>>() {
+        if g.types_of(l).land && !keep.contains(&l) {
+            g.objects[l.0 as usize].tapped = true;
+        }
+    }
+}
+
+#[test]
+fn urza_s_incubator_discounts_creature_spells_of_the_chosen_type() {
+    let mut g = table();
+    let inc = put(&mut g, 0, "Urza's Incubator");
+    g.objects[inc.0 as usize].chosen_type = Some("Shaman".to_string());
+    let forests: Vec<ObjId> = g
+        .permanents(0)
+        .filter(|&x| g.def_of(x).name == "Forest")
+        .take(2)
+        .collect();
+    tap_lands_except(&mut g, &forests);
+    let witness = hand(&mut g, 0, "Eternal Witness");
+    assert!(
+        g.legal_actions().contains(&Action::Cast(witness)),
+        "{{1}}{{G}}{{G}} less {{2}}: {{G}}{{G}}"
+    );
+    g.objects[inc.0 as usize].chosen_type = Some("Elf".to_string());
+    assert!(!g.legal_actions().contains(&Action::Cast(witness)), "not an Elf");
+}
+
+#[test]
+fn haven_of_the_spirit_dragon_colors_only_dragon_creature_spells_and_returns_a_dragon() {
+    let mut g = table();
+    let haven = put(&mut g, 0, "Haven of the Spirit Dragon");
+    let plains: Vec<ObjId> = g
+        .permanents(0)
+        .filter(|&x| g.def_of(x).name == "Plains")
+        .take(2)
+        .collect();
+    tap_lands_except(&mut g, &[haven, plains[0], plains[1]]);
+    let gadrak = hand(&mut g, 0, "Gadrak, the Crown-Scourge");
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    let legal = g.legal_actions();
+    assert!(
+        legal.contains(&Action::Cast(gadrak)),
+        "{{R}} from the Haven for a Dragon creature"
+    );
+    assert!(!legal.contains(&Action::Cast(bolt)), "not for a non-Dragon spell");
+    // {2}, {T}, sacrifice: a Dragon card back to hand.
+    let mut g = table();
+    let haven = put(&mut g, 0, "Haven of the Spirit Dragon");
+    let dead = g.add_card(0, cid("Gadrak, the Crown-Scourge"), Zone::Graveyard);
+    let elf = g.add_card(0, cid("Llanowar Elves"), Zone::Graveyard);
+    act(&mut g, Action::Activate(haven, 0));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(elf))),
+        "not a Dragon"
+    );
+    act(&mut g, Action::Target(obj(dead)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(dead).zone, Zone::Hand);
+    assert_eq!(g.obj(haven).zone, Zone::Graveyard, "sacrificed");
+}
+
+#[test]
+fn crypt_of_agadeem_enters_tapped_and_adds_black_per_black_creature_card() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Crypt of Agadeem");
+    act(&mut g, Action::PlayLand(c));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(c).tapped);
+    let mut g = table();
+    let crypt = put(&mut g, 0, "Crypt of Agadeem");
+    g.add_card(0, cid("Blood Artist"), Zone::Graveyard);
+    g.add_card(0, cid("Viscera Seer"), Zone::Graveyard);
+    g.add_card(0, cid("Llanowar Elves"), Zone::Graveyard);
+    act(&mut g, Action::Activate(crypt, 0));
+    resolve_all(&mut g, &[]);
+    let black = g.players[0]
+        .pool
+        .iter()
+        .filter(|m| m.colors == [false, false, true, false, false])
+        .count();
+    assert_eq!(black, 2, "{:?}", g.players[0].pool);
+}
+
+#[test]
+fn nesting_grounds_moves_a_counter_and_asks_the_kind() {
+    let mut g = table();
+    let ng = put(&mut g, 0, "Nesting Grounds");
+    let a = put(&mut g, 0, "Llanowar Elves");
+    let b = put(&mut g, 1, "Llanowar Elves");
+    set_counters(&mut g, a, 2);
+    act(&mut g, Action::Activate(ng, 0));
+    act(&mut g, Action::Target(obj(a)));
+    act(&mut g, Action::Target(obj(b)));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.obj(a).counters, g.obj(b).counters), (1, 1));
+    // Two kinds: the player picks (here a stun counter).
+    let mut g = table();
+    let ng = put(&mut g, 0, "Nesting Grounds");
+    let a = put(&mut g, 0, "Llanowar Elves");
+    let b = put(&mut g, 1, "Llanowar Elves");
+    set_counters(&mut g, a, 1);
+    g.objects[a.0 as usize].stun = 1;
+    act(&mut g, Action::Activate(ng, 0));
+    act(&mut g, Action::Target(obj(a)));
+    act(&mut g, Action::Target(obj(b)));
+    resolve_all(&mut g, &[Action::Mode(2)]);
+    assert_eq!((g.obj(a).stun, g.obj(b).stun), (0, 1));
+    assert_eq!(g.obj(a).counters, 1);
+}
+
+#[test]
+fn inkmoth_nexus_becomes_a_flying_infect_artifact_creature() {
+    let mut g = table();
+    let ink = put(&mut g, 0, "Inkmoth Nexus");
+    act(&mut g, Action::Activate(ink, 0));
+    resolve_all(&mut g, &[]);
+    let t = g.types_of(ink);
+    assert!(t.creature && t.artifact && t.land);
+    assert_eq!((g.power(ink), g.toughness(ink)), (1, 1));
+    assert!(g.keywords(ink).has(Keywords::FLYING));
+    assert!(g.has_subtype(ink, "Blinkmoth") && g.has_subtype(ink, "Phyrexian"));
+    assert!(
+        g.infect_until_eot.iter().any(|e| e.0 == ink),
+        "infect until end of turn"
+    );
+}

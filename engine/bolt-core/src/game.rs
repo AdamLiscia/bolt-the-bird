@@ -1558,6 +1558,9 @@ pub enum Decision {
         chosen: Vec<ObjId>,
         need: u8,
     },
+    /// Nesting Grounds: `Mode` the kind of counter (`Game::counter_kinds_on`' codes, `kinds`) to move
+    /// from `from` onto `to`.
+    MoveCounterKind { from: ObjId, to: ObjId, kinds: Vec<u8> },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -4417,6 +4420,38 @@ impl Game {
             v.push(14);
         }
         v
+    }
+
+    /// One counter of kind `k` (`counter_kinds_on`' codes) off `id`; false if it has none.
+    fn remove_counter_kind(&mut self, id: ObjId, k: u8) -> bool {
+        let o = self.obj_mut(id);
+        match k {
+            0 if o.counters > 0 => o.counters -= 1,
+            1 if o.counters < 0 => o.counters += 1,
+            2 if o.stun > 0 => o.stun -= 1,
+            3 if o.incubation > 0 => o.incubation -= 1,
+            4 if o.soul > 0 => o.soul -= 1,
+            5 if o.revival > 0 => o.revival -= 1,
+            6 if o.fellowship > 0 => o.fellowship -= 1,
+            7 if o.bait > 0 => o.bait -= 1,
+            8 if o.quest > 0 => o.quest -= 1,
+            9 if o.kind_counters > 0 => o.kind_counters -= 1,
+            10 if o.slime > 0 => o.slime -= 1,
+            11 if o.time_counters > 0 => o.time_counters -= 1,
+            12 if o.shield_counters > 0 => o.shield_counters -= 1,
+            13 if o.loyalty > 0 => o.loyalty -= 1,
+            14 if o.lore > 0 => o.lore -= 1,
+            _ => return false,
+        }
+        true
+    }
+
+    /// Moves one counter of kind `k` from `a` onto `b` (Nesting Grounds), `p` putting it there.
+    fn move_counter_kind(&mut self, p: PlayerId, a: ObjId, b: ObjId, k: u8) {
+        if self.remove_counter_kind(a, k) && self.add_counter_kind(b, k) > 0 {
+            self.counters_placed(p, 1);
+            self.counter_put_on(b);
+        }
     }
 
     /// One more counter of kind `k` (`counter_kinds_on`' codes) on `id`. +1/+1 goes through
@@ -8810,6 +8845,16 @@ impl Game {
             if t.instant || t.sorcery || mode.mode == Some(OMEN_MODE) {
                 n += e.instant_sorcery_discount as usize; // Case of the Ransacked Lab
             }
+            if creature
+                && e.chosen_type_creature_discount > 0
+                && self
+                    .obj(x)
+                    .chosen_type
+                    .as_deref()
+                    .is_some_and(|ty| self.has_base_subtype(c, ty))
+            {
+                n += e.chosen_type_creature_discount as usize; // Urza's Incubator
+            }
             if def.colors == [false; 5] && mode.mode != Some(OMEN_MODE) {
                 if def.subtypes.iter().any(|s| s == "Eldrazi") {
                     n += e.colorless_eldrazi_spell_discount as usize; // Eye of Ugin
@@ -9266,6 +9311,7 @@ impl Game {
             if seen.contains(&id)
                 || d.mana_only_for_subtype.is_some()
                 || d.any_color_for_chosen_type
+                || d.mana_ext.any_color_for_subtype_creature.is_some()
                 || d.mana_only_for_creatures
                 || d.any_color_for_dragon_or_omen
                 || d.any_color_for_legendary
@@ -9431,6 +9477,16 @@ impl Game {
                         _ => false,
                     };
                     if allowed {
+                        let mut any = ManaSource::of(&crate::Color::ALL);
+                        any.colorless = true;
+                        return (id, any);
+                    }
+                    return (id, m);
+                }
+                // Haven of the Spirit Dragon: any color, only for a Dragon creature spell.
+                if let Some(sub) = self.def_of(id).mana_ext.any_color_for_subtype_creature {
+                    if matches!(spell, PayFor::Spell(c) if self.def_of(c).types.creature && self.has_base_subtype(c, sub))
+                    {
                         let mut any = ManaSource::of(&crate::Color::ALL);
                         any.colorless = true;
                         return (id, any);
@@ -15733,6 +15789,7 @@ impl Game {
             Decision::DiscardThenIfInstantOrSorcery => hand.iter().copied().map(Action::Pick).collect(),
             Decision::DiscardMayCastFree { .. } => hand.iter().copied().map(Action::Pick).collect(),
             Decision::ChooseCounterKind { kinds, .. } => kinds.iter().map(|&k| Action::Mode(k)).collect(),
+            Decision::MoveCounterKind { kinds, .. } => kinds.iter().map(|&k| Action::Mode(k)).collect(),
             Decision::CreatureFromHandAttackingMaxMv { max } => {
                 let mut v: Vec<Action> = self
                     .hand_cards_mv_at_most(p, *max, true)
@@ -17871,6 +17928,11 @@ impl Game {
                 }
                 if let Some(q) = next {
                     self.sacrifice_creature_or_walker_next(q, None);
+                }
+            }
+            (Decision::MoveCounterKind { from, to, .. }, Action::Mode(k)) => {
+                if self.obj(from).zone == Zone::Battlefield && self.obj(to).zone == Zone::Battlefield {
+                    self.move_counter_kind(p, from, to, k);
                 }
             }
             (Decision::ChooseCounterKind { target, .. }, Action::Mode(k)) => {
@@ -24973,6 +25035,11 @@ impl Game {
                         .iter()
                         .filter(|&&x| self.has_subtype(x, s))
                         .count(),
+                    crate::effect::ManaCount::CreatureCardsOfColorInYourGraveyard(k) => self.players[p]
+                        .graveyard
+                        .iter()
+                        .filter(|&&x| self.def_of(x).types.creature && self.def_of(x).colors[k as usize])
+                        .count(),
                 };
                 self.players[p]
                     .pool
@@ -25868,6 +25935,35 @@ impl Game {
                             toughness,
                         },
                     );
+                }
+            }
+            Effect::SourceGainsInfectUntilEot => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    let (zcc, turn) = (self.obj(src).zcc, self.turn);
+                    self.infect_until_eot.push((src, zcc, turn));
+                }
+            }
+            Effect::MoveCounterBetweenTargets { from, to } => {
+                if let (Some(a), Some(b)) = (
+                    Game::slot_object(item, legal, from),
+                    Game::slot_object(item, legal, to),
+                ) {
+                    let kinds = self.counter_kinds_on(a);
+                    let on = |g: &Game, x: ObjId| g.obj(x).zone == Zone::Battlefield;
+                    if on(self, a) && on(self, b) && !kinds.is_empty() {
+                        if kinds.len() == 1 {
+                            self.move_counter_kind(item.controller, a, b, kinds[0]);
+                        } else {
+                            self.ask(
+                                item.controller,
+                                Decision::MoveCounterKind {
+                                    from: a,
+                                    to: b,
+                                    kinds,
+                                },
+                            );
+                        }
+                    }
                 }
             }
             Effect::AddCounterOfChosenKind(slot) => {

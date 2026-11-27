@@ -7564,6 +7564,46 @@
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"
+  },
+  {
+   "card": "Urza's Incubator",
+   "deck": "Vaevictis Asmadi, the Dire",
+   "missing": "chosen creature type; creature spells of that type cost {2} less (moved from d3) [d1 batch 44: scripted]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Haven of the Spirit Dragon",
+   "deck": "Vaevictis Asmadi, the Dire",
+   "missing": "any color only for Dragon creature spells; sacrifice to return a Dragon or Ugin card (moved from d3) [d1 batch 44: scripted]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Crypt of Agadeem",
+   "deck": "Henrika",
+   "missing": "{B} per black creature card in your graveyard [d1 batch 44: scripted]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Nesting Grounds",
+   "deck": "Ral (idea)",
+   "missing": "move a counter between targets; the kind is a Decision [d1 batch 44: scripted]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Inkmoth Nexus",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "manland with flying and infect until end of turn [d1 batch 44: scripted]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
   }
  ]
 }

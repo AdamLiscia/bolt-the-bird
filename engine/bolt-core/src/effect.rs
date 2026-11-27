@@ -3073,6 +3073,15 @@ pub enum Effect {
     /// "Draw a card if you control a [color] permanent other than [the source]." (Ral, Leyline
     /// Prodigy's -2: blue)
     DrawIfControlAnotherOfColor(crate::Color),
+    /// The source gains infect until end of turn (Inkmoth Nexus, as it becomes a creature).
+    SourceGainsInfectUntilEot,
+    /// "Move a counter from target permanent you control onto a second target permanent." (Nesting
+    /// Grounds): one counter from the permanent in `from` onto the one in `to`; with more than one
+    /// kind on it, `Decision::MoveCounterKind` picks which.
+    MoveCounterBetweenTargets {
+        from: u8,
+        to: u8,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -3084,6 +3093,8 @@ pub enum ManaCount {
     YouControlBasicSubtype(&'static str),
     /// Permanents on the battlefield with this subtype, anyone's ("for each Elf on the battlefield").
     OnBattlefieldSubtype(&'static str),
+    /// Creature cards of this color (WUBRG index) in your graveyard (Crypt of Agadeem: black).
+    CreatureCardsOfColorInYourGraveyard(u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

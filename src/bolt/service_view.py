@@ -147,10 +147,11 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
             times = "once" if value == 1 else f"{value} times"
             return f"Kick {card} {times}" if card else f"Kick {times}"
         return None
-    if d == "ChooseCounterKind" and kind == "Mode":
+    if d in ("ChooseCounterKind", "MoveCounterKind") and kind == "Mode":
         kinds = ("+1/+1", "-1/-1", "stun", "incubation", "soul", "revival", "fellowship", "bait")
         kinds += ("quest", "its own kind of", "slime", "time", "shield", "loyalty", "lore")
-        return f"Another {kinds[value]} counter" if 0 <= value < len(kinds) else None
+        verb = "Another" if d == "ChooseCounterKind" else "Move a"
+        return f"{verb} {kinds[value]} counter" if 0 <= value < len(kinds) else None
     if d == "AdNauseamAgain" and kind in ("Yes", "No"):
         return "Reveal another card (Ad Nauseam)" if kind == "Yes" else "Stop (Ad Nauseam)"
     if d == "Proliferate":

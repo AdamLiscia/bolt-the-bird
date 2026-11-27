@@ -2256,6 +2256,69 @@ pub fn script(name: &str) -> Option<Script> {
                 loyalty(b, -8, Ability::new(vec![], vec![Effect::ExileTopCastInstantsSorceriesFreeThisTurn(8)]));
             },
         ),
+        "Urza's Incubator" => s(
+            &["As this artifact enters, choose a creature type.", "Creature spells of the chosen type cost {2} less to cast."],
+            |d, _| {
+                d.choose_creature_type = true;
+                d.mana_ext.chosen_type_creature_discount = 2;
+            },
+        ),
+        "Haven of the Spirit Dragon" => s(
+            &[
+                "{T}: Add {C}.",
+                "{T}: Add one mana of any color. Spend this mana only to cast a Dragon creature spell.",
+                "{2}, {T}, Sacrifice this land: Return target Dragon creature card or Ugin planeswalker card from your graveyard to your hand.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                d.mana_ext.any_color_for_subtype_creature = Some("Dragon");
+                // A Dragon or Ugin card (a Dragon creature card or an Ugin planeswalker card in print).
+                let card = Filter { subtypes_any: &["Dragon", "Ugin"], ..graveyard_cards(false, Controller::You) };
+                let n = activated(d, "{2}", true, vec![card], vec![Effect::Bounce(0)]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Crypt of Agadeem" => s(
+            &["This land enters tapped.", "{T}: Add {B}.", "{2}, {T}: Add {B} for each black creature card in your graveyard."],
+            |d, _| {
+                d.enters_tapped = true;
+                d.mana = Some(ManaSource::of(&[Color::Black]));
+                let count = ManaCount::CreatureCardsOfColorInYourGraveyard(Color::Black as u8);
+                activated(d, "{2}", true, vec![], vec![Effect::AddManaPerCount { color: Color::Black, count }]);
+            },
+        ),
+        "Nesting Grounds" => s(
+            &[
+                "{T}: Add {C}.",
+                "{1}, {T}: Move a counter from target permanent you control onto a second target permanent. Activate only as a sorcery.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                let permanent = Filter { players: false, creatures: false, planeswalkers: false, any_permanent: true, ..Filter::ANY };
+                let yours = Filter { controller: Controller::You, ..permanent };
+                let n = activated(d, "{1}", true, vec![yours, permanent], vec![Effect::MoveCounterBetweenTargets { from: 0, to: 1 }]);
+                d.activated[n].sorcery = true;
+            },
+        ),
+        "Inkmoth Nexus" => s(
+            &[
+                "{T}: Add {C}.",
+                "{1}: This land becomes a 1/1 Phyrexian Blinkmoth artifact creature with flying and infect until end of turn. It's still a land.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                let animate = Effect::BecomeCreatureUntilEotWith {
+                    power: 1,
+                    toughness: 1,
+                    subtypes: &["Phyrexian", "Blinkmoth"],
+                    keywords: Keywords::FLYING,
+                    colors: None,
+                    artifact: true,
+                    all_creature_types: false,
+                };
+                activated(d, "{1}", false, vec![], vec![animate, Effect::SourceGainsInfectUntilEot]);
+            },
+        ),
         "Castle Garenbrig" => s(
             &[
                 "This land enters tapped unless you control a Forest.",
@@ -2550,4 +2613,9 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Herald of Leshrac",
     "Gemstone Caverns",
     "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+    "Urza's Incubator",
+    "Haven of the Spirit Dragon",
+    "Crypt of Agadeem",
+    "Nesting Grounds",
+    "Inkmoth Nexus",
 ];

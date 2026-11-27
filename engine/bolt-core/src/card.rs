@@ -1438,6 +1438,12 @@ pub struct ManaExt {
     /// "{T}: Add {C}. If [this] has a luck counter on it, instead add one mana of any color."
     /// (Gemstone Caverns): with a kind counter (`Object::kind_counters`) its `mana` is any color.
     pub any_color_with_kind_counter: bool,
+    /// "Creature spells of the chosen type cost {N} less to cast." (Urza's Incubator: 2), the type
+    /// chosen as it enters (`CardDef::choose_creature_type`, `Object::chosen_type`).
+    pub chosen_type_creature_discount: u8,
+    /// "{T}: Add one mana of any color. Spend this mana only to cast a [subtype] creature spell."
+    /// (Haven of the Spirit Dragon: Dragon); its plain mana is in `mana`.
+    pub any_color_for_subtype_creature: Option<&'static str>,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana
