@@ -3,13 +3,15 @@
     PYTHONPATH=src python scripts/make_cmd_decks.py [--out handoff/cmd/playable_decks.txt]
 
 Reads ~/bolt-handoff/playgroup_all.json (the playgroup's 31) and lowgame_all.json (the idea decks), the same
-lists and the same support test as scripts/debug/soak_cmd.py. Safe to re-run whenever more cards become
+lists and the same support test as scripts/debug/soak_cmd.py, plus the engine's Commander deck rules
+(be.commander_deck_problems; a wrong card count is allowed). Safe to re-run whenever more cards become
 playable: the file is rewritten whole (write then rename), in the source files' order, so the same engine
 gives the same file. The network's card table is the whole CMD pool already, so new decks need no re-padding.
 """
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -22,6 +24,19 @@ from bolt.cmd_decks import format_line  # noqa: E402
 
 HAND = Path.home() / "bolt-handoff"
 SOURCES = [("playgroup_all.json", 31), ("lowgame_all.json", None)]
+
+
+SIZE = re.compile(r"^\d+ cards with the commanders?, not 100$")
+
+
+def rule_problems(cmd: list[int], deck: list[int], set_name: str) -> list[str]:
+    """The deck's Commander rule problems (commanders, singleton, color identity), its size aside: several of
+    the playgroup's lists are 99 or 101 cards, and size doesn't matter for training. An engine without the
+    check reports none."""
+    check = getattr(be, "commander_deck_problems", None)
+    if check is None:
+        return []
+    return [p for p in check(cmd, deck, set=set_name) if not SIZE.match(p)]
 
 
 def playable(set_name: str = "CMD", hand: Path = HAND) -> tuple[list[tuple[list[int], list[int], str]], list[str]]:
@@ -56,6 +71,10 @@ def playable(set_name: str = "CMD", hand: Path = HAND) -> tuple[list[tuple[list[
             missing = sorted({names[i] for i in ids_c + ids if not (i < len(supported) and supported[i])})
             if missing:
                 skipped.append(f"{name}: {len(missing)} unsupported ({', '.join(missing[:3])}, ...)")
+                continue
+            problems = rule_problems(ids_c, ids, set_name)
+            if problems:
+                skipped.append(f"{name}: {'; '.join(problems)[:120]}")
                 continue
             out.append((ids_c, ids, name))
     return out, skipped
