@@ -57,7 +57,7 @@ pub fn token_defs() -> Vec<CardDef> {
             t
         },
         token("Rat", "Rat", 1, 1, Keywords::NONE),
-        token("Zombie", "Zombie", 2, 2, Keywords::NONE),
+        black(token("Zombie", "Zombie", 2, 2, Keywords::NONE)), // "2/2 black Zombie" (every maker)
         token("Ninja", "Ninja", 2, 1, Keywords::NONE),
         token("Cat", "Cat", 2, 2, Keywords::NONE),
         token("Warrior", "Warrior", 1, 1, Keywords::NONE), // Tarkir's mobilize tokens (red)
@@ -157,9 +157,14 @@ pub fn token_defs() -> Vec<CardDef> {
         },
         token("Elemental", "Elemental", 4, 4, Keywords::FLYING), // Hoofprints of the Stag: white 4/4
         token("Dinosaur Beast", "Dinosaur Beast", 0, 0, Keywords::TRAMPLE), // Quartzwood Crasher's X/X
-        token("Plant", "Plant", 0, 1, Keywords::NONE),           // Avenger of Zendikar
-        token("Insect", "Insect", 1, 1, Keywords::NONE),         // Scute Swarm's green 1/1
-        token("Badger", "Badger", 3, 3, Keywords::NONE),         // Greensleeves
+        {
+            // "a 0/1 green Plant creature token" (Avenger of Zendikar, Nissa, The Necrobloom).
+            let mut t = token("Plant", "Plant", 0, 1, Keywords::NONE);
+            t.colors = [false, false, false, false, true];
+            t
+        },
+        token("Insect", "Insect", 1, 1, Keywords::NONE), // Scute Swarm's green 1/1
+        token("Badger", "Badger", 3, 3, Keywords::NONE), // Greensleeves
         {
             // Wrenn and Seven: "a green Treefolk creature token with reach and 'This token's power and
             // toughness are each equal to the number of lands you control.'"

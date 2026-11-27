@@ -190,9 +190,11 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"SacrificeDiscardOrLoseLife": "Sacrifice (or discard, from your hand):"}.get(d)
         verb = verb or {"ReanimateTotalManaValue": "Put onto the battlefield under your control:"}.get(d)
         verb = verb or {"SacrificeNontokenCreatureEach": "Sacrifice"}.get(d)
+        verb = verb or {"SacrificeNontokenCreatureOrPlaneswalker": "Sacrifice"}.get(d)
         verb = verb or {"SacrificeNontokenArtifact": "Sacrifice", "ExileThreeForFood": "Exile (three for a Food):"}.get(d)  # fmt: skip
         verb = verb or {"SylvanPick": "Choose (pay 4 life or put it back):"}.get(d)
         verb = verb or {"CrewTap": "Also tap (to crew or saddle):"}.get(d)
+        verb = verb or {"Dredge": "Dredge instead of drawing:"}.get(d)
         if d == "IterationPick":
             verb = "Put into your hand:" if dec.get("to_hand") else "Put on the bottom:"
         verb = verb or {"ChooseRingBearer": "Choose as your Ring-bearer:"}.get(d)
@@ -232,6 +234,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         "MayDrawGainOne": ("Draw a card and gain 1 life", "Don't draw"),
         "SylvanDraw": ("Draw two additional cards", "Don't draw"),
         "CrewTap": ("Tap the chosen creatures", "Don't tap them"),
+        "Dredge": ("Dredge", "Draw a card"),
         "SylvanPayOrTop": (f"Pay 4 life to keep {subject or 'it'}", f"Put {subject or 'it'} on top of your library"),
         "ExpropriateVote": ("Vote time (an extra turn)", "Vote money (a permanent)"),
         "PayUpkeep": (f"Pay the upkeep {dec.get('cost', '')}", f"Don't pay (sacrifice {subject or src})"),
@@ -265,6 +268,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         return "Don't sacrifice (they draw two cards)"
     if d == "ExileFromHandUntilSourceLeaves" and not yes:
         return "Exile nothing"
+    if d == "MayPutExiledLandOntoBattlefield":
+        return "Put the land onto the battlefield" if yes else "Leave it in exile"
     d3_no = {"SacrificeAnyNumber": "Done sacrificing", "ReturnAnotherPermanentCard": "Return nothing", "BasicsTappedUpTo": "Find nothing", "SignalTheClans": "Done revealing", "BraidsSacrifice": "Don't sacrifice", "BraidsOpponent": "Don't sacrifice (lose 2 life)"}  # fmt: skip
     d3_no["ReturnSharingType"] = "Return nothing"
     d3_no["ReanimateTotalManaValue"] = "Done choosing"
