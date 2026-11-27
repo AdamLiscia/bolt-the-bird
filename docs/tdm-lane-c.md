@@ -1073,3 +1073,7 @@ Added, unbuilt: `Effect::OpponentSacrificesNontokenCreatureOrPlaneswalker` with
 `Decision::SacrificeNontokenCreatureOrPlaneswalker` (Pick; asked only when there is one; labelled, tested), a
 sibling of Accursed Marauder's edict, for Sheoldred's front. Test in core_objects (62), on an edited Inkshield.
 Sheoldred itself still waits on d4's Saga. Build after lane B's dredge batch, on the merger's go.
+Built on the merge of tarkir 8a4b5cf (lane B's dredge and The Necrobloom): conflicts only at the ends of
+`Effect`, `Decision` and test_decision_labels.py (tarkir's first, then lane C's); tokens are tarkir's exactly;
+needs_core.json union (835). Built cold: 2,245 Rust tests pass (core_objects 62, play.rs 3 ignored), every
+binary's count equals its `#[test]` count; clippy, fmt, ruff clean; pytest 177. No fixes were needed.

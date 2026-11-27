@@ -1071,6 +1071,8 @@ pub struct CardDef {
     /// Ojer Taq: "If one or more creature tokens would be created under your control, three times
     /// that many of those tokens are created instead." (`Game::creature_token_tripling`)
     pub triples_creature_tokens: bool,
+    /// The Necrobloom: "Land cards in your graveyard have dredge N." (2), see `Game::dredge_options`.
+    pub lands_in_graveyard_have_dredge: Option<u8>,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1618,6 +1620,7 @@ impl CardDef {
             overload_spell: None,
             others_of_chosen_type_enter_with_counter: false,
             triples_creature_tokens: false,
+            lands_in_graveyard_have_dredge: None,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1910,6 +1913,7 @@ impl CardDef {
             overload_spell: None,
             others_of_chosen_type_enter_with_counter: false,
             triples_creature_tokens: false,
+            lands_in_graveyard_have_dredge: None,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2202,6 +2206,7 @@ impl CardDef {
             overload_spell: None,
             others_of_chosen_type_enter_with_counter: false,
             triples_creature_tokens: false,
+            lands_in_graveyard_have_dredge: None,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

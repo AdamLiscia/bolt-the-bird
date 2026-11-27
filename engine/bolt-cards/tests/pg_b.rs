@@ -4052,3 +4052,72 @@ fn tendo_ice_bridge_spends_its_charge_counter_on_colored_mana() {
     assert_eq!(g.obj(elves).zone, Zone::Battlefield, "{{G}} from the Bridge");
     assert_eq!(g.obj(bridge).kind_counters, 0, "the counter removed");
 }
+
+// ---- The Necrobloom: dredge and landfall (2026-11-27) ----
+
+#[test]
+fn the_necrobloom_dredges_a_land_in_the_draw_step_instead_of_drawing() {
+    let mut g = table();
+    put(&mut g, 0, "The Necrobloom");
+    let forest = g.add_card(0, cid("Forest"), Zone::Graveyard);
+    let (hand_before, grave_before, drew) = (
+        g.players[0].hand.len(),
+        g.players[0].graveyard.len(),
+        g.draws_this_turn[0],
+    );
+    g.start_turn(5, 0);
+    while !matches!(g.pending, Pending::Decide(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(g.legal_actions().contains(&Action::Pick(forest)));
+    act(&mut g, Action::Pick(forest)); // dredge 2
+    assert_eq!(g.obj(forest).zone, Zone::Hand);
+    assert_eq!(g.players[0].hand.len(), hand_before + 1);
+    assert_eq!(g.players[0].graveyard.len(), grave_before - 1 + 2, "milled two");
+    assert_eq!(g.draws_this_turn[0], 0, "a dredged draw isn't a draw");
+    let _ = drew;
+    // Drawing normally with No.
+    let mut g = table();
+    put(&mut g, 0, "The Necrobloom");
+    g.add_card(0, cid("Forest"), Zone::Graveyard);
+    let n = g.players[0].hand.len();
+    let draw = hand(&mut g, 0, "Consider");
+    act(&mut g, Action::Cast(draw));
+    while !g.items.is_empty() || matches!(g.pending, Pending::Decide(_)) {
+        let a = match &g.decision {
+            Some(d) if format!("{d:?}").starts_with("Dredge") => Action::No,
+            Some(_) => g.legal_actions()[0],
+            None => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.players[0].hand.len(), n + 1, "Consider left, one card drawn");
+}
+
+#[test]
+fn the_necrobloom_makes_a_plant_or_with_seven_land_names_a_zombie() {
+    let mut g = game(&["Plains", "Island", "Swamp", "Mountain", "Forest", "Command Tower"]);
+    put(&mut g, 0, "The Necrobloom");
+    let pool = hand(&mut g, 0, "Reflecting Pool");
+    act(&mut g, Action::PlayLand(pool));
+    resolve_all(&mut g, &[]);
+    let zombies = tokens(&g, 0, "Zombie");
+    assert_eq!(zombies.len(), 1, "seven names");
+    assert_eq!(
+        g.colors_of(zombies[0]),
+        [false, false, true, false, false],
+        "black"
+    );
+    let mut g = game(&["Plains"]);
+    put(&mut g, 0, "The Necrobloom");
+    let forest = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(forest));
+    resolve_all(&mut g, &[]);
+    let plants = tokens(&g, 0, "Plant");
+    assert_eq!(plants.len(), 1);
+    assert_eq!(
+        g.colors_of(plants[0]),
+        [false, false, false, false, true],
+        "green"
+    );
+}

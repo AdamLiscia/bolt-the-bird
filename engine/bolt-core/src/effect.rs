@@ -2652,6 +2652,12 @@ pub enum Effect {
     /// (`Decision::LetDrawOrMill`); if they don't, you mill X cards, X the source's own kind of
     /// counters (influence), and they lose life equal to the total mana value of those cards.
     TargetMayLetYouDrawElseMillKindCounters(u8),
+    /// Create a `fewer` token, or a `seven` token instead if you control seven or more lands with
+    /// different names (The Necrobloom's landfall).
+    CreateTokenBySevenLandNames {
+        fewer: usize,
+        seven: usize,
+    },
     /// "Whenever a source deals damage to [this], that source's controller exiles a card from their
     /// hand at random. If it's a land card, you may put it onto the battlefield under your control.
     /// Otherwise, you may cast it without paying its mana cost." (Rona, Tolarian Obliterator): the

@@ -252,6 +252,12 @@ def test_palantir_asks_the_opponent_to_let_you_draw_or_mill():
     assert label(dec, "No", 0) == "Make them mill 2 (you lose life equal to the total mana value)"
 
 
+def test_dredge_reads_as_returning_a_card_or_drawing():
+    dec = {"kind": "Dredge"}
+    assert sv._decision_label(dec, "Pick", 0, "Forest") == "Dredge instead of drawing: Forest"
+    assert label(dec, "No", 0) == "Draw a card"
+
+
 def test_sheoldred_each_opponent_sacrifices_a_nontoken_creature_or_planeswalker():
     dec = {"kind": "SacrificeNontokenCreatureOrPlaneswalker"}
     assert sv._decision_label(dec, "Pick", 0, "Hungry Ghoul") == "Sacrifice Hungry Ghoul"
