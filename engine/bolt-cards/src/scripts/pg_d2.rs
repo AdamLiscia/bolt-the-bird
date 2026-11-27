@@ -1172,6 +1172,18 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::YouCastEnchantment, vec![], vec![Effect::CreateToken { who: Who::You, def: t.spirit_cleric, n: 1 }]);
             },
         ),
+        // ---- Core: triggers, batch 22 (an end-step trigger with the opponent's choice) ----
+        "Palant\u{ed}r of Orthanc" => s(
+            &["At the beginning of your end step, put an influence counter on Palant\u{ed}r of Orthanc and scry 2. Then target opponent may have you draw a card. If that player doesn't, you mill X cards, where X is the number of influence counters on Palant\u{ed}r of Orthanc, and that player loses life equal to the total mana value of those cards."],
+            |d, _| {
+                on(
+                    d,
+                    When::EndStep { your_turn_only: true },
+                    vec![opponent_player()],
+                    vec![Effect::KindCounterSelf(1), Effect::Scry { n: 2 }, Effect::TargetMayLetYouDrawElseMillKindCounters(0)],
+                );
+            },
+        ),
         _ => None,
     }
 }
@@ -1391,4 +1403,5 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Ygra, Eater of All",
     "Mesmeric Orb",
     "Hallowed Haunting",
+    "Palant\u{ed}r of Orthanc",
 ];

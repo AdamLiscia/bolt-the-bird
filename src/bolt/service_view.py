@@ -247,6 +247,10 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
             f"{src or 'Fabricate'}: put {dec.get('x', 0)} +1/+1 counters on it",
             f"{src or 'Fabricate'}: create {dec.get('x', 0)} 1/1 Servo tokens",
         ),
+        "LetDrawOrMill": (
+            "Let them draw a card",
+            f"Make them mill {dec.get('x', 0)} (you lose life equal to the total mana value)",
+        ),
     }
     if d in ("CreaturesFromHandUpTo", "PermanentsFromHandUpTo", "SearchToGraveyardCounter") and not yes:
         return "Find nothing" if d == "SearchToGraveyardCounter" else "Done choosing"

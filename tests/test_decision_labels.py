@@ -240,6 +240,12 @@ def test_crewing_with_several_creatures_reads_as_its_moves():
     assert label(dec, "No", 0) == "Don't tap them"
 
 
+def test_palantir_asks_the_opponent_to_let_you_draw_or_mill():
+    dec = {"kind": "LetDrawOrMill", "x": 2}
+    assert label(dec, "Yes", 0) == "Let them draw a card"
+    assert label(dec, "No", 0) == "Make them mill 2 (you lose life equal to the total mana value)"
+
+
 def test_karadors_graveyard_cast_is_named():
     karador = sv._label("CastFromGraveyardAs", ["Llanowar Elves"], (5,), 0, (0, 5, -1))
     assert karador == "Cast Llanowar Elves from your graveyard (Karador)"

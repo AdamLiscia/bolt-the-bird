@@ -2609,3 +2609,51 @@ fn hallowed_haunting_makes_spirit_clerics_that_count_spirits_and_flies_at_seven(
     let theirs = put(&mut g, 1, "Savannah Lions");
     assert!(!g.keywords(theirs).has(Keywords::FLYING), "creatures you control");
 }
+
+/// From player 0's main phase to the end step's Palantír question, answering the target and the
+/// scry along the way; returns whether the opponent was asked.
+fn palantir_to_the_question(g: &mut Game) -> bool {
+    for _ in 0..200 {
+        match g.pending {
+            Pending::Decide(1) => return true,
+            Pending::ChooseTarget(_) => {
+                act(g, Action::Target(Target::Player(1)));
+            }
+            Pending::Decide(_) => {
+                let a = g.legal_actions()[0];
+                act(g, a);
+            }
+            _ if g.step == Step::Cleanup || g.turn != 3 => return false,
+            _ => {
+                act(g, Action::PassPriority);
+            }
+        }
+    }
+    false
+}
+
+#[test]
+fn palantir_of_orthanc_draws_or_mills_by_influence_and_drains() {
+    let mut g = table();
+    let pal = put(&mut g, 0, "Palant\u{ed}r of Orthanc");
+    assert!(palantir_to_the_question(&mut g));
+    assert_eq!(g.obj(pal).kind_counters, 1, "an influence counter");
+    let hand_before = g.players[0].hand.len();
+    act(&mut g, Action::Yes); // they let you draw
+    assert_eq!(g.players[0].hand.len(), hand_before + 1);
+
+    let mut g = table();
+    let pal = put(&mut g, 0, "Palant\u{ed}r of Orthanc");
+    g.objects[pal.0 as usize].kind_counters = 1; // the second end step: two counters
+    assert!(palantir_to_the_question(&mut g));
+    assert_eq!(g.obj(pal).kind_counters, 2);
+    let angels = [
+        g.add_card(0, cid("Serra Angel"), Zone::Library),
+        g.add_card(0, cid("Serra Angel"), Zone::Library),
+    ];
+    act(&mut g, Action::No); // they refuse
+    for a in angels {
+        assert_eq!(g.obj(a).zone, Zone::Graveyard, "milled two");
+    }
+    assert_eq!(g.players[1].life, 30, "two mana value 5 cards");
+}

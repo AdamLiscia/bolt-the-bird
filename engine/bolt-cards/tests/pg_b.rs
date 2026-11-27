@@ -3979,3 +3979,76 @@ fn rankle_and_torbran_shares_treasure_and_adds_two_to_damage_to_players() {
     play(&mut g, shock, false, &[Target::Object(elves)], &[]);
     assert_eq!(g.obj(elves).zone, Zone::Graveyard, "creatures take the usual 3");
 }
+
+// ---- Kaalia's last three (2026-11-27) ----
+
+#[test]
+fn master_of_cruelties_attacks_alone_and_sets_their_life_to_one() {
+    let mut g = table();
+    let master = put(&mut g, 0, "Master of Cruelties");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(master));
+    assert!(
+        !g.legal_actions().contains(&Action::Attack(lions)),
+        "it attacks alone"
+    );
+    act(&mut g, Action::FinishAttacks);
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.players[1].life, 1, "life total becomes 1; no combat damage");
+}
+
+#[test]
+fn overpowering_attack_untaps_attackers_for_another_combat() {
+    let mut g = table();
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let attack = hand(&mut g, 0, "Overpowering Attack");
+    let combats = {
+        g.start_turn(5, 0);
+        let mut combats = 0;
+        let mut cast = false;
+        while g.step != Step::End {
+            let a = match g.pending {
+                Pending::DeclareAttackers(0) => {
+                    combats += 1;
+                    if g.legal_actions().contains(&Action::Attack(lions)) {
+                        act(&mut g, Action::Attack(lions));
+                    }
+                    Action::FinishAttacks
+                }
+                Pending::DeclareBlockers(_) => Action::FinishBlocks,
+                Pending::Priority(0) if g.step == Step::Main2 && !cast && g.items.is_empty() => {
+                    cast = true;
+                    Action::Cast(attack)
+                }
+                _ => Action::PassPriority,
+            };
+            act(&mut g, a);
+        }
+        combats
+    };
+    assert_eq!(combats, 2);
+    assert_eq!(g.players[1].life, 36, "the Lions attacked twice");
+}
+
+#[test]
+fn tendo_ice_bridge_spends_its_charge_counter_on_colored_mana() {
+    let mut g = game(&[]);
+    let bridge = hand(&mut g, 0, "Tendo Ice Bridge");
+    act(&mut g, Action::PlayLand(bridge));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(bridge).kind_counters, 1, "a charge counter");
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    play(&mut g, elves, false, &[], &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield, "{{G}} from the Bridge");
+    assert_eq!(g.obj(bridge).kind_counters, 0, "the counter removed");
+}
