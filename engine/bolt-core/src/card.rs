@@ -430,6 +430,10 @@ pub struct Activated {
     /// With `sacrifice_other_creature`: only a creature of this color (WUBRG index) (Ayara, First
     /// of Locthwain: "Sacrifice another black creature"), named via `Action::ActivateWith`.
     pub sacrifice_other_color: Option<u8>,
+    /// With `tap_named_permanent`: how many to tap (The Cabbage Merchant: "Tap two untapped Foods you
+    /// control"). The first is named with `Action::ActivateWith`, the rest one at a time with
+    /// `Decision::TapNamedForCost`; 0 or 1: just the one.
+    pub tap_named_count: u8,
 }
 
 /// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,

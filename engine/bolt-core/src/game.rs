@@ -1614,6 +1614,14 @@ pub enum Decision {
         def: usize,
         paid: Vec<(PlayerId, u8)>,
     },
+    /// `tap_named_count`: `Pick` another untapped permanent matching `source`'s ability `n`'s
+    /// `tap_named_permanent` to tap (`chosen` so far, `need` in all), or `No` to cancel.
+    TapNamedForCost {
+        source: ObjId,
+        n: usize,
+        chosen: Vec<ObjId>,
+        need: u8,
+    },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -4604,6 +4612,16 @@ impl Game {
                 paid,
             },
         );
+    }
+
+    /// The untapped permanents `p` could tap for `id`'s ability `n`'s `tap_named_permanent` cost.
+    fn tap_named_options(&self, p: PlayerId, id: ObjId, n: usize) -> Vec<ObjId> {
+        let Some(f) = self.activated_of(id, n).tap_named_permanent else {
+            return Vec::new();
+        };
+        self.permanents(p)
+            .filter(|&c| c != id && !self.obj(c).tapped && self.target_ok(&f, p, Target::Object(c)))
+            .collect()
     }
 
     /// Whether `card`'s controller has another creature it could devour.
@@ -10600,8 +10618,10 @@ impl Game {
                     // Earthcraft, The Shire, Urza: an untapped permanent you control matching `f`, the
                     // player's pick, as long as the mana can still be paid without it.
                     let cost = Game::ability_discounted(a, ability_discount, a.mana);
+                    let enough = self.tap_named_options(p, id, n).len() >= a.tap_named_count.max(1) as usize;
                     v.extend(
                         self.permanents(p)
+                            .filter(|_| enough)
                             .filter(|&c| {
                                 c != id && !self.obj(c).tapped && self.target_ok(&f, p, Target::Object(c))
                             })
@@ -12561,7 +12581,20 @@ impl Game {
             (Pending::Priority(p), Action::ActivateWith(id, n, victim)) => {
                 let a = self.activated_of(id, n);
                 let crew = a.crew.max(a.saddle) as i32; // saddle uses the same summed-power cost
-                if crew > 0 && self.power(victim).max(0) < crew {
+                if a.tap_named_permanent.is_some() && a.tap_named_count > 1 {
+                    // The Cabbage Merchant: name the other Food(s) too.
+                    let need = a.tap_named_count;
+                    let chosen = vec![victim];
+                    self.ask(
+                        p,
+                        Decision::TapNamedForCost {
+                            source: id,
+                            n,
+                            chosen,
+                            need,
+                        },
+                    );
+                } else if crew > 0 && self.power(victim).max(0) < crew {
                     // Crew with more than one creature: pick the rest first (CR 702.122a).
                     let chosen = vec![victim];
                     self.ask(
@@ -15046,6 +15079,18 @@ impl Game {
             Decision::ChooseEnterMode { .. } => vec![Action::Mode(0), Action::Mode(1)],
             Decision::Riot { .. } => vec![Action::Mode(0), Action::Mode(1)],
             Decision::PayAnyAmountForTokens { max, .. } => (0..=*max).map(Action::Amount).collect(),
+            Decision::TapNamedForCost {
+                source, n, chosen, ..
+            } => {
+                let mut v: Vec<Action> = self
+                    .tap_named_options(p, *source, *n)
+                    .into_iter()
+                    .filter(|c| !chosen.contains(c))
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::Devour { card, .. } => {
                 let mut v: Vec<Action> = self
                     .creatures(p)
@@ -16439,6 +16484,38 @@ impl Game {
                 self.give_priority(active);
             } else if self.resolving.is_some() {
                 self.continue_resolving();
+            }
+            return;
+        }
+        if let Decision::TapNamedForCost {
+            source,
+            n,
+            mut chosen,
+            need,
+        } = d.clone()
+        {
+            match a {
+                Action::Pick(x) => {
+                    chosen.push(x);
+                    if chosen.len() < need as usize {
+                        self.ask(
+                            p,
+                            Decision::TapNamedForCost {
+                                source,
+                                n,
+                                chosen,
+                                need,
+                            },
+                        );
+                    } else {
+                        // The first is the activation's victim (tapped as it's paid); tap the rest now.
+                        for &c in &chosen[1..] {
+                            self.become_tapped(c);
+                        }
+                        self.activate(p, source, n, Some(chosen[0]));
+                    }
+                }
+                _ => self.give_priority(p), // cancelled: nothing was tapped
             }
             return;
         }

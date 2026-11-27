@@ -3505,3 +3505,56 @@ fn tap_a_named_artifact_for_blue() {
     assert_eq!(g.players[0].pool.len(), 1, "a mana ability: no stack");
     assert!(g.players[0].pool[0].colors[1]);
 }
+
+#[test]
+fn tap_two_named_foods_for_mana() {
+    use batch3::*;
+    use bolt_core::effect::{Controller, Filter};
+    let food = Filter {
+        players: false,
+        creatures: false,
+        planeswalkers: false,
+        artifacts: true,
+        subtype: Some("Food"),
+        ..Filter::ANY
+    };
+    let mut merchant = CardDef::creature("Merchant Test", "{2}{G}", 2, 2, Keywords::NONE);
+    merchant.activated.push(Activated {
+        tap_named_permanent: Some(food.controlled_by(Controller::You)),
+        tap_named_count: 2,
+        ability: Ability::new(
+            vec![],
+            vec![Effect::AddMana {
+                color: Color::Green,
+                n: 1,
+            }],
+        ),
+        ..Activated::default()
+    });
+    let mut f = CardDef::creature("Snack", "{1}", 0, 1, Keywords::NONE);
+    f.types.creature = false;
+    f.types.artifact = true;
+    f.subtypes = vec!["Food".to_string()];
+    let mut g = batch6_board(vec![merchant, f], 0);
+    let m = put(&mut g, 0, 25);
+    let a = put(&mut g, 0, 26);
+    assert!(
+        !g.legal_actions().contains(&Action::ActivateWith(m, 0, a)),
+        "one Food isn't enough"
+    );
+    let b = put(&mut g, 0, 26);
+    let c = put(&mut g, 0, 26);
+    act(&mut g, Action::ActivateWith(m, 0, a));
+    let legal = g.legal_actions();
+    assert!(
+        legal.contains(&Action::Pick(b))
+            && legal.contains(&Action::Pick(c))
+            && !legal.contains(&Action::Pick(a))
+    );
+    act(&mut g, Action::Pick(c));
+    assert!(
+        g.obj(a).tapped && g.obj(c).tapped && !g.obj(b).tapped,
+        "the two the player named"
+    );
+    assert_eq!(g.players[0].pool.len(), 1);
+}
