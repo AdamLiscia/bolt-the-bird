@@ -3077,3 +3077,171 @@ fn other_creatures_are_food_artifacts_while_it_is_on_the_battlefield() {
     );
     assert!(!g.has_subtype(ring, "Food"), "creatures only");
 }
+
+// ---- batch 27 ----
+
+#[test]
+fn other_colorless_creatures_you_control_get_the_static() {
+    let mut herald = CardDef::creature("Test Herald", "{1}", 2, 2, Keywords::NONE);
+    herald.statics.push(static_of(
+        Scope::OtherYourColorlessCreatures,
+        1,
+        1,
+        Keywords::NONE,
+    ));
+    let (mut g, t) = game_with(vec![herald]);
+    let thopter = g.add_card(0, cid("Ornithopter"), Zone::Battlefield);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Ornithopter"), Zone::Battlefield);
+    let h = g.add_card(0, t, Zone::Battlefield);
+    assert_eq!(
+        (g.power(thopter), g.toughness(thopter)),
+        (1, 3),
+        "colorless and yours"
+    );
+    assert_eq!(g.power(elves), 1, "green");
+    assert_eq!(g.power(theirs), 0, "not yours");
+    assert_eq!(g.power(h), 2, "other");
+}
+
+#[test]
+fn each_player_draws_x() {
+    let (mut g, t) = game_with(vec![{
+        let mut d = sorcery(vec![], vec![Effect::EachPlayerDrawsX]);
+        d.cost = ManaCost::parse("{X}").unwrap();
+        d
+    }]);
+    let c = g.add_card(0, t, Zone::Hand);
+    let (h0, h1) = (g.players[0].hand.len(), g.players[1].hand.len());
+    act(&mut g, Action::CastX(c, 3));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), h0 - 1 + 3);
+    assert_eq!(g.players[1].hand.len(), h1 + 3);
+}
+
+#[test]
+fn protection_from_a_card_type_until_end_of_turn() {
+    let grant = Effect::ProtectionFromCardTypeEot {
+        slot: Some(0),
+        kind: 1,
+    };
+    let (mut g, t) = game_with(vec![sorcery(vec![Filter::CREATURE], vec![grant])]);
+    let mine = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    let foe = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::Target(obj(mine)));
+    resolve_all(&mut g, &[]);
+    assert!(g.type_protected(mine, foe), "protection from creatures");
+    let land = g.permanents(1).find(|&x| g.types_of(x).land).unwrap();
+    assert!(!g.type_protected(mine, land));
+    assert!(!g.type_protected(foe, mine), "only the target");
+    g.turn += 1;
+    assert!(!g.type_protected(mine, foe), "until end of turn");
+}
+
+#[test]
+fn chosen_card_type_protection_asks_for_the_type() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![Filter::CREATURE],
+        vec![Effect::ProtectionChosenCardTypeEot(Some(0))],
+    )]);
+    let mine = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    let foe = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::Target(obj(mine)));
+    resolve_all(&mut g, &[Action::Mode(3)]);
+    assert!(!g.type_protected(mine, foe), "instants, not creatures");
+    let bolt = g.add_card(1, cid("Lightning Bolt"), Zone::Hand);
+    assert!(g.type_protected(mine, bolt), "protection from instants");
+}
+
+#[test]
+fn slime_counters_shrink_creatures_you_dont_control_and_are_remembered() {
+    let mut tox = CardDef::creature("Test Toxrill", "{0}", 7, 7, Keywords::NONE);
+    tox.statics.push(Static {
+        scale: Some(Scale::PerSlimeCounterOnIt),
+        ..static_of(Scope::OpponentsCreatures, -1, -1, Keywords::NONE)
+    });
+    let slime = sorcery(vec![], vec![Effect::SlimeCounterOnEachCreatureYouDontControl]);
+    let (mut g, t) = game_with(vec![slime, tox]);
+    let toxrill = g.add_card(0, t + 1, Zone::Battlefield);
+    let mine = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    let big = g.add_card(1, cid("Pippin, Guard of the Citadel"), Zone::Battlefield);
+    let small = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+    for _ in 0..2 {
+        let c = g.add_card(0, t, Zone::Hand);
+        act(&mut g, Action::Cast(c));
+        resolve_all(&mut g, &[]);
+        if g.obj(small).zone == Zone::Battlefield {
+            panic!("a 1/1 with a slime counter dies");
+        }
+    }
+    assert_eq!(
+        (g.obj(mine).slime, g.obj(toxrill).slime),
+        (0, 0),
+        "only creatures you don't control"
+    );
+    assert_eq!(g.obj(small).zone, Zone::Graveyard);
+    assert_eq!(
+        (g.obj(small).slime, g.obj(small).last_slime),
+        (0, 1),
+        "last known slime"
+    );
+    assert_eq!(g.obj(big).zone, Zone::Graveyard, "two slime counters kill a 2/2");
+    assert_eq!(g.obj(big).last_slime, 2);
+}
+
+#[test]
+fn slime_static_counts_each_creatures_own_counters() {
+    let mut tox = CardDef::creature("Test Toxrill", "{0}", 7, 7, Keywords::NONE);
+    tox.statics.push(Static {
+        scale: Some(Scale::PerSlimeCounterOnIt),
+        ..static_of(Scope::OpponentsCreatures, -1, -1, Keywords::NONE)
+    });
+    let (mut g, t) = game_with(vec![tox]);
+    g.add_card(0, t, Zone::Battlefield);
+    let big = g.add_card(1, cid("Pippin, Guard of the Citadel"), Zone::Battlefield);
+    let other = g.add_card(1, cid("Savannah Lions"), Zone::Battlefield);
+    assert_eq!((g.power(big), g.toughness(big)), (2, 2), "no slime, no change");
+    g.objects[big.0 as usize].slime = 1;
+    assert_eq!((g.power(big), g.toughness(big)), (1, 1));
+    assert_eq!((g.power(other), g.toughness(other)), (2, 1));
+}
+
+// ---- batch 28 ----
+
+#[test]
+fn your_ring_bearer_is_legendary() {
+    let (mut g, _) = game_with(vec![]);
+    let x = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    let y = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    g.ring_bearer[0] = Some((x, g.obj(x).zcc));
+    assert!(!g.types_of(x).legendary, "the Ring hasn't tempted you yet");
+    g.ring_level[0] = 1;
+    assert!(g.types_of(x).legendary && g.ring_makes_legendary(x));
+    assert!(!g.types_of(y).legendary, "only the Ring-bearer");
+}
+
+#[test]
+fn a_spell_targets_filter_reads_a_split_spells_cast_half_mana_value() {
+    let (mut g, _) = game_with(vec![]);
+    let boom = g.add_card(0, cid("Boom // Bust"), Zone::Hand);
+    let mine = g.add_card(0, cid("Plains"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Plains"), Zone::Battlefield);
+    act(&mut g, Action::Cast(boom)); // Boom: {1}{R}, mana value 2 (the card's is 8)
+    act(&mut g, Action::Target(common::obj(mine)));
+    act(&mut g, Action::Target(common::obj(theirs)));
+    assert_eq!(g.obj(boom).zone, Zone::Stack);
+    let at_most = |m| Filter {
+        players: false,
+        creatures: false,
+        planeswalkers: false,
+        spells: true,
+        max_mana_value: Some(m),
+        ..Filter::ANY
+    };
+    assert!(g.target_ok(&at_most(2), 1, common::obj(boom)));
+    assert!(!g.target_ok(&at_most(1), 1, common::obj(boom)));
+}

@@ -275,6 +275,11 @@ def test_currency_converter_returns_an_exiled_card():
     assert sv._decision_label(dec, "Pick", 0, "Forest") == "Put into its owner's graveyard: Forest"
 
 
+def test_pippin_protection_from_a_card_type():
+    assert label({"kind": "ProtectionCardType"}, "Mode", 1) == "Protection from creatures"
+    assert label({"kind": "ProtectionCardType"}, "Mode", 6) == "Protection from sorceries"
+
+
 def test_rose_room_treasurer_pays_x_for_x_damage():
     dec = {"kind": "PayXDamage", "max": 4}
     assert label(dec, "Amount", 0) == "Don't pay"

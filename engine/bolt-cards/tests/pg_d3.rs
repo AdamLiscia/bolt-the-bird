@@ -4041,3 +4041,85 @@ fn dig_through_time_delves_and_takes_two_of_seven() {
     assert_eq!(g.players[0].library.len(), lib - 2);
     assert_eq!(g.obj(c).zone, Zone::Graveyard);
 }
+
+// ---- Core theme d3, batch 27 ----
+
+#[test]
+fn mikaeus_pumps_non_humans_with_undying_and_destroys_a_human_that_hits_you() {
+    let mut g = table();
+    let m = put(&mut g, 1, "Mikaeus, the Unhallowed");
+    assert!(g.keywords(m).has(Keywords::INTIMIDATE));
+    let elves = put(&mut g, 1, "Llanowar Elves");
+    let their_human = put(&mut g, 1, "Thought Courier");
+    assert_eq!((g.power(elves), g.toughness(elves)), (2, 2));
+    assert!(g.keywords(elves).has(Keywords::UNDYING));
+    assert_eq!(g.power(their_human), 1, "not a Human's");
+    assert_eq!(g.power(m), 5, "other");
+    let pilgrim = put(&mut g, 0, "Avacyn's Pilgrim");
+    attack_to_main2(&mut g, pilgrim);
+    assert_eq!(g.players[1].life, 39);
+    assert_eq!(
+        g.obj(pilgrim).zone,
+        Zone::Graveyard,
+        "a Human dealt damage to Mikaeus's controller"
+    );
+}
+
+#[test]
+fn skyscribing_each_player_draws_x_and_forecasts_a_card_each() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Skyscribing");
+    let f = hand(&mut g, 0, "Skyscribing");
+    let (h0, h1) = (g.players[0].hand.len(), g.players[1].hand.len());
+    act(&mut g, Action::CastX(c, 2));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), h0 - 1 + 2);
+    assert_eq!(g.players[1].hand.len(), h1 + 2);
+    assert!(!g.legal_actions().contains(&Action::Activate(f, 0)), "main phase");
+    g.start_turn(5, 0);
+    while g.step != Step::Upkeep {
+        act(&mut g, Action::PassPriority);
+    }
+    let (h0, h1) = (g.players[0].hand.len(), g.players[1].hand.len());
+    act(&mut g, Action::Activate(f, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(f).zone, Zone::Hand, "revealed");
+    assert_eq!(g.players[0].hand.len(), h0 + 1);
+    assert_eq!(g.players[1].hand.len(), h1 + 1);
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(f, 0)),
+        "once each turn"
+    );
+}
+
+/// Activates Fabled Passage beside `others` and returns the basic it found.
+fn fabled_passage_with(others: &[&str]) -> (Game, ObjId) {
+    let mut lands = vec!["Fabled Passage"];
+    lands.extend_from_slice(others);
+    let mut g = game(&lands);
+    let fp = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Fabled Passage")
+        .unwrap();
+    let forest = g.add_card(0, cid("Forest"), Zone::Library);
+    act(&mut g, Action::Activate(fp, 0));
+    assert_eq!(g.obj(fp).zone, Zone::Graveyard, "sacrificed as a cost");
+    resolve_all(&mut g, &[Action::Pick(forest)]);
+    assert_eq!(g.obj(forest).zone, Zone::Battlefield);
+    (g, forest)
+}
+
+#[test]
+fn fabled_passage_untaps_the_land_with_four_lands() {
+    let (g, forest) = fabled_passage_with(&["Plains", "Plains", "Plains"]);
+    assert!(
+        !g.obj(forest).tapped,
+        "four lands (the found one included): untapped"
+    );
+}
+
+#[test]
+fn fabled_passage_leaves_the_land_tapped_with_three_lands() {
+    let (g, forest) = fabled_passage_with(&["Plains", "Plains"]);
+    assert!(g.obj(forest).tapped, "only three lands: stays tapped");
+}
