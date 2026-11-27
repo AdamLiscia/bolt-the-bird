@@ -3361,3 +3361,121 @@ fn cavern_of_souls_makes_any_color_for_the_chosen_type_and_it_cant_be_countered(
     resolve_all(&mut g, &[]);
     assert_eq!(g.obj(elves).zone, Zone::Battlefield);
 }
+
+// ---- mac-b cards for Ygra, Lonis, Sheoldred, Sefris, Zacama (2026-11-26) ----
+
+#[test]
+fn peregrin_took_adds_a_food_to_token_making_and_eats_three_to_draw() {
+    let mut g = table();
+    let took = put(&mut g, 0, "Peregrin Took");
+    let port = put(&mut g, 0, "Fountainport");
+    act(&mut g, Action::Activate(port, 1)); // a Fish
+    resolve_all(&mut g, &[]);
+    assert_eq!((tokens(&g, 0, "Fish").len(), tokens(&g, 0, "Food").len()), (1, 1));
+    for _ in 0..2 {
+        g.add_card(0, cmd_tokens().food, Zone::Battlefield);
+    }
+    let food = tokens(&g, 0, "Food")[0];
+    let hand_before = g.players[0].hand.len();
+    act(&mut g, Action::ActivateWith(took, 0, food));
+    resolve_all(&mut g, &[]);
+    assert!(tokens(&g, 0, "Food").is_empty(), "three Foods sacrificed");
+    assert_eq!(g.players[0].hand.len(), hand_before + 1);
+}
+
+#[test]
+fn erebos_isnt_a_creature_stops_their_life_gain_and_draws_for_two_life() {
+    let mut g = table();
+    let erebos = put(&mut g, 0, "Erebos, God of the Dead");
+    assert!(!g.types_of(erebos).creature, "devotion to black is one");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let swords = hand(&mut g, 0, "Swords to Plowshares");
+    play(&mut g, swords, false, &[Target::Object(lions)], &[]);
+    assert_eq!(g.players[1].life, 40, "they can't gain life");
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::Activate(erebos, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.players[0].life, g.players[0].hand.len()), (38, n + 1));
+}
+
+#[test]
+fn the_pathways_for_sefris_and_lonis_tap_for_their_front_color() {
+    let mut g = game(&[]);
+    let clear = put(&mut g, 0, "Clearwater Pathway // Murkwater Pathway");
+    let henge = put(&mut g, 0, "Hengegate Pathway // Mistgate Pathway");
+    let bark = put(&mut g, 0, "Barkchannel Pathway // Tidechannel Pathway");
+    assert_eq!(colors_of(&g, clear), [[false, true, false, false, false]]);
+    assert_eq!(colors_of(&g, henge), [[true, false, false, false, false]]);
+    assert_eq!(colors_of(&g, bark), [[false, false, false, false, true]]);
+}
+
+#[test]
+fn nyxbloom_ancient_triples_mana_from_tapped_permanents() {
+    let mut g = game(&["Forest"]);
+    let forest = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Forest")
+        .expect("a Forest");
+    assert_eq!(colors_of(&g, forest).len(), 1);
+    put(&mut g, 0, "Nyxbloom Ancient");
+    assert_eq!(colors_of(&g, forest).len(), 3, "{{G}}{{G}}{{G}}");
+    let reach = hand(&mut g, 0, "Kodama's Reach"); // {2}{G} from one Forest
+    assert!(g.legal_actions().contains(&Action::Cast(reach)));
+}
+
+#[test]
+fn sylvan_library_draws_two_then_pays_life_or_puts_back() {
+    let mut g = table();
+    put(&mut g, 0, "Sylvan Library");
+    g.start_turn(5, 0);
+    while !matches!(g.pending, Pending::Decide(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::Yes); // draw two more
+    assert_eq!(g.players[0].hand.len(), n + 2);
+    let picks: Vec<ObjId> = g
+        .legal_actions()
+        .iter()
+        .filter_map(|a| if let Action::Pick(c) = *a { Some(c) } else { None })
+        .collect();
+    assert_eq!(picks.len(), 3, "the three cards drawn this turn");
+    act(&mut g, Action::Pick(picks[0]));
+    act(&mut g, Action::Yes); // pay 4 life, keep it
+    act(&mut g, Action::Pick(picks[1]));
+    act(&mut g, Action::No); // put it back
+    assert_eq!(g.players[0].life, 36);
+    assert_eq!(g.obj(picks[0]).zone, Zone::Hand);
+    assert_eq!(g.players[0].library.last(), Some(&picks[1]), "on top");
+    assert_eq!(g.players[0].hand.len(), n + 1);
+}
+
+#[test]
+fn deflecting_palm_prevents_a_sources_damage_and_returns_it() {
+    let mut g = table();
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let palm = hand(&mut g, 0, "Deflecting Palm");
+    g.start_turn(4, 1);
+    while g.pending != Pending::DeclareAttackers(1) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(lions));
+    act(&mut g, Action::FinishAttacks);
+    while g.pending != Pending::Priority(0) {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    act(&mut g, Action::Cast(palm));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Pick(lions));
+    while g.step != Step::Main2 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[0].life, 40, "prevented");
+    assert_eq!(g.players[1].life, 38, "that much to its controller");
+}

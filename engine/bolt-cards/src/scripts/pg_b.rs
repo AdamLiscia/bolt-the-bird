@@ -2001,6 +2001,61 @@ pub fn script(name: &str) -> Option<Script> {
                 d.chosen_type_mana_uncounterable = true;
             },
         ),
+        "Peregrin Took" => s(
+            &[
+                "If one or more tokens would be created under your control, those tokens plus an additional Food token are created instead.",
+                "Sacrifice three Foods: Draw a card.",
+            ],
+            |d, t| {
+                d.tokens_plus_one = Some(t.food);
+                let n = activated(d, "", false, vec![], vec![draw(1)]);
+                d.activated[n].sacrifice_subtype = Some("Food");
+                d.activated[n].sacrifice_subtype_count = 3;
+            },
+        ),
+        "Erebos, God of the Dead" => s(
+            &[
+                "As long as your devotion to black is less than five, Erebos isn't a creature.",
+                "Your opponents can't gain life.",
+                "{1}{B}, Pay 2 life: Draw a card.",
+            ],
+            |d, _| {
+                d.creature_unless_devotion = Some(([false, false, true, false, false], 5));
+                d.opponents_cant_gain_life = true;
+                let n = activated(d, "{1}{B}", false, vec![], vec![draw(1)]);
+                d.activated[n].life = 2;
+            },
+        ),
+        "Clearwater Pathway // Murkwater Pathway" => s(&["{T}: Add {U}.", "Back: {T}: Add {B}."], |d, _| {
+            d.mana = Some(ManaSource::of(&[Color::Blue]));
+            d.modal_back = true;
+            d.back.as_mut().expect("Murkwater Pathway").mana = Some(ManaSource::of(&[Color::Black]));
+        }),
+        "Hengegate Pathway // Mistgate Pathway" => s(&["{T}: Add {W}.", "Back: {T}: Add {U}."], |d, _| {
+            d.mana = Some(ManaSource::of(&[Color::White]));
+            d.modal_back = true;
+            d.back.as_mut().expect("Mistgate Pathway").mana = Some(ManaSource::of(&[Color::Blue]));
+        }),
+        "Barkchannel Pathway // Tidechannel Pathway" => s(&["{T}: Add {G}.", "Back: {T}: Add {U}."], |d, _| {
+            d.mana = Some(ManaSource::of(&[Color::Green]));
+            d.modal_back = true;
+            d.back.as_mut().expect("Tidechannel Pathway").mana = Some(ManaSource::of(&[Color::Blue]));
+        }),
+        "Nyxbloom Ancient" => s(
+            &["If you tap a permanent for mana, it produces three times as much of that mana instead."],
+            |d, _| d.triples_mana_tapped = true,
+        ),
+        "Sylvan Library" => s(
+            &["At the beginning of your draw step, you may draw two additional cards. If you do, choose two cards in your hand drawn this turn. For each of those cards, pay 4 life or put the card on top of your library."],
+            |d, _| conditional(d, When::EachDrawStep, Condition::YourTurn, vec![], vec![Effect::SylvanLibrary]),
+        ),
+        "Deflecting Palm" => s(
+            &["The next time a source of your choice would deal damage to you this turn, prevent that damage. If damage is prevented this way, Deflecting Palm deals that much damage to that source's controller."],
+            |d, _| {
+                spell(d, vec![], vec![Effect::PreventNextFromChosenSource { trigger: 0 }]);
+                on(d, When::Never, vec![], vec![Effect::DamageExtrasControllerAmount]);
+            },
+        ),
         _ => None,
     }
 }
@@ -2233,6 +2288,14 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Mahadi, Emporium Master",
     "Goblin Engineer",
     "Cavern of Souls",
+    "Peregrin Took",
+    "Erebos, God of the Dead",
+    "Clearwater Pathway // Murkwater Pathway",
+    "Hengegate Pathway // Mistgate Pathway",
+    "Barkchannel Pathway // Tidechannel Pathway",
+    "Nyxbloom Ancient",
+    "Sylvan Library",
+    "Deflecting Palm",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",
