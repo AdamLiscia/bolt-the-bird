@@ -1909,7 +1909,7 @@ pub fn script(name: &str) -> Option<Script> {
         "Lion's Eye Diamond" => s(
             &["Discard your hand, Sacrifice this artifact: Add three mana of any one color. Activate only as an instant."],
             |d, _| {
-                // On the stack, like Phyrexian Altar.
+                // A mana ability (CR 605.1a): no stack, the color asked as it resolves.
                 let n = activated(d, "", false, vec![], vec![Effect::AddManaOneColor(3)]);
                 d.activated[n].sacrifice_self = true;
                 d.activated[n].discard_hand = true;

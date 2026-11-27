@@ -9849,6 +9849,11 @@ impl Game {
                 | Effect::AddManaPerCount { .. }
                 | Effect::AddManaSourcePower(_)
                 | Effect::AddManaPerHandSize { .. }
+                // d1: Lion's Eye Diamond, Three Tree City (a color asked as it resolves), Castle
+                // Garenbrig.
+                | Effect::AddManaOneColor(_)
+                | Effect::AddManaOneColorPerChosenType
+                | Effect::AddCreatureSpellOrAbilityMana(..)
         )
     }
 
