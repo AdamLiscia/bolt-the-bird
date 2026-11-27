@@ -2191,6 +2191,49 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::YouPlayCardFromExile, vec![], vec![treasure]);
             },
         ),
+        // ---- needs_core (mac-c), batch 12: Sheoldred and Animar ----
+        "Blood Money" => s(
+            &["Destroy all creatures. For each nontoken creature destroyed this way, you create a tapped Treasure token."],
+            |d, t| spell(d, vec![], vec![Effect::DestroyAllCreaturesTappedTokenPerNontoken { def: t.treasure }]),
+        ),
+        "Peer into the Abyss" => s(
+            &["Target player draws cards equal to half the number of cards in their library and loses half their life. Round up each time."],
+            |d, _| spell(d, vec![Filter::PLAYER], vec![Effect::TargetPlayerDrawsHalfLibraryLosesHalfLife(0)]),
+        ),
+        "Otherworld Atlas" => s(
+            &[
+                "{T}: Put a charge counter on this artifact.",
+                "{T}: Each player draws a card for each charge counter on this artifact.",
+            ],
+            |d, _| {
+                activated(d, "", true, vec![], vec![Effect::KindCounterSelf(1)]);
+                activated(d, "", true, vec![], vec![Effect::EachPlayerDrawsPerKindCounter]);
+            },
+        ),
+        "Neoform" => s(
+            &[
+                "As an additional cost to cast this spell, sacrifice a creature.",
+                "Search your library for a creature card with mana value equal to 1 plus the sacrificed creature's mana value, put that card onto the battlefield with an additional +1/+1 counter on it, then shuffle.",
+            ],
+            |d, _| {
+                d.extra_cost = Some(ExtraCost::SacrificeCreature);
+                spell(d, vec![], vec![Effect::SearchCreatureBySacrificedMvPlusCounter { plus: 1 }]);
+            },
+        ),
+        "Gilded Drake" => s(
+            &["When this creature enters, exchange control of this creature and up to one target creature an opponent controls. If you don't or can't make an exchange, sacrifice this creature. This ability still resolves if its target becomes illegal."],
+            |d, _| {
+                // Shortcut: with its one target illegal, the trigger fizzles and the Drake stays.
+                d.triggers.push(Trigger {
+                    when: When::Enters,
+                    ability: up_to(vec![OPP_CREATURE], vec![Effect::ExchangeControlWithSlotOrSacrifice(0)]),
+                });
+            },
+        ),
+        "Hornet Queen" => s(
+            &["When this creature enters, create four 1/1 green Insect creature tokens with flying and deathtouch."],
+            |d, t| on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.insect_deathtouch, n: 4 }]),
+        ),
         _ => None,
     }
 }
@@ -2445,4 +2488,10 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Thespian's Stage",
     "The Mycosynth Gardens",
     "Prosper, Tome-Bound",
+    "Blood Money",
+    "Peer into the Abyss",
+    "Otherworld Atlas",
+    "Neoform",
+    "Gilded Drake",
+    "Hornet Queen",
 ];

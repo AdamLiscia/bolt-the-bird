@@ -13519,6 +13519,7 @@ impl Game {
                             o.since_turn = turn;
                         }
                     }
+                    SearchTo::BattlefieldPlusCounter => self.enter_with_plus_counter(c),
                     SearchTo::ExileCastFreeThisTurn => {
                         self.move_to(c, Zone::Exile);
                         let turn = self.turn;
@@ -22367,6 +22368,25 @@ impl Game {
             }
             Effect::SourceBecomesCopyOfSlot { slot, keep_own } => {
                 self.source_becomes_copy_of_slot(item, legal, slot, keep_own)
+            }
+            Effect::DestroyAllCreaturesTappedTokenPerNontoken { def } => {
+                self.destroy_all_creatures_tapped_token_per_nontoken(item.controller, def)
+            }
+            Effect::TargetPlayerDrawsHalfLibraryLosesHalfLife(slot) => {
+                for q in self.players_for(item, legal, Who::TargetPlayer(slot)) {
+                    self.draw_half_library_lose_half_life(q);
+                }
+            }
+            Effect::EachPlayerDrawsPerKindCounter => self.each_player_draws_per_kind_counter(src),
+            Effect::SearchCreatureBySacrificedMvPlusCounter { plus } => {
+                if let Some(v) = item.extra {
+                    let mv = self.def_of(v).cost.mana_value() + plus as u32;
+                    let (what, to) = (SearchFor::CreatureMvExactly(mv), SearchTo::BattlefieldPlusCounter);
+                    self.ask(item.controller, Decision::Search { what, to, left: 1 });
+                }
+            }
+            Effect::ExchangeControlWithSlotOrSacrifice(slot) => {
+                self.exchange_control_or_sacrifice(item, legal, slot)
             }
             Effect::DiscardThenIfInstantOrSorcery => {
                 let p = item.controller;

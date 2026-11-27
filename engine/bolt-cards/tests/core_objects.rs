@@ -988,3 +988,84 @@ fn playing_a_card_from_exile_triggers_and_from_hand_does_not() {
     resolve_all(&mut g, &[]);
     assert_eq!(tokens(&g, 0, "Treasure").len(), 1, "played from exile");
 }
+
+// ---- needs_core (mac-c), batch 12: Sheoldred and Animar ----
+
+#[test]
+fn hornet_queen_makes_deathtouch_insects_and_blood_money_pays_only_for_nontokens() {
+    let mut g = table();
+    let queen = hand(&mut g, 0, "Hornet Queen");
+    act(&mut g, Action::Cast(queen));
+    resolve_all(&mut g, &[]);
+    let insects = tokens(&g, 0, "Insect");
+    assert_eq!(insects.len(), 4);
+    assert!(g.keywords(insects[0]).has(Keywords::FLYING) && g.keywords(insects[0]).has(Keywords::DEATHTOUCH));
+    assert_eq!(
+        g.colors_of(insects[0]),
+        [false, false, false, false, true],
+        "green"
+    );
+    let ghoul = put(&mut g, 1, "Hungry Ghoul");
+    let money = hand(&mut g, 0, "Blood Money");
+    act(&mut g, Action::Cast(money));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(queen).zone, Zone::Graveyard);
+    assert_eq!(g.obj(ghoul).zone, Zone::Graveyard);
+    assert!(tokens(&g, 0, "Insect").is_empty());
+    let treasures = tokens(&g, 0, "Treasure");
+    assert_eq!(treasures.len(), 2, "Hornet Queen and the Ghoul, not the Insects");
+    assert!(treasures.iter().all(|&t| g.obj(t).tapped));
+}
+
+#[test]
+fn peer_into_the_abyss_draws_half_the_library_and_halves_life_rounding_up() {
+    let mut g = table();
+    let lib = g.players[1].library.len();
+    let hand_before = g.players[1].hand.len();
+    g.players[1].life = 39;
+    let peer = hand(&mut g, 0, "Peer into the Abyss");
+    act(&mut g, Action::Cast(peer));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].hand.len(), hand_before + lib.div_ceil(2));
+    assert_eq!(g.players[1].life, 19, "loses 20 of 39");
+}
+
+#[test]
+fn otherworld_atlas_charges_then_each_player_draws_per_counter() {
+    let mut g = table();
+    let atlas = put(&mut g, 0, "Otherworld Atlas");
+    act(&mut g, Action::Activate(atlas, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(atlas).kind_counters, 1);
+    to_main1(&mut g, 5, 0);
+    let (mine, theirs) = (g.players[0].hand.len(), g.players[1].hand.len());
+    act(&mut g, Action::Activate(atlas, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), mine + 1);
+    assert_eq!(g.players[1].hand.len(), theirs + 1);
+}
+
+#[test]
+fn neoform_finds_one_more_mana_value_with_an_extra_counter() {
+    let mut g = table();
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let sage = top(&mut g, "Somberwald Sage");
+    let neoform = hand(&mut g, 0, "Neoform");
+    act(&mut g, Action::CastWith(neoform, ghoul));
+    resolve_all(&mut g, &[Action::Pick(sage)]);
+    assert_eq!(g.obj(ghoul).zone, Zone::Graveyard, "sacrificed");
+    assert_eq!(g.obj(sage).zone, Zone::Battlefield, "mana value 3");
+    assert_eq!(g.obj(sage).counters, 1);
+}
+
+#[test]
+fn gilded_drake_exchanges_control_with_an_opponents_creature() {
+    let mut g = table();
+    let theirs = put(&mut g, 1, "Hungry Ghoul");
+    let drake = hand(&mut g, 0, "Gilded Drake");
+    act(&mut g, Action::Cast(drake));
+    resolve_all(&mut g, &[Action::Target(obj(theirs))]);
+    assert_eq!(g.obj(drake).controller, 1);
+    assert_eq!(g.obj(theirs).controller, 0);
+}

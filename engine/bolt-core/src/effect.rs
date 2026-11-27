@@ -2519,6 +2519,26 @@ pub enum Effect {
         slot: u8,
         keep_own: bool,
     },
+    /// Destroy all creatures; you create a tapped `def` token for each nontoken creature destroyed
+    /// this way (Blood Money: Treasure).
+    DestroyAllCreaturesTappedTokenPerNontoken {
+        def: usize,
+    },
+    /// The player in `slot` draws half the cards in their library and loses half their life, each
+    /// rounded up (Peer into the Abyss).
+    TargetPlayerDrawsHalfLibraryLosesHalfLife(u8),
+    /// Each player draws a card for each of the source's own kind of counter (Otherworld Atlas's
+    /// charge counters, `Object::kind_counters`).
+    EachPlayerDrawsPerKindCounter,
+    /// Search for a creature card with mana value exactly `plus` more than the sacrificed creature's
+    /// (the stack entry's `extra`) and put it onto the battlefield with an additional +1/+1 counter,
+    /// then shuffle (Neoform).
+    SearchCreatureBySacrificedMvPlusCounter {
+        plus: u8,
+    },
+    /// Exchange control of the source and the creature in `slot`; if you don't or can't (no target,
+    /// or either has left), sacrifice the source (Gilded Drake).
+    ExchangeControlWithSlotOrSacrifice(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -2613,6 +2633,8 @@ pub enum SearchTo {
     ExileCastFreeThisTurn,
     /// Onto the battlefield tapped under this player's control (Yavimaya Dryad).
     BattlefieldTappedUnder(u8),
+    /// Onto the battlefield with an additional +1/+1 counter (Neoform).
+    BattlefieldPlusCounter,
 }
 
 /// What a static ability affects.

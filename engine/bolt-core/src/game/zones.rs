@@ -607,4 +607,87 @@ impl Game {
             self.fire(p, When::YouPlayCardFromExile, None);
         }
     }
+
+    /// A searched-for card onto the battlefield with an additional +1/+1 counter (Neoform). The
+    /// counter is put on as it arrives.
+    pub(super) fn enter_with_plus_counter(&mut self, c: ObjId) {
+        self.move_to(c, Zone::Battlefield);
+        if self.obj(c).zone == Zone::Battlefield {
+            self.add_counters(c, 1);
+        }
+    }
+
+    /// Blood Money: destroy all creatures, then a tapped `def` token for each nontoken creature
+    /// destroyed this way (one that's indestructible or regenerated doesn't count).
+    pub(super) fn destroy_all_creatures_tapped_token_per_nontoken(&mut self, p: PlayerId, def: usize) {
+        let all: Vec<ObjId> = self
+            .battlefield
+            .iter()
+            .copied()
+            .filter(|&c| self.types_of(c).creature)
+            .collect();
+        let mut n = 0;
+        for c in all {
+            let nontoken = !self.is_token(c);
+            self.destroy(c);
+            if nontoken && self.obj(c).zone != Zone::Battlefield {
+                n += 1;
+            }
+        }
+        for _ in 0..n {
+            self.create_token(p, def);
+            for t in self.last_created.clone() {
+                self.obj_mut(t).tapped = true;
+            }
+        }
+    }
+
+    /// Peer into the Abyss: `q` draws half the cards in their library and loses half their life,
+    /// each rounded up.
+    pub(super) fn draw_half_library_lose_half_life(&mut self, q: PlayerId) {
+        let n = self.players[q].library.len().div_ceil(2);
+        for _ in 0..n {
+            self.draw(q);
+        }
+        let life = self.players[q].life;
+        if life > 0 {
+            self.lose_life(q, (life + 1) / 2);
+        }
+    }
+
+    /// Otherworld Atlas: each player, the active player first, draws a card for each of the
+    /// source's kind counters.
+    pub(super) fn each_player_draws_per_kind_counter(&mut self, src: ObjId) {
+        let n = self.obj(src).kind_counters.max(0);
+        let first = self.active;
+        for q in [first, opponent(first)] {
+            for _ in 0..n {
+                self.draw(q);
+            }
+        }
+    }
+
+    /// Gilded Drake: exchange control of the source and the creature in `slot` (CR 701.12b: only if
+    /// both are still on the battlefield and controlled by different players); otherwise sacrifice
+    /// the source.
+    pub(super) fn exchange_control_or_sacrifice(&mut self, item: &StackItem, legal: &[bool], slot: u8) {
+        let src = item.source;
+        let on = |g: &Game, x: ObjId| g.obj(x).zone == Zone::Battlefield;
+        let other = Game::slot_object(item, legal, slot).filter(|&t| on(self, t));
+        if let Some(t) =
+            other.filter(|&t| on(self, src) && self.obj(t).controller != self.obj(src).controller)
+        {
+            let (a, b) = (self.obj(src).controller, self.obj(t).controller);
+            let turn = self.turn;
+            for (x, to) in [(src, b), (t, a)] {
+                let o = self.obj_mut(x);
+                o.controller = to;
+                o.since_turn = turn; // CR 302.6
+            }
+        } else if on(self, src) && !self.cant_be_sacrificed(src) {
+            let p = self.obj(src).controller;
+            self.move_to(src, Zone::Graveyard);
+            self.sacrificed(src, p);
+        }
+    }
 }

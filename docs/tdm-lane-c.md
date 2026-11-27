@@ -884,3 +884,30 @@ Fast-forwarded to tarkir 53fd106 (the merger's X-dependent activation targets; n
   that piece when the effect lands, or both if it's handed to me.
 Tests: core_objects 42 (the Mycosynth copy test back, Arasta's trigger carrying the spell, Prosper playing a land
 from exile and not from hand); pg_c 212.
+
+## needs_core (mac-c), batch 12: Sheoldred and Animar (unbuilt)
+
+tarkir was already at a6fb683 (nothing to merge). Tokens: 100 is a placeholder for d1 (`Tokens::placeholder_100`),
+101 the 1/1 green Insect with flying and deathtouch (`Tokens::insect_deathtouch`); 102-104 still free for lane C.
+Core (game/zones.rs, dispatch arms after `SourceBecomesCopyOfSlot`):
+`Effect::{DestroyAllCreaturesTappedTokenPerNontoken, TargetPlayerDrawsHalfLibraryLosesHalfLife,
+EachPlayerDrawsPerKindCounter, SearchCreatureBySacrificedMvPlusCounter, ExchangeControlWithSlotOrSacrifice}` and
+`SearchTo::BattlefieldPlusCounter` (one arm in the `Decision::Search` answer).
+Cards (6, listed): Blood Money, Peer into the Abyss, Otherworld Atlas (charge counters are `kind_counters`), Neoform,
+Gilded Drake, Hornet Queen. Tests in core_objects (47).
+Shortcuts: Gilded Drake's trigger fizzles if its one target becomes illegal, so the Drake isn't sacrificed then
+("This ability still resolves if its target becomes illegal"). Neoform's counter is put on just after the card
+enters.
+Waiting on others:
+- Elder Brain: d1 ("spend mana as though it were mana of any color"). The exile-hand, draw-that-many and
+  play-while-exiled part is lane C's and needs no new piece beyond `playable`.
+- Walking Ballista: d1 (a "remove a +1/+1 counter from this" activation cost); `enters_with_x_counters` and `{4}`
+  exist.
+- Rhythm of the Wild: riot (enters with your choice of a +1/+1 counter or haste: Mac B replacement, or d1
+  keywords) and "creature spells you control can't be countered" (a static: merger).
+- Somberwald Sage: d1 (mana spendable only on creature spells).
+- Vizier of the Menagerie: `top_spells_creatures` exists; "spend mana of any type to cast creature spells" is d1.
+- The Ozolith: d2 (a "creature you control leaves the battlefield, if it had counters" trigger with its last-known
+  counters); moving the counters at the beginning of combat is lane C's once that exists.
+- Karador, Ghost Chieftain: d1 (costs {1} less per creature card in your graveyard); "once during each of your
+  turns, cast a creature spell from your graveyard" is lane C's (cast-from-zone) and next.
