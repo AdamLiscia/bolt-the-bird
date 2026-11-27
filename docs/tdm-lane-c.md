@@ -987,3 +987,5 @@ Final Act (unbuilt, approved by the merger): Farewell's way, 31 mode sets (bit i
 `Effect::{DestroyAllPlaneswalkers, EachOpponentLosesAllCounters}` (zones.rs; poison and energy are the player
 counters the engine has). "Destroy all battles" is an empty mode: the engine has no battles, so there is nothing to
 destroy; revisit when battles (Invasion of Ikoria) land. Test in core_objects (52).
+Built on 6343801 (tarkir 56ccd07 merged): Final Act passes. 2,173 Rust tests (core_objects 52, pg_c 212, play.rs 3
+ignored), pytest 166, clippy, fmt and ruff clean.
