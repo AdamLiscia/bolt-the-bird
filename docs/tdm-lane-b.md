@@ -1003,7 +1003,8 @@ Crew N (CR 702.122a) is now "tap any number of other untapped creatures with tot
 more". The activation list offers `ActivateWith(vehicle, n, c)` for each other untapped creature
 when their total power reaches N; if `c` alone is enough it crews at once as before, otherwise
 `Decision::CrewTap` asks for more (`Pick` another, `Yes` once the total reaches N, `No` to not
-crew, with nothing paid). The others are tapped with the named one in `pay_activation`
+crew, with nothing paid); creatures with 0 power aren't offered (they add nothing; only a "becomes
+tapped" trigger would want one). The others are tapped with the named one in `pay_activation`
 (`Game::crew_extra`). Saddle will use the same cost once d1 batch 19 is on tarkir.
 - Saddle (d1 batch 19's `Activated::saddle`) now uses the same summed-power cost: listed like crew,
   as a sorcery, `Decision::CrewTap` for more creatures (labels now say "crew or saddle"); every

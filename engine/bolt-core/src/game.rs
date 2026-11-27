@@ -12580,10 +12580,12 @@ impl Game {
             .collect()
     }
 
-    /// Creatures `p` could tap to crew `source`: untapped, not `source`, not already `chosen`.
+    /// Creatures `p` could tap to crew or saddle `source`: untapped, not `source`, not already
+    /// `chosen`, and with power above 0 (a 0-power creature adds nothing to the total, so it isn't
+    /// offered).
     fn crew_candidates(&self, p: PlayerId, source: ObjId, chosen: &[ObjId]) -> Vec<ObjId> {
         self.creatures(p)
-            .filter(|&c| c != source && !self.obj(c).tapped && !chosen.contains(&c))
+            .filter(|&c| c != source && !self.obj(c).tapped && !chosen.contains(&c) && self.power(c) > 0)
             .collect()
     }
 
