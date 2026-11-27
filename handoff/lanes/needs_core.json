@@ -2738,7 +2738,7 @@
   {
    "card": "Moonstone, Harsh Mistress",
    "deck": "Raffine, Scheming Seer",
-   "missing": "needs core: a 'whenever you discard a card' trigger",
+   "missing": "needs core: a 'whenever you discard a card' trigger [done by d2 batch 26: Effect::ExileGraveyardCardPlayableUntilYourNextTurn, scripted in pg_d2]",
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2"
@@ -3602,7 +3602,7 @@
   {
    "card": "The Ozolith",
    "deck": "Animar, Soul of Elements",
-   "missing": "needs core: keep the counters of creatures leaving and move them [lane C 2026-11-26: blocked on d2: a 'creature you control leaves the battlefield, if it had counters' trigger with its last-known counters; lane C's part: keeping the counters on The Ozolith and moving them at the beginning of combat]",
+   "missing": "needs core: keep the counters of creatures leaving and move them [lane C 2026-11-26: blocked on d2: a 'creature you control leaves the battlefield, if it had counters' trigger with its last-known counters; lane C's part: keeping the counters on The Ozolith and moving them at the beginning of combat] [done by d2 batch 26: the leaves trigger carries the +1/+1 counters, Effect::CountersSelfAmount, Effect::MoveAllCountersFromSourceTo, Condition::SourceHasCounters, scripted in pg_d2]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "d2"

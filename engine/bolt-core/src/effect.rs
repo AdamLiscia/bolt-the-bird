@@ -2677,6 +2677,14 @@ pub enum Effect {
     /// Adapt `n` (CR 701.46): if the source has no +1/+1 counters on it, put `n` on it (Basking
     /// Broodscale).
     AdaptSelf(i32),
+    /// Exile the graveyard card in `slot`; until the end of your next turn, you may play it
+    /// (Moonstone, Harsh Mistress: the discarded card).
+    ExileGraveyardCardPlayableUntilYourNextTurn(u8),
+    /// Put +1/+1 counters equal to the trigger's amount on the source (The Ozolith: the counters
+    /// the creature that left had, `When::CreatureYouControlLeavesBattlefield`'s amount).
+    CountersSelfAmount,
+    /// Move all +1/+1 counters from the source onto the creature in `slot` (The Ozolith).
+    MoveAllCountersFromSourceTo(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -3133,6 +3141,8 @@ pub enum Condition {
     /// Its controller has at least this much life more than their starting life total (Angel of
     /// Destiny: 15).
     LifeAtLeastStartingPlus(i32),
+    /// The source has one or more +1/+1 counters on it (The Ozolith).
+    SourceHasCounters,
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.

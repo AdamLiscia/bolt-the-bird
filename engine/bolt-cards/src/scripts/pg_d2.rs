@@ -1236,6 +1236,27 @@ pub fn script(name: &str) -> Option<Script> {
                 may(d, When::PlusCountersPutOnThis, vec![], vec![Effect::CreateToken { who: Who::You, def: t.eldrazi_spawn, n: 1 }]);
             },
         ),
+        // ---- Core: triggers, batch 26 (a discard exiles the card to play until your next turn) ----
+        "Moonstone, Harsh Mistress" => s(
+            &["Whenever you discard a card, you may exile that card from your graveyard. If you do, until the end of your next turn, you may play that card."],
+            |d, _| {
+                let that = Filter { triggering: true, ..graveyard_cards(false, Controller::You) };
+                may(d, When::YouDiscard, vec![that], vec![Effect::ExileGraveyardCardPlayableUntilYourNextTurn(0)]);
+            },
+        ),
+        "The Ozolith" => s(
+            &[
+                "Whenever a creature you control leaves the battlefield, if it had counters on it, put those counters on The Ozolith.",
+                "At the beginning of combat on your turn, if The Ozolith has counters on it, you may move all counters from The Ozolith onto target creature.",
+            ],
+            |d, _| {
+                // +1/+1 counters (the engine's kinds on a creature that the Ozolith can hold).
+                on(d, When::CreatureYouControlLeavesBattlefield, vec![], vec![Effect::CountersSelfAmount]);
+                let mut a = Ability::new(vec![CREATURE], vec![Effect::MoveAllCountersFromSourceTo(0)]).optional();
+                a.condition = Some(Condition::SourceHasCounters);
+                d.triggers.push(Trigger { when: When::BeginCombatYourTurn, ability: a });
+            },
+        ),
         _ => None,
     }
 }
@@ -1461,4 +1482,6 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Currency Converter",
     "All Will Be One",
     "Basking Broodscale",
+    "Moonstone, Harsh Mistress",
+    "The Ozolith",
 ];
