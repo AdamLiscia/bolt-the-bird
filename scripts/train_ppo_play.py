@@ -32,7 +32,7 @@ from bolt.backup import upload_quietly  # noqa: E402
 from bolt.play_data import concat, within  # noqa: E402
 from bolt.play_net import load_into, pad_optimizer  # noqa: E402
 from bolt.play_ppo import gae, league, ppo_step  # noqa: E402
-from bolt.play_runner import run_parallel  # noqa: E402
+from bolt.play_runner import Stopped, run_parallel  # noqa: E402
 
 # One deck per line (card numbers of BOLT_PLAY_SET): lines 0-511 train, 512-1023 evaluate. In Commander
 # (BOLT_PLAY_FORMAT=commander) a bolt.cmd_decks file, every deck both trained and evaluated on: the
@@ -75,7 +75,9 @@ def resume_into(net, opt, s):
     it was saved with, or for a state saved before names were kept, the pool of its size; bolt.play_net)."""
     from bolt.play_net import legacy_names
 
-    names = s.get("card_names") or legacy_names(PLAY_SET, s["model"]["card.weight"].shape[0] - 2)
+    names = s.get("card_names")
+    if names is None and net.config.get("set_name"):
+        names = legacy_names(PLAY_SET, s["model"]["card.weight"].shape[0] - 2)
     rows = load_into(net, s["model"], names)
     opt.load_state_dict(s["opt"])
     pad_optimizer(opt, net, rows)
@@ -96,7 +98,7 @@ def save_atomic(obj, path: Path):
     tmp.replace(path)
 
 
-def evaluate(net, pairs, workers, smart_ms=None):
+def evaluate(net, pairs, workers, smart_ms=None, stop=None):
     from eval_play import match, summary
 
     jobs = eval_jobs(deck_sets()[1], pairs)
@@ -105,12 +107,13 @@ def evaluate(net, pairs, workers, smart_ms=None):
     for opp in ("rules", "smart"):
         t = time.time()
         smart = (1, 2) if smart_ms is None else (1, 2, smart_ms)
-        out[opp] = summary(match(net, "net", opp, jobs, workers, smart=smart))["win_rate"]
+        out[opp] = summary(match(net, "net", opp, jobs, workers, smart=smart, stop=stop))["win_rate"]
         out[f"{opp}_s"] = round(time.time() - t)  # wall seconds for its 2 x pairs games
     return out
 
 
-def main():
+def parser() -> argparse.ArgumentParser:
+    """The trainer's flags; tests/test_job_files.py parses every jobs/*.json command line with it."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--name", default="ppo1")
     ap.add_argument("--init", default="checkpoints/play/distill2/step_17353.pt")
@@ -138,13 +141,23 @@ def main():
         help="cap on every smart-player move in training games (0 = none): uncapped, one move can take minutes",
     )
     ap.add_argument("--eval-smart-ms", type=int, default=None, help="the same cap in evaluations (default --smart-ms)")
+    ap.add_argument(
+        "--max-objects",
+        type=int,
+        default=256,
+        help="drop positions with more objects than this from the update, whole (0 keeps all)",
+    )
     ap.add_argument("--resume", action="store_true")
     ap.add_argument(
         "--self-play",
         action="store_true",
         help="train only against itself and its past checkpoints (no rules or smart opponents)",
     )
-    a = ap.parse_args()
+    return ap
+
+
+def main():
+    a = parser().parse_args()
     if a.eval_smart_ms is None:
         a.eval_smart_ms = a.smart_ms or None
     if os.environ.get("BOLT_THREADS"):  # farm.py --job-threads (the 12-thread nights)
@@ -187,6 +200,18 @@ def main():
             print(f"resumed from S3 at iteration {state['iter']}", flush=True)
     decks = deck_sets()[0]
 
+    def stopping() -> bool:
+        return job is not None and job.stop_requested
+
+    def stop_now() -> None:
+        """SIGTERM: put the last finished iteration (state.pt, written before its line was printed) on S3, exit."""
+        if (ck / "state.pt").exists():
+            s = torch.load(ck / "state.pt", map_location="cpu", weights_only=False)
+            job.save(s, step=s["state"]["iter"])
+            print(f"stopped at iteration {s['state']['iter']} (SIGTERM); checkpoint saved", flush=True)
+        else:
+            print("stopped before the first iteration finished (SIGTERM)", flush=True)
+
     beat = {"t": time.time()}
 
     def watchdog():
@@ -210,6 +235,8 @@ def main():
         write_results()
 
     while state["iter"] < a.iters:
+        if stopping():  # a SIGTERM between iterations: the finished one is saved before anything else starts
+            return stop_now()
         it = state["iter"] + 1
         t0 = time.time()
         rng = random.Random(it)
@@ -226,9 +253,12 @@ def main():
             # Commander games vary a lot in length: small chunks (4 a worker) keep every worker busy to the end
             chunk = max(1, -(-len(jobs) // (4 * a.workers))) if COMMANDER else 20
             smart = (1, 2, a.smart_ms) if a.smart_ms else (1, 2)
-            r = run_parallel(net, jobs, workers=a.workers, chunk=chunk, seats=seats, sample=True, seed=it * 100 + k,
-                             smart=smart,
-                             record=record, opp_net=opp, compact=True)  # fmt: skip
+            try:
+                r = run_parallel(net, jobs, workers=a.workers, chunk=chunk, seats=seats, sample=True,
+                                 seed=it * 100 + k, smart=smart, record=record, opp_net=opp, compact=True,
+                                 stop=stopping)  # fmt: skip
+            except Stopped:  # SIGTERM mid-play: this iteration is dropped, the last finished one saved
+                return stop_now()
             part = r["arrays"]
             part["adv"], part["ret"] = gae(part, lam=a.lam)  # per matchup: game numbers restart per call
             parts.append(part)
@@ -261,6 +291,8 @@ def main():
         for _ in range(a.epochs):
             perm = keep[prng.permutation(n)]
             for s in range(0, n - a.batch + 1, a.batch):
+                if stopping():
+                    return stop_now()
                 idx = np.sort(perm[s : s + a.batch])
                 st = ppo_step(net, ref, opt, arr, idx, adv[idx], a.clip, kl_coef, a.value_coef, ret=ret[idx])
                 for key in sums:
@@ -280,9 +312,20 @@ def main():
                **{k: round(v / max(1, steps), 4) for k, v in sums.items()},
                "play_s": round(t1 - t0), "update_s": round(time.time() - t1), "time": time.strftime("%H:%M:%S")}  # fmt: skip
         state["history"].append(row)
+        # Saved before its line is printed, so a printed iteration is a saved one (2026-11-27: a SIGTERM 4 s
+        # after iteration 8's line resumed the farm at iteration 7).
+        save_atomic(snapshot(net, opt, state), ck / "state.pt")
+        write_results()
+        if job and job.due():
+            job.save(snapshot(net, opt, state), step=it)
         print(json.dumps(row), flush=True)
+        if stopping():
+            return stop_now()
         if it % a.eval_every == 0:
-            e = evaluate(net, a.eval_pairs, a.workers, a.eval_smart_ms)
+            try:
+                e = evaluate(net, a.eval_pairs, a.workers, a.eval_smart_ms, stop=stopping)
+            except Stopped:
+                return stop_now()
             state["evals"].append({"iter": it, **e})
             score = (e["rules"] + e["smart"]) / 2
             if state["best"] is None or score > state["best"]["score"]:
@@ -291,13 +334,10 @@ def main():
                 upload_quietly(ck / "best.pt")
             print(json.dumps({"eval": it, **e, "best_iter": state["best"]["iter"]}), flush=True)
             beat["t"] = time.time()
-        save_atomic(snapshot(net, opt, state), ck / "state.pt")
-        write_results()
-        if job and job.due():
-            job.save(snapshot(net, opt, state), step=it)
-            if job.stop_requested:
-                print(f"stopped at iteration {it} (SIGTERM); checkpoint saved", flush=True)
-                return
+            save_atomic(snapshot(net, opt, state), ck / "state.pt")  # with its eval
+            write_results()
+            if job and job.due():
+                job.save(snapshot(net, opt, state), step=it)
     if job:
         job.save(snapshot(net, opt, state), step=state["iter"], done=True)
 

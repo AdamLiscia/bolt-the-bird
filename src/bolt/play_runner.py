@@ -311,15 +311,20 @@ def _hang_record(job, seats, kw, index):
             "deck_a": a, "deck_b": b}  # fmt: skip
 
 
+class Stopped(Exception):
+    """run_parallel's `stop` said to stop: its workers are killed, nothing is returned."""
+
+
 def run_parallel(net, jobs, workers=6, chunk=None, seed=0, retries=2, compact=False, hang_s=None, hang_log=None,
-                 worker=None, **kw):  # fmt: skip
+                 worker=None, stop=None, **kw):  # fmt: skip
     """run_games split across spawn worker processes; results in job order. With compact=True the
     workers return recorded steps as bolt.play_data arrays ("arrays") instead of "steps".
 
     A worker whose heartbeat stops for hang_s seconds (default HANG_S; 0 turns it off), an engine call that
     never returns, is killed, and its chunk rerun without that game: a timeout with no steps, written to
     hang_log (default BOLT_HANG_LOG) as one JSON line with its decks, seed, seats and pilot settings. A worker
-    that dies (the engine's rare memory corruption) has its chunk rerun, up to `retries` times."""
+    that dies (the engine's rare memory corruption) has its chunk rerun, up to `retries` times. `stop`, a
+    callable checked about once a second, ends the run early: workers killed, Stopped raised."""
     import collections
     import json
     import queue
@@ -357,7 +362,7 @@ def run_parallel(net, jobs, workers=6, chunk=None, seed=0, retries=2, compact=Fa
             with open(hang_log, "a") as f:
                 f.write(json.dumps(rec) + "\n")
 
-    def stop(k, gi, why):
+    def leave_out(k, gi, why):
         """Leave game gi of chunk k out of its rerun: a timeout, logged."""
         skip[k].add(gi)
         rec = {**_hang_record(parts[k][gi], seats, kw, k + gi), "why": why}
@@ -373,6 +378,11 @@ def run_parallel(net, jobs, workers=6, chunk=None, seed=0, retries=2, compact=Fa
         free.append(slot)
 
     while pending or running:
+        if stop is not None and stop():  # e.g. SIGTERM: the caller saves what it has and exits
+            for k in list(running):
+                running[k][0].kill()
+                release(k)
+            raise Stopped()
         while pending and free:
             k = pending.popleft()
             slot = free.pop()
@@ -401,14 +411,14 @@ def run_parallel(net, jobs, workers=6, chunk=None, seed=0, retries=2, compact=Fa
                     if crashes[k] > 1 and 0 <= gi < len(parts[k]) and gi not in skip[k]:
                         # died twice: the second time, leave out the game it was playing (a seed that kills
                         # its worker every time, e.g. out of memory, must not end the run)
-                        stop(k, gi, "worker died twice")
+                        leave_out(k, gi, "worker died twice")
                     pending.append(k)
             elif hang_s and time.time() - beats[2 * slot] > hang_s:
                 gi = int(beats[2 * slot + 1])
                 p.kill()
                 release(k)
                 if 0 <= gi < len(parts[k]) and gi not in skip[k]:
-                    stop(k, gi, f"no engine call returned for {hang_s:.0f}s")
+                    leave_out(k, gi, f"no engine call returned for {hang_s:.0f}s")
                 else:  # stalled outside a game's engine call: rerun the chunk as for a crash
                     crashes[k] += 1
                     if crashes[k] > retries:
