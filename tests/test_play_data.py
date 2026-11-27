@@ -44,3 +44,18 @@ def test_the_value_target_is_the_result_from_the_deciders_side(played):
         r = played["results"][s["game"]]["result"]
         want = 0 if r not in ("p0", "p1") else (1 if r == f"p{s['seat']}" else -1)
         assert arr["z"][i] == want
+
+
+def test_groups_partition_the_rows_by_size_within_the_padding_budget():
+    from bolt.play_data import GROUP_BUDGET, GROUP_ROWS, groups
+
+    rng = np.random.default_rng(0)
+    n_obj = np.concatenate([rng.integers(5, 60, 500), [460, 300]])
+    n_act = np.concatenate([rng.integers(1, 20, 500), [1600, 900]])
+    arr = {"obj_off": np.concatenate([[0], np.cumsum(n_obj)]), "act_off": np.concatenate([[0], np.cumsum(n_act)])}
+    idx = rng.permutation(len(n_obj))[:400].tolist() + [500, 501]
+    gs = groups(arr, idx)
+    assert sorted(int(i) for g in gs for i in g) == sorted(idx), "every row in exactly one group"
+    for g in gs:
+        width = max(int(n_obj[i] + n_act[i]) for i in g)
+        assert len(g) <= GROUP_ROWS and (len(g) == 1 or len(g) * width <= GROUP_BUDGET)
