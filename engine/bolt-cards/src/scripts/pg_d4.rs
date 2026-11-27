@@ -379,6 +379,28 @@ pub fn script(name: &str) -> Option<Script> {
                 chapter(d, 3, Ability::new(vec![], vec![artifact]));
             },
         ),
+        // ---- Bloomburrow Commander leftovers ----
+        "Fisher's Talent" => s(
+            &[
+                "At the beginning of your upkeep, look at the top card of your library. You may reveal it if it's a land card. Create a 1/1 blue Fish creature token if you revealed it this way. Then draw a card.",
+                "{G}{U}: Level 2",
+                "If you would create a Fish token, create a 3/3 blue Shark creature token instead.",
+                "{2}{G}{U}: Level 3",
+                "If you would create a Shark token, create an 8/8 blue Octopus creature token instead.",
+            ],
+            |d, t| {
+                // d3's reveal-a-land Fish (always revealed: revealing only adds the token), and lane
+                // B's Class token replacements, applied in order (level 3 makes a Fish an Octopus).
+                let fish = Effect::CreateTokenIfTopIsLandThenDraw { def: t.fish };
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![fish]);
+                for (level, cost) in [(2, "{G}{U}"), (3, "{2}{G}{U}")] {
+                    let n = activated(d, cost, false, vec![], vec![Effect::ClassLevelUp(level)]);
+                    d.activated[n].sorcery = true;
+                    d.activated[n].level_up_to = level;
+                }
+                d.class_token_replacements = vec![(2, t.fish, t.shark), (3, t.shark, t.octopus)];
+            },
+        ),
         _ => None,
     }
 }
@@ -416,4 +438,6 @@ pub const PG_D4_SCRIPTED: &[&str] = &[
     "Commander's Plate",
     // Sagas
     "Urza's Saga",
+    // Bloomburrow Commander leftovers
+    "Fisher's Talent",
 ];
