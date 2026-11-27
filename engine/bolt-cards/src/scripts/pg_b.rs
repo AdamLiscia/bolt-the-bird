@@ -2454,6 +2454,20 @@ pub fn script(name: &str) -> Option<Script> {
                 d.cant_attack_during_extra_turns = true;
             },
         ),
+        "Ichormoon Gauntlet" => s(
+            &[
+                "Planeswalkers you control have \"[0]: Proliferate\" and \"[−12]: Take an extra turn after this one.\"",
+                "Whenever you cast a noncreature spell, choose a counter on target permanent. Put an additional counter of that kind on that permanent.",
+            ],
+            |d, _| {
+                d.your_planeswalkers_have_loyalty = vec![
+                    (0, Ability::new(vec![], vec![Effect::Proliferate])),
+                    (-12, Ability::new(vec![], vec![Effect::ExtraTurn])),
+                ];
+                let permanent = Filter { players: false, creatures: false, planeswalkers: false, any_permanent: true, ..Filter::ANY };
+                on(d, When::YouCastNoncreature, vec![permanent], vec![Effect::AddCounterOfChosenKind(0)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -2735,6 +2749,7 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Blossombind",
     "Urza's Ruinous Blast",
     "Medomai the Ageless",
+    "Ichormoon Gauntlet",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",

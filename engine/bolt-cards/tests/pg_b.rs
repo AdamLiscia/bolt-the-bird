@@ -4679,3 +4679,55 @@ fn medomai_takes_an_extra_turn_and_cant_attack_during_it() {
     let offered = pass_to_turn(&mut g, 9);
     assert!(offered.contains(&Action::Attack(medomai)), "a normal turn");
 }
+
+// ---- Ichormoon Gauntlet (Atraxa) ----
+
+#[test]
+fn ichormoon_gauntlet_gives_your_planeswalkers_proliferate_and_an_extra_turn() {
+    let mut g = table();
+    let ugin = put(&mut g, 0, "Ugin, the Spirit Dragon"); // three loyalty abilities of its own
+    put(&mut g, 0, "Ichormoon Gauntlet");
+    g.objects[ugin.0 as usize].loyalty = 7;
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Loyalty(ugin, 3)), "[0]: Proliferate");
+    assert!(
+        !legal.contains(&Action::Loyalty(ugin, 4)),
+        "[-12] needs 12 loyalty"
+    );
+    g.objects[ugin.0 as usize].loyalty = 12;
+    act(&mut g, Action::Loyalty(ugin, 4));
+    resolve_all(&mut g, &[]);
+    assert!(g.extra_turns.contains(&0), "an extra turn after this one");
+}
+
+#[test]
+fn ichormoon_gauntlet_adds_a_counter_of_the_chosen_kind_on_a_noncreature_cast() {
+    let mut g = table();
+    put(&mut g, 0, "Ichormoon Gauntlet");
+    let elves = put(&mut g, 1, "Llanowar Elves"); // any permanent, an opponent's too
+    g.objects[elves.0 as usize].counters = 1;
+    g.objects[elves.0 as usize].stun = 1;
+    let ring = hand(&mut g, 0, "Sol Ring");
+    act(&mut g, Action::Cast(ring));
+    assert!(
+        matches!(g.pending, Pending::ChooseTarget(0)),
+        "the cast trigger targets"
+    );
+    act(&mut g, Action::Target(obj(elves)));
+    while !matches!(g.pending, Pending::Decide(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(
+        g.legal_actions(),
+        vec![Action::Mode(0), Action::Mode(2)],
+        "+1/+1 or stun"
+    );
+    act(&mut g, Action::Mode(2));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.obj(elves).counters, g.obj(elves).stun), (1, 2));
+
+    // A creature spell doesn't trigger it.
+    let lions = hand(&mut g, 0, "Savannah Lions");
+    act(&mut g, Action::Cast(lions));
+    assert!(!matches!(g.pending, Pending::ChooseTarget(_)));
+}
