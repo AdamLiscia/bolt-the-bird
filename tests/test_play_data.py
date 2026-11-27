@@ -59,3 +59,18 @@ def test_groups_partition_the_rows_by_size_within_the_padding_budget():
     for g in gs:
         width = max(int(n_obj[i] + n_act[i]) for i in g)
         assert len(g) <= GROUP_ROWS and (len(g) == 1 or len(g) * width <= GROUP_BUDGET)
+
+
+def test_giant_boards_share_a_group_with_few_others_and_can_be_left_out():
+    from bolt.play_data import GROUP_ATTENTION, groups, within
+
+    n_obj = np.array([40] * 300 + [213, 472, 559, 300, 290, 280])
+    n_act = np.array([3] * 300 + [20, 40, 60, 10, 10, 10])
+    arr = {"obj_off": np.concatenate([[0], np.cumsum(n_obj)]), "act_off": np.concatenate([[0], np.cumsum(n_act)])}
+    gs = groups(arr, np.arange(len(n_obj)))
+    for g in gs:
+        assert len(g) * max(int(n_obj[i]) for i in g) ** 2 <= GROUP_ATTENTION or len(g) == 1
+    alone = [g for g in gs if 302 in g or 301 in g]  # 559 and 472 objects
+    assert all(len(g) <= 4 for g in alone)
+    assert within(arr, 256).tolist() == list(range(301)), "drops the boards over 256 objects, whole"
+    assert len(within(arr, 0)) == len(n_obj)
