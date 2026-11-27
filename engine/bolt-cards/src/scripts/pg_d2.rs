@@ -1106,6 +1106,43 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::Never, vec![], vec![Effect::CopySpellNewTargets]);
             },
         ),
+        // ---- Ygra, Eater of All (Grande): d1's ward, d3's Food artifacts, lane B's grant, d2's trigger ----
+        "Ygra, Eater of All" => s(
+            &[
+                "Ward\u{2014}Sacrifice a Food.",
+                "Other creatures are Food artifacts in addition to their other types and have \"{2}, {T}, Sacrifice this permanent: You gain 3 life.\"",
+                "Whenever a Food is put into a graveyard from the battlefield, put two +1/+1 counters on Ygra.",
+            ],
+            |d, _| {
+                d.ward_sacrifice = 1;
+                d.mana_ext.ward_sacrifice_subtype = Some("Food");
+                d.other_creatures_are_food_artifacts = true;
+                // A static, so it's among the static sources `ygra_food` checks.
+                d.statics.push(Static {
+                    scope: Scope::This,
+                    your_turn_only: false,
+                    condition: None,
+                    subtype: None,
+                    lose_abilities: false,
+                    base_pt: None,
+                    protection: [false; 5],
+                    scale: None,
+                    power: 0,
+                    toughness: 0,
+                    keywords: Keywords::NONE,
+                    set_colors: None,
+                    becomes_land: false,
+                });
+                d.other_creatures_have = vec![Activated {
+                    mana: ManaCost::parse("{2}").expect("a mana cost"),
+                    tap: true,
+                    sacrifice_self: true,
+                    ability: Ability::new(vec![], vec![Effect::GainLife { who: Who::You, n: 3 }]),
+                    ..Activated::default()
+                }];
+                on(d, When::SubtypeToGraveyardFromBattlefield("Food"), vec![], vec![Effect::CountersSelf { n: 2 }]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1322,4 +1359,5 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Oloro, Ageless Ascetic",
     "Angel of Destiny",
     "Bonus Round",
+    "Ygra, Eater of All",
 ];
