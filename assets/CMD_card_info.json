@@ -24400,5 +24400,807 @@
   "types": [
    "Artifact"
   ]
+ },
+ {
+  "name": "Ad Nauseam",
+  "color": "B",
+  "rarity": "rare",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Adept Watershaper",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Aquitect's Defenses",
+  "color": "U",
+  "rarity": "common",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Archdruid's Charm",
+  "color": "G",
+  "rarity": "rare",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Ashling, Rekindled // Ashling, Rimebound",
+  "color": "R",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Beza, the Bounding Spring",
+  "color": "W",
+  "rarity": "mythic",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Blackblade Reforged",
+  "color": "",
+  "rarity": "rare",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "Blood Pet",
+  "color": "B",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Boulder Dash",
+  "color": "R",
+  "rarity": "uncommon",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Brain Freeze",
+  "color": "U",
+  "rarity": "uncommon",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Bristly Bill, Spine Sower",
+  "color": "G",
+  "rarity": "mythic",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Brokers Hideout",
+  "color": "",
+  "rarity": "common",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Cabal Ritual",
+  "color": "B",
+  "rarity": "uncommon",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Chain of Vapor",
+  "color": "U",
+  "rarity": "uncommon",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Chrome Mox",
+  "color": "",
+  "rarity": "mythic",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "Claim the Kingdom",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Crib Swap",
+  "color": "W",
+  "rarity": "uncommon",
+  "types": [
+   "Kindred",
+   "Instant"
+  ]
+ },
+ {
+  "name": "Culling the Weak",
+  "color": "B",
+  "rarity": "common",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Deathrite Shaman",
+  "color": "BG",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Demonic Consultation",
+  "color": "B",
+  "rarity": "uncommon",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Dismember",
+  "color": "B",
+  "rarity": "uncommon",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Disruptor of Currents",
+  "color": "U",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Drannith Magistrate",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Elvish Spirit Guide",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "End-Blaze Epiphany",
+  "color": "R",
+  "rarity": "rare",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Entish Restoration",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Escape Tunnel",
+  "color": "",
+  "rarity": "common",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Flare of Malice",
+  "color": "B",
+  "rarity": "rare",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Forsaken Miner",
+  "color": "B",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Gemstone Caverns",
+  "color": "",
+  "rarity": "mythic",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Glen Elendra's Answer",
+  "color": "U",
+  "rarity": "mythic",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Goatnap",
+  "color": "R",
+  "rarity": "uncommon",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Goliath Daydreamer",
+  "color": "R",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Gravecrawler",
+  "color": "B",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Greedy Freebooter",
+  "color": "B",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Hearthhull, the Worldseed",
+  "color": "BRG",
+  "rarity": "mythic",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "Horizon Explorer",
+  "color": "G",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Imperial Seal",
+  "color": "B",
+  "rarity": "mythic",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Invigorate",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Iridescent Vinelasher",
+  "color": "B",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Jadar, Ghoulcaller of Nephalia",
+  "color": "B",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Keep Out",
+  "color": "W",
+  "rarity": "common",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Kenrith, the Returned King",
+  "color": "W",
+  "rarity": "mythic",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Kinbinding",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Kinscaer Sentry",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Lavaleaper",
+  "color": "R",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Lion's Eye Diamond",
+  "color": "",
+  "rarity": "mythic",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "Mental Misstep",
+  "color": "U",
+  "rarity": "uncommon",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Mightform Harmonizer",
+  "color": "G",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Mina and Denn, Wildborn",
+  "color": "RG",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Mox Diamond",
+  "color": "",
+  "rarity": "mythic",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "Nahiri's Lithoforming",
+  "color": "R",
+  "rarity": "rare",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Opposition Agent",
+  "color": "B",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Orcish Lumberjack",
+  "color": "R",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Overprotect",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Planar Engineering",
+  "color": "G",
+  "rarity": "rare",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Pyrrhic Strike",
+  "color": "W",
+  "rarity": "uncommon",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Ram Through",
+  "color": "G",
+  "rarity": "common",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Reaping Willow",
+  "color": "WB",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Rev, Tithe Extractor",
+  "color": "B",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Ride the Shoopuf",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Riverguard's Reflexes",
+  "color": "W",
+  "rarity": "common",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Riveteers Overlook",
+  "color": "",
+  "rarity": "common",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Roaring Earth",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Roiling Regrowth",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Sabotender",
+  "color": "R",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Sanar, Innovative First-Year",
+  "color": "UR",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Scale Up",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Scuzzback Scrounger",
+  "color": "R",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Scythecat Cub",
+  "color": "G",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Sear",
+  "color": "R",
+  "rarity": "uncommon",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Sephiroth, Fabled SOLDIER // Sephiroth, One-Winged Angel",
+  "color": "B",
+  "rarity": "mythic",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Silence",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Skyclave Pick-Axe",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "Snuff Out",
+  "color": "B",
+  "rarity": "common",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Spell Pierce",
+  "color": "U",
+  "rarity": "uncommon",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Springbloom Druid",
+  "color": "G",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Spymaster's Vault",
+  "color": "",
+  "rarity": "rare",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Staff of Titania",
+  "color": "",
+  "rarity": "rare",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "Stridehangar Automaton",
+  "color": "",
+  "rarity": "rare",
+  "types": [
+   "Artifact",
+   "Creature"
+  ]
+ },
+ {
+  "name": "Summoner's Pact",
+  "color": "G",
+  "rarity": "rare",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Tamiyo's Safekeeping",
+  "color": "G",
+  "rarity": "common",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Tannuk, Memorial Ensign",
+  "color": "RG",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Thassa's Oracle",
+  "color": "U",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Tifa Lockhart",
+  "color": "G",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Tifa's Limit Break",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Timeline Culler",
+  "color": "B",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Tropical Island",
+  "color": "",
+  "rarity": "rare",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Tyvar's Stand",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Underground Sea",
+  "color": "",
+  "rarity": "rare",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Underworld Breach",
+  "color": "R",
+  "rarity": "rare",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Unexpected Assistance",
+  "color": "U",
+  "rarity": "common",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Utopia Sprawl",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Vernal Fen",
+  "color": "",
+  "rarity": "rare",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Vizier of Remedies",
+  "color": "W",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Volcanic Island",
+  "color": "",
+  "rarity": "rare",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Westvale Abbey // Ormendahl, Profane Prince",
+  "color": "",
+  "rarity": "rare",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Wheel of Fortune",
+  "color": "R",
+  "rarity": "mythic",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Wild Growth",
+  "color": "G",
+  "rarity": "common",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Wishclaw Talisman",
+  "color": "B",
+  "rarity": "rare",
+  "types": [
+   "Artifact"
+  ]
  }
 ]
