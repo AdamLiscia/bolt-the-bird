@@ -3328,3 +3328,349 @@ fn proliferate_may_choose_nothing_and_twice_with_tekuthal() {
     );
     assert_eq!(g.obj(mine).counters, 3, "proliferated twice");
 }
+
+#[test]
+fn a_creature_becomes_a_treasure_artifact() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![Filter::CREATURE],
+        vec![Effect::BecomeTreasure(0)],
+    )]);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::Target(obj(elves)));
+    resolve_all(&mut g, &[]);
+    let ty = g.types_of(elves);
+    assert!(
+        ty.artifact && !ty.creature,
+        "a Treasure artifact, no other card types"
+    );
+    assert!(g.has_subtype(elves, "Treasure") && !g.has_subtype(elves, "Elf"));
+    let any = g
+        .mana_sources(0)
+        .into_iter()
+        .find(|&(x, _)| x == elves)
+        .map(|(_, m)| m.colors);
+    assert_eq!(any, Some([true; 5]), "Treasure's mana, not the Elf's {{G}} alone");
+    g.start_turn(5, 0);
+    assert!(g.treasure_form(elves), "for as long as it stays");
+}
+
+#[test]
+fn target_player_gets_poison_up_to_nine() {
+    let to_player = Filter {
+        creatures: false,
+        planeswalkers: false,
+        ..Filter::ANY
+    };
+    let poison = Effect::TargetPlayerPoisonUpTo { slot: 0, n: 9 };
+    let (mut g, t) = game_with(vec![sorcery(vec![to_player], vec![poison])]);
+    g.players[1].poison = 2;
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].poison, 9);
+}
+
+#[test]
+fn proliferating_a_saga_triggers_its_next_chapter() {
+    let (mut g, t) = game_with(vec![sorcery(vec![], vec![Effect::Proliferate])]);
+    let city = g.add_card(0, cid("City of Death"), Zone::Hand);
+    play(&mut g, city, false, &[], &[]);
+    let treasures = |g: &Game| -> Vec<ObjId> {
+        g.permanents(0)
+            .filter(|&x| g.def_of(x).name == "Treasure")
+            .collect()
+    };
+    assert_eq!((g.obj(city).lore, treasures(&g).len()), (1, 1), "chapter I");
+    let treasure = treasures(&g)[0];
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    resolve_all(
+        &mut g,
+        &[Action::Pick(city), Action::Yes, Action::Target(obj(treasure))],
+    );
+    assert_eq!(g.obj(city).lore, 2, "a lore counter");
+    assert_eq!(treasures(&g).len(), 2, "chapter II copied the Treasure");
+}
+
+#[test]
+fn another_counter_of_the_chosen_kind() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![Filter::CREATURE],
+        vec![Effect::AddCounterOfChosenKind(0)],
+    )]);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    g.objects[elves.0 as usize].counters = 1;
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::Target(obj(elves)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elves).counters, 2, "one kind: no choice");
+    g.objects[elves.0 as usize].stun = 1;
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::Target(obj(elves)));
+    while !matches!(g.pending, Pending::Decide(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert_eq!(legal, vec![Action::Mode(0), Action::Mode(2)], "+1/+1 or stun");
+    act(&mut g, Action::Mode(2));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.obj(elves).counters, g.obj(elves).stun), (2, 2));
+}
+
+#[test]
+fn scale_per_creature_entered_under_your_control_this_turn() {
+    let mut kb = CardDef::creature("Test Kinbinding", "{0}", 0, 0, Keywords::NONE);
+    kb.types = Types {
+        enchantment: true,
+        ..Types::default()
+    };
+    kb.statics.push(Static {
+        scale: Some(Scale::PerCreatureEnteredUnderYourControlThisTurn),
+        ..static_of(Scope::YourCreatures, 1, 1, Keywords::NONE)
+    });
+    let (mut g, t) = game_with(vec![kb]);
+    g.add_card(0, t, Zone::Battlefield);
+    let a = g.add_card(0, cid("Llanowar Elves"), Zone::Hand);
+    let b = g.add_card(0, cid("Llanowar Elves"), Zone::Hand);
+    play(&mut g, a, false, &[], &[]);
+    assert_eq!(g.power(a), 2, "one entered");
+    play(&mut g, b, false, &[], &[]);
+    assert_eq!((g.power(a), g.power(b)), (3, 3), "two entered");
+    g.start_turn(5, 0);
+    assert_eq!(g.power(a), 1, "a new turn");
+}
+
+#[test]
+fn bounce_then_the_owner_exiles_a_card_from_hand() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![Filter::CREATURE],
+        vec![Effect::BounceThenOwnerExilesFromHand(0)],
+    )]);
+    let theirs = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::Target(obj(theirs)));
+    while !matches!(g.pending, Pending::Decide(1)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.obj(theirs).zone, Zone::Hand);
+    act(&mut g, Action::Pick(theirs));
+    assert_eq!(g.obj(theirs).zone, Zone::Exile, "its owner chose it");
+}
+
+#[test]
+fn discard_at_random_then_damage_if_it_was_an_artifact() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![],
+        vec![Effect::DiscardRandomIfArtifactDamageEachOpponent(2)],
+    )]);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Hand);
+    let life = g.players[1].life;
+    // Discard the whole hand one random card at a time: only the Sol Ring is an artifact.
+    while !g.players[0].hand.is_empty() {
+        let c = g.add_card(0, t, Zone::Hand);
+        act(&mut g, Action::Cast(c));
+        resolve_all(&mut g, &[]);
+    }
+    assert_eq!(g.obj(ring).zone, Zone::Graveyard);
+    assert_eq!(g.players[1].life, life - 2, "an artifact: 2 damage");
+}
+
+#[test]
+fn each_player_sacrifices_a_creature_or_planeswalker() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![],
+        vec![Effect::EachPlayerSacrificesCreatureOrPlaneswalker],
+    )]);
+    let mine = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    resolve_all(&mut g, &[Action::Pick(mine), Action::Pick(theirs)]);
+    assert_eq!(
+        (g.obj(mine).zone, g.obj(theirs).zone),
+        (Zone::Graveyard, Zone::Graveyard)
+    );
+}
+
+#[test]
+fn opponent_sacrifices_a_greatest_mana_value_creature_or_planeswalker() {
+    let flare = Effect::OpponentSacrificesGreatestMvCreatureOrPlaneswalker;
+    let (mut g, t) = game_with(vec![sorcery(vec![], vec![flare])]);
+    let small = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+    let a = g.add_card(1, cid("Pippin, Guard of the Citadel"), Zone::Battlefield);
+    let b = g.add_card(1, cid("Savannah Lions"), Zone::Battlefield);
+    let _ = b;
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    while !matches!(g.pending, Pending::Decide(1)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(
+        legal.contains(&Action::Pick(a)) && !legal.contains(&Action::Pick(small)),
+        "the greatest only"
+    );
+    act(&mut g, Action::Pick(a));
+    assert_eq!(g.obj(a).zone, Zone::Graveyard);
+}
+
+#[test]
+fn per_other_your_creature_with_flying_counts_only_your_other_fliers() {
+    let (mut g, t) = game_with(vec![scaled_creature(
+        "Test Your Fliers",
+        Scale::PerOtherYourCreatureWithFlying,
+    )]);
+    let a = g.add_card(0, t, Zone::Battlefield);
+    g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    g.add_card(1, cid("Meloku the Clouded Mirror"), Zone::Battlefield);
+    assert_eq!(g.power(a), 0, "no flier of yours");
+    g.add_card(0, cid("Spectral Sailor"), Zone::Battlefield);
+    g.add_card(0, cid("Spectral Sailor"), Zone::Battlefield);
+    assert_eq!((g.power(a), g.toughness(a)), (2, 2), "your two fliers");
+}
+
+#[test]
+fn counter_unless_pays_source_power_uses_last_known_power() {
+    let mut def = CardDef::creature("Test Wanderer", "{0}", 3, 3, Keywords::NONE);
+    let spell = Filter {
+        players: false,
+        creatures: false,
+        planeswalkers: false,
+        spells: true,
+        ..Filter::ANY
+    };
+    def.activated.push(bolt_core::Activated {
+        sacrifice_self: true,
+        ability: Ability::new(vec![spell], vec![Effect::CounterUnlessPaysSourcePower(0)]),
+        ..bolt_core::Activated::default()
+    });
+    let (mut g, t) = game_with(vec![def]);
+    for (answer, countered) in [(Action::No, true), (Action::Yes, false)] {
+        let w = g.add_card(0, t, Zone::Battlefield);
+        let life = g.players[0].life;
+        let nw = g.add_card(0, cid("Night's Whisper"), Zone::Hand);
+        act(&mut g, Action::Cast(nw));
+        act(&mut g, Action::Activate(w, 0));
+        act(&mut g, Action::Target(obj(nw)));
+        assert_eq!(g.obj(w).zone, Zone::Graveyard, "sacrificed as the cost");
+        let lands = g.permanents(0).filter(|&x| g.obj(x).tapped).count();
+        resolve_all(&mut g, &[answer]);
+        let paid = g.permanents(0).filter(|&x| g.obj(x).tapped).count() - lands;
+        if countered {
+            assert_eq!((g.players[0].life, paid), (life, 0), "declined: countered");
+        } else {
+            assert_eq!(
+                (g.players[0].life, paid),
+                (life - 2, 3),
+                "paid {{3}}: it resolves"
+            );
+        }
+    }
+}
+
+#[test]
+fn roll_die_put_target_beneath_top_tucks_it_x_deep() {
+    let roll =
+        Effect::Subsystem(bolt_core::SubsystemEffect::RollDiePutTargetBeneathTop { sides: 10, slot: 0 });
+    let (mut g, t) = game_with(vec![sorcery(vec![Filter::CREATURE], vec![roll])]);
+    for _ in 0..12 {
+        g.add_card(1, cid("Forest"), Zone::Library);
+    }
+    let mut seen = std::collections::BTreeSet::new();
+    for _ in 0..20 {
+        let x = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+        cast_test(&mut g, t, &[obj(x)], &[]);
+        let lib = &g.players[1].library;
+        let pos = lib.iter().position(|&c| c == x).expect("in the library");
+        let above = lib.len() - 1 - pos;
+        assert!((1..=10).contains(&above), "{above}");
+        seen.insert(above);
+    }
+    assert!(seen.len() > 1, "the roll varies: {seen:?}");
+}
+
+#[test]
+fn flip_coin_lose_damage_else_continue_runs_the_rest_only_on_a_win() {
+    let flip = Effect::Subsystem(bolt_core::SubsystemEffect::FlipCoinLoseDamageYouElseContinue(1));
+    let gain = Effect::GainLife { who: Who::You, n: 5 };
+    let (mut g, t) = game_with(vec![sorcery(vec![], vec![flip, gain])]);
+    let (mut won, mut lost) = (0, 0);
+    for _ in 0..20 {
+        let life = g.players[0].life;
+        cast_test(&mut g, t, &[], &[]);
+        match g.players[0].life - life {
+            5 => won += 1,
+            -1 => lost += 1,
+            d => panic!("life changed by {d}"),
+        }
+    }
+    assert!(won > 0 && lost > 0, "both outcomes: {won} won, {lost} lost");
+}
+
+#[test]
+fn destroy_all_with_subtype_exile_all_permanents_and_discard_hand() {
+    let (mut g, t) = game_with(vec![
+        sorcery(vec![], vec![Effect::DestroyAllCreaturesWithSubtype("Elf")]),
+        sorcery(vec![], vec![Effect::ExileAllPermanents, Effect::YouDiscardHand]),
+    ]);
+    let elf = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    cast_test(&mut g, t, &[], &[]);
+    assert_eq!(
+        (g.obj(elf).zone, g.obj(lions).zone),
+        (Zone::Graveyard, Zone::Battlefield)
+    );
+    let held = g.add_card(0, cid("Savannah Lions"), Zone::Hand);
+    let theirs = g.add_card(1, cid("Savannah Lions"), Zone::Hand);
+    cast_test(&mut g, t + 1, &[], &[]);
+    assert_eq!(g.obj(lions).zone, Zone::Exile);
+    assert_eq!(g.battlefield.len(), 0);
+    assert_eq!(
+        (g.obj(held).zone, g.obj(theirs).zone),
+        (Zone::Graveyard, Zone::Hand)
+    );
+}
+
+#[test]
+fn gain_control_all_subtype_then_untap() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![],
+        vec![Effect::GainControlAllSubtypeThenUntap("Elf")],
+    )]);
+    let elf = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+    g.objects[elf.0 as usize].tapped = true;
+    let lions = g.add_card(1, cid("Savannah Lions"), Zone::Battlefield);
+    cast_test(&mut g, t, &[], &[]);
+    assert_eq!((g.obj(elf).controller, g.obj(lions).controller), (0, 1));
+    assert!(!g.obj(elf).tapped);
+}
+
+#[test]
+fn sacrifice_targets_reveal_top_permanent() {
+    let perm = Filter {
+        players: false,
+        creatures: false,
+        planeswalkers: false,
+        any_permanent: true,
+        ..Filter::ANY
+    };
+    let effect = Effect::SacrificeTargetsRevealTopPermanent(2);
+    let (mut g, t) = game_with(vec![sorcery(vec![perm, perm], vec![effect])]);
+    let a = g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    let b = g.add_card(1, cid("Sol Ring"), Zone::Battlefield);
+    let mine = g.add_card(0, cid("Lightning Bolt"), Zone::Library);
+    let theirs = g.add_card(1, cid("Llanowar Elves"), Zone::Library);
+    cast_test(&mut g, t, &[obj(a), obj(b)], &[]);
+    assert_eq!((g.obj(a).zone, g.obj(b).zone), (Zone::Graveyard, Zone::Graveyard));
+    assert_eq!(
+        (g.obj(mine).zone, g.obj(theirs).zone),
+        (Zone::Library, Zone::Battlefield)
+    );
+    assert_eq!(g.obj(theirs).controller, 1, "its owner's");
+}

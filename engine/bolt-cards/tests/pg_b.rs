@@ -2569,7 +2569,12 @@ fn ghyrson_burn_and_cantrips() {
     let bolt = hand(&mut g, 0, "Burst Lightning");
     play(&mut g, bolt, false, &[Target::Player(1)], &[]);
     let shot = hand(&mut g, 0, "Grapeshot");
-    play(&mut g, shot, false, &[Target::Player(1)], &[]);
+    // The two storm copies choose their own targets (the opponent again).
+    let again = [
+        Action::Target(Target::Player(1)),
+        Action::Target(Target::Player(1)),
+    ];
+    play(&mut g, shot, false, &[Target::Player(1)], &again);
     assert_eq!(
         g.players[1].life, 35,
         "2, then 1 and two storm copies (two spells before it)"
@@ -4286,4 +4291,222 @@ fn mirrormind_crowns_first_time_is_used_up_by_a_token_that_didnt_ask() {
     act(&mut g, Action::Activate(port, 1)); // a Fish later that turn: no question
     resolve_all(&mut g, &[]);
     assert_eq!(tokens(&g, 0, "Fish").len(), 1);
+}
+
+#[test]
+fn derevi_comes_from_the_command_zone_and_taps_or_untaps() {
+    let plains = vec![cid("Plains"); 99];
+    let mut g = Game::new_commander(
+        set("CMD").unwrap().defs.clone(),
+        [&plains, &plains],
+        [cid("Derevi, Empyrial Tactician"), cid("Ms. Bumbleflower")],
+        7,
+        0,
+    );
+    g.auto_pass = false;
+    for land in ["Plains", "Island", "Forest", "Forest"] {
+        put(&mut g, 0, land);
+    }
+    let theirs = put(&mut g, 1, "Savannah Lions");
+    g.start_turn(3, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let derevi = g
+        .command
+        .iter()
+        .copied()
+        .find(|&c| g.obj(c).owner == 0)
+        .expect("in the command zone");
+    assert!(g.legal_actions().contains(&Action::Activate(derevi, 0)));
+    act(&mut g, Action::Activate(derevi, 0));
+    while !g.items.is_empty() || matches!(g.pending, Pending::Decide(_) | Pending::ChooseTarget(_)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) => Action::Target(Target::Object(theirs)),
+            Pending::Decide(_) => Action::Yes,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(
+        g.obj(derevi).zone,
+        Zone::Battlefield,
+        "put onto the battlefield, not cast"
+    );
+    assert!(g.obj(theirs).tapped, "tapped by its enters trigger");
+}
+
+#[test]
+fn there_and_back_again_locks_a_blocker_tempts_finds_a_mountain_and_makes_smaug() {
+    let mut g = table();
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let saga = hand(&mut g, 0, "There and Back Again");
+    act(&mut g, Action::Cast(saga));
+    while !g.items.is_empty() || matches!(g.pending, Pending::Decide(_) | Pending::ChooseTarget(_)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) => Action::Target(Target::Object(lions)),
+            Pending::Decide(_) => g.legal_actions()[0], // the Ring-bearer
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert!(
+        g.cant_block_while_controlled.iter().any(|e| e.0 == lions),
+        "can't block"
+    );
+    assert_eq!(g.ring_tempted[0], 1, "the Ring tempts you");
+    let mountain = g.add_card(0, cid("Mountain"), Zone::Library);
+    g.players[0].library.rotate_right(1); // not the draw
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 || !g.items.is_empty() || matches!(g.pending, Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::Decide(_) => Action::Pick(mountain),
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(mountain).zone, Zone::Battlefield, "chapter II");
+    g.start_turn(7, 0);
+    while g.step != Step::Main1 || !g.items.is_empty() {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(tokens(&g, 0, "Smaug").len(), 1, "chapter III");
+    assert_eq!(g.obj(saga).zone, Zone::Graveyard, "sacrificed after III");
+}
+
+#[test]
+fn storm_copies_choose_new_targets() {
+    let mut g = table();
+    let elves = put(&mut g, 1, "Llanowar Elves");
+    let bolt = hand(&mut g, 0, "Burst Lightning");
+    play(&mut g, bolt, false, &[Target::Player(1)], &[]);
+    let shot = hand(&mut g, 0, "Grapeshot");
+    // One storm copy (one spell before it): the original at the opponent, the copy at the Elves.
+    play(
+        &mut g,
+        shot,
+        false,
+        &[Target::Player(1)],
+        &[Action::Target(Target::Object(elves))],
+    );
+    assert_eq!(g.obj(elves).zone, Zone::Graveyard, "the copy retargeted");
+    assert_eq!(g.players[1].life, 40 - 2 - 1);
+}
+
+#[test]
+fn stridehangar_automaton_adds_a_thopter_to_artifact_tokens() {
+    let mut g = table();
+    put(&mut g, 0, "Stridehangar Automaton");
+    let port = put(&mut g, 0, "Fountainport");
+    act(&mut g, Action::Activate(port, 2)); // {4}, {T}: a Treasure
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 1);
+    let thopters = tokens(&g, 0, "Thopter");
+    assert_eq!(thopters.len(), 1, "plus an additional Thopter");
+    assert_eq!(
+        (g.power(thopters[0]), g.toughness(thopters[0])),
+        (2, 2),
+        "Thopters get +1/+1"
+    );
+    // A creature token that isn't an artifact: no Thopter.
+    let port2 = put(&mut g, 0, "Fountainport");
+    act(&mut g, Action::Activate(port2, 1)); // a Fish
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Thopter").len(), 1);
+    // With Parallel Lives the controller orders it best: both doubled (two Treasures, two Thopters).
+    let mut g = table();
+    put(&mut g, 0, "Stridehangar Automaton");
+    put(&mut g, 0, "Parallel Lives");
+    let port = put(&mut g, 0, "Fountainport");
+    act(&mut g, Action::Activate(port, 2));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        (tokens(&g, 0, "Treasure").len(), tokens(&g, 0, "Thopter").len()),
+        (2, 2)
+    );
+}
+
+// ---- Gemstone Caverns' pregame action (Kenrith) ----
+
+/// Two 60-Plains decks plus a land with Gemstone Caverns' pregame action (the last def), player 0
+/// starting; `caverns` adds one to that player's opening hand before the keeps.
+fn caverns_game(caverns: usize) -> (Game, ObjId) {
+    let mut defs = set("CMD").unwrap().defs.as_ref().clone();
+    let mut gem = bolt_core::CardDef::basic_land("Gemstone Test", bolt_core::Color::White);
+    gem.begins_game_with_luck_counter = true;
+    defs.push(gem);
+    let gem = defs.len() - 1;
+    let plains = vec![cid("Plains"); 60];
+    let mut g = Game::new(std::sync::Arc::new(defs), [&plains, &plains], 7, 0);
+    g.auto_pass = false;
+    let c = g.add_card(caverns, gem, Zone::Hand);
+    (g, c)
+}
+
+#[test]
+fn gemstone_caverns_may_begin_on_the_battlefield_for_the_player_going_second() {
+    let (mut g, gem) = caverns_game(1);
+    act(&mut g, Action::Keep);
+    act(&mut g, Action::Keep);
+    assert_eq!(g.pending, Pending::Decide(1), "asked before the first turn");
+    assert_eq!(g.legal_actions(), vec![Action::Yes, Action::No]);
+    act(&mut g, Action::Yes);
+    assert_eq!(g.obj(gem).zone, Zone::Battlefield);
+    assert_eq!(g.obj(gem).kind_counters, 1, "a luck counter");
+    let victim = g.players[1].hand[0];
+    assert!(
+        g.legal_actions().contains(&Action::Pick(victim)),
+        "then exile a card from hand"
+    );
+    act(&mut g, Action::Pick(victim));
+    assert_eq!(g.obj(victim).zone, Zone::Exile);
+    assert_eq!(g.players[1].hand.len(), 6);
+    assert_eq!((g.turn, g.active), (1, 0), "the starting player's first turn");
+}
+
+#[test]
+fn gemstone_caverns_can_stay_in_hand_and_isnt_offered_to_the_starting_player() {
+    let (mut g, gem) = caverns_game(1);
+    act(&mut g, Action::Keep);
+    act(&mut g, Action::Keep);
+    act(&mut g, Action::No);
+    assert_eq!(g.obj(gem).zone, Zone::Hand);
+    assert_eq!((g.turn, g.active), (1, 0));
+
+    let (mut g, gem) = caverns_game(0);
+    act(&mut g, Action::Keep);
+    act(&mut g, Action::Keep);
+    assert_eq!(g.obj(gem).zone, Zone::Hand, "the starting player isn't asked");
+    assert_eq!((g.turn, g.active), (1, 0));
+}
+
+// ---- Malik: Reckless Handling, Demon's Disciple ----
+
+#[test]
+fn reckless_handling_tutors_an_artifact_then_discards_at_random() {
+    let mut g = table();
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    let t = hand(&mut g, 0, "Reckless Handling");
+    let before = g.players[0].hand.len();
+    play(&mut g, t, false, &[], &[Action::Pick(ring)]);
+    // One card in (the Sol Ring), the spell and one random card out.
+    assert_eq!(g.players[0].hand.len(), before - 1);
+    let hit = g.obj(ring).zone == Zone::Graveyard;
+    assert!(hit || g.obj(ring).zone == Zone::Hand);
+    // The Sol Ring is the only artifact: 2 damage exactly when it was the discard.
+    assert_eq!(g.players[1].life, if hit { 38 } else { 40 });
+}
+
+#[test]
+fn demons_disciple_makes_each_player_sacrifice_a_creature_or_planeswalker() {
+    let mut g = table();
+    let mine = put(&mut g, 0, "Llanowar Elves");
+    let theirs = put(&mut g, 1, "Llanowar Elves");
+    let c = hand(&mut g, 0, "Demon's Disciple");
+    play(&mut g, c, false, &[], &[Action::Pick(mine), Action::Pick(theirs)]);
+    assert_eq!(
+        (g.obj(mine).zone, g.obj(theirs).zone),
+        (Zone::Graveyard, Zone::Graveyard)
+    );
+    assert_eq!(g.obj(c).zone, Zone::Battlefield, "it kept its own creature");
 }

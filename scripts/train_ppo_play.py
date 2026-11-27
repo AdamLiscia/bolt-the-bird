@@ -72,12 +72,18 @@ def save_atomic(obj, path: Path):
     tmp.replace(path)
 
 
-def evaluate(net, pairs, workers):
+def evaluate(net, pairs, workers, smart_ms=None):
     from eval_play import match, summary
 
     jobs = eval_jobs(deck_sets()[1], pairs)
     net.eval()
-    return {opp: summary(match(net, "net", opp, jobs, workers))["win_rate"] for opp in ("rules", "smart")}
+    out = {}
+    for opp in ("rules", "smart"):
+        t = time.time()
+        smart = (1, 2) if smart_ms is None else (1, 2, smart_ms)
+        out[opp] = summary(match(net, "net", opp, jobs, workers, smart=smart))["win_rate"]
+        out[f"{opp}_s"] = round(time.time() - t)  # wall seconds for its 2 x pairs games
+    return out
 
 
 def main():
@@ -101,6 +107,7 @@ def main():
     ap.add_argument("--eval-every", type=int, default=10)
     ap.add_argument("--eval-pairs", type=int, default=200)
     ap.add_argument("--stall-minutes", type=float, default=30)
+    ap.add_argument("--eval-smart-ms", type=int, default=None, help="cap the smart opponent's time per move")
     ap.add_argument("--resume", action="store_true")
     ap.add_argument(
         "--self-play",
@@ -165,7 +172,7 @@ def main():
                                       indent=1))  # fmt: skip
 
     if state["iter"] == 0 and not state["evals"]:
-        e = evaluate(net, a.eval_pairs, a.workers)
+        e = evaluate(net, a.eval_pairs, a.workers, a.eval_smart_ms)
         state["evals"].append({"iter": 0, **e})
         print(json.dumps({"eval": 0, **e}), flush=True)
         write_results()
@@ -176,7 +183,7 @@ def main():
         rng = random.Random(it)
         kl_coef = a.kl + (a.kl_final - a.kl) * min(1.0, (it - 1) / max(1, a.kl_iters))
         net.eval()
-        parts, won = [], {}
+        parts, won, ends = [], {}, {"error": 0, "timeout": 0}
         for k, (seats, n) in enumerate(league(a.games, state["past"], self_only=a.self_play)):
             jobs = []
             for i in range(n):
@@ -195,6 +202,9 @@ def main():
             w = [1.0 if x["result"] == f"p{me}" else 0.5 if x["result"] in ("draw", "timeout") else 0.0
                  for x in r["results"]]  # fmt: skip
             won.setdefault(label, []).extend(w)
+            for x in r["results"]:
+                if x["result"] in ends:
+                    ends[x["result"]] += 1
             beat["t"] = time.time()
         arr = concat(parts)
         n = len(arr["action"])
@@ -221,14 +231,15 @@ def main():
             state["past"].append(f"iter_{it}.pt")
             if job:
                 job._put(f"{job.prefix}/past/iter_{it}.pt", (ck / f"iter_{it}.pt").read_bytes())
-        row = {"iter": it, "games": a.games, "decisions": n, "kl_coef": round(kl_coef, 4),
+        row = {"iter": it, "games": a.games, "decisions": n, "kl_coef": round(kl_coef, 4), "errors": ends["error"],
+               "timeouts": ends["timeout"],
                **{f"won_{k}": round(float(np.mean(v)), 3) for k, v in won.items()},
                **{k: round(v / max(1, steps), 4) for k, v in sums.items()},
                "play_s": round(t1 - t0), "update_s": round(time.time() - t1), "time": time.strftime("%H:%M:%S")}  # fmt: skip
         state["history"].append(row)
         print(json.dumps(row), flush=True)
         if it % a.eval_every == 0:
-            e = evaluate(net, a.eval_pairs, a.workers)
+            e = evaluate(net, a.eval_pairs, a.workers, a.eval_smart_ms)
             state["evals"].append({"iter": it, **e})
             score = (e["rules"] + e["smart"]) / 2
             if state["best"] is None or score > state["best"]["score"]:

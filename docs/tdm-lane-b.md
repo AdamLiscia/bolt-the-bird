@@ -1063,3 +1063,43 @@ One Ring's check in `deal_damage`). Claims recorded in needs_core.json.
   and the opponent's tokens.
 - Glen Elendra's Answer (Niv-Mizzet idea): `Effect::CounterOpponentsSpellsAndAbilitiesTokenEach`,
   token 104 (`faerie_ub`, a 1/1 blue and black Faerie with flying).
+
+### Derevi, There and Back Again, copies with new targets (2026-11-27)
+
+- Derevi (Najeela): `Activated::from_command_zone`; the activation list also looks at its owner's
+  cards in the command zone, offering only those abilities there (and never them elsewhere);
+  `Effect::PutSourceOntoBattlefieldFromCommand` (not cast: no commander tax). Its enters and combat
+  damage triggers are a may tap or untap.
+- There and Back Again (d4's handback): chapter I is my can't-block-while-you-control plus d4's
+  Ring tempting; II searches for a Mountain card; III makes d4's Smaug token.
+- `Effect::CopySourceSpell` (storm, Sage of the Skies, Flusterstorm) now puts its copies through
+  `pending_copies`, so each copy with targets chooses new ones (CR 707.10c), as
+  `CopySpellNewTargets` does. Grapeshot's storm copies no longer keep the original's target.
+- Granted loyalty abilities: `CardDef::your_planeswalkers_have_loyalty` (Ichormoon Gauntlet's "[0]:
+  Proliferate" and "[−12]: Take an extra turn"), listed after a planeswalker's own in
+  `Game::loyalty_list` (offering, activation, X), recorded as activated in `Game::loyalty_snapshots`
+  so a granted one resolves without its granter. The card waits for d3's counter trigger.
+- Stridehangar Automaton (Sephiroth idea): `CardDef::artifact_tokens_plus_one` (Thopter), in
+  `create_token`'s extras, once per event (`Game::artifact_plus_batch`, as Xorn's); token doublers
+  then double the Thopter too (the order its controller would pick). Mirrormind Crown's copies
+  aren't given the extra Thopter.
+
+### Gemstone Caverns' pregame action, Malik's two (2026-11-27)
+
+- Gemstone Caverns (Kenrith; d1 scripts the card): `CardDef::begins_game_with_luck_counter`.
+  After both players keep and the leylines are in (CR 103.6), `Game::pregame_actions` asks the
+  non-starting player `Decision::GemstoneCaverns` for each copy in their opening hand, one at a
+  time: `Yes` puts it onto the battlefield with a luck counter (`Object::kind_counters` = 1), then
+  `Pick` a card from hand to exile (`exile: true`; skipped if the hand is empty); `No` keeps it.
+  The first turn begins after the last answer. The starting player is never asked. Its enters
+  triggers aren't fired (the leyline path clears them too).
+- Reckless Handling: `search(Artifact, Hand)` then d3's
+  `DiscardRandomIfArtifactDamageEachOpponent(2)`. The reveal isn't modelled (no hidden-info
+  tracking).
+- Demon's Disciple: enters trigger with d3's `EachPlayerSacrificesCreatureOrPlaneswalker`.
+- Build fix (abe5b84 merge): d1's `CopySourceSpellPerReplicate` and `CopySourceSpellIfCasualty`
+  share `CopySourceSpell`'s arm, and their copies keep the spell's targets as d1 documented and
+  tested. Only plain `CopySourceSpell` copies (storm, Sage of the Skies) go through
+  `pending_copies`. The rules give replicate and casualty copies new targets too (CR 702.56a,
+  702.153a); that switch is d1's call. I also removed a duplicate
+  `test_tekuthal_picks_each_counter_to_remove` that arrived from tarkir.

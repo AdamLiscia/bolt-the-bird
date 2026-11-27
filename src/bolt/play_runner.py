@@ -60,7 +60,8 @@ def _forward(net, encs, chunk=256):
 def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 2), record=None,
               max_turns=MAX_TURNS, game_offset=0, max_moves=MAX_MOVES, label_with=None, opp_net=None):  # fmt: skip
     """jobs: (deck_a, deck_b, seed, first), a Commander deck being (commanders, cards). Returns
-    {"results": [{"result", "turn"}], "steps": [...]}.
+    {"results": [{"result", "turn"}], "steps": [...]}. smart=(rollouts, candidates[, ms]): the smart seat's
+    search, ms capping its time per move.
 
     label_with=(rollouts, candidates): recorded network steps get the smart player's choice in that
     position as "action" (the label) and the network's own move as "played", which is what the game
@@ -105,7 +106,7 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
                     if seat == "rules":
                         i = g.baseline()
                     else:
-                        i = g.smart(smart[0], smart[1], (jobs[gi][2] * 1_000_003 + moves[gi]) % 2**64)
+                        i = g.smart(smart[0], smart[1], (jobs[gi][2] * 1_000_003 + moves[gi]) % 2**64, *smart[2:])
                     if who in record:
                         obs = g.observation(who)
                         if len(obs["legal_actions"]) > 1:

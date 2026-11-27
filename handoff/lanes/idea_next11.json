@@ -1,0 +1,1539 @@
+[
+ {
+  "tier": "idea 10",
+  "owner": "DonSpider",
+  "commander": "Sythis, Harvest's Hand",
+  "cards": [
+   {
+    "card": "All That Glitters",
+    "type": "Enchantment \u2014 Aura",
+    "oracle": "Enchant creature\nEnchanted creature gets +1/+1 for each artifact and/or enchantment you control."
+   },
+   {
+    "card": "Bilbo's Gambit",
+    "type": "Instant",
+    "oracle": "Gift a Treasure (You may promise an opponent a gift as you cast this spell. If you do, they create a Treasure token before its other effects. It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")\nReturn target spell to its owner's hand. If the gift was promised, players can't cast spells this turn."
+   },
+   {
+    "card": "Bruna, the Fading Light",
+    "type": "Legendary Creature \u2014 Angel Horror",
+    "oracle": "When you cast this spell, you may return target Angel or Human creature card from your graveyard to the battlefield.\nFlying, vigilance\n(Melds with Gisela, the Broken Blade.)"
+   },
+   {
+    "card": "Champions from Beyond",
+    "type": "Enchantment",
+    "oracle": "When this enchantment enters, create X 1/1 colorless Hero creature tokens.\nLight Party \u2014 Whenever you attack with four or more creatures, scry 2, then draw a card.\nFull Party \u2014 Whenever you attack with eight or more creatures, those creatures get +4/+4 until end of turn."
+   },
+   {
+    "card": "Containment Priest",
+    "type": "Creature \u2014 Human Cleric",
+    "oracle": "Flash\nIf a nontoken creature would enter and it wasn't cast, exile it instead."
+   },
+   {
+    "card": "Crop Rotation",
+    "type": "Instant",
+    "oracle": "As an additional cost to cast this spell, sacrifice a land.\nSearch your library for a land card, put that card onto the battlefield, then shuffle."
+   },
+   {
+    "card": "Darksteel Mutation",
+    "type": "Enchantment \u2014 Aura",
+    "oracle": "Enchant creature\nEnchanted creature is an Insect artifact creature with base power and toughness 0/1 and has indestructible, and it loses all other abilities, card types, and creature types."
+   },
+   {
+    "card": "Gauntlets of Light",
+    "type": "Enchantment \u2014 Aura",
+    "oracle": "Enchant creature\nEnchanted creature gets +0/+2 and assigns combat damage equal to its toughness rather than its power.\nEnchanted creature has \"{2}{W}: Untap this creature.\""
+   },
+   {
+    "card": "Gisela, the Broken Blade",
+    "type": "Legendary Creature \u2014 Angel Horror",
+    "oracle": "Flying, first strike, lifelink\nAt the beginning of your end step, if you both own and control Gisela and a creature named Bruna, the Fading Light, exile them, then meld them into Brisela, Voice of Nightmares."
+   },
+   {
+    "card": "Gleaming Splendor",
+    "type": "Enchantment",
+    "oracle": "Whenever an opponent draws their second card each turn, you create a Treasure token.\n{2}{W}: Two target players each draw a card."
+   },
+   {
+    "card": "Hushwood Verge",
+    "type": "Land",
+    "oracle": "{T}: Add {G}.\n{T}: Add {W}. Activate only if you control a Forest or a Plains."
+   },
+   {
+    "card": "Katilda, Dawnhart Martyr // Katilda's Rising Dawn",
+    "type": "Legendary Creature \u2014 Spirit Warlock",
+    "oracle": "Flying, lifelink, protection from Vampires\nKatilda's power and toughness are each equal to the number of permanents you control that are Spirits and/or enchantments.\nDisturb {3}{W}{W} (You may cast this card from your graveyard transformed for its disturb cost.)"
+   },
+   {
+    "card": "Kenrith's Transformation",
+    "type": "Enchantment \u2014 Aura",
+    "oracle": "Enchant creature\nWhen this Aura enters, draw a card.\nEnchanted creature loses all abilities and is a green Elk creature with base power and toughness 3/3. (It loses all other card types and creature types.)"
+   },
+   {
+    "card": "Linvala, Keeper of Silence",
+    "type": "Legendary Creature \u2014 Angel",
+    "oracle": "Flying\nActivated abilities of creatures your opponents control can't be activated."
+   },
+   {
+    "card": "Seal of Cleansing",
+    "type": "Enchantment",
+    "oracle": "Sacrifice this enchantment: Destroy target artifact or enchantment."
+   },
+   {
+    "card": "Secret Arcade // Dusty Parlor",
+    "type": "Enchantment \u2014 Room",
+    "oracle": "Nonland permanents you control and permanent spells you control are enchantments in addition to their other types.\n(You may cast either half. That door unlocks on the battlefield. As a sorcery, you may pay the mana cost of a locked door to unlock it.)"
+   },
+   {
+    "card": "Shimmerwilds Growth",
+    "type": "Enchantment \u2014 Aura",
+    "oracle": "Enchant land\nAs this Aura enters, choose a color.\nEnchanted land is the chosen color.\nWhenever enchanted land is tapped for mana, its controller adds an additional one mana of the chosen color."
+   },
+   {
+    "card": "Soaring Lightbringer",
+    "type": "Enchantment Creature \u2014 Bird Glimmer",
+    "oracle": "Flying\nOther enchantment creatures you control have flying.\nWhenever you attack a player, create a 1/1 white Glimmer enchantment creature token that's tapped and attacking that player."
+   },
+   {
+    "card": "Utopia Sprawl",
+    "type": "Enchantment \u2014 Aura",
+    "oracle": "Enchant Forest\nAs this Aura enters, choose a color.\nWhenever enchanted Forest is tapped for mana, its controller adds an additional one mana of the chosen color."
+   },
+   {
+    "card": "Wild Growth",
+    "type": "Enchantment \u2014 Aura",
+    "oracle": "Enchant land\nWhenever enchanted land is tapped for mana, its controller adds an additional {G}."
+   },
+   {
+    "card": "Wolfwillow Haven",
+    "type": "Enchantment \u2014 Aura",
+    "oracle": "Enchant land\nWhenever enchanted land is tapped for mana, its controller adds an additional {G}.\n{4}{G}, Sacrifice this Aura: Create a 2/2 green Wolf creature token. Activate only during your turn."
+   }
+  ]
+ },
+ {
+  "tier": "idea 11",
+  "owner": "Spr3adsh33t",
+  "commander": "Ratadrabik of Urborg",
+  "cards": [
+   {
+    "card": "Ayara, First of Locthwain",
+    "type": "Legendary Creature \u2014 Elf Noble",
+    "oracle": "Whenever Ayara or another black creature you control enters, each opponent loses 1 life and you gain 1 life.\n{T}, Sacrifice another black creature: Draw a card."
+   },
+   {
+    "card": "Bartolom\u00e9 del Presidio",
+    "type": "Legendary Creature \u2014 Vampire Knight",
+    "oracle": "Sacrifice another creature or artifact: Put a +1/+1 counter on Bartolom\u00e9 del Presidio."
+   },
+   {
+    "card": "Bloodflow Connoisseur",
+    "type": "Creature \u2014 Vampire",
+    "oracle": "Sacrifice a creature: Put a +1/+1 counter on this creature."
+   },
+   {
+    "card": "Boromir, Warden of the Tower",
+    "type": "Legendary Creature \u2014 Human Soldier",
+    "oracle": "Vigilance\nWhenever an opponent casts a spell, if no mana was spent to cast it, counter that spell.\nSacrifice Boromir: Creatures you control gain indestructible until end of turn. The Ring tempts you."
+   },
+   {
+    "card": "Cruel Celebrant",
+    "type": "Creature \u2014 Vampire",
+    "oracle": "Whenever this creature or another creature or planeswalker you control dies, each opponent loses 1 life and you gain 1 life."
+   },
+   {
+    "card": "Gandalf the White",
+    "type": "Legendary Creature \u2014 Avatar Wizard",
+    "oracle": "Flash\nYou may cast legendary spells and artifact spells as though they had flash.\nIf a legendary permanent or an artifact entering or leaving the battlefield causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time."
+   },
+   {
+    "card": "Gollum, Patient Plotter",
+    "type": "Legendary Creature \u2014 Halfling Horror",
+    "oracle": "When Gollum leaves the battlefield, the Ring tempts you.\n{B}, Sacrifice a creature: Return this card from your graveyard to your hand. Activate only as a sorcery."
+   },
+   {
+    "card": "Kambal, Profiteering Mayor",
+    "type": "Legendary Creature \u2014 Human Advisor",
+    "oracle": "Whenever one or more tokens your opponents control enter, for each of them, create a tapped token that's a copy of it. This ability triggers only once each turn.\nWhenever one or more tokens you control enter, each opponent loses 1 life and you gain 1 life."
+   },
+   {
+    "card": "Loran's Escape",
+    "type": "Instant",
+    "oracle": "Target artifact or creature gains hexproof and indestructible until end of turn. Scry 1."
+   },
+   {
+    "card": "Lotho, Corrupt Shirriff",
+    "type": "Legendary Creature \u2014 Halfling Rogue",
+    "oracle": "Whenever a player casts their second spell each turn, you lose 1 life and create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")"
+   },
+   {
+    "card": "Nasty End",
+    "type": "Instant",
+    "oracle": "As an additional cost to cast this spell, sacrifice a creature.\nDraw two cards. If the sacrificed creature was legendary, draw three cards instead."
+   },
+   {
+    "card": "Nazg\u00fbl",
+    "type": "Creature \u2014 Wraith Knight",
+    "oracle": "Deathtouch\nWhen this creature enters, the Ring tempts you.\nWhenever the Ring tempts you, put a +1/+1 counter on each Wraith you control.\nA deck can have up to nine cards named Nazg\u00fbl."
+   },
+   {
+    "card": "Ratadrabik of Urborg",
+    "type": "Legendary Creature \u2014 Zombie Wizard",
+    "oracle": "Vigilance, ward {2}\nOther Zombies you control have vigilance.\nWhenever another legendary creature you control dies, create a token that's a copy of that creature, except it's not legendary and it's a 2/2 black Zombie in addition to its other colors and types."
+   },
+   {
+    "card": "Relic of Legends",
+    "type": "Artifact",
+    "oracle": "{T}: Add one mana of any color.\nTap an untapped legendary creature you control: Add one mana of any color."
+   },
+   {
+    "card": "Samwise the Stouthearted",
+    "type": "Legendary Creature \u2014 Halfling Peasant",
+    "oracle": "Flash\nWhen Samwise enters, choose up to one target permanent card in your graveyard that was put there from the battlefield this turn. Return it to your hand. Then the Ring tempts you."
+   },
+   {
+    "card": "Surge of Salvation",
+    "type": "Instant",
+    "oracle": "You and permanents you control gain hexproof until end of turn. Prevent all damage that black and/or red sources would deal to creatures you control this turn."
+   },
+   {
+    "card": "Tainted Field",
+    "type": "Land",
+    "oracle": "{T}: Add {C}.\n{T}: Add {W} or {B}. Activate only if you control a Swamp."
+   },
+   {
+    "card": "Teysa Karlov",
+    "type": "Legendary Creature \u2014 Human Advisor",
+    "oracle": "If a creature dying causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.\nCreature tokens you control have vigilance and lifelink."
+   },
+   {
+    "card": "The Celestus",
+    "type": "Legendary Artifact",
+    "oracle": "If it's neither day nor night, it becomes day as The Celestus enters.\n{T}: Add one mana of any color.\n{3}, {T}: If it's night, it becomes day. Otherwise, it becomes night. Activate only as a sorcery.\nWhenever day becomes night or night becomes day, you gain 1 life. You may draw a card. If you do, discard a card."
+   },
+   {
+    "card": "Urza's Ruinous Blast",
+    "type": "Legendary Sorcery",
+    "oracle": "(You may cast a legendary sorcery only if you control a legendary creature or planeswalker.)\nExile all nonland permanents that aren't legendary."
+   },
+   {
+    "card": "War of the Last Alliance",
+    "type": "Enchantment \u2014 Saga",
+    "oracle": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI, II \u2014 Search your library for a legendary creature card, reveal it, put it into your hand, then shuffle.\nIII \u2014 Creatures you control gain double strike until end of turn. The Ring tempts you."
+   }
+  ]
+ },
+ {
+  "tier": "idea 12",
+  "owner": "DonSpider",
+  "commander": "Baylen, the Haymaker",
+  "cards": [
+   {
+    "card": "Artifact Mutation",
+    "type": "Instant",
+    "oracle": "Destroy target artifact. It can't be regenerated. Create X 1/1 green Saproling creature tokens, where X is that artifact's mana value."
+   },
+   {
+    "card": "Aura Mutation",
+    "type": "Instant",
+    "oracle": "Destroy target enchantment. Create X 1/1 green Saproling creature tokens, where X is that enchantment's mana value."
+   },
+   {
+    "card": "Baylen, the Haymaker",
+    "type": "Legendary Creature \u2014 Rabbit Warrior",
+    "oracle": "Tap two untapped tokens you control: Add one mana of any color.\nTap three untapped tokens you control: Draw a card.\nTap four untapped tokens you control: Put three +1/+1 counters on Baylen. It gains trample until end of turn."
+   },
+   {
+    "card": "Brigid, Clachan's Heart // Brigid, Doun's Mind",
+    "type": "Legendary Creature \u2014 Kithkin Warrior",
+    "oracle": "Whenever this creature enters or transforms into Brigid, Clachan's Heart, create a 1/1 green and white Kithkin creature token.\nAt the beginning of your first main phase, you may pay {G}. If you do, transform Brigid."
+   },
+   {
+    "card": "Cadira, Caller of the Small",
+    "type": "Legendary Creature \u2014 Orc Ranger",
+    "oracle": "Trample\nWhenever Cadira deals combat damage to a player, for each token you control, create a 1/1 white Rabbit creature token."
+   },
+   {
+    "card": "Cathars' Crusade",
+    "type": "Enchantment",
+    "oracle": "Whenever a creature you control enters, put a +1/+1 counter on each creature you control."
+   },
+   {
+    "card": "Charismatic Conqueror",
+    "type": "Creature \u2014 Vampire Soldier",
+    "oracle": "Vigilance\nWhenever an artifact or creature an opponent controls enters untapped, they may tap that permanent. If they don't, you create a 1/1 white Vampire creature token with lifelink."
+   },
+   {
+    "card": "Farmer Cotton",
+    "type": "Legendary Creature \u2014 Halfling Peasant",
+    "oracle": "When this creature enters, create X 1/1 white Halfling creature tokens and X Food tokens. (They're artifacts with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")"
+   },
+   {
+    "card": "Forth Eorlingas!",
+    "type": "Sorcery",
+    "oracle": "Create X 2/2 red Human Knight creature tokens with trample and haste.\nWhenever one or more creatures you control deal combat damage to one or more players this turn, you become the monarch."
+   },
+   {
+    "card": "Jinnie Fay, Jetmir's Second",
+    "type": "Legendary Creature \u2014 Elf Druid",
+    "oracle": "If you would create one or more tokens, you may instead create that many 2/2 green Cat creature tokens with haste or that many 3/1 green Dog creature tokens with vigilance."
+   },
+   {
+    "card": "Jolene, the Plunder Queen",
+    "type": "Legendary Creature \u2014 Human Warrior",
+    "oracle": "Whenever a player attacks one or more of your opponents, that attacking player creates a Treasure token.\nIf you would create one or more Treasure tokens, instead create those tokens plus an additional Treasure token.\nSacrifice five Treasures: Put five +1/+1 counters on Jolene."
+   },
+   {
+    "card": "Kher Keep",
+    "type": "Legendary Land",
+    "oracle": "{T}: Add {C}.\n{1}{R}, {T}: Create a 0/1 red Kobold creature token named Kobolds of Kher Keep."
+   },
+   {
+    "card": "Knuckles the Echidna",
+    "type": "Legendary Creature \u2014 Echidna Warrior",
+    "oracle": "Double strike, trample, haste\nWhenever one or more creatures you control deal combat damage to a player, create a Treasure token.\nTreasure Hunter \u2014 At the beginning of your upkeep, if you control thirty or more artifacts, you win the game."
+   },
+   {
+    "card": "Ocelot Pride",
+    "type": "Creature \u2014 Cat",
+    "oracle": "First strike, lifelink\nAscend (If you control ten or more permanents, you get the city's blessing for the rest of the game.)\nAt the beginning of your end step, if you gained life this turn, create a 1/1 white Cat creature token. Then if you have the city's blessing, for each token you control that entered this turn, create a token that's a copy of it."
+   },
+   {
+    "card": "Rosie Cotton of South Lane",
+    "type": "Legendary Creature \u2014 Halfling Peasant",
+    "oracle": "When Rosie Cotton enters, create a Food token. (It's an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")\nWhenever you create a token, put a +1/+1 counter on target creature you control other than Rosie Cotton."
+   },
+   {
+    "card": "Season of the Burrow",
+    "type": "Sorcery",
+    "oracle": "Choose up to five {P} worth of modes. You may choose the same mode more than once.\n{P} \u2014 Create a 1/1 white Rabbit creature token.\n{P}{P} \u2014 Exile target nonland permanent. Its controller draws a card.\n{P}{P}{P} \u2014 Return target permanent card with mana value 3 or less from your graveyard to the battlefield with an indestructible counter on it."
+   },
+   {
+    "card": "Secure the Wastes",
+    "type": "Instant",
+    "oracle": "Create X 1/1 white Warrior creature tokens."
+   },
+   {
+    "card": "Springleaf Parade",
+    "type": "Enchantment",
+    "oracle": "When this enchantment enters, create X 1/1 colorless Shapeshifter creature tokens with changeling. (They're every creature type.)\nCreature tokens you control have \"{T}: Add one mana of any color.\""
+   },
+   {
+    "card": "Tender Wildguide",
+    "type": "Creature \u2014 Possum Druid",
+    "oracle": "Offspring {2} (You may pay an additional {2} as you cast this spell. If you do, when this creature enters, create a 1/1 token copy of it.)\n{T}: Add one mana of any color.\n{T}: Put a +1/+1 counter on this creature."
+   },
+   {
+    "card": "The Battle of Bywater",
+    "type": "Sorcery",
+    "oracle": "Destroy all creatures with power 3 or greater. Then create a Food token for each creature you control. (It's an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")"
+   },
+   {
+    "card": "The Cabbage Merchant",
+    "type": "Legendary Creature \u2014 Human Citizen",
+    "oracle": "Whenever an opponent casts a noncreature spell, create a Food token. (It's an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")\nWhenever a creature deals combat damage to you, sacrifice a Food token.\nTap two untapped Foods you control: Add one mana of any color."
+   },
+   {
+    "card": "Wild Growth",
+    "type": "Enchantment \u2014 Aura",
+    "oracle": "Enchant land\nWhenever enchanted land is tapped for mana, its controller adds an additional {G}."
+   },
+   {
+    "card": "Wildfire Awakener",
+    "type": "Creature \u2014 Human Wizard",
+    "oracle": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nWhen this creature enters, create X 1/1 red Elemental creature tokens with \"Whenever this token becomes tapped, it deals 1 damage to target player.\""
+   }
+  ]
+ },
+ {
+  "tier": "idea 13",
+  "owner": "Time",
+  "commander": "Rocco, Cabaretti Caterer",
+  "cards": [
+   {
+    "card": "Archon of Emeria",
+    "type": "Creature \u2014 Archon",
+    "oracle": "Flying\nEach player can't cast more than one spell each turn.\nNonbasic lands your opponents control enter tapped."
+   },
+   {
+    "card": "Aven Mindcensor",
+    "type": "Creature \u2014 Bird Wizard",
+    "oracle": "Flash\nFlying\nIf an opponent would search a library, that player searches the top four cards of that library instead."
+   },
+   {
+    "card": "Chrome Mox",
+    "type": "Artifact",
+    "oracle": "Imprint \u2014 When this artifact enters, you may exile a nonartifact, nonland card from your hand.\n{T}: Add one mana of any of the exiled card's colors."
+   },
+   {
+    "card": "Containment Priest",
+    "type": "Creature \u2014 Human Cleric",
+    "oracle": "Flash\nIf a nontoken creature would enter and it wasn't cast, exile it instead."
+   },
+   {
+    "card": "Cursed Totem",
+    "type": "Artifact",
+    "oracle": "Activated abilities of creatures can't be activated."
+   },
+   {
+    "card": "Deafening Silence",
+    "type": "Enchantment",
+    "oracle": "Each player can't cast more than one noncreature spell each turn."
+   },
+   {
+    "card": "Drannith Magistrate",
+    "type": "Creature \u2014 Human Wizard",
+    "oracle": "Your opponents can't cast spells from anywhere other than their hands."
+   },
+   {
+    "card": "Earthcraft",
+    "type": "Enchantment",
+    "oracle": "Tap an untapped creature you control: Untap target basic land."
+   },
+   {
+    "card": "Fiend Hunter",
+    "type": "Creature \u2014 Human Cleric",
+    "oracle": "When this creature enters, you may exile another target creature.\nWhen this creature leaves the battlefield, return the exiled card to the battlefield under its owner's control."
+   },
+   {
+    "card": "Finale of Devastation",
+    "type": "Sorcery",
+    "oracle": "Search your library and/or graveyard for a creature card with mana value X or less and put it onto the battlefield. If you search your library this way, shuffle. If X is 10 or more, creatures you control get +X/+X and gain haste until end of turn."
+   },
+   {
+    "card": "Kitchen Finks",
+    "type": "Creature \u2014 Ouphe",
+    "oracle": "When this creature enters, you gain 2 life.\nPersist (When this creature dies, if it had no -1/-1 counters on it, return it to the battlefield under its owner's control with a -1/-1 counter on it.)"
+   },
+   {
+    "card": "Leonin Relic-Warder",
+    "type": "Creature \u2014 Cat Cleric",
+    "oracle": "When this creature enters, you may exile target artifact or enchantment.\nWhen this creature leaves the battlefield, return the exiled card to the battlefield under its owner's control."
+   },
+   {
+    "card": "Linvala, Keeper of Silence",
+    "type": "Legendary Creature \u2014 Angel",
+    "oracle": "Flying\nActivated abilities of creatures your opponents control can't be activated."
+   },
+   {
+    "card": "Melira, Sylvok Outcast",
+    "type": "Legendary Creature \u2014 Human Scout",
+    "oracle": "You can't get poison counters.\nCreatures you control can't have -1/-1 counters put on them.\nCreatures your opponents control lose infect."
+   },
+   {
+    "card": "Mox Diamond",
+    "type": "Artifact",
+    "oracle": "If this artifact would enter, you may discard a land card instead. If you do, put this artifact onto the battlefield. If you don't, put it into its owner's graveyard.\n{T}: Add one mana of any color."
+   },
+   {
+    "card": "Orcish Lumberjack",
+    "type": "Creature \u2014 Orc",
+    "oracle": "{T}, Sacrifice a Forest: Add three mana in any combination of {R} and/or {G}."
+   },
+   {
+    "card": "Ranger-Captain of Eos",
+    "type": "Creature \u2014 Human Soldier Ranger",
+    "oracle": "When this creature enters, you may search your library for a creature card with mana value 1 or less, reveal it, put it into your hand, then shuffle.\nSacrifice this creature: Your opponents can't cast noncreature spells this turn."
+   },
+   {
+    "card": "Rest in Peace",
+    "type": "Enchantment",
+    "oracle": "When this enchantment enters, exile all graveyards.\nIf a card or token would be put into a graveyard from anywhere, exile it instead."
+   },
+   {
+    "card": "Rocco, Cabaretti Caterer",
+    "type": "Legendary Creature \u2014 Elf Druid",
+    "oracle": "When Rocco enters, if you cast it, you may search your library for a creature card with mana value X or less, put it onto the battlefield, then shuffle."
+   },
+   {
+    "card": "Sanctum Prelate",
+    "type": "Creature \u2014 Human Cleric",
+    "oracle": "As this creature enters, choose a number.\nNoncreature spells with mana value equal to the chosen number can't be cast."
+   },
+   {
+    "card": "Silence",
+    "type": "Instant",
+    "oracle": "Your opponents can't cast spells this turn."
+   },
+   {
+    "card": "Veil of Summer",
+    "type": "Instant",
+    "oracle": "Draw a card if an opponent has cast a blue or black spell this turn. Spells you control can't be countered this turn. You and permanents you control gain hexproof from blue and from black until end of turn. (You and they can't be the targets of blue or black spells or abilities your opponents control.)"
+   },
+   {
+    "card": "Vizier of Remedies",
+    "type": "Creature \u2014 Human Cleric",
+    "oracle": "If one or more -1/-1 counters would be put on a creature you control, that many -1/-1 counters minus one are put on it instead."
+   }
+  ]
+ },
+ {
+  "tier": "idea 14",
+  "owner": "Time",
+  "commander": "Toski, Bearer of Secrets",
+  "cards": [
+   {
+    "card": "Allosaurus Shepherd",
+    "type": "Creature \u2014 Elf Shaman",
+    "oracle": "This spell can't be countered.\nGreen spells you control can't be countered.\n{4}{G}{G}: Until end of turn, each Elf creature you control has base power and toughness 5/5 and becomes a Dinosaur in addition to its other creature types."
+   },
+   {
+    "card": "Ashaya, Soul of the Wild",
+    "type": "Legendary Creature \u2014 Elemental",
+    "oracle": "Ashaya's power and toughness are each equal to the number of lands you control.\nNontoken creatures you control are Forest lands in addition to their other types. (They're still affected by summoning sickness.)"
+   },
+   {
+    "card": "Autumn's Veil",
+    "type": "Instant",
+    "oracle": "Spells you control can't be countered by blue or black spells this turn, and creatures you control can't be the targets of blue or black spells this turn."
+   },
+   {
+    "card": "Bala Ged Recovery // Bala Ged Sanctuary",
+    "type": "Sorcery",
+    "oracle": "Return target card from your graveyard to your hand."
+   },
+   {
+    "card": "Carpet of Flowers",
+    "type": "Enchantment",
+    "oracle": "At the beginning of each of your main phases, if you haven't added mana with this ability this turn, you may add X mana of any one color, where X is the number of Islands target opponent controls."
+   },
+   {
+    "card": "Castle Garenbrig",
+    "type": "Land",
+    "oracle": "This land enters tapped unless you control a Forest.\n{T}: Add {G}.\n{2}{G}{G}, {T}: Add six {G}. Spend this mana only to cast creature spells or activate abilities of creatures."
+   },
+   {
+    "card": "Chrome Mox",
+    "type": "Artifact",
+    "oracle": "Imprint \u2014 When this artifact enters, you may exile a nonartifact, nonland card from your hand.\n{T}: Add one mana of any of the exiled card's colors."
+   },
+   {
+    "card": "Concordant Crossroads",
+    "type": "World Enchantment",
+    "oracle": "All creatures have haste."
+   },
+   {
+    "card": "Crop Rotation",
+    "type": "Instant",
+    "oracle": "As an additional cost to cast this spell, sacrifice a land.\nSearch your library for a land card, put that card onto the battlefield, then shuffle."
+   },
+   {
+    "card": "Duskwatch Recruiter // Krallenhorde Howler",
+    "type": "Creature \u2014 Human Warrior Werewolf",
+    "oracle": "{2}{G}: Look at the top three cards of your library. You may reveal a creature card from among them and put it into your hand. Put the rest on the bottom of your library in any order.\nAt the beginning of each upkeep, if no spells were cast last turn, transform this creature."
+   },
+   {
+    "card": "Endurance",
+    "type": "Creature \u2014 Elemental Incarnation",
+    "oracle": "Flash\nReach\nWhen this creature enters, up to one target player puts all the cards from their graveyard on the bottom of their library in a random order.\nEvoke\u2014Exile a green card from your hand."
+   },
+   {
+    "card": "Finale of Devastation",
+    "type": "Sorcery",
+    "oracle": "Search your library and/or graveyard for a creature card with mana value X or less and put it onto the battlefield. If you search your library this way, shuffle. If X is 10 or more, creatures you control get +X/+X and gain haste until end of turn."
+   },
+   {
+    "card": "Heritage Druid",
+    "type": "Creature \u2014 Elf Druid",
+    "oracle": "Tap three untapped Elves you control: Add {G}{G}{G}."
+   },
+   {
+    "card": "Joraga Treespeaker",
+    "type": "Creature \u2014 Elf Druid",
+    "oracle": "Level up {1}{G} ({1}{G}: Put a level counter on this. Level up only as a sorcery.)\nLEVEL 1-4\n1/2\n{T}: Add {G}{G}.\nLEVEL 5+\n1/4\nElves you control have \"{T}: Add {G}{G}.\""
+   },
+   {
+    "card": "Manglehorn",
+    "type": "Creature \u2014 Beast",
+    "oracle": "When this creature enters, you may destroy target artifact.\nArtifacts your opponents control enter tapped."
+   },
+   {
+    "card": "Mox Diamond",
+    "type": "Artifact",
+    "oracle": "If this artifact would enter, you may discard a land card instead. If you do, put this artifact onto the battlefield. If you don't, put it into its owner's graveyard.\n{T}: Add one mana of any color."
+   },
+   {
+    "card": "Quirion Ranger",
+    "type": "Creature \u2014 Elf Ranger",
+    "oracle": "Return a Forest you control to its owner's hand: Untap target creature. Activate only once each turn."
+   },
+   {
+    "card": "Regrowth",
+    "type": "Sorcery",
+    "oracle": "Return target card from your graveyard to your hand."
+   },
+   {
+    "card": "Scryb Ranger",
+    "type": "Creature \u2014 Faerie Ranger",
+    "oracle": "Flash\nFlying, protection from blue\nReturn a Forest you control to its owner's hand: Untap target creature. Activate only once each turn."
+   },
+   {
+    "card": "Summoner's Pact",
+    "type": "Instant",
+    "oracle": "Search your library for a green creature card, reveal it, put it into your hand, then shuffle.\nAt the beginning of your next upkeep, pay {2}{G}{G}. If you don't, you lose the game."
+   },
+   {
+    "card": "Utopia Sprawl",
+    "type": "Enchantment \u2014 Aura",
+    "oracle": "Enchant Forest\nAs this Aura enters, choose a color.\nWhenever enchanted Forest is tapped for mana, its controller adds an additional one mana of the chosen color."
+   },
+   {
+    "card": "Veil of Summer",
+    "type": "Instant",
+    "oracle": "Draw a card if an opponent has cast a blue or black spell this turn. Spells you control can't be countered this turn. You and permanents you control gain hexproof from blue and from black until end of turn. (You and they can't be the targets of blue or black spells or abilities your opponents control.)"
+   },
+   {
+    "card": "Walking Ballista",
+    "type": "Artifact Creature \u2014 Construct",
+    "oracle": "This creature enters with X +1/+1 counters on it.\n{4}: Put a +1/+1 counter on this creature.\nRemove a +1/+1 counter from this creature: It deals 1 damage to any target."
+   },
+   {
+    "card": "Wild Growth",
+    "type": "Enchantment \u2014 Aura",
+    "oracle": "Enchant land\nWhenever enchanted land is tapped for mana, its controller adds an additional {G}."
+   },
+   {
+    "card": "Wirewood Symbiote",
+    "type": "Creature \u2014 Insect",
+    "oracle": "Return an Elf you control to its owner's hand: Untap target creature. Activate only once each turn."
+   }
+  ]
+ },
+ {
+  "tier": "idea 15",
+  "owner": "DonSpider",
+  "commander": "Y'shtola, Night's Blessed",
+  "cards": [
+   {
+    "card": "Black Mage's Rod",
+    "type": "Artifact \u2014 Equipment",
+    "oracle": "Job select (When this Equipment enters, create a 1/1 colorless Hero creature token, then attach this to it.)\nEquipped creature gets +1/+0, has \"Whenever you cast a noncreature spell, this creature deals 1 damage to each opponent,\" and is a Wizard in addition to its other types.\nEquip {3}"
+   },
+   {
+    "card": "Brainsurge",
+    "type": "Instant",
+    "oracle": "Draw four cards, then put two cards from your hand on top of your library in any order."
+   },
+   {
+    "card": "Chrome Host Seedshark",
+    "type": "Creature \u2014 Phyrexian Shark",
+    "oracle": "Flying\nWhenever you cast a noncreature spell, incubate X, where X is that spell's mana value. (Create an Incubator token with X +1/+1 counters on it and \"{2}: Transform this token.\" It transforms into a 0/0 Phyrexian artifact creature.)"
+   },
+   {
+    "card": "Circle of Power",
+    "type": "Sorcery",
+    "oracle": "You draw two cards and you lose 2 life. Create a 0/1 black Wizard creature token with \"Whenever you cast a noncreature spell, this token deals 1 damage to each opponent.\"\nWizards you control get +1/+0 and gain lifelink until end of turn."
+   },
+   {
+    "card": "Cornered by Black Mages",
+    "type": "Sorcery",
+    "oracle": "Target opponent sacrifices a creature of their choice.\nCreate a 0/1 black Wizard creature token with \"Whenever you cast a noncreature spell, this token deals 1 damage to each opponent.\""
+   },
+   {
+    "card": "Enduring Tenacity",
+    "type": "Enchantment Creature \u2014 Snake Glimmer",
+    "oracle": "Whenever you gain life, target opponent loses that much life.\nWhen Enduring Tenacity dies, if it was a creature, return it to the battlefield under its owner's control. It's an enchantment. (It's not a creature.)"
+   },
+   {
+    "card": "Fandaniel, Telophoroi Ascian",
+    "type": "Legendary Creature \u2014 Elder Wizard",
+    "oracle": "Whenever you cast an instant or sorcery spell, surveil 1.\nAt the beginning of your end step, each opponent may sacrifice a nontoken creature of their choice. Each opponent who doesn't loses 2 life for each instant and sorcery card in your graveyard."
+   },
+   {
+    "card": "G'raha Tia, Scion Reborn",
+    "type": "Legendary Creature \u2014 Cat Wizard",
+    "oracle": "Lifelink\nThrow Wide the Gates \u2014 Whenever you cast a noncreature spell, you may pay X life, where X is that spell's mana value. If you do, create a 1/1 colorless Hero creature token and put X +1/+1 counters on it. Do this only once each turn."
+   },
+   {
+    "card": "Helm of the Ghastlord",
+    "type": "Enchantment \u2014 Aura",
+    "oracle": "Enchant creature\nAs long as enchanted creature is blue, it gets +1/+1 and has \"Whenever this creature deals damage to an opponent, draw a card.\"\nAs long as enchanted creature is black, it gets +1/+1 and has \"Whenever this creature deals damage to an opponent, that player discards a card.\""
+   },
+   {
+    "card": "Hermes, Overseer of Elpis",
+    "type": "Legendary Creature \u2014 Elder Wizard",
+    "oracle": "Whenever you cast a noncreature spell, create a 1/1 blue Bird creature token with flying and vigilance.\nWhenever you attack with one or more Birds, scry 2."
+   },
+   {
+    "card": "Irenicus's Vile Duplication",
+    "type": "Sorcery",
+    "oracle": "Create a token that's a copy of target creature you control, except the token has flying and it isn't legendary."
+   },
+   {
+    "card": "Jin-Gitaxias // The Great Synthesis",
+    "type": "Legendary Creature \u2014 Phyrexian Praetor",
+    "oracle": "Ward {2}\nWhenever you cast a noncreature spell with mana value 3 or greater, draw a card.\n{3}{U}: Exile Jin-Gitaxias, then return it to the battlefield transformed under its owner's control. Activate only as a sorcery and only if you have seven or more cards in hand."
+   },
+   {
+    "card": "Kambal, Consul of Allocation",
+    "type": "Legendary Creature \u2014 Human Advisor",
+    "oracle": "Whenever an opponent casts a noncreature spell, that player loses 2 life and you gain 2 life."
+   },
+   {
+    "card": "Lyse Hext",
+    "type": "Legendary Creature \u2014 Human Rebel Monk",
+    "oracle": "Prowess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)\nNoncreature spells you cast cost {1} less to cast.\nAs long as you've cast two or more noncreature spells this turn, Lyse Hext has double strike."
+   },
+   {
+    "card": "Mai, Scornful Striker",
+    "type": "Legendary Creature \u2014 Human Noble Ally",
+    "oracle": "First strike\nWhenever a player casts a noncreature spell, they lose 2 life."
+   },
+   {
+    "card": "Papalymo Totolymo",
+    "type": "Legendary Creature \u2014 Dwarf Wizard",
+    "oracle": "Whenever you cast a noncreature spell, Papalymo Totolymo deals 1 damage to each opponent and you gain 1 life.\n{4}, {T}, Sacrifice Papalymo Totolymo: Each opponent who lost life this turn sacrifices a creature with the greatest power among creatures they control."
+   },
+   {
+    "card": "Read the Bones",
+    "type": "Sorcery",
+    "oracle": "Scry 2, then draw two cards. You lose 2 life. (To scry 2, look at the top two cards of your library, then put any number of them on the bottom and the rest on top in any order.)"
+   },
+   {
+    "card": "Spark Double",
+    "type": "Creature \u2014 Illusion",
+    "oracle": "You may have this creature enter as a copy of a creature or planeswalker you control, except it enters with an additional +1/+1 counter on it if it's a creature, it enters with an additional loyalty counter on it if it's a planeswalker, and it isn't legendary."
+   },
+   {
+    "card": "Starscape Cleric",
+    "type": "Creature \u2014 Bat Cleric",
+    "oracle": "Offspring {2}{B} (You may pay an additional {2}{B} as you cast this spell. If you do, when this creature enters, create a 1/1 token copy of it.)\nFlying\nThis creature can't block.\nWhenever you gain life, each opponent loses 1 life."
+   },
+   {
+    "card": "The Destined Black Mage",
+    "type": "Legendary Creature \u2014 Human Wizard",
+    "oracle": "Deathtouch\n{B}, {T}: Another target creature you control gains deathtouch until end of turn.\nWhenever you cast a noncreature spell, The Destined Black Mage deals 1 damage to each opponent. If you have a full party, it deals 3 damage to each opponent instead."
+   },
+   {
+    "card": "Transpose",
+    "type": "Instant",
+    "oracle": "Draw a card, then discard a card. You lose 1 life. If this spell was cast from your hand, create a 0/1 black Wizard creature token with \"Whenever you cast a noncreature spell, this token deals 1 damage to each opponent.\"\nRebound (If you cast this spell from your hand, exile it as it resolves. At the beginning of your next upkeep, you may cast this card from exile without paying its mana cost.)"
+   },
+   {
+    "card": "Uncover the Moon-Letters",
+    "type": "Enchantment",
+    "oracle": "Whenever you cast a noncreature spell, you may draw X cards, where X is the amount of mana spent to cast that spell. If you do, discard two cards."
+   },
+   {
+    "card": "Valeria Richards, Precocious",
+    "type": "Legendary Creature \u2014 Human Scientist Hero",
+    "oracle": "Noncreature spells you cast cost {1} less to cast.\nWhenever you cast your first noncreature spell each turn, draw a card."
+   },
+   {
+    "card": "Wizard's Staff",
+    "type": "Artifact \u2014 Equipment",
+    "oracle": "Equipped creature has prowess. (Whenever its controller casts a noncreature spell, that creature gets +1/+1 until end of turn.)\nIf a triggered ability of equipped creature triggers, that ability triggers an additional time.\nEquip Wizard {1}\nEquip {3}"
+   },
+   {
+    "card": "Y'shtola Rhul",
+    "type": "Legendary Creature \u2014 Cat Druid",
+    "oracle": "At the beginning of your end step, exile target creature you control, then return it to the battlefield under its owner's control. Then if it's the first end step of the turn, there is an additional end step after this step."
+   },
+   {
+    "card": "Y'shtola, Night's Blessed",
+    "type": "Legendary Creature \u2014 Cat Warlock",
+    "oracle": "Vigilance\nAt the beginning of each end step, if a player lost 4 or more life this turn, you draw a card.\nWhenever you cast a noncreature spell with mana value 3 or greater, Y'shtola deals 2 damage to each opponent and you gain 2 life."
+   }
+  ]
+ },
+ {
+  "tier": "idea 16",
+  "owner": "Time",
+  "commander": "Rocco, Cabaretti Caterer",
+  "cards": [
+   {
+    "card": "Aluren",
+    "type": "Enchantment",
+    "oracle": "Any player may cast creature spells with mana value 3 or less without paying their mana costs and as though they had flash."
+   },
+   {
+    "card": "Angelic Renewal",
+    "type": "Enchantment",
+    "oracle": "Whenever a creature is put into your graveyard from the battlefield, you may sacrifice this enchantment. If you do, return that card to the battlefield."
+   },
+   {
+    "card": "Cathars' Crusade",
+    "type": "Enchantment",
+    "oracle": "Whenever a creature you control enters, put a +1/+1 counter on each creature you control."
+   },
+   {
+    "card": "Earthcraft",
+    "type": "Enchantment",
+    "oracle": "Tap an untapped creature you control: Untap target basic land."
+   },
+   {
+    "card": "Enduring Renewal",
+    "type": "Enchantment",
+    "oracle": "Play with your hand revealed.\nIf you would draw a card, reveal the top card of your library instead. If it's a creature card, put it into your graveyard. Otherwise, draw a card.\nWhenever a creature is put into your graveyard from the battlefield, return it to your hand."
+   },
+   {
+    "card": "Fecundity",
+    "type": "Enchantment",
+    "oracle": "Whenever a creature dies, that creature's controller may draw a card."
+   },
+   {
+    "card": "Fiend Hunter",
+    "type": "Creature \u2014 Human Cleric",
+    "oracle": "When this creature enters, you may exile another target creature.\nWhen this creature leaves the battlefield, return the exiled card to the battlefield under its owner's control."
+   },
+   {
+    "card": "Garruk, Primal Hunter",
+    "type": "Legendary Planeswalker \u2014 Garruk",
+    "oracle": "+1: Create a 3/3 green Beast creature token.\n\u22123: Draw cards equal to the greatest power among creatures you control.\n\u22126: Create a 6/6 green Wurm creature token for each land you control."
+   },
+   {
+    "card": "Gift of Immortality",
+    "type": "Enchantment \u2014 Aura",
+    "oracle": "Enchant creature\nWhen enchanted creature dies, return that card to the battlefield under its owner's control. Return this card to the battlefield attached to that creature at the beginning of the next end step."
+   },
+   {
+    "card": "Juniper Order Ranger",
+    "type": "Creature \u2014 Human Knight Ranger",
+    "oracle": "Whenever another creature you control enters, put a +1/+1 counter on that creature and a +1/+1 counter on this creature."
+   },
+   {
+    "card": "Karn Liberated",
+    "type": "Legendary Planeswalker \u2014 Karn",
+    "oracle": "+4: Target player exiles a card from their hand.\n\u22123: Exile target permanent.\n\u221214: Restart the game, leaving in exile all non-Aura permanent cards exiled with Karn. Then put those cards onto the battlefield under your control."
+   },
+   {
+    "card": "Kitchen Finks",
+    "type": "Creature \u2014 Ouphe",
+    "oracle": "When this creature enters, you gain 2 life.\nPersist (When this creature dies, if it had no -1/-1 counters on it, return it to the battlefield under its owner's control with a -1/-1 counter on it.)"
+   },
+   {
+    "card": "Leonin Relic-Warder",
+    "type": "Creature \u2014 Cat Cleric",
+    "oracle": "When this creature enters, you may exile target artifact or enchantment.\nWhen this creature leaves the battlefield, return the exiled card to the battlefield under its owner's control."
+   },
+   {
+    "card": "Liege of the Hollows",
+    "type": "Creature \u2014 Spirit",
+    "oracle": "When this creature dies, each player may pay any amount of mana. Then each player creates a number of 1/1 green Squirrel creature tokens equal to the amount of mana they paid this way."
+   },
+   {
+    "card": "Life's Legacy",
+    "type": "Sorcery",
+    "oracle": "As an additional cost to cast this spell, sacrifice a creature.\nDraw cards equal to the sacrificed creature's power."
+   },
+   {
+    "card": "Lifecrafter's Bestiary",
+    "type": "Artifact",
+    "oracle": "At the beginning of your upkeep, scry 1.\nWhenever you cast a creature spell, you may pay {G}. If you do, draw a card."
+   },
+   {
+    "card": "Lifeline",
+    "type": "Artifact",
+    "oracle": "Whenever a creature dies, if another creature is on the battlefield, return the first card to the battlefield under its owner's control at the beginning of the next end step."
+   },
+   {
+    "card": "Melira, Sylvok Outcast",
+    "type": "Legendary Creature \u2014 Human Scout",
+    "oracle": "You can't get poison counters.\nCreatures you control can't have -1/-1 counters put on them.\nCreatures your opponents control lose infect."
+   },
+   {
+    "card": "Miren, the Moaning Well",
+    "type": "Legendary Land",
+    "oracle": "{T}: Add {C}.\n{3}, {T}, Sacrifice a creature: You gain life equal to the sacrificed creature's toughness."
+   },
+   {
+    "card": "Nim Deathmantle",
+    "type": "Artifact \u2014 Equipment",
+    "oracle": "Equipped creature gets +2/+2, has intimidate, and is a black Zombie. (A creature with intimidate can't be blocked except by artifact creatures and/or creatures that share a color with it.)\nWhenever a nontoken creature is put into your graveyard from the battlefield, you may pay {4}. If you do, return that card to the battlefield and attach this Equipment to it.\nEquip {4}"
+   },
+   {
+    "card": "Oblivion Ring",
+    "type": "Enchantment",
+    "oracle": "When this enchantment enters, exile another target nonland permanent.\nWhen this enchantment leaves the battlefield, return the exiled card to the battlefield under its owner's control."
+   },
+   {
+    "card": "Rocco, Cabaretti Caterer",
+    "type": "Legendary Creature \u2014 Elf Druid",
+    "oracle": "When Rocco enters, if you cast it, you may search your library for a creature card with mana value X or less, put it onto the battlefield, then shuffle."
+   },
+   {
+    "card": "Slate of Ancestry",
+    "type": "Artifact",
+    "oracle": "{4}, {T}, Discard your hand: Draw a card for each creature you control."
+   },
+   {
+    "card": "Spawning Pit",
+    "type": "Artifact",
+    "oracle": "Sacrifice a creature: Put a charge counter on this artifact.\n{1}, Remove two charge counters from this artifact: Create a 2/2 colorless Spawn artifact creature token."
+   },
+   {
+    "card": "Twilight Drover",
+    "type": "Creature \u2014 Spirit",
+    "oracle": "Whenever a creature token leaves the battlefield, put a +1/+1 counter on this creature.\n{2}{W}, Remove a +1/+1 counter from this creature: Create two 1/1 white Spirit creature tokens with flying."
+   },
+   {
+    "card": "Woodfall Primus",
+    "type": "Creature \u2014 Treefolk Shaman",
+    "oracle": "Trample\nWhen this creature enters, destroy target noncreature permanent.\nPersist (When this creature dies, if it had no -1/-1 counters on it, return it to the battlefield under its owner's control with a -1/-1 counter on it.)"
+   }
+  ]
+ },
+ {
+  "tier": "idea 17",
+  "owner": "Time",
+  "commander": "Tymna the Weaver + Tana, the Bloodsower",
+  "cards": [
+   {
+    "card": "Adeline, Resplendent Cathar",
+    "type": "Legendary Creature \u2014 Human Knight",
+    "oracle": "Vigilance\nAdeline's power is equal to the number of creatures you control.\nWhenever you attack, for each opponent, create a 1/1 white Human creature token that's tapped and attacking that player or a planeswalker they control."
+   },
+   {
+    "card": "Archon of Emeria",
+    "type": "Creature \u2014 Archon",
+    "oracle": "Flying\nEach player can't cast more than one spell each turn.\nNonbasic lands your opponents control enter tapped."
+   },
+   {
+    "card": "Aven Mindcensor",
+    "type": "Creature \u2014 Bird Wizard",
+    "oracle": "Flash\nFlying\nIf an opponent would search a library, that player searches the top four cards of that library instead."
+   },
+   {
+    "card": "Bitterblossom",
+    "type": "Kindred Enchantment \u2014 Faerie",
+    "oracle": "At the beginning of your upkeep, you lose 1 life and create a 1/1 black Faerie Rogue creature token with flying."
+   },
+   {
+    "card": "Containment Priest",
+    "type": "Creature \u2014 Human Cleric",
+    "oracle": "Flash\nIf a nontoken creature would enter and it wasn't cast, exile it instead."
+   },
+   {
+    "card": "Cursed Totem",
+    "type": "Artifact",
+    "oracle": "Activated abilities of creatures can't be activated."
+   },
+   {
+    "card": "Drannith Magistrate",
+    "type": "Creature \u2014 Human Wizard",
+    "oracle": "Your opponents can't cast spells from anywhere other than their hands."
+   },
+   {
+    "card": "Gaea's Cradle",
+    "type": "Legendary Land",
+    "oracle": "{T}: Add {G} for each creature you control."
+   },
+   {
+    "card": "Gamble",
+    "type": "Sorcery",
+    "oracle": "Search your library for a card, put that card into your hand, discard a card at random, then shuffle."
+   },
+   {
+    "card": "Giver of Runes",
+    "type": "Creature \u2014 Kor Cleric",
+    "oracle": "{T}: Another target creature you control gains protection from colorless or from the color of your choice until end of turn."
+   },
+   {
+    "card": "Grafdigger's Cage",
+    "type": "Artifact",
+    "oracle": "Creature cards in graveyards and libraries can't enter the battlefield.\nPlayers can't cast spells from graveyards or libraries."
+   },
+   {
+    "card": "Kataki, War's Wage",
+    "type": "Legendary Creature \u2014 Spirit",
+    "oracle": "All artifacts have \"At the beginning of your upkeep, sacrifice this artifact unless you pay {1}.\""
+   },
+   {
+    "card": "Leonin Arbiter",
+    "type": "Creature \u2014 Cat Cleric",
+    "oracle": "Players can't search libraries. Any player may pay {2} for that player to ignore this effect until end of turn."
+   },
+   {
+    "card": "Leyline of the Void",
+    "type": "Enchantment",
+    "oracle": "If this card is in your opening hand, you may begin the game with it on the battlefield.\nIf a card would be put into an opponent's graveyard from anywhere, exile it instead."
+   },
+   {
+    "card": "Linvala, Keeper of Silence",
+    "type": "Legendary Creature \u2014 Angel",
+    "oracle": "Flying\nActivated abilities of creatures your opponents control can't be activated."
+   },
+   {
+    "card": "Luminarch Aspirant",
+    "type": "Creature \u2014 Human Cleric",
+    "oracle": "At the beginning of combat on your turn, put a +1/+1 counter on target creature you control."
+   },
+   {
+    "card": "Oakhame Adversary",
+    "type": "Creature \u2014 Elf Warrior",
+    "oracle": "This spell costs {2} less to cast if an opponent controls a green permanent.\nDeathtouch\nWhenever this creature deals combat damage to a player, draw a card."
+   },
+   {
+    "card": "Opposition Agent",
+    "type": "Creature \u2014 Human Rogue",
+    "oracle": "Flash\nYou control your opponents while they're searching their libraries.\nWhile an opponent is searching their library, they exile each card they find. You may play those cards for as long as they remain exiled, and you may spend mana as though it were mana of any color to cast them."
+   },
+   {
+    "card": "Ranger-Captain of Eos",
+    "type": "Creature \u2014 Human Soldier Ranger",
+    "oracle": "When this creature enters, you may search your library for a creature card with mana value 1 or less, reveal it, put it into your hand, then shuffle.\nSacrifice this creature: Your opponents can't cast noncreature spells this turn."
+   },
+   {
+    "card": "Rest in Peace",
+    "type": "Enchantment",
+    "oracle": "When this enchantment enters, exile all graveyards.\nIf a card or token would be put into a graveyard from anywhere, exile it instead."
+   },
+   {
+    "card": "Rule of Law",
+    "type": "Enchantment",
+    "oracle": "Each player can't cast more than one spell each turn."
+   },
+   {
+    "card": "Skrelv, Defector Mite",
+    "type": "Legendary Artifact Creature \u2014 Phyrexian Mite",
+    "oracle": "Toxic 1 (Players dealt combat damage by this creature also get a poison counter.)\nSkrelv can't block.\n{W/P}, {T}: Choose a color. Another target creature you control gains toxic 1 and hexproof from that color until end of turn. It can't be blocked by creatures of that color this turn. ({W/P} can be paid with either {W} or 2 life.)"
+   },
+   {
+    "card": "Tana, the Bloodsower",
+    "type": "Legendary Creature \u2014 Elf Druid",
+    "oracle": "Trample\nWhenever Tana deals combat damage to a player, create that many 1/1 green Saproling creature tokens.\nPartner (You can have two commanders if both have partner.)"
+   },
+   {
+    "card": "Thalia, Guardian of Thraben",
+    "type": "Legendary Creature \u2014 Human Soldier",
+    "oracle": "First strike\nNoncreature spells cost {1} more to cast."
+   },
+   {
+    "card": "Tithe Taker",
+    "type": "Creature \u2014 Human Soldier",
+    "oracle": "During your turn, spells your opponents cast cost {1} more to cast and abilities your opponents activate cost {1} more to activate unless they're mana abilities.\nAfterlife 1 (When this creature dies, create a 1/1 white and black Spirit creature token with flying.)"
+   },
+   {
+    "card": "Torpor Orb",
+    "type": "Artifact",
+    "oracle": "Creatures entering don't cause abilities to trigger."
+   },
+   {
+    "card": "Tymna the Weaver",
+    "type": "Legendary Creature \u2014 Human Cleric",
+    "oracle": "Lifelink\nAt the beginning of each of your postcombat main phases, you may pay X life, where X is the number of opponents that were dealt combat damage this turn. If you do, draw X cards.\nPartner (You can have two commanders if both have partner.)"
+   },
+   {
+    "card": "Tymna the Weaver + Tana, the Bloodsower",
+    "type": "",
+    "oracle": ""
+   },
+   {
+    "card": "Vindicate",
+    "type": "Sorcery",
+    "oracle": "Destroy target permanent."
+   },
+   {
+    "card": "Wear // Tear",
+    "type": "Instant",
+    "oracle": "Destroy target artifact.\nFuse (You may cast one or both halves of this card from your hand.)"
+   }
+  ]
+ },
+ {
+  "tier": "idea 18",
+  "owner": "Adam",
+  "commander": "Alela, Artful Provocateur",
+  "cards": [
+   {
+    "card": "Alela, Artful Provocateur",
+    "type": "Legendary Creature \u2014 Faerie Warlock",
+    "oracle": "Flying, deathtouch, lifelink\nOther creatures you control with flying get +1/+0.\nWhenever you cast an artifact or enchantment spell, create a 1/1 blue Faerie creature token with flying."
+   },
+   {
+    "card": "Archon of Cruelty",
+    "type": "Creature \u2014 Archon",
+    "oracle": "Flying\nWhenever this creature enters or attacks, target opponent sacrifices a creature or planeswalker of their choice, discards a card, and loses 3 life. You draw a card and gain 3 life."
+   },
+   {
+    "card": "Baleful Strix",
+    "type": "Artifact Creature \u2014 Bird",
+    "oracle": "Flying, deathtouch\nWhen this creature enters, draw a card."
+   },
+   {
+    "card": "Bitterblossom",
+    "type": "Kindred Enchantment \u2014 Faerie",
+    "oracle": "At the beginning of your upkeep, you lose 1 life and create a 1/1 black Faerie Rogue creature token with flying."
+   },
+   {
+    "card": "Black Market",
+    "type": "Enchantment",
+    "oracle": "Whenever a creature dies, put a charge counter on this enchantment.\nAt the beginning of your first main phase, add {B} for each charge counter on this enchantment."
+   },
+   {
+    "card": "Court of Grace",
+    "type": "Enchantment",
+    "oracle": "When this enchantment enters, you become the monarch.\nAt the beginning of your upkeep, create a 1/1 white Spirit creature token with flying. If you're the monarch, create a 4/4 white Angel creature token with flying instead."
+   },
+   {
+    "card": "Ethersworn Adjudicator",
+    "type": "Artifact Creature \u2014 Vedalken Knight",
+    "oracle": "Flying\n{1}{W}{B}, {T}: Destroy target creature or enchantment.\n{2}{U}: Untap this creature."
+   },
+   {
+    "card": "Faerie Artisans",
+    "type": "Creature \u2014 Faerie Artificer",
+    "oracle": "Flying\nWhenever a nontoken creature an opponent controls enters, create a token that's a copy of that creature except it's an artifact in addition to its other types. Then exile all other tokens created with this creature."
+   },
+   {
+    "card": "Filigree Angel",
+    "type": "Artifact Creature \u2014 Angel",
+    "oracle": "Flying\nWhen this creature enters, you gain 3 life for each artifact you control."
+   },
+   {
+    "card": "Jubilant Skybonder",
+    "type": "Creature \u2014 Human Wizard",
+    "oracle": "Flying\nCreatures you control with flying have \"Spells your opponents cast that target this creature cost {2} more to cast.\""
+   },
+   {
+    "card": "Kaldra Compleat",
+    "type": "Legendary Artifact \u2014 Equipment",
+    "oracle": "Living weapon\nIndestructible\nEquipped creature gets +5/+5 and has first strike, trample, indestructible, haste, and \"Whenever this creature deals combat damage to a creature, exile that creature.\"\nEquip {7}"
+   },
+   {
+    "card": "Latchkey Faerie",
+    "type": "Creature \u2014 Faerie Rogue",
+    "oracle": "Flying\nProwl {2}{U} (You may cast this for its prowl cost if you dealt combat damage to a player this turn with a Faerie or Rogue.)\nWhen this creature enters, if its prowl cost was paid, draw a card."
+   },
+   {
+    "card": "Magister Sphinx",
+    "type": "Artifact Creature \u2014 Sphinx",
+    "oracle": "Flying\nWhen this creature enters, target player's life total becomes 10."
+   },
+   {
+    "card": "Medomai the Ageless",
+    "type": "Legendary Creature \u2014 Sphinx",
+    "oracle": "Flying\nWhenever Medomai deals combat damage to a player, take an extra turn after this one.\nMedomai can't attack during extra turns."
+   },
+   {
+    "card": "Mystic Gate",
+    "type": "Land",
+    "oracle": "{T}: Add {C}.\n{W/U}, {T}: Add {W}{W}, {W}{U}, or {U}{U}."
+   },
+   {
+    "card": "Norn's Annex",
+    "type": "Artifact",
+    "oracle": "({W/P} can be paid with either {W} or 2 life.)\nCreatures can't attack you or planeswalkers you control unless their controller pays {W/P} for each of those creatures."
+   },
+   {
+    "card": "Oblivion Ring",
+    "type": "Enchantment",
+    "oracle": "When this enchantment enters, exile another target nonland permanent.\nWhen this enchantment leaves the battlefield, return the exiled card to the battlefield under its owner's control."
+   },
+   {
+    "card": "Open the Vaults",
+    "type": "Sorcery",
+    "oracle": "Return all artifact and enchantment cards from all graveyards to the battlefield under their owners' control. (Auras with nothing to enchant remain in graveyards.)"
+   },
+   {
+    "card": "Platinum Angel",
+    "type": "Artifact Creature \u2014 Angel",
+    "oracle": "Flying\nYou can't lose the game and your opponents can't win the game."
+   },
+   {
+    "card": "Reconnaissance Mission",
+    "type": "Enchantment",
+    "oracle": "Whenever a creature you control deals combat damage to a player, you may draw a card.\nCycling {2} ({2}, Discard this card: Draw a card.)"
+   },
+   {
+    "card": "Render Silent",
+    "type": "Instant",
+    "oracle": "Counter target spell. Its controller can't cast spells this turn."
+   },
+   {
+    "card": "Scion of Oona",
+    "type": "Creature \u2014 Faerie Soldier",
+    "oracle": "Flash\nFlying\nOther Faerie creatures you control get +1/+1.\nOther Faeries you control have shroud. (They can't be the targets of spells or abilities.)"
+   },
+   {
+    "card": "Sharding Sphinx",
+    "type": "Artifact Creature \u2014 Sphinx",
+    "oracle": "Flying\nWhenever an artifact creature you control deals combat damage to a player, you may create a 1/1 blue Thopter artifact creature token with flying."
+   },
+   {
+    "card": "Sharuum the Hegemon",
+    "type": "Legendary Artifact Creature \u2014 Sphinx",
+    "oracle": "Flying\nWhen Sharuum enters, you may return target artifact card from your graveyard to the battlefield."
+   },
+   {
+    "card": "Sphinx Summoner",
+    "type": "Artifact Creature \u2014 Sphinx",
+    "oracle": "Flying\nWhen this creature enters, you may search your library for an artifact creature card, reveal it, put it into your hand, then shuffle."
+   },
+   {
+    "card": "Steel Hellkite",
+    "type": "Artifact Creature \u2014 Dragon",
+    "oracle": "Flying\n{2}: This creature gets +1/+0 until end of turn.\n{X}: Destroy each nonland permanent with mana value X whose controller was dealt combat damage by this creature this turn. Activate only once each turn."
+   },
+   {
+    "card": "Sword of Light and Shadow",
+    "type": "Artifact \u2014 Equipment",
+    "oracle": "Equipped creature gets +2/+2 and has protection from white and from black.\nWhenever equipped creature deals combat damage to a player, you gain 3 life and you may return up to one target creature card from your graveyard to your hand.\nEquip {2}"
+   },
+   {
+    "card": "Thopter Assembly",
+    "type": "Artifact Creature \u2014 Thopter",
+    "oracle": "Flying\nAt the beginning of your upkeep, if you control no Thopters other than this creature, return this creature to its owner's hand and create five 1/1 colorless Thopter artifact creature tokens with flying."
+   },
+   {
+    "card": "Thopter Spy Network",
+    "type": "Enchantment",
+    "oracle": "At the beginning of your upkeep, if you control an artifact, create a 1/1 colorless Thopter artifact creature token with flying.\nWhenever one or more artifact creatures you control deal combat damage to a player, draw a card."
+   },
+   {
+    "card": "Tidehollow Strix",
+    "type": "Artifact Creature \u2014 Bird",
+    "oracle": "Flying\nDeathtouch (Any amount of damage this deals to a creature is enough to destroy it.)"
+   },
+   {
+    "card": "Vindicate",
+    "type": "Sorcery",
+    "oracle": "Destroy target permanent."
+   },
+   {
+    "card": "Zur the Enchanter",
+    "type": "Legendary Creature \u2014 Human Wizard",
+    "oracle": "Flying\nWhenever Zur attacks, you may search your library for an enchantment card with mana value 3 or less, put it onto the battlefield, then shuffle."
+   }
+  ]
+ },
+ {
+  "tier": "idea 19",
+  "owner": "Adam",
+  "commander": "Prosper, Tome-Bound",
+  "cards": [
+   {
+    "card": "Alchemist's Talent",
+    "type": "Enchantment \u2014 Class",
+    "oracle": "(Gain the next level as a sorcery to add its ability.)\nWhen this Class enters, create two tapped Treasure tokens.\n{1}{R}: Level 2\nTreasures you control have \"{T}, Sacrifice this artifact: Add two mana of any one color.\"\n{4}{R}: Level 3\nWhenever you cast a spell, if mana from a Treasure was spent to cast it, this Class deals damage equal to that spell's mana value to each opponent."
+   },
+   {
+    "card": "Bedevil",
+    "type": "Instant",
+    "oracle": "Destroy target artifact, creature, or planeswalker."
+   },
+   {
+    "card": "Birgi, God of Storytelling // Harnfel, Horn of Bounty",
+    "type": "Legendary Creature \u2014 God",
+    "oracle": "Whenever you cast a spell, add {R}. Until end of turn, you don't lose this mana as steps and phases end.\nCreatures you control can boast twice during each of your turns rather than once."
+   },
+   {
+    "card": "Bonehoard Dracosaur",
+    "type": "Creature \u2014 Dinosaur Dragon",
+    "oracle": "Flying, first strike\nAt the beginning of your upkeep, exile the top two cards of your library. You may play them this turn. If you exiled a land card this way, create a 3/1 red Dinosaur creature token. If you exiled a nonland card this way, create a Treasure token."
+   },
+   {
+    "card": "Commune with Lava",
+    "type": "Instant",
+    "oracle": "Exile the top X cards of your library. Until the end of your next turn, you may play those cards."
+   },
+   {
+    "card": "Crime Novelist",
+    "type": "Creature \u2014 Goblin Bard",
+    "oracle": "Whenever you sacrifice an artifact, put a +1/+1 counter on this creature and add {R}."
+   },
+   {
+    "card": "Dark Ritual",
+    "type": "Instant",
+    "oracle": "Add {B}{B}{B}."
+   },
+   {
+    "card": "Decadent Dragon // Expensive Taste",
+    "type": "Creature \u2014 Dragon",
+    "oracle": "Flying, trample\nWhenever this creature attacks, create a Treasure token."
+   },
+   {
+    "card": "Delayed Blast Fireball",
+    "type": "Instant",
+    "oracle": "Delayed Blast Fireball deals 2 damage to each opponent and each creature they control. If this spell was cast from exile, it deals 5 damage to each opponent and each creature they control instead.\nForetell {4}{R}{R} (During your turn, you may pay {2} and exile this card from your hand face down. Cast it on a later turn for its foretell cost.)"
+   },
+   {
+    "card": "Dream Devourer",
+    "type": "Creature \u2014 Demon Cleric",
+    "oracle": "Each nonland card in your hand without foretell has foretell. Its foretell cost is equal to its mana cost reduced by {2}. (During your turn, you may pay {2} and exile it from your hand face down. Cast it on a later turn for its foretell cost.)\nWhenever you foretell a card, this creature gets +2/+0 until end of turn."
+   },
+   {
+    "card": "Fevered Suspicion",
+    "type": "Sorcery",
+    "oracle": "Each opponent exiles cards from the top of their library until they exile a nonland card. You may cast any number of spells from among those nonland cards without paying their mana costs.\nRebound (If you cast this spell from your hand, exile it as it resolves. At the beginning of your next upkeep, you may cast this card from exile without paying its mana cost.)"
+   },
+   {
+    "card": "Goldspan Dragon",
+    "type": "Creature \u2014 Dragon",
+    "oracle": "Flying, haste\nWhenever this creature attacks or becomes the target of a spell, create a Treasure token.\nTreasures you control have \"{T}, Sacrifice this artifact: Add two mana of any one color.\""
+   },
+   {
+    "card": "Grim Hireling",
+    "type": "Creature \u2014 Tiefling Rogue",
+    "oracle": "Whenever one or more creatures you control deal combat damage to a player, create two Treasure tokens.\n{B}, Sacrifice X Treasures: Target creature gets -X/-X until end of turn. Activate only as a sorcery."
+   },
+   {
+    "card": "Hex Magic",
+    "type": "Sorcery \u2014 Arcane",
+    "oracle": "Exile all the cards from your hand, then draw that many cards. Until the end of your next turn, you may play cards exiled this way."
+   },
+   {
+    "card": "Hurl Through Hell",
+    "type": "Instant",
+    "oracle": "Exile target creature. Until the end of your next turn, you may cast that card and you may spend mana as though it were mana of any color to cast that spell."
+   },
+   {
+    "card": "Ignite the Future",
+    "type": "Sorcery",
+    "oracle": "Exile the top three cards of your library. Until the end of your next turn, you may play those cards. If this spell was cast from a graveyard, you may play cards this way without paying their mana costs.\nFlashback {7}{R} (You may cast this card from your graveyard for its flashback cost. Then exile it.)"
+   },
+   {
+    "card": "Improvisation Capstone",
+    "type": "Sorcery \u2014 Lesson",
+    "oracle": "Exile cards from the top of your library until you exile cards with total mana value 4 or greater. You may cast any number of spells from among them without paying their mana costs.\nParadigm (Then exile this spell. After you first resolve a spell with this name, you may cast a copy of it from exile without paying its mana cost at the beginning of each of your first main phases.)"
+   },
+   {
+    "card": "Ingenious Artillerist",
+    "type": "Creature \u2014 Human Artificer",
+    "oracle": "Whenever one or more artifacts you control enter, this creature deals that much damage to each opponent."
+   },
+   {
+    "card": "Laelia, the Blade Reforged",
+    "type": "Legendary Creature \u2014 Spirit Warrior",
+    "oracle": "Haste\nWhenever Laelia attacks, exile the top card of your library. You may play that card this turn.\nWhenever one or more cards are put into exile from your library and/or your graveyard, put a +1/+1 counter on Laelia."
+   },
+   {
+    "card": "Light Up the Stage",
+    "type": "Sorcery",
+    "oracle": "Spectacle {R} (You may cast this spell for its spectacle cost rather than its mana cost if an opponent lost life this turn.)\nExile the top two cards of your library. Until the end of your next turn, you may play those cards."
+   },
+   {
+    "card": "Passionate Archaeologist",
+    "type": "Legendary Enchantment \u2014 Background",
+    "oracle": "Commander creatures you own have \"Whenever you cast a spell from exile, this creature deals damage equal to that spell's mana value to target opponent.\""
+   },
+   {
+    "card": "Rain of Riches",
+    "type": "Enchantment",
+    "oracle": "When this enchantment enters, create two Treasure tokens.\nThe first spell you cast each turn that mana from a Treasure was spent to cast has cascade. (When you cast the spell, exile cards from the top of your library until you exile a nonland card that costs less. You may cast it without paying its mana cost. Put the exiled cards on the bottom in a random order.)"
+   },
+   {
+    "card": "Rakdos Charm",
+    "type": "Instant",
+    "oracle": "Choose one \u2014\n\u2022 Exile target player's graveyard.\n\u2022 Destroy target artifact.\n\u2022 Each creature deals 1 damage to its controller."
+   },
+   {
+    "card": "Reckless Endeavor",
+    "type": "Sorcery",
+    "oracle": "Roll two d12 and choose one result. Reckless Endeavor deals damage equal to that result to each creature. Then create a number of Treasure tokens equal to the other result."
+   },
+   {
+    "card": "Reckless Impulse",
+    "type": "Sorcery",
+    "oracle": "Exile the top two cards of your library. Until the end of your next turn, you may play those cards."
+   },
+   {
+    "card": "Smaug, Wicked Worm",
+    "type": "Legendary Creature \u2014 Dragon",
+    "oracle": "Flying\nWhen Smaug enters, create X tapped Treasure tokens, where X is the number of artifacts your opponents control.\nWhenever you cast a spell, if mana from a Treasure was spent to cast it, you draw a card and lose 1 life."
+   },
+   {
+    "card": "Terminate",
+    "type": "Instant",
+    "oracle": "Destroy target creature. It can't be regenerated."
+   },
+   {
+    "card": "Theater of Horrors",
+    "type": "Enchantment",
+    "oracle": "At the beginning of your upkeep, exile the top card of your library.\nDuring your turn, if an opponent lost life this turn, you may play lands and cast spells from among cards exiled with this enchantment.\n{3}{R}: This enchantment deals 1 damage to target opponent or planeswalker."
+   },
+   {
+    "card": "Weftstalker Ardent",
+    "type": "Creature \u2014 Drix Artificer",
+    "oracle": "Whenever another creature or artifact you control enters, this creature deals 1 damage to each opponent.\nWarp {R} (You may cast this card from your hand for its warp cost. Exile this creature at the beginning of the next end step, then you may cast it from exile on a later turn.)"
+   },
+   {
+    "card": "Wild-Magic Sorcerer",
+    "type": "Creature \u2014 Orc Shaman Sorcerer",
+    "oracle": "The first spell you cast from exile each turn has cascade. (When you cast your first spell from exile, exile cards from the top of your library until you exile a nonland card that costs less. You may cast it without paying its mana cost. Put the exiled cards on the bottom in a random order.)"
+   },
+   {
+    "card": "Wrenn's Resolve",
+    "type": "Sorcery",
+    "oracle": "Exile the top two cards of your library. Until the end of your next turn, you may play those cards."
+   },
+   {
+    "card": "You Find Some Prisoners",
+    "type": "Instant",
+    "oracle": "Choose one \u2014\n\u2022 Break Their Chains \u2014 Destroy target artifact.\n\u2022 Interrogate Them \u2014 Exile the top three cards of target opponent's library. Choose one of them. Until the end of your next turn, you may play that card, and you may spend mana as though it were mana of any color to cast it."
+   }
+  ]
+ },
+ {
+  "tier": "idea 20",
+  "owner": "Time",
+  "commander": "Dakkon Blackblade",
+  "cards": [
+   {
+    "card": "Ad Nauseam",
+    "type": "Instant",
+    "oracle": "Reveal the top card of your library and put that card into your hand. You lose life equal to its mana value. You may repeat this process any number of times."
+   },
+   {
+    "card": "Aether Spellbomb",
+    "type": "Artifact",
+    "oracle": "{U}, Sacrifice this artifact: Return target creature to its owner's hand.\n{1}, Sacrifice this artifact: Draw a card."
+   },
+   {
+    "card": "Back to Basics",
+    "type": "Enchantment",
+    "oracle": "Nonbasic lands don't untap during their controllers' untap steps."
+   },
+   {
+    "card": "Baleful Strix",
+    "type": "Artifact Creature \u2014 Bird",
+    "oracle": "Flying, deathtouch\nWhen this creature enters, draw a card."
+   },
+   {
+    "card": "Cabal Ritual",
+    "type": "Instant",
+    "oracle": "Add {B}{B}{B}.\nThreshold \u2014 Add {B}{B}{B}{B}{B} instead if there are seven or more cards in your graveyard."
+   },
+   {
+    "card": "Chain of Vapor",
+    "type": "Instant",
+    "oracle": "Return target nonland permanent to its owner's hand. Then that permanent's controller may sacrifice a land of their choice. If the player does, they may copy this spell and may choose a new target for that copy."
+   },
+   {
+    "card": "Chrome Mox",
+    "type": "Artifact",
+    "oracle": "Imprint \u2014 When this artifact enters, you may exile a nonartifact, nonland card from your hand.\n{T}: Add one mana of any of the exiled card's colors."
+   },
+   {
+    "card": "Cursed Totem",
+    "type": "Artifact",
+    "oracle": "Activated abilities of creatures can't be activated."
+   },
+   {
+    "card": "Dakkon Blackblade",
+    "type": "Legendary Creature \u2014 Human Warrior",
+    "oracle": "Dakkon Blackblade's power and toughness are each equal to the number of lands you control."
+   },
+   {
+    "card": "Dark Ritual",
+    "type": "Instant",
+    "oracle": "Add {B}{B}{B}."
+   },
+   {
+    "card": "Delay",
+    "type": "Instant",
+    "oracle": "Counter target spell. If the spell is countered this way, exile it with three time counters on it instead of putting it into its owner's graveyard. If it doesn't have suspend, it gains suspend. (At the beginning of its owner's upkeep, they remove a time counter. When the last is removed, they may play it without paying its mana cost. If it's a creature, it has haste.)"
+   },
+   {
+    "card": "Demonic Consultation",
+    "type": "Instant",
+    "oracle": "Choose a card name. Exile the top six cards of your library, then reveal cards from the top of your library until you reveal a card with the chosen name. Put that card into your hand and exile all other cards revealed this way."
+   },
+   {
+    "card": "Drannith Magistrate",
+    "type": "Creature \u2014 Human Wizard",
+    "oracle": "Your opponents can't cast spells from anywhere other than their hands."
+   },
+   {
+    "card": "Dress Down",
+    "type": "Enchantment",
+    "oracle": "Flash\nWhen this enchantment enters, draw a card.\nCreatures lose all abilities.\nAt the beginning of the end step, sacrifice this enchantment."
+   },
+   {
+    "card": "Herald of Leshrac",
+    "type": "Creature \u2014 Avatar",
+    "oracle": "Flying\nCumulative upkeep\u2014Gain control of a land you don't control. (At the beginning of your upkeep, put an age counter on this permanent, then sacrifice it unless you pay its upkeep cost for each age counter on it.)\nThis creature gets +1/+1 for each land you control but don't own.\nWhen this creature leaves the battlefield, each player gains control of each land they own that you control."
+   },
+   {
+    "card": "Imperial Seal",
+    "type": "Sorcery",
+    "oracle": "Search your library for a card, then shuffle and put that card on top. You lose 2 life."
+   },
+   {
+    "card": "Mana Drain",
+    "type": "Instant",
+    "oracle": "Counter target spell. At the beginning of your next main phase, add an amount of {C} equal to that spell's mana value."
+   },
+   {
+    "card": "March of Swirling Mist",
+    "type": "Instant",
+    "oracle": "As an additional cost to cast this spell, you may exile any number of blue cards from your hand. This spell costs {2} less to cast for each card exiled this way.\nUp to X target creatures phase out. (While they're phased out, they're treated as though they don't exist. Each one phases in before its controller untaps during their next untap step.)"
+   },
+   {
+    "card": "Mox Diamond",
+    "type": "Artifact",
+    "oracle": "If this artifact would enter, you may discard a land card instead. If you do, put this artifact onto the battlefield. If you don't, put it into its owner's graveyard.\n{T}: Add one mana of any color."
+   },
+   {
+    "card": "Mystic Sanctuary",
+    "type": "Land \u2014 Island",
+    "oracle": "({T}: Add {U}.)\nThis land enters tapped unless you control three or more other Islands.\nWhen this land enters untapped, you may put target instant or sorcery card from your graveyard on top of your library."
+   },
+   {
+    "card": "Nihil Spellbomb",
+    "type": "Artifact",
+    "oracle": "{T}, Sacrifice this artifact: Exile target player's graveyard.\nWhen this artifact is put into a graveyard from the battlefield, you may pay {B}. If you do, draw a card."
+   },
+   {
+    "card": "Notion Thief",
+    "type": "Creature \u2014 Human Rogue",
+    "oracle": "Flash\nIf an opponent would draw a card except the first one they draw in each of their draw steps, instead that player skips that draw and you draw a card."
+   },
+   {
+    "card": "Opposition Agent",
+    "type": "Creature \u2014 Human Rogue",
+    "oracle": "Flash\nYou control your opponents while they're searching their libraries.\nWhile an opponent is searching their library, they exile each card they find. You may play those cards for as long as they remain exiled, and you may spend mana as though it were mana of any color to cast them."
+   },
+   {
+    "card": "Ranger-Captain of Eos",
+    "type": "Creature \u2014 Human Soldier Ranger",
+    "oracle": "When this creature enters, you may search your library for a creature card with mana value 1 or less, reveal it, put it into your hand, then shuffle.\nSacrifice this creature: Your opponents can't cast noncreature spells this turn."
+   },
+   {
+    "card": "Sevinne's Reclamation",
+    "type": "Sorcery",
+    "oracle": "Return target permanent card with mana value 3 or less from your graveyard to the battlefield. If this spell was cast from a graveyard, you may copy this spell and may choose a new target for the copy.\nFlashback {4}{W} (You may cast this card from your graveyard for its flashback cost. Then exile it.)"
+   },
+   {
+    "card": "Silence",
+    "type": "Instant",
+    "oracle": "Your opponents can't cast spells this turn."
+   },
+   {
+    "card": "Snapcaster Mage",
+    "type": "Creature \u2014 Human Wizard",
+    "oracle": "Flash\nWhen this creature enters, target instant or sorcery card in your graveyard gains flashback until end of turn. The flashback cost is equal to its mana cost. (You may cast that card from your graveyard for its flashback cost. Then exile it.)"
+   },
+   {
+    "card": "Spell Pierce",
+    "type": "Instant",
+    "oracle": "Counter target noncreature spell unless its controller pays {2}."
+   },
+   {
+    "card": "Spellseeker",
+    "type": "Creature \u2014 Human Wizard",
+    "oracle": "When this creature enters, you may search your library for an instant or sorcery card with mana value 2 or less, reveal it, put it into your hand, then shuffle."
+   },
+   {
+    "card": "Talion, the Kindly Lord",
+    "type": "Legendary Creature \u2014 Faerie Noble",
+    "oracle": "Flying\nAs Talion enters, choose a number between 1 and 10.\nWhenever an opponent casts a spell with mana value, power, or toughness equal to the chosen number, that player loses 2 life and you draw a card."
+   },
+   {
+    "card": "Thassa's Oracle",
+    "type": "Creature \u2014 Merfolk Wizard",
+    "oracle": "When this creature enters, look at the top X cards of your library, where X is your devotion to blue. Put up to one of them on top of your library and the rest on the bottom of your library in a random order. If X is greater than or equal to the number of cards in your library, you win the game. (Each {U} in the mana costs of permanents you control counts toward your devotion to blue.)"
+   },
+   {
+    "card": "Underground Sea",
+    "type": "Land \u2014 Island Swamp",
+    "oracle": "({T}: Add {U} or {B}.)"
+   },
+   {
+    "card": "Wishclaw Talisman",
+    "type": "Artifact",
+    "oracle": "This artifact enters with three wish counters on it.\n{1}, {T}, Remove a wish counter from this artifact: Search your library for a card, put it into your hand, then shuffle. An opponent gains control of this artifact. Activate only during your turn."
+   }
+  ]
+ }
+]

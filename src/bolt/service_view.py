@@ -147,6 +147,12 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
             times = "once" if value == 1 else f"{value} times"
             return f"Kick {card} {times}" if card else f"Kick {times}"
         return None
+    if d == "ChooseCounterKind" and kind == "Mode":
+        kinds = ("+1/+1", "-1/-1", "stun", "incubation", "soul", "revival", "fellowship", "bait")
+        kinds += ("quest", "its own kind of", "slime", "time", "shield", "loyalty", "lore")
+        return f"Another {kinds[value]} counter" if 0 <= value < len(kinds) else None
+    if d == "AdNauseamAgain" and kind in ("Yes", "No"):
+        return "Reveal another card (Ad Nauseam)" if kind == "Yes" else "Stop (Ad Nauseam)"
     if d == "Proliferate":
         if kind == "Pick":
             return f"Proliferate: {card_name}"
@@ -214,14 +220,26 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"SylvanPick": "Choose (pay 4 life or put it back):"}.get(d)
         verb = verb or {"CrewTap": "Also tap (to crew or saddle):"}.get(d)
         verb = verb or {"Dredge": "Dredge instead of drawing:"}.get(d)
+        verb = verb or {"GemstoneCaverns": "Exile from your hand:"}.get(d)
         verb = verb or {"SacrificeSaddler": "Sacrifice (it saddled the Mount):"}.get(d)
         verb = verb or {"GitrogLandPick": "Put onto the battlefield tapped:"}.get(d)
+        verb = verb or {"RemoveCountersFromOthers": "Remove a counter from"}.get(d)
         if d == "IterationPick":
             verb = "Put into your hand:" if dec.get("to_hand") else "Put on the bottom:"
         verb = verb or {"ChooseRingBearer": "Choose as your Ring-bearer:"}.get(d)
         verb = verb or {"AttachAura": "Attach"}.get(d)
         verb = verb or {"AuraEntersAttachedTo": "Attach the Aura to"}.get(d)
         verb = verb or {"DiscardThenIfInstantOrSorcery": "Discard"}.get(d)
+        verb = verb or {"CreatureFromHandAttackingMaxMv": "Put onto the battlefield attacking:"}.get(d)
+        verb = verb or {"PermanentFromHandMaxMv": "Put onto the battlefield:"}.get(d)
+        verb = verb or {"ExileCardFromHand": "Exile from your hand:"}.get(d)
+        verb = verb or {"SacrificeLands": "Sacrifice"}.get(d)
+        verb = verb or {"SacrificeGreatestMv": "Sacrifice"}.get(d)
+        verb = verb or {"EachSacrificesCreatureOrPlaneswalker": "Sacrifice"}.get(d)
+
+        verb = verb or {"SacrificeOfSubtype": "Sacrifice"}.get(d)
+        verb = verb or {"MaySacrificeLand": "Sacrifice", "MaySacrificeArtifactOrCreature": "Sacrifice"}.get(d)  # fmt: skip
+        verb = verb or {"NameCardInLibrary": "Name"}.get(d)
         if d == "DiscardMayCastFree":
             verb = "Discard (you may cast it free)" if dec.get("free") else "Discard"
         verb = verb or {"MoveAuraTo": "Attach the Aura to"}.get(d)
@@ -259,7 +277,12 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         "CrewTap": ("Tap the chosen creatures", "Don't tap them"),
         "Dredge": ("Dredge", "Draw a card"),
         "MirrormindCopies": ("Make copies of the equipped creature instead", "Make the tokens"),
+        "GemstoneCaverns": (
+            f"Begin the game with {subject} on the battlefield (a luck counter)",
+            f"Keep {subject} in your hand",
+        ),  # fmt: skip
         "SacrificeSaddler": ("Sacrifice a creature that saddled it", "Don't sacrifice"),
+        "RemoveCountersFromOthers": ("Remove a counter", "Don't activate it"),
         "SylvanPayOrTop": (f"Pay 4 life to keep {subject or 'it'}", f"Put {subject or 'it'} on top of your library"),
         "ExpropriateVote": ("Vote time (an extra turn)", "Vote money (a permanent)"),
         "PayUpkeep": (f"Pay the upkeep {dec.get('cost', '')}", f"Don't pay (sacrifice {subject or src})"),
@@ -311,7 +334,9 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
     if not yes:
         return {"Discard": "Don't discard", "PayWardDiscard": "Don't discard (it's countered)", "LoseOrDiscard": f"Lose {dec.get('life', 0)} life instead",
                 "SacrificeAnother": "Don't sacrifice", "Search": "Find nothing", "LookPick": "Take nothing",
-                "GenesisPick": "Done choosing", "EnterAsCopy": "Don't copy anything"}.get(d)  # fmt: skip
+                "GenesisPick": "Done choosing", "EnterAsCopy": "Don't copy anything",
+                "MaySacrificeLand": "Don't sacrifice", "MaySacrificeArtifactOrCreature": "Don't sacrifice",
+                "NameCardInLibrary": "Name a card that isn't in your library"}.get(d)  # fmt: skip
     return None
 
 

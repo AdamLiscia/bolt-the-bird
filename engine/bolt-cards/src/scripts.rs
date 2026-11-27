@@ -467,6 +467,109 @@ pub fn token_defs() -> Vec<CardDef> {
             t.colors = [false, false, false, false, true];
             t
         },
+        {
+            // 111, lane d2: Horizon Explorer's Lander, "an artifact with '{2}, {T}, Sacrifice this
+            // token: Search your library for a basic land card, put it onto the battlefield tapped,
+            // then shuffle.'"
+            let mut d = artifact_token("Lander");
+            let n = activated(
+                &mut d,
+                "{2}",
+                true,
+                vec![],
+                vec![search(
+                    SearchFor::BasicLand,
+                    SearchTo::Battlefield { tapped: true },
+                )],
+            );
+            d.activated[n].sacrifice_self = true;
+            d
+        },
+        {
+            // 112, lane d2: Kinbinding's "1/1 green and white Kithkin creature token".
+            let mut t = token("Kithkin", "Kithkin", 1, 1, Keywords::NONE);
+            t.colors = [true, false, false, false, true];
+            t
+        },
+        {
+            // 113, lane d2: Jadar's "2/2 black Zombie creature token with decayed".
+            let mut t = black(token("Zombie", "Zombie", 2, 2, Keywords::NONE));
+            t.decayed = true;
+            t
+        },
+        // 114, lane d2: Ophiomancer's "1/1 black Snake creature token with deathtouch".
+        black(token("Snake", "Snake", 1, 1, Keywords::DEATHTOUCH)),
+        // 115, lane d2: Bitterblossom's "1/1 black Faerie Rogue creature token with flying".
+        black(token("Faerie Rogue", "Faerie Rogue", 1, 1, Keywords::FLYING)),
+        {
+            // 116, lane d2: Atla Palani's "0/1 green Egg creature token with defender".
+            let mut t = token("Egg", "Egg", 0, 1, Keywords::DEFENDER);
+            t.colors = [false, false, false, false, true];
+            t
+        },
+        {
+            // 117, lane d2: Palani's Hatcher's "0/1 green Dinosaur Egg creature tokens".
+            let mut t = token("Dinosaur Egg", "Dinosaur Egg", 0, 1, Keywords::NONE);
+            t.colors = [false, false, false, false, true];
+            t
+        },
+        {
+            // 118, lane d2: Palani's Hatcher's "3/3 green Dinosaur creature token".
+            let mut t = token("Dinosaur", "Dinosaur", 3, 3, Keywords::NONE);
+            t.colors = [false, false, false, false, true];
+            t
+        },
+        {
+            // 119, lane d3: Crib Swap's "1/1 colorless Shapeshifter creature token with changeling".
+            let mut t = token("Shapeshifter", "Shapeshifter", 1, 1, Keywords::NONE);
+            t.changeling = true;
+            t
+        },
+        {
+            // 120, lane C: Ashiok, Nightmare Muse's "2/3 blue and black Nightmare creature token with
+            // \"Whenever this token attacks or blocks, each opponent exiles the top two cards of their
+            // library.\""
+            let mut t = token("Nightmare", "Nightmare", 2, 3, Keywords::NONE);
+            t.colors = [false, true, true, false, false];
+            for when in [When::Attacks, When::Blocks] {
+                on(&mut t, when, vec![], vec![Effect::EachOpponentExilesTop(2)]);
+            }
+            t
+        },
+        {
+            // 121, lane d3: Maskwood Nexus's "2/2 blue Shapeshifter creature token with changeling".
+            let mut t = token("Shapeshifter", "Shapeshifter", 2, 2, Keywords::NONE);
+            t.colors = [false, true, false, false, false];
+            t.changeling = true;
+            t
+        },
+        // 122: d1's Human Cleric, a placeholder until it lands on tarkir.
+        token("Placeholder 122", "Placeholder", 0, 0, Keywords::NONE),
+        // 123, lane C: Nesting Dragon's "0/2 red Dragon Egg creature token with defender"; its dies
+        // trigger (making 124) is wired in `CardSet::load`, since a row here can't name another token.
+        red(token("Dragon Egg", "Dragon Egg", 0, 2, Keywords::DEFENDER)),
+        {
+            // 124, lane C: the Egg's "2/2 red Dragon creature token with flying and '{R}: This token
+            // gets +1/+0 until end of turn.'"
+            let mut t = red(token("Dragon", "Dragon", 2, 2, Keywords::FLYING));
+            activated(
+                &mut t,
+                "{R}",
+                false,
+                vec![],
+                vec![Effect::PumpSelf {
+                    power: 1,
+                    toughness: 0,
+                }],
+            );
+            t
+        },
+        {
+            // 125, lane d3: Skycat Sovereign's "1/1 white Cat Bird creature token with flying".
+            let mut t = token("Cat Bird", "Cat Bird", 1, 1, Keywords::FLYING);
+            t.colors = [true, false, false, false, false];
+            t
+        },
     ]
 }
 
@@ -695,6 +798,37 @@ pub struct Tokens {
     pub slug: usize,
     /// 110: Nissa, Ascended Animist's X/X green Phyrexian Horror (0/0, P/T set from X).
     pub phyrexian_horror_x: usize,
+    /// 111: d2's Lander (Horizon Explorer): "{2}, {T}, Sacrifice: fetch a basic land, tapped".
+    pub lander: usize,
+    /// 112: d2's Kinbinding Kithkin, a 1/1 green and white.
+    pub kithkin: usize,
+    /// 113: d2's Jadar Zombie, a 2/2 black with decayed.
+    pub zombie_decayed: usize,
+    /// 114: d2's Ophiomancer Snake, a 1/1 black with deathtouch.
+    pub snake_deathtouch: usize,
+    /// 115: d2's Bitterblossom Faerie Rogue, a 1/1 black flier.
+    pub faerie_rogue: usize,
+    /// 116: d2's Atla Palani Egg, a 0/1 green with defender.
+    pub egg: usize,
+    /// 117: d2's Palani's Hatcher Dinosaur Egg, a 0/1 green.
+    pub dinosaur_egg: usize,
+    /// 118: d2's Palani's Hatcher Dinosaur, a 3/3 green.
+    pub dinosaur_3: usize,
+    /// 119: d3's Crib Swap Shapeshifter, a 1/1 colorless with changeling.
+    pub shapeshifter_changeling_1: usize,
+    /// 120: lane C's Ashiok Nightmare, a 2/3 blue and black (attacks or blocks: each opponent exiles
+    /// the top two).
+    pub nightmare: usize,
+    /// 121: d3's Maskwood Nexus Shapeshifter, a 2/2 blue with changeling.
+    pub shapeshifter_changeling_blue: usize,
+    /// 122: d1's Human Cleric, a placeholder until it lands on tarkir.
+    pub placeholder_122: usize,
+    /// 123: lane C's Nesting Dragon Egg, a 0/2 red with defender (dies: token 124).
+    pub dragon_egg: usize,
+    /// 124: lane C's 2/2 red flying Dragon with "{R}: +1/+0".
+    pub dragon_2_firebreathing: usize,
+    /// 125, lane d3: Skycat Sovereign's 1/1 white Cat Bird with flying.
+    pub cat_bird: usize,
 }
 
 impl Tokens {
@@ -811,6 +945,21 @@ impl Tokens {
             rogue_2: base + 108,
             slug: base + 109,
             phyrexian_horror_x: base + 110,
+            lander: base + 111,
+            kithkin: base + 112,
+            zombie_decayed: base + 113,
+            snake_deathtouch: base + 114,
+            faerie_rogue: base + 115,
+            egg: base + 116,
+            dinosaur_egg: base + 117,
+            dinosaur_3: base + 118,
+            shapeshifter_changeling_1: base + 119,
+            nightmare: base + 120,
+            shapeshifter_changeling_blue: base + 121,
+            placeholder_122: base + 122,
+            dragon_egg: base + 123,
+            dragon_2_firebreathing: base + 124,
+            cat_bird: base + 125,
         }
     }
 }
