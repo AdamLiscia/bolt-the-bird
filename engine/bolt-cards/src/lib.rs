@@ -522,6 +522,7 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         prevents_half_damage_to_you_and_yours: false,
         damage_to_a_player_other_loses: None,
         chosen_type_mana_uncounterable: false,
+        triples_mana_tapped: false,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;

@@ -176,3 +176,13 @@ def test_rootcast_and_frugivore_decisions_read_as_their_moves():
     frugivore = {"kind": "ExileThreeForFood", "food": 0, "chosen": []}
     assert sv._decision_label(frugivore, "Pick", 0, "Plains") == "Exile (three for a Food): Plains"
     assert label(frugivore, "No", 0) == "Don't exile (no more Food)"
+
+
+def test_sylvan_library_decisions_read_as_their_moves():
+    assert label({"kind": "SylvanDraw"}, "Yes", 0) == "Draw two additional cards"
+    assert label({"kind": "SylvanDraw"}, "No", 0) == "Don't draw"
+    pick = {"kind": "SylvanPick", "left": 2, "chosen": []}
+    assert sv._decision_label(pick, "Pick", 0, "Sol Ring") == "Choose (pay 4 life or put it back): Sol Ring"
+    pay = {"kind": "SylvanPayOrTop", "left": 2, "chosen": []}
+    assert label(pay, "Yes", 0) == "Pay 4 life to keep it"
+    assert label(pay, "No", 0) == "Put it on top of your library"

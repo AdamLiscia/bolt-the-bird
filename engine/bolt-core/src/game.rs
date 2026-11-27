@@ -1342,6 +1342,17 @@ pub enum Decision {
     /// Kaalia of the Vast: `Pick` a creature card in your hand with one of `subtypes` to put onto the
     /// battlefield tapped and attacking, or `No`.
     CreatureFromHandAttacking { subtypes: &'static [&'static str] },
+    /// Sylvan Library: `Yes` to draw two additional cards, or `No`.
+    SylvanDraw,
+    /// Sylvan Library: `Pick` a card in your hand drawn this turn; `left` picks including this one.
+    SylvanPick { left: u8, chosen: Vec<ObjId> },
+    /// Sylvan Library: for `card`, `Yes` pays 4 life (offered with 4 or more life), `No` puts it on
+    /// top of your library; then `left` more picks.
+    SylvanPayOrTop {
+        card: ObjId,
+        left: u8,
+        chosen: Vec<ObjId>,
+    },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1776,6 +1787,8 @@ pub struct Game {
     pub damage_shields_on: Vec<(ObjId, u32, i32, u32)>,
     /// Creatures that died this turn, tokens included: (turn, how many) (Mahadi).
     pub creatures_died: (u32, u32),
+    /// Cards drawn this turn: (card, its zcc in hand, turn) (Sylvan Library).
+    pub drawn_this_turn: Vec<(ObjId, u32, u32)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -2053,6 +2066,7 @@ impl Game {
             cant_block_while_controlled: Vec::new(),
             damage_shields_on: Vec::new(),
             creatures_died: (0, 0),
+            drawn_this_turn: Vec::new(),
         }
     }
 
@@ -5571,6 +5585,9 @@ impl Game {
             Some(card) => {
                 self.move_to(card, Zone::Hand);
                 self.events.push(Event::Drew { player: p, card });
+                let (zcc, turn) = (self.obj(card).zcc, self.turn);
+                self.drawn_this_turn.retain(|e| e.2 == turn);
+                self.drawn_this_turn.push((card, zcc, turn));
                 self.draws_this_turn[p] += 1;
                 self.fire(p, When::YouDraw, None);
                 self.fire(opponent(p), When::OpponentDraws, None);
@@ -9088,6 +9105,10 @@ impl Game {
             .filter(|&x| !self.lost_abilities(x))
             .filter_map(|x| self.def_of(x).mana_ext.your_creatures_add)
             .collect();
+        let nyxblooms = self
+            .permanents(p)
+            .filter(|&x| self.def_of(x).triples_mana_tapped && !self.lost_abilities(x))
+            .count() as u32;
         let tron = base.iter().any(|s| self.def_of(s.0).mana_ext.tron_amount > 0)
             // "Urza's Mine" and the others are two subtypes each, "Urza's" and "Mine" (CR 205.3g).
             && ["Mine", "Power-Plant", "Tower"]
@@ -9171,6 +9192,12 @@ impl Game {
             let fero = self.def_of(id).ferocious_mana_amount as usize;
             let n = if fero > 0 && self.creatures(p).any(|c| self.power(c) >= 4) {
                 n.max(fero) // Ferocious: "{T}: Add {G}{G}{G}{G}"
+            } else {
+                n
+            };
+            // Nyxbloom Ancient: a permanent tapped for mana produces three times as much.
+            let n = if nyxblooms > 0 && !self.def_of(id).mana_ext.sac_mana_no_tap {
+                n * 3usize.pow(nyxblooms.min(6))
             } else {
                 n
             };
@@ -11706,6 +11733,17 @@ impl Game {
         }
     }
 
+    /// Cards in `p`'s hand that were drawn this turn (Sylvan Library).
+    fn drawn_in_hand(&self, p: PlayerId) -> Vec<ObjId> {
+        let turn = self.turn;
+        self.drawn_this_turn
+            .iter()
+            .filter(|e| e.2 == turn && self.obj(e.0).zone == Zone::Hand && self.obj(e.0).zcc == e.1)
+            .filter(|e| self.obj(e.0).owner == p)
+            .map(|e| e.0)
+            .collect()
+    }
+
     /// The nontoken artifacts `p` controls that can be sacrificed (Rootcast Apprenticeship).
     fn nontoken_artifacts_to_sacrifice(&self, p: PlayerId) -> Vec<ObjId> {
         self.permanents(p)
@@ -12187,6 +12225,20 @@ impl Game {
                 v
             }
             Decision::MayDrawGainOne { .. } => vec![Action::Yes, Action::No],
+            Decision::SylvanDraw => vec![Action::Yes, Action::No],
+            Decision::SylvanPick { chosen, .. } => self
+                .drawn_in_hand(p)
+                .into_iter()
+                .filter(|c| !chosen.contains(c))
+                .map(Action::Pick)
+                .collect(),
+            Decision::SylvanPayOrTop { .. } => {
+                if self.players[p].life >= 4 {
+                    vec![Action::Yes, Action::No]
+                } else {
+                    vec![Action::No]
+                }
+            }
             Decision::ExpropriateVote { .. } => vec![Action::Yes, Action::No],
             Decision::SacrificeNontokenArtifact => self
                 .nontoken_artifacts_to_sacrifice(p)
@@ -13920,6 +13972,55 @@ impl Game {
                         self.extra_turns.push(caster);
                     }
                     self.expropriate_next_pick(caster, money);
+                }
+            }
+            (Decision::SylvanDraw, Action::Yes) => {
+                self.draw(p);
+                self.draw(p);
+                let left = self.drawn_in_hand(p).len().min(2) as u8;
+                if left > 0 {
+                    self.ask(
+                        p,
+                        Decision::SylvanPick {
+                            left,
+                            chosen: Vec::new(),
+                        },
+                    );
+                }
+            }
+            (Decision::SylvanDraw, _) => {}
+            (Decision::SylvanPick { left, chosen }, Action::Pick(c)) => {
+                self.ask(
+                    p,
+                    Decision::SylvanPayOrTop {
+                        card: c,
+                        left,
+                        chosen,
+                    },
+                );
+            }
+            (
+                Decision::SylvanPayOrTop {
+                    card,
+                    left,
+                    mut chosen,
+                },
+                a,
+            ) => {
+                if a == Action::Yes {
+                    self.lose_life(p, 4);
+                } else if self.obj(card).zone == Zone::Hand {
+                    self.move_to(card, Zone::Library); // on top
+                }
+                chosen.push(card);
+                if left > 1 && self.drawn_in_hand(p).iter().any(|c| !chosen.contains(c)) {
+                    self.ask(
+                        p,
+                        Decision::SylvanPick {
+                            left: left - 1,
+                            chosen,
+                        },
+                    );
                 }
             }
             (Decision::SacrificeNontokenArtifact, Action::Pick(c)) => {
@@ -18588,6 +18689,13 @@ impl Game {
                     }
                 }
             }
+            Effect::DamageExtrasControllerAmount => {
+                if let (Some(s), true) = (item.extra, item.amount > 0) {
+                    let them = self.obj(s).controller;
+                    self.deal_damage(src, Target::Player(them), item.amount);
+                }
+            }
+            Effect::SylvanLibrary => self.ask(item.controller, Decision::SylvanDraw),
             Effect::PreventNextDamageToTargetThisTurn { slot, n } => {
                 if let Some(c) = Game::slot_object(item, legal, slot) {
                     let entry = (c, self.obj(c).zcc, n, self.turn);
