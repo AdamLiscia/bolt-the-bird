@@ -131,7 +131,13 @@ def main():
     ap.add_argument("--eval-every", type=int, default=10)
     ap.add_argument("--eval-pairs", type=int, default=200)
     ap.add_argument("--stall-minutes", type=float, default=30)
-    ap.add_argument("--eval-smart-ms", type=int, default=None, help="cap the smart opponent's time per move")
+    ap.add_argument(
+        "--smart-ms",
+        type=int,
+        default=200,
+        help="cap on every smart-player move in training games (0 = none): uncapped, one move can take minutes",
+    )
+    ap.add_argument("--eval-smart-ms", type=int, default=None, help="the same cap in evaluations (default --smart-ms)")
     ap.add_argument("--resume", action="store_true")
     ap.add_argument(
         "--self-play",
@@ -139,6 +145,8 @@ def main():
         help="train only against itself and its past checkpoints (no rules or smart opponents)",
     )
     a = ap.parse_args()
+    if a.eval_smart_ms is None:
+        a.eval_smart_ms = a.smart_ms or None
     if os.environ.get("BOLT_THREADS"):  # farm.py --job-threads (the 12-thread nights)
         a.workers = a.threads = int(os.environ["BOLT_THREADS"])
     torch.set_num_threads(a.threads)
@@ -217,7 +225,9 @@ def main():
             record = tuple(i for i, s in enumerate(seats) if s == "net")
             # Commander games vary a lot in length: small chunks (4 a worker) keep every worker busy to the end
             chunk = max(1, -(-len(jobs) // (4 * a.workers))) if COMMANDER else 20
+            smart = (1, 2, a.smart_ms) if a.smart_ms else (1, 2)
             r = run_parallel(net, jobs, workers=a.workers, chunk=chunk, seats=seats, sample=True, seed=it * 100 + k,
+                             smart=smart,
                              record=record, opp_net=opp, compact=True)  # fmt: skip
             part = r["arrays"]
             part["adv"], part["ret"] = gae(part, lam=a.lam)  # per matchup: game numbers restart per call

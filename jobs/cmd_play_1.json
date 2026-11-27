@@ -32,6 +32,8 @@
     "1024",
     "--epochs",
     "1",
+    "--smart-ms",
+    "200",
     "--eval-smart-ms",
     "200",
     "--stall-minutes",
