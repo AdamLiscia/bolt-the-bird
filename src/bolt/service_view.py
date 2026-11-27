@@ -52,6 +52,8 @@ def _label(kind: str, cards: list, nums: tuple, me: int, values: tuple) -> str:
     n = nums[0] if nums else None
     if kind == "CastModal" and n == 1 and " // " in c:  # a modal double-faced card's back face
         return f"Cast {c.split(' // ', 1)[1]}"
+    if kind == "CastFromGraveyardAs" and n == 5:  # KARADOR_CAST: Karador's once-each-turn creature
+        return f"Cast {c} from your graveyard (Karador)"
     return {
         "Bottom": f"Put {c} on the bottom", "PlayLand": f"Play {c}", "Cast": f"Cast {c}",
         "CastKicked": f"Cast {c} (kicked)", "CastWith": f"Cast {c} using {c2}",
