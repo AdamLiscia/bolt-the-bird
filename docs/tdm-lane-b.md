@@ -877,3 +877,6 @@ Bracks (pg_b). Pieces (lane B's replacement theme, plus one condition):
 - Cavern of Souls: `CardDef::chosen_type_mana_uncounterable` with Secluded Courtyard's
   `any_color_for_chosen_type`; its any-color mana pays only for creature spells of the chosen type,
   and `note_haste_mana` makes such a spell uncounterable.
+- Cavern of Souls simplification: any of Cavern's mana that pays for a creature spell of the chosen
+  type makes it uncounterable, {C} included. Choosing the any-color ability for that same generic mana
+  is always possible, so the outcome is the same.
