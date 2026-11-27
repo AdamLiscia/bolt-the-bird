@@ -3640,3 +3640,108 @@ fn teferi_master_of_time_activates_on_the_opponents_turn_at_instant_speed() {
     }
     assert!(!g.legal_actions().iter().any(|a| matches!(a, Action::Loyalty(..))));
 }
+
+#[test]
+fn titans_presence_reveals_a_colorless_creature_and_exiles_by_its_power() {
+    let mut g = table();
+    let tp = hand(&mut g, 0, "Titan's Presence");
+    assert!(
+        !g.legal_actions()
+            .iter()
+            .any(|a| matches!(a, Action::Cast(x) | Action::CastWith(x, _) if *x == tp)),
+        "nothing to reveal"
+    );
+    let jug = hand(&mut g, 0, "Juggernaut"); // a colorless 5/3
+    let lions = put(&mut g, 1, "Savannah Lions"); // power 2
+    let titan = put(&mut g, 1, "Inferno Titan"); // power 6
+    assert!(g.legal_actions().contains(&Action::CastWith(tp, jug)));
+    act(&mut g, Action::CastWith(tp, jug));
+    act(&mut g, Action::Target(Target::Object(lions)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(lions).zone, Zone::Exile);
+    assert_eq!(g.obj(jug).zone, Zone::Hand, "revealed, not discarded");
+    let tp2 = hand(&mut g, 0, "Titan's Presence");
+    act(&mut g, Action::CastWith(tp2, jug));
+    act(&mut g, Action::Target(Target::Object(titan)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(titan).zone, Zone::Battlefield, "power 6 is more than 5");
+}
+
+// ---- Can't-be-countered statics and riot (2026-11-27) ----
+
+/// Player 0 casts `card`; player 1 answers with Counterspell on it; everything resolves (with
+/// `answers` for decisions). Returns the Counterspell.
+fn cast_into_counterspell(g: &mut Game, card: ObjId, answers: &[Action]) -> ObjId {
+    let counter = hand(g, 1, "Counterspell");
+    act(g, Action::Cast(card));
+    act(g, Action::PassPriority); // to player 1
+    act(g, Action::Cast(counter));
+    act(g, Action::Target(Target::Object(card)));
+    resolve_all(g, answers);
+    counter
+}
+
+#[test]
+fn rhythm_of_the_wild_makes_creature_spells_uncounterable_and_gives_riot() {
+    let mut g = table();
+    put(&mut g, 0, "Rhythm of the Wild");
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    let counter = cast_into_counterspell(&mut g, elves, &[Action::Mode(1)]); // riot: haste
+    assert_eq!(g.obj(counter).zone, Zone::Graveyard);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield, "can't be countered");
+    assert!(g.keywords(elves).has(Keywords::HASTE));
+    let lions = hand(&mut g, 0, "Savannah Lions");
+    play(&mut g, lions, false, &[], &[Action::Mode(0)]); // riot: a +1/+1 counter
+    assert_eq!(g.obj(lions).counters, 1);
+    assert!(!g.keywords(lions).has(Keywords::HASTE));
+    // A noncreature spell can still be countered.
+    let ring = hand(&mut g, 0, "Sol Ring");
+    cast_into_counterspell(&mut g, ring, &[]);
+    assert_eq!(g.obj(ring).zone, Zone::Graveyard);
+}
+
+#[test]
+fn surrak_dragonclaw_protects_creature_spells_and_tramples_the_team() {
+    let mut g = table();
+    let surrak = put(&mut g, 0, "Surrak Dragonclaw");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    assert!(g.keywords(lions).has(Keywords::TRAMPLE));
+    assert!(!g.keywords(surrak).has(Keywords::TRAMPLE), "other creatures");
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    cast_into_counterspell(&mut g, elves, &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+}
+
+#[test]
+fn rhythm_of_the_wild_gives_riot_to_a_reanimated_creature() {
+    let mut g = table();
+    put(&mut g, 0, "Rhythm of the Wild");
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Graveyard);
+    let reanimate = hand(&mut g, 0, "Reanimate");
+    play(
+        &mut g,
+        reanimate,
+        false,
+        &[Target::Object(lions)],
+        &[Action::Mode(0)],
+    ); // riot: a counter
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield);
+    assert_eq!(g.obj(lions).counters, 1);
+}
+
+#[test]
+fn rhythm_of_the_wild_gives_riot_to_a_flickered_creature() {
+    let mut g = table();
+    let lions = put(&mut g, 0, "Savannah Lions");
+    put(&mut g, 0, "Rhythm of the Wild");
+    let flicker = hand(&mut g, 0, "Ephemerate");
+    play(
+        &mut g,
+        flicker,
+        false,
+        &[Target::Object(lions)],
+        &[Action::Mode(1)],
+    ); // riot: haste
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield);
+    assert!(g.keywords(lions).has(Keywords::HASTE));
+}

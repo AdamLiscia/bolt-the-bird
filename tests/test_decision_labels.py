@@ -197,6 +197,12 @@ def test_well_of_lost_dreams_pays_x_to_draw_x():
     assert label(sourced, "Amount", 2) == "Pay {2}: draw 2 cards (Thriving Heath)"
 
 
+def test_riot_names_the_creature_and_the_choice():
+    dec = {"kind": "Riot", "card": [7, 1]}
+    assert label(dec, "Mode", 0) == "Thriving Heath: riot, a +1/+1 counter"
+    assert label(dec, "Mode", 1) == "Thriving Heath: riot, haste"
+
+
 def test_a_kick_count_names_the_spell_and_the_kicks():
     dec = {"kind": "ChooseKickCount", "card": [7, 1], "max": 3}
     assert label(dec, "Amount", 2) == "Kick Thriving Heath 2 times"

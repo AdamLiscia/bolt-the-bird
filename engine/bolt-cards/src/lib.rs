@@ -528,6 +528,10 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         opponents_cant_make_you_sacrifice: false,
         exiles_opponents_cards_to_play: false,
         loyalty_at_instant_speed: false,
+        other_creatures_have: Vec::new(),
+        your_creature_spells_uncounterable: false,
+        your_color_spells_uncounterable: None,
+        your_nontoken_creatures_have_riot: false,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;

@@ -41,7 +41,12 @@ pub fn token_defs() -> Vec<CardDef> {
             scion.types.legendary = true;
             scion
         },
-        token("Raccoon", "Raccoon", 3, 3, Keywords::NONE),
+        {
+            // Sylvan Scavenging, Gourmand's Talent: "a 3/3 green Raccoon creature token".
+            let mut t = token("Raccoon", "Raccoon", 3, 3, Keywords::NONE);
+            t.colors = [false, false, false, false, true];
+            t
+        },
         token("Koma's Coil", "Serpent", 3, 3, Keywords::NONE),
         token("Drake", "Drake", 2, 2, Keywords::FLYING),
         token("Spirit", "Spirit", 1, 1, Keywords::FLYING),

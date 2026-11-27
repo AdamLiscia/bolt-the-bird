@@ -913,3 +913,62 @@ shield). Sigarda and Valgavoth not started.
 - The Necrobloom waits: dredge is a "may" draw replacement, and `draw` can't pause for a decision
   (every draw replacement so far is automatic); its landfall Zombie also needs a "seven or more lands
   with different names" condition.
+
+### Ygra and Gourmand's Talent grants (2026-11-26)
+
+- `CardDef::other_creatures_have`: activated abilities every other creature has, whoever controls it
+  (Ygra, with d3's `other_creatures_are_food_artifacts`), in `borrowed_activated`.
+- `subtype_you_control_has` now reaches any permanent of the subtype, not only creatures (Gourmand's
+  Talent's noncreature artifacts that are Foods on your turn); a granted ability equal to one the
+  permanent already has, or granted twice, is listed once.
+- `Game::activated_snapshots`: a granted, borrowed or kept ability is recorded as it's activated,
+  and `ability_of` resolves from that record, so "Sacrifice this artifact: You gain 3 life" still
+  resolves after its source is gone.
+- Gourmand's Talent scripted (blc_b). Token 14, Raccoon, is now green (its only makers, Sylvan
+  Scavenging and Gourmand's Talent, say green).
+- It That Heralds the End skipped: d3 batch 27's `Scope::OtherYourColorlessCreatures` isn't on tarkir.
+
+### Design note: a "may" draw replacement (dredge, The Necrobloom), not built
+
+The problem: dredge replaces one draw with "return a dredge card from your graveyard to your hand
+and mill N" at the player's choice (CR 702.52). `Game::draw` is synchronous: 69 call sites (66 in
+game.rs, 2 in game/zones.rs, 1 in game/d4.rs), most inside a `for _ in 0..n` loop in the middle of
+an effect, and some inside decision answers (Sylvan Library) or turn-based actions (the draw step).
+A Decision can only be asked by returning to the action loop, so `draw` itself can't ask.
+
+Option A (recommended): ask before the draw event, not inside it.
+- A new `Decision::Dredge { player, draws_left, then }` asked by the callers that start a draw
+  event, before any card moves: the draw step (`Step::Draw`) and `Effect::Draw` / `DrawXTarget` /
+  the few other draw effects (about 12 effect arms; most of the 69 sites are one-card draws inside
+  them or inside other effects).
+- `Pick` a dredge card (a land card in your graveyard, with N or more cards in your library) to
+  dredge the next draw, or `No` to draw normally; with several draws in one event, ask once per
+  draw (`draws_left` counts down), then the effect's remaining instructions continue (`then` is
+  the resolving item's remaining effects, as other mid-resolution decisions already do).
+- Draw sites not converted keep drawing automatically: that keeps every existing card working and
+  makes dredge optional only where it's asked. Those sites would be documented, so a card never
+  claims dredge on a draw it doesn't offer.
+- Cost: one Decision, a helper `draw_or_dredge(p, n)` used by the converted arms, the draw step
+  change, and the label; roughly 150 lines. Risk: effects that read "the cards drawn this way"
+  (Sylvan Library, Archive doubling) must count dredged draws as not drawn.
+
+Option B: an automatic policy (dredge whenever a land card is in the graveyard and the top N are
+known to be worse). Simple, but it's the engine choosing for the player, which dredge doesn't
+allow, so I don't recommend it.
+
+The Necrobloom also needs "if you control seven or more lands with different names" for its
+landfall Zombie (a small Condition, about 10 lines).
+
+### Can't-be-countered statics, riot, lands with different names (2026-11-27)
+
+- `CardDef::your_creature_spells_uncounterable`, `your_color_spells_uncounterable` (WUBRG index),
+  read in `Game::uncounterable` through `statically_uncounterable` (a spell on the stack whose
+  controller controls one): Rhythm of the Wild, Surrak Dragonclaw. Allosaurus Shepherd waits: its
+  Elves activation (base 5/5 and a Dinosaur until end of turn) has no effect yet (d3).
+- Riot from `CardDef::your_nontoken_creatures_have_riot`: every nontoken creature entering under
+  your control, however it enters (cast, reanimated, flickered, put onto the battlefield), is queued
+  in `Game::riot_pending` by the enter path, and `Decision::Riot` (Mode 0 a +1/+1 counter, Mode 1
+  haste, labelled) is asked at the next priority, as shock lands' choice is. Timing nuance: the
+  choice lands just after the creature enters, not as it enters, so an enters trigger that reads its
+  power (or counters) sees it without the riot counter.
+- `Condition::ControlLandsWithDifferentNamesAtLeast(n)` (The Necrobloom, Field of the Dead).

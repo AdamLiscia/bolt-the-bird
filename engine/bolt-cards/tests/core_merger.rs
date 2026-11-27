@@ -1106,3 +1106,105 @@ fn the_mycosynth_gardens_filters_one_mana_and_copies_at_the_mana_value_of_your_a
     resolve_all(&mut g, &[Action::Target(Target::Object(stone))]);
     assert_eq!(g.def_of(gardens).name, "Mind Stone", "a copy of it");
 }
+
+#[test]
+fn ygra_grants_its_food_ability_to_every_other_creature_and_it_resolves_after_the_sacrifice() {
+    // Ygra, given d3's Food types and the grant for this test (its ward and trigger are d1's, d2's).
+    let mut defs = (*set("CMD").unwrap().defs).clone();
+    let ygra = cid("Ygra, Eater of All");
+    defs[ygra].other_creatures_are_food_artifacts = true;
+    defs[ygra].other_creatures_have = vec![bolt_core::Activated {
+        mana: bolt_core::ManaCost::parse("{2}").expect("cost"),
+        tap: true,
+        sacrifice_self: true,
+        ability: bolt_core::Ability::new(
+            vec![],
+            vec![bolt_core::Effect::GainLife {
+                who: bolt_core::Who::You,
+                n: 3,
+            }],
+        ),
+        ..bolt_core::Activated::default()
+    }];
+    let plains = vec![cid("Plains"); 99];
+    let mut g = Game::new_commander(
+        std::sync::Arc::new(defs),
+        [&plains, &plains],
+        [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+        7,
+        0,
+    );
+    g.auto_pass = false;
+    for land in ["Plains", "Island", "Swamp", "Mountain", "Forest"] {
+        put(&mut g, 1, land);
+    }
+    put(&mut g, 0, "Ygra, Eater of All");
+    let lions = put(&mut g, 1, "Savannah Lions"); // the opponent's
+    g.start_turn(4, 1);
+    while g.pending != Pending::Priority(1) || g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(
+        g.legal_actions().contains(&Action::Activate(lions, 0)),
+        "any controller's creature"
+    );
+    act(&mut g, Action::Activate(lions, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard);
+    assert_eq!(
+        g.players[1].life, 43,
+        "the life gain resolves though its source is gone"
+    );
+}
+
+#[test]
+fn control_lands_with_different_names_counts_names_not_lands() {
+    // Sol Ring, given "At the beginning of your upkeep, if you control seven or more lands with
+    // different names, you gain 1 life." for this test (The Necrobloom's and Field of the Dead's
+    // condition).
+    let mut defs = (*set("CMD").unwrap().defs).clone();
+    let mut gain = bolt_core::Ability::new(
+        vec![],
+        vec![bolt_core::Effect::GainLife {
+            who: bolt_core::Who::You,
+            n: 1,
+        }],
+    );
+    gain.condition = Some(bolt_core::Condition::ControlLandsWithDifferentNamesAtLeast(7));
+    defs[cid("Sol Ring")].triggers.push(bolt_core::Trigger {
+        when: bolt_core::When::Upkeep { your_turn_only: true },
+        ability: gain,
+    });
+    let plains = vec![cid("Plains"); 99];
+    let mut g = Game::new_commander(
+        std::sync::Arc::new(defs),
+        [&plains, &plains],
+        [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+        7,
+        0,
+    );
+    g.auto_pass = false;
+    for land in [
+        "Plains",
+        "Plains",
+        "Island",
+        "Swamp",
+        "Mountain",
+        "Forest",
+        "Command Tower",
+    ] {
+        put(&mut g, 0, land);
+    }
+    put(&mut g, 0, "Sol Ring");
+    let upkeep = |g: &mut Game, turn: u32| {
+        g.start_turn(turn, 0);
+        while g.step != Step::Draw && g.step != Step::Main1 {
+            act(g, Action::PassPriority);
+        }
+    };
+    upkeep(&mut g, 3);
+    assert_eq!(g.players[0].life, 40, "seven lands, six names");
+    put(&mut g, 0, "Reflecting Pool");
+    upkeep(&mut g, 5);
+    assert_eq!(g.players[0].life, 41, "seven names");
+}
