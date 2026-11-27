@@ -826,6 +826,10 @@ pub struct StackItem {
     pub x: u8,
     /// How divided damage is split among the targets, in target order (CR 601.2d).
     pub division: Vec<u8>,
+    /// The source's zone-change count as the entry went on the stack (`Game::push_item`): an effect
+    /// on "this" object does nothing once that object has left and come back as a new one (CR 400.7).
+    /// `None`: not recorded.
+    pub source_zcc: Option<u32>,
 }
 
 /// `CastMode::mode` (and `StackItem::mode`) for a spell cast as its Omen half.
@@ -2068,6 +2072,14 @@ pub struct Game {
     artifact_plus_batch: Option<bool>,
     /// The Gemstone Caverns already asked about before the first turn (`Game::pregame_actions`).
     pregame_asked: Vec<ObjId>,
+    /// A mana ability resolving at once (CR 605.3a): who gets priority back when it's done, instead
+    /// of the active player.
+    pub mana_ability_then: Option<PlayerId>,
+    /// Triggered abilities of copies as they went on the stack: (source, its zcc then, trigger
+    /// number, the ability). A copy that leaves is its own card again (CR 707.2), but its trigger
+    /// still resolves as the copied card's (Phyrexian Metamorph as Agate Instigator, destroyed in
+    /// response).
+    pub trigger_snapshots: Vec<(ObjId, u32, usize, Ability)>,
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2392,6 +2404,8 @@ impl Game {
             creatures_entered: [(0, 0); 2],
             triggered_once_turn: Vec::new(),
             copy_next_instant_sorcery: Vec::new(),
+            mana_ability_then: None,
+            trigger_snapshots: Vec::new(),
         }
     }
 
@@ -4660,6 +4674,7 @@ impl Game {
                         alt: false,
                         x: 0,
                         division: Vec::new(),
+                        source_zcc: None,
                     });
                 }
             }
@@ -5900,6 +5915,7 @@ impl Game {
                             alt: false,
                             x: 0,
                             division: Vec::new(),
+                            source_zcc: None,
                         });
                     }
                 }
@@ -5990,6 +6006,7 @@ impl Game {
                                     alt: false,
                                     x: 0,
                                     division: Vec::new(),
+                                    source_zcc: None,
                                 });
                             }
                         }
@@ -6416,6 +6433,7 @@ impl Game {
                                 alt: false,
                                 x: 0,
                                 division: Vec::new(),
+                                source_zcc: None,
                             });
                         }
                     }
@@ -6442,6 +6460,7 @@ impl Game {
                                     alt: false,
                                     x: 0,
                                     division: Vec::new(),
+                                    source_zcc: None,
                                 });
                             }
                         }
@@ -6493,6 +6512,7 @@ impl Game {
                     alt: false,
                     x: 0,
                     division: Vec::new(),
+                    source_zcc: None,
                 });
             }
         }
@@ -6538,6 +6558,7 @@ impl Game {
                     alt: false,
                     x: 0,
                     division: Vec::new(),
+                    source_zcc: None,
                 });
             }
         }
@@ -6719,7 +6740,11 @@ impl Game {
             }
             Pending::ChooseTarget(_) => {
                 let c = self.choosing.as_ref().expect("choosing targets");
-                let filter = self.ability_of(&c.item).targets[c.item.targets.len()];
+                // Every slot filled (a stack entry that came with more targets than its ability has):
+                // all that's left is to finish choosing.
+                let Some(&filter) = self.ability_of(&c.item).targets.get(c.item.targets.len()) else {
+                    return vec![Action::No];
+                };
                 let ability = self.ability_of(&c.item);
                 let mut options = self.candidates(&filter, c.item.controller);
                 // CR 115.3: one object can't be chosen twice for one "target" word, but may be for
@@ -6901,6 +6926,18 @@ impl Game {
             // Vastwood Seer: two lands entered, and the first trigger transformed her) still
             // resolves as the face it triggered from.
             StackKind::Trigger(n) => {
+                // A copy's trigger: the copied card's, as it went on the stack.
+                let copied = self
+                    .trigger_snapshots
+                    .iter()
+                    .rev()
+                    .find(|e| e.0 == item.source && Some(e.1) == item.source_zcc && e.2 == n);
+                if let Some(e) = copied {
+                    return match item.mode {
+                        Some(m) => &e.3.modes[m as usize],
+                        None => &e.3,
+                    };
+                }
                 let trigger = def.triggers.get(n).unwrap_or_else(|| {
                     let printed = &self.defs[self.obj(item.source).def];
                     printed
@@ -6941,8 +6978,8 @@ impl Game {
                 }
             },
             StackKind::Offspring => offspring_ability(),
-            // Not one of its own: the ability as it was activated (its source may have left).
-            StackKind::Activated(n) if n >= def.activated.len() => {
+            // The ability as it was activated: its source may have left or changed since.
+            StackKind::Activated(n) => {
                 match self
                     .activated_snapshots
                     .iter()
@@ -6953,7 +6990,6 @@ impl Game {
                     None => &self.activated_of(item.source, n).ability,
                 }
             }
-            StackKind::Activated(n) => &self.activated_of(item.source, n).ability,
             StackKind::Room { .. } | StackKind::InitiativeVenture => self.subsystem_ability(item.kind),
             StackKind::SacrificeWhenTargeted { .. } => sacrifice_when_targeted_ability(),
             StackKind::Undying => undying_ability(),
@@ -7419,6 +7455,27 @@ impl Game {
     }
 
     /// A stack entry for a spell about to be cast, for target checks.
+    /// Puts an entry on the stack, recording which object its source is now (CR 400.7).
+    fn push_item(&mut self, mut item: StackItem) {
+        if item.source_zcc.is_none() {
+            item.source_zcc = Some(self.obj(item.source).zcc);
+        }
+        if let (StackKind::Trigger(n), Some(_)) = (item.kind, self.obj(item.source).printed_def) {
+            if let Some(t) = self.def_of(item.source).triggers.get(n) {
+                let (src, zcc, a) = (item.source, self.obj(item.source).zcc, t.ability.clone());
+                self.trigger_snapshots.retain(|e| !(e.0 == src && e.2 == n));
+                self.trigger_snapshots.push((src, zcc, n, a));
+            }
+        }
+        self.items.push(item);
+    }
+
+    /// Whether the entry's source is still the object it was as the entry went on the stack: a
+    /// permanent that left and came back is a new object its old abilities can't find (CR 400.7).
+    fn still_same_source(&self, item: &StackItem) -> bool {
+        item.source_zcc.is_none_or(|z| z == self.obj(item.source).zcc)
+    }
+
     fn casting(card: ObjId, p: PlayerId) -> StackItem {
         StackItem {
             source: card,
@@ -7433,6 +7490,7 @@ impl Game {
             alt: false,
             x: 0,
             division: Vec::new(),
+            source_zcc: None,
         }
     }
 
@@ -9631,7 +9689,7 @@ impl Game {
         self.passes = 0;
         if ability.targets.is_empty() {
             self.pay_loyalty(id, cost);
-            self.items.push(item);
+            self.push_item(item);
             self.give_priority(p);
         } else {
             self.choosing = Some(Choosing {
@@ -9686,28 +9744,46 @@ impl Game {
 
     /// `cost` less `n` generic mana unless `a` is a mana ability, never below one mana (Zirda).
     fn ability_discounted(a: &crate::Activated, n: u8, mut cost: ManaCost) -> ManaCost {
-        let mana_ability = a.ability.effects.iter().any(|e| {
-            matches!(
-                e,
-                Effect::AddMana { .. }
-                    | Effect::AddManaAnyColor
-                    | Effect::AddColorless { .. }
-                    | Effect::AddManaEither { .. }
-                    | Effect::AddManaAnyColorsX
-                    | Effect::AddAnyColorsGreatestPower
-                    | Effect::AddRedOrGreenPerCreature
-                    | Effect::AddManaDevotion(_)
-                    | Effect::AddManaPerCount { .. }
-                    | Effect::AddManaSourcePower(_)
-                    | Effect::AddManaPerHandSize { .. }
-            )
-        });
+        let mana_ability = a.ability.effects.iter().any(Game::adds_mana);
         if n == 0 || mana_ability {
             return cost;
         }
         let room = cost.mana_value().saturating_sub(1).min(u8::MAX as u32) as u8;
         cost.generic = cost.generic.saturating_sub(n.min(room));
         cost
+    }
+
+    /// An effect that adds mana: what makes an activated ability a mana ability (CR 605.1a).
+    fn adds_mana(e: &Effect) -> bool {
+        matches!(
+            e,
+            Effect::AddMana { .. }
+                | Effect::AddManaAnyColor
+                | Effect::AddColorless { .. }
+                | Effect::AddManaEither { .. }
+                | Effect::AddManaAnyColorsX
+                | Effect::AddAnyColorsGreatestPower
+                | Effect::AddRedOrGreenPerCreature
+                | Effect::AddManaDevotion(_)
+                | Effect::AddManaPerCount { .. }
+                | Effect::AddManaSourcePower(_)
+                | Effect::AddManaPerHandSize { .. }
+        )
+    }
+
+    /// Whether activated ability `n` of `id` is a mana ability (CR 605.1a): no targets, and it could
+    /// add mana. (Loyalty abilities are kept apart and never are.) It doesn't use the stack.
+    fn is_mana_ability(&self, id: ObjId, n: usize) -> bool {
+        let a = &self.activated_of(id, n).ability;
+        a.targets.is_empty() && a.effects.iter().any(Game::adds_mana)
+    }
+
+    /// Resolves a mana ability at once, without the stack (CR 605.3a), and gives `p` priority
+    /// back. Triggers it causes (a sacrificed creature's "dies") go on the stack as usual.
+    fn resolve_mana_ability(&mut self, p: PlayerId, item: StackItem) {
+        self.passes = 0; // an action, so passes before it don't count (CR 117.4)
+        self.mana_ability_then = Some(p);
+        self.resolve(item);
     }
 
     /// Untapped creatures `p` controls with this subtype, other than `except`.
@@ -10196,6 +10272,7 @@ impl Game {
             self.give_priority(p);
             return;
         }
+        self.snapshot_activated(id, n);
         let granted = self.activated_of(id, n).granted_to_attached;
         let extra = if granted {
             self.obj(id).attached_to.map(|(c, _)| c)
@@ -10215,6 +10292,7 @@ impl Game {
             alt: false,
             x: 0,
             division: Vec::new(),
+            source_zcc: None,
         };
         let mut item = item;
         if let (true, Some(v)) = (self.activated_of(id, n).amount_from_victim_toughness, victim) {
@@ -10226,10 +10304,15 @@ impl Game {
         if self.activated_of(id, n).victim_in_extra {
             item.extra = victim; // Birthing Pod: the sacrificed creature's mana value
         }
+        if self.is_mana_ability(id, n) {
+            self.pay_activation(p, id, n, victim, 0);
+            self.resolve_mana_ability(p, item);
+            return;
+        }
         self.passes = 0;
         if self.activated_of(id, n).ability.targets.is_empty() {
             self.pay_activation(p, id, n, victim, 0);
-            self.items.push(item);
+            self.push_item(item);
             self.give_priority(p);
         } else {
             self.choosing = Some(Choosing {
@@ -10246,16 +10329,22 @@ impl Game {
 
     /// Activates an ability with {X} in its cost.
     fn activate_x(&mut self, p: PlayerId, id: ObjId, n: usize, victim: Option<ObjId>, x: u8) {
+        self.snapshot_activated(id, n);
         let item = StackItem {
             kind: StackKind::Activated(n),
             x,
             ..Game::casting(id, p)
         };
+        if self.is_mana_ability(id, n) {
+            self.pay_activation(p, id, n, victim, x);
+            self.resolve_mana_ability(p, item);
+            return;
+        }
         self.passes = 0;
         let a = &self.activated_of(id, n).ability;
         if a.targets.is_empty() || (a.targets_exactly_x && x == 0) {
             self.pay_activation(p, id, n, victim, x);
-            self.items.push(item);
+            self.push_item(item);
             self.give_priority(p);
         } else {
             self.choosing = Some(Choosing {
@@ -10293,6 +10382,15 @@ impl Game {
         } else {
             (a.mana, 0)
         }
+    }
+
+    /// Remembers activated ability `n` of `id` as it's activated, so it resolves as that ability even
+    /// if its source changes before then (Shifting Woodland becoming a copy of a card with other
+    /// abilities, or none).
+    fn snapshot_activated(&mut self, id: ObjId, n: usize) {
+        let a = self.activated_of(id, n).clone();
+        self.activated_snapshots.retain(|e| !(e.0 == id && e.1 == n));
+        self.activated_snapshots.push((id, n, a));
     }
 
     fn pay_activation(&mut self, p: PlayerId, id: ObjId, n: usize, victim: Option<ObjId>, x: u8) {
@@ -11951,6 +12049,7 @@ impl Game {
                             alt: false,
                             x: 0,
                             division: Vec::new(),
+                            source_zcc: None,
                         });
                     }
                 }
@@ -12462,6 +12561,7 @@ impl Game {
             alt: mode.alt,
             x: mode.x,
             division: Vec::new(),
+            source_zcc: None,
         };
         let def = self.def_of(card);
         let ability = match mode.mode {
@@ -12940,7 +13040,7 @@ impl Game {
         if instant_or_sorcery || casts_this {
             self.cast_snapshots.push(item.clone());
         }
-        self.items.push(item);
+        self.push_item(item);
         if casts_this {
             // Storm counts the spells cast before this one, as it's cast (CR 702.40a).
             let before = self.triggered.len();
@@ -13049,6 +13149,7 @@ impl Game {
                         alt: false,
                         x: 0,
                         division: Vec::new(),
+                        source_zcc: None,
                     });
                 }
             }
@@ -13081,6 +13182,7 @@ impl Game {
                             alt: false,
                             x: 0,
                             division: Vec::new(),
+                            source_zcc: None,
                         });
                     }
                 }
@@ -13183,7 +13285,7 @@ impl Game {
         c.item.targets.push(chosen);
         let c = self.choosing.as_ref().expect("choosing targets");
         let exact = self.ability_of(&c.item).targets_exactly_x && c.item.targets.len() >= c.item.x as usize;
-        let done = c.item.targets.len() == self.ability_of(&c.item).targets.len() || exact;
+        let done = c.item.targets.len() >= self.ability_of(&c.item).targets.len() || exact;
         if done {
             self.finish_choosing();
         }
@@ -13219,7 +13321,7 @@ impl Game {
             }
             self.ward_check(&c.item);
             self.crime_check(&c.item);
-            self.items.push(c.item);
+            self.push_item(c.item);
             self.give_priority(c.then);
         }
     }
@@ -13242,7 +13344,10 @@ impl Game {
 
     /// Whether a chosen target is still legal (CR 608.2b).
     fn still_legal(&self, item: &StackItem, slot: usize) -> bool {
-        let f = &self.ability_of(item).targets[slot];
+        // A target its ability has no slot for (it came with the entry) isn't checked.
+        let Some(f) = self.ability_of(item).targets.get(slot) else {
+            return true;
+        };
         match item.targets[slot] {
             Chosen::Player(p) => {
                 !self.players[p].lost && self.target_ok(f, item.controller, Target::Player(p))
@@ -13429,6 +13534,7 @@ impl Game {
                         alt: false,
                         x: 0,
                         division: Vec::new(),
+                        source_zcc: None,
                     });
                 }
                 if self.def_of(id).ward_discard {
@@ -13482,6 +13588,7 @@ impl Game {
                         alt: false,
                         x: 0,
                         division: Vec::new(),
+                        source_zcc: None,
                     });
                 }
             }
@@ -13659,6 +13766,8 @@ impl Game {
             let (item, legal) = (r.item.clone(), r.legal.clone());
             self.run_effect(&item, &legal, e);
         }
+        // A mana ability (CR 605.3a): priority goes back to whoever activated it.
+        let then = self.mana_ability_then.take().unwrap_or(self.active);
         let r = self.resolving.take().expect("resolving");
         let source = r.item.source;
         // CR 707.10f: a copy of a permanent spell becomes a token as it resolves.
@@ -13859,9 +13968,9 @@ impl Game {
                 }
             }
             self.ward_check(&copy);
-            self.items.push(copy);
+            self.push_item(copy);
         }
-        self.give_priority(self.active);
+        self.give_priority(then);
     }
 
     /// CR 724.1: exile every object on the stack, remove creatures from combat, and go to cleanup.
@@ -16488,7 +16597,7 @@ impl Game {
                     targets: vec![Chosen::Player(t as PlayerId)],
                     ..Game::casting(source, p)
                 };
-                self.items.push(copy);
+                self.push_item(copy);
             }
             (Decision::ChainCopy { .. }, Action::No) => {}
             (Decision::PickOneOf { to_hand, .. }, Action::Pick(c)) => {
@@ -17459,20 +17568,9 @@ impl Game {
             || d.plaza_mana
             || d.mana_per_creature
             || d.mana_per_enchantment
-            || d.activated.iter().any(|a| {
-                a.ability.effects.iter().any(|e| {
-                    matches!(
-                        e,
-                        Effect::AddMana { .. }
-                            | Effect::AddManaAnyColor
-                            | Effect::AddColorless { .. }
-                            | Effect::AddManaEither { .. }
-                            | Effect::AddManaAnyColorsX
-                            | Effect::AddAnyColorsGreatestPower
-                            | Effect::AddRedOrGreenPerCreature
-                    )
-                })
-            })
+            || d.activated
+                .iter()
+                .any(|a| a.ability.effects.iter().any(Game::adds_mana))
     }
 
     /// The target slots of `items[item]` that could change to `source` (Spellskite).
@@ -19236,7 +19334,7 @@ impl Game {
                             ..snap.clone()
                         };
                         if keep {
-                            self.items.push(copy);
+                            self.push_item(copy);
                         } else {
                             // Onto the stack with new targets chosen, as other copies (CR 707.10c).
                             self.pending_copies.push(copy);
@@ -19374,7 +19472,7 @@ impl Game {
                 });
                 if let Some(spell) = spell {
                     let c = spell.source;
-                    self.items.push(StackItem {
+                    self.push_item(StackItem {
                         kind: StackKind::SpellCopy,
                         controller: item.controller,
                         ..spell
@@ -19589,7 +19687,7 @@ impl Game {
                 }
             }
             Effect::ExileSelfReturn { transformed } => {
-                if self.obj(src).zone == Zone::Battlefield {
+                if self.obj(src).zone == Zone::Battlefield && self.still_same_source(item) {
                     self.move_to(src, Zone::Exile);
                     // CR 712.14: only a double-faced card can return transformed.
                     if self.obj(src).zone == Zone::Exile
@@ -22983,7 +23081,7 @@ impl Game {
                 self.high_tide = (turn, n + 1);
             }
             Effect::FlickerSelf => {
-                if self.obj(src).zone == Zone::Battlefield {
+                if self.obj(src).zone == Zone::Battlefield && self.still_same_source(item) {
                     self.move_to(src, Zone::Exile);
                     let zcc = self.obj(src).zcc;
                     self.delayed_returns.push((src, zcc, 0));
@@ -23068,7 +23166,7 @@ impl Game {
                             ..snap.clone()
                         };
                         self.ward_check(&copy);
-                        self.items.push(copy);
+                        self.push_item(copy);
                         self.copied_or_cast_instant_sorcery(item.controller, snap.source);
                     }
                 }
@@ -23452,6 +23550,7 @@ impl Game {
                     alt: false,
                     x: 0,
                     division: Vec::new(),
+                    source_zcc: None,
                 });
             }
             Effect::GrantDiesTrigger { slot, trigger } => {
@@ -27236,11 +27335,15 @@ impl Game {
             if item.mode.is_none() {
                 self.events.push(Event::Triggered { source: item.source });
             }
-            if ability.targets.len() == item.targets.len() {
+            if item.targets.len() >= ability.targets.len() {
+                // A granted "when this dies" trigger comes with the creature that died as its first
+                // target; an ability with no slot for it (Jaxis's and blitz's "draw a card") drops it.
+                let mut item = item;
+                item.targets.truncate(ability.targets.len());
                 if !item.targets.is_empty() {
                     self.crime_check(&item);
                 }
-                self.items.push(item);
+                self.push_item(item);
             } else if self.trigger_can_target(&item, &ability) {
                 let who = item.controller;
                 self.choosing = Some(Choosing {
@@ -27703,6 +27806,7 @@ impl Game {
                                 alt: false,
                                 x: 0,
                                 division: Vec::new(),
+                                source_zcc: None,
                             });
                         }
                     }
@@ -28437,6 +28541,7 @@ impl Game {
                     alt: false,
                     x: 0,
                     division: Vec::new(),
+                    source_zcc: None,
                 });
             }
         }
