@@ -1313,6 +1313,34 @@ pub fn script(name: &str) -> Option<Script> {
             &["Once each turn, you may pay {0} rather than pay the mana cost for a colorless spell you cast from your hand."],
             |d, _| d.mana_ext.colorless_free_once_each_turn = true,
         ),
+        // ---- The Gitrog, Ravenous Ride (RuricMo) ----
+        "Witch's Cottage" => s(
+            &[
+                "This land enters tapped unless you control three or more other Swamps.",
+                "When this land enters untapped, you may put target creature card from your graveyard on top of your library.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource::of(&[Color::Black]));
+                d.mana_ext.enters_tapped_unless_other_subtype = Some(("Swamp", 3));
+                may(d, When::EntersUntapped, vec![graveyard_cards(true, Controller::You)], vec![Effect::ToLibrary(0, true)]);
+            },
+        ),
+        "Jarad, Golgari Lich Lord" => s(
+            &[
+                "Jarad gets +1/+1 for each creature card in your graveyard.",
+                "{1}{B}{G}, Sacrifice another creature: Each opponent loses life equal to the sacrificed creature's power.",
+                "Sacrifice a Swamp and a Forest: Return this card from your graveyard to your hand.",
+            ],
+            |d, _| {
+                d.pt_per_graveyard_creature = true;
+                let n = activated(d, "{1}{B}{G}", false, vec![], vec![Effect::LoseLifeAmount(Who::EachOpponent)]);
+                d.activated[n].sacrifice_other_creature = true;
+                d.activated[n].amount_from_victim_power = true;
+                let n = activated(d, "", false, vec![], vec![Effect::ReturnSelfToHand]);
+                d.activated[n].from_graveyard = true;
+                d.activated[n].sacrifice_two_subtypes = Some(["Swamp", "Forest"]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1485,4 +1513,6 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Food Chain",
     "Waves of Aggression",
     "Darksteel Monolith",
+    "Witch's Cottage",
+    "Jarad, Golgari Lich Lord",
 ];

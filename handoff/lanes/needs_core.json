@@ -1666,7 +1666,7 @@
   {
    "card": "Jarad, Golgari Lich Lord",
    "deck": "The Gitrog, Ravenous Ride (RuricMo)",
-   "missing": "needs core: opponents lose life equal to the sacrificed creature's power, and a 'Sacrifice a Swamp and a Forest' graveyard ability",
+   "missing": "needs core: opponents lose life equal to the sacrificed creature's power, and a 'Sacrifice a Swamp and a Forest' graveyard ability [done by d1 batch 17: Activated::sacrifice_two_subtypes; scripted in pg_d1]",
    "lane": "d2",
    "theme": "mana",
    "owner": "d1"
@@ -1762,7 +1762,7 @@
   {
    "card": "Witch's Cottage",
    "deck": "The Gitrog, Ravenous Ride (RuricMo)",
-   "missing": "d2 batch 16: When::EntersUntapped is in. Still needs: enters tapped unless you control three or more other Swamps (d1, land entry)",
+   "missing": "d2 batch 16: When::EntersUntapped is in. Still needs: enters tapped unless you control three or more other Swamps (d1, land entry) [done by d1 batch 17: ManaExt::enters_tapped_unless_other_subtype; scripted in pg_d1]",
    "lane": "d2",
    "theme": "mana",
    "owner": "d1"

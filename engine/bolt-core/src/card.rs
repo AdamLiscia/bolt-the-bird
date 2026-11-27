@@ -358,6 +358,10 @@ pub struct Activated {
     /// "Exile a creature you control" in the cost (Food Chain): one `Action::ActivateWith` per
     /// creature you control; with `victim_in_extra` the effect sees the exiled card.
     pub exile_creature_you_control: bool,
+    /// "Sacrifice a [first] and a [second]" in the cost: two different permanents you control,
+    /// one with each subtype (Jarad, Golgari Lich Lord: a Swamp and a Forest); the engine picks,
+    /// keeping permanents that have both subtypes when it can.
+    pub sacrifice_two_subtypes: Option<[&'static str; 2]>,
 }
 
 /// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,
@@ -1214,6 +1218,9 @@ pub struct ManaExt {
     /// `CardDef::ward_sacrifice` counts only permanents with this subtype (Ygra, Eater of All:
     /// "Ward—Sacrifice a Food.", with `ward_sacrifice: 1`).
     pub ward_sacrifice_subtype: Option<&'static str>,
+    /// "This land enters tapped unless you control N or more other [subtype]." (Witch's Cottage:
+    /// ("Swamp", 3)).
+    pub enters_tapped_unless_other_subtype: Option<(&'static str, u8)>,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana

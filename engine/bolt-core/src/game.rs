@@ -8791,6 +8791,11 @@ impl Game {
                     }
                     continue;
                 }
+                if a.sacrifice_two_subtypes
+                    .is_some_and(|subs| self.subtype_pair_to_sacrifice(p, subs).is_none())
+                {
+                    continue; // Jarad: "Sacrifice a Swamp and a Forest"
+                }
                 if a.sacrifice_nonland_n > 0
                     && self
                         .permanents(p)
@@ -9273,6 +9278,15 @@ impl Game {
             self.obj_mut(id).counters -= 1; // Devoted Druid: a -1/-1 counter
             let controller = self.obj(id).controller;
             self.counters_placed(controller, 1);
+        }
+        if let Some((v, w)) = a
+            .sacrifice_two_subtypes
+            .and_then(|subs| self.subtype_pair_to_sacrifice(p, subs))
+        {
+            for v in [v, w] {
+                self.move_to(v, Zone::Graveyard);
+                self.sacrificed(v, p);
+            }
         }
         if a.sacrifice_nonland_n > 0 {
             let mut victims: Vec<ObjId> = self
@@ -10179,6 +10193,12 @@ impl Game {
             .filter(|&x| x != id && self.types_of(x).land)
             .count();
         (e.enters_tapped_unless_other_lands > 0 && other_lands < e.enters_tapped_unless_other_lands as usize)
+            || e.enters_tapped_unless_other_subtype.is_some_and(|(sub, n)| {
+                self.permanents(p)
+                    .filter(|&x| x != id && self.has_subtype(x, sub))
+                    .count()
+                    < n as usize
+            })
             || (e.enters_tapped_unless_legendary_creature
                 && !self.creatures(p).any(|x| x != id && self.types_of(x).legendary))
     }
@@ -10857,6 +10877,31 @@ impl Game {
             && d.mana_ext
                 .ward_sacrifice_subtype
                 .is_none_or(|s| self.has_subtype(x, s))
+    }
+
+    /// Two different permanents `p` controls to sacrifice for "Sacrifice a [first] and a [second]"
+    /// (`Activated::sacrifice_two_subtypes`): one with each subtype, keeping those with both when
+    /// it can (a Swamp Forest stays if a basic Swamp and Forest can pay).
+    fn subtype_pair_to_sacrifice(&self, p: PlayerId, subs: [&str; 2]) -> Option<(ObjId, ObjId)> {
+        let with = |s: &str| -> Vec<ObjId> {
+            self.permanents(p)
+                .filter(|&x| self.has_subtype(x, s) && !self.cant_be_sacrificed(x))
+                .collect()
+        };
+        let (a, b) = (with(subs[0]), with(subs[1]));
+        let mut best = None;
+        for &x in &a {
+            for &y in &b {
+                if x == y {
+                    continue;
+                }
+                let duals = self.has_subtype(x, subs[1]) as u8 + self.has_subtype(y, subs[0]) as u8;
+                if best.is_none_or(|(d, _, _)| duals < d) {
+                    best = Some((duals, x, y));
+                }
+            }
+        }
+        best.map(|(_, x, y)| (x, y))
     }
 
     /// Foods `p` could sacrifice to forage (not `except`).
