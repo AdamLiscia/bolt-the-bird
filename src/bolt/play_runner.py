@@ -52,7 +52,11 @@ CMD_MAX_MOVES = 6_000
 # worker 9.5 minutes at full CPU inside one call, so no move cap ever got a turn).
 _BEAT = None
 HANG_S = float(os.environ.get("BOLT_HANG_S", "120"))
-HANG_LOG = os.environ.get("BOLT_HANG_LOG")  # where hung games are written (one JSON line each), if set
+HANG_LOG = os.environ.get("BOLT_HANG_LOG")
+# A game's own time budget (its engine calls and encoding, not the shared network passes): past it the game is
+# a timeout with no samples. 2026-11-27: a cmd_play_1 game crawled instead of freezing (each move slower, the
+# heartbeat still beating), and ran the same seed into the ground three times. Normal games take 1-30 s.
+GAME_S = float(os.environ.get("BOLT_GAME_S", "150"))  # where hung games are written (one JSON line each), if set
 
 
 def _beat(gi: int) -> None:
@@ -60,6 +64,22 @@ def _beat(gi: int) -> None:
         arr, slot = _BEAT
         arr[2 * slot] = time.time()
         arr[2 * slot + 1] = gi
+
+
+def board_summary(g) -> dict:
+    """Moves aside, what a stopped game's board looked like: permanents per player and the 5 most common."""
+    import collections
+
+    try:
+        field = g.observation(0)["battlefield"]
+        names = be.card_names() if PLAY_SET == "FDN" else be.card_names(PLAY_SET)
+    except BaseException as e:  # a Rust panic too
+        if isinstance(e, (KeyboardInterrupt, SystemExit)):
+            raise
+        return {}
+    per = [sum(1 for e in field if e["controller"] == p) for p in (0, 1)]
+    top = collections.Counter(names[e["card"]] if 0 <= e["card"] < len(names) else "hidden" for e in field)
+    return {"turn": g.turn, "permanents": per, "most_common": top.most_common(5)}
 
 
 def _result(g) -> str:
@@ -78,7 +98,7 @@ def _forward(net, encs, chunk=256):
 
 def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 2), record=None,
               max_turns=None, game_offset=0, max_moves=None, label_with=None, opp_net=None, progress=0,
-              skip=()):  # fmt: skip
+              skip=(), game_s=None):  # fmt: skip
     """jobs: (deck_a, deck_b, seed, first), a Commander deck being (commanders, cards). Returns
     {"results": [{"result", "turn"}], "steps": [...]}. smart=(rollouts, candidates[, ms]): the smart seat's
     search, ms capping its time per move.
@@ -87,7 +107,10 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
     position as "action" (the label) and the network's own move as "played", which is what the game
     follows (DAgger: the teacher labels the positions the student reaches).
 
-    skip: games (indices into jobs) not played: an earlier run hung on them. Each is a timeout with no steps."""
+    skip: games (indices into jobs) not played: an earlier run hung on them. Each is a timeout with no steps.
+    game_s: each game's own time budget (default GAME_S, 0 = none); a game past it is a timeout with no steps,
+    its result carrying "slow": {moves, turn, permanents, most_common} for the hang log."""
+    game_s = GAME_S if game_s is None else game_s
     record = {i for i, s in enumerate(seats) if s == "net"} if record is None else set(record)
     commander = PLAY_FORMAT == "commander"
     if max_turns is None:
@@ -106,6 +129,17 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
     steps = []
     live = [gi for gi in range(len(games)) if gi not in skip]
     t0 = time.time()
+    own = [0.0] * len(games)  # each game's own seconds so far
+    slow: set = set()
+
+    def over(gi, since):
+        if not game_s or own[gi] + time.time() - since <= game_s:
+            return False
+        own[gi] += time.time() - since
+        results[gi] = {"result": "timeout", "turn": games[gi].turn, "hung": True,
+                       "slow": {"moves": moves[gi], "seconds": round(own[gi]), **board_summary(games[gi])}}  # fmt: skip
+        slow.add(gi)
+        return True
 
     def play(gi, i):
         _beat(gi)
@@ -116,9 +150,12 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
         waiting = []
         for gi in live:
             g = games[gi]
+            since = time.time()
             try:
                 while True:
                     _beat(gi)
+                    if over(gi, since):
+                        break
                     if g.is_over():
                         results[gi] = {"result": _result(g), "turn": g.turn}
                         break
@@ -151,14 +188,20 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
                 if isinstance(e, (KeyboardInterrupt, SystemExit)):
                     raise
                 results[gi] = {"result": "error", "turn": g.turn}
+            if gi not in slow:
+                own[gi] += time.time() - since
         if waiting:
             _beat(-1)  # the network's forward pass: no game's engine call
+            t_fwd = time.time()
             mine = [w for w in waiting if seats[w[1]] == "net"]
             theirs = [w for w in waiting if seats[w[1]] == "opp"]
             logits, values = _forward(net, [e for _, _, e in mine]) if mine else ([], [])
             if theirs:
                 lo, vo = _forward(opp_net, [e for _, _, e in theirs])
                 logits, values = logits + lo, values + vo
+            t_fwd = time.time() - t_fwd
+            for gi, _, _ in waiting:  # each waiting game is charged the whole pass: a huge board slows it
+                own[gi] += t_fwd
             for (gi, who, enc), lg, v in zip(mine + theirs, logits, values, strict=True):
                 lp = torch.log_softmax(lg[: len(enc["act_kind"])], 0)
                 i = int(torch.multinomial(lp.exp(), 1, generator=gen)) if sample else int(lp.argmax())
@@ -177,12 +220,14 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
                             step = None
                     if step is not None:
                         steps.append(step)
+                since = time.time()
                 try:
                     play(gi, i)
                 except BaseException as e:  # a Rust panic too
                     if isinstance(e, (KeyboardInterrupt, SystemExit)):
                         raise
                     results[gi] = {"result": "error", "turn": games[gi].turn}
+                own[gi] += time.time() - since
         before = len(games) - len(live)
         live = [gi for gi in live if results[gi] is None]
         done = len(games) - len(live)
@@ -193,6 +238,8 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
                 f"; longest still playing: game {game_offset + slow}, {moves[slow]} moves" if slow is not None else ""
             )
             print(f"[worker {os.getpid()}] {done}/{len(games)} games done, {time.time() - t0:.0f}s{tail}", flush=True)
+    if slow:  # games stopped for time leave no samples
+        steps = [st for st in steps if st["game"] - game_offset not in slow]
     return {"results": results, "steps": steps}
 
 
@@ -302,6 +349,18 @@ def run_parallel(net, jobs, workers=6, chunk=None, seed=0, retries=2, compact=Fa
             done[key] = out
             wait = 0.05
 
+    def log(rec):
+        if hang_log:
+            with open(hang_log, "a") as f:
+                f.write(json.dumps(rec) + "\n")
+
+    def stop(k, gi, why):
+        """Leave game gi of chunk k out of its rerun: a timeout, logged."""
+        skip[k].add(gi)
+        rec = {**_hang_record(parts[k][gi], seats, kw, k + gi), "why": why}
+        print(f"HANG: game {k + gi} (seed {rec['seed']}): {why}; worker killed, chunk rerun without it", flush=True)
+        log(rec)
+
     def release(k):
         p, slot = running.pop(k)
         p.join(timeout=10)
@@ -331,29 +390,35 @@ def run_parallel(net, jobs, workers=6, chunk=None, seed=0, retries=2, compact=Fa
             elif not p.is_alive():
                 drain(0.5)  # a result sent just before it exited
                 if k not in done:
+                    gi = int(beats[2 * slot + 1])
                     release(k)
                     crashes[k] += 1
                     if crashes[k] > retries:
                         raise RuntimeError(f"worker processes kept dying on job chunks {[k]}")
+                    if crashes[k] > 1 and 0 <= gi < len(parts[k]) and gi not in skip[k]:
+                        # died twice: the second time, leave out the game it was playing (a seed that kills
+                        # its worker every time, e.g. out of memory, must not end the run)
+                        stop(k, gi, "worker died twice")
                     pending.append(k)
             elif hang_s and time.time() - beats[2 * slot] > hang_s:
                 gi = int(beats[2 * slot + 1])
                 p.kill()
                 release(k)
                 if 0 <= gi < len(parts[k]) and gi not in skip[k]:
-                    skip[k].add(gi)
-                    rec = _hang_record(parts[k][gi], seats, kw, k + gi)
-                    print(f"HANG: game {k + gi} (seed {rec['seed']}) stalled {hang_s:.0f}s; worker killed, chunk rerun "
-                          f"without it", flush=True)  # fmt: skip
-                    if hang_log:
-                        with open(hang_log, "a") as f:
-                            f.write(json.dumps(rec) + "\n")
+                    stop(k, gi, f"no engine call returned for {hang_s:.0f}s")
                 else:  # stalled outside a game's engine call: rerun the chunk as for a crash
                     crashes[k] += 1
                     if crashes[k] > retries:
                         raise RuntimeError(f"job chunk {k} kept stalling outside a game")
                 pending.appendleft(k)
     keys = sorted(done)
+    for k in keys:  # games stopped by their own time budget (run_games' game_s): logged here, once
+        for gi, r in enumerate(done[k]["results"]):
+            if r.get("slow"):
+                rec = {**_hang_record(parts[k][gi], seats, kw, k + gi), "why": "over its time budget", **r["slow"]}
+                print(f"SLOW: game {k + gi} (seed {rec['seed']}) stopped after {r['slow'].get('seconds')}s, "
+                      f"{r['slow'].get('moves')} moves, permanents {r['slow'].get('permanents')}", flush=True)  # fmt: skip
+                log(rec)
     results = [r for k in keys for r in done[k]["results"]]
     if compact:
         from bolt.play_data import concat
