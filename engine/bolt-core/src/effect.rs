@@ -147,6 +147,9 @@ pub struct Filter {
     /// Only permanents with one of these subtypes (Seasoned Dungeoneer: "Cleric, Rogue, Warrior, or
     /// Wizard"); empty: no restriction.
     pub subtypes_any: &'static [&'static str],
+    /// Spells not cast from their owner's hand only, unless this spell was cast for its alternative
+    /// cost (Wash Away uncleaved: "target spell that wasn't cast from its owner's hand").
+    pub spell_not_from_hand_unless_alt: bool,
 }
 
 impl Filter {
@@ -216,6 +219,7 @@ impl Filter {
         up_to_x: false,
         tapped_only: false,
         subtypes_any: &[],
+        spell_not_from_hand_unless_alt: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -2801,6 +2805,116 @@ pub enum Effect {
     /// "You may cast a spell from among cards you own in exile with dream counters on them without
     /// paying its mana cost." (Goliath Daydreamer): a one-spell free-cast window.
     MayCastDreamCardFree,
+    /// The creature in `slot` becomes a Treasure artifact with "{T}, Sacrifice this artifact: Add
+    /// one mana of any color" and loses all other card types and abilities, for as long as it
+    /// stays (Vraska, Betrayal's Sting's -2; `TypeChange::treasure_form`).
+    BecomeTreasure(u8),
+    /// "If target player has fewer than `n` poison counters, they get a number of poison counters
+    /// equal to the difference." (Vraska, Betrayal's Sting's -9: 9)
+    TargetPlayerPoisonUpTo {
+        slot: u8,
+        n: i32,
+    },
+    /// Sorcerer Class, level 3: the spell in `extra` deals damage to each opponent equal to the
+    /// number of instant and sorcery spells you've cast this turn (`Game::instants_sorceries_cast`).
+    ExtraDamagesEachOpponentInstantsSorceriesThisTurn,
+    /// Roaring Earth's channel: X +1/+1 counters (the item's X) on the land in `slot`, and it
+    /// becomes a 0/0 creature with `subtype` and haste for good (still a land), as `Awaken`.
+    AwakenX {
+        slot: u8,
+        subtype: &'static str,
+    },
+    /// The creature in `slot` can't be blocked this turn by creatures the chosen player controls,
+    /// the chosen player one with the most life or tied (The Black Gate). One opponent: only the
+    /// other player's creatures can block it, so it gains unblockable when that player has the
+    /// most life or is tied (a tie's choice is that player; the other choice does nothing).
+    GrantUnblockableIfBlockersMostLife(u8),
+    /// The creature in `slot` connives X, X the number of creatures that died this turn
+    /// (Spymaster's Vault), as `Decision::ConniveDiscard`.
+    ConniveDiedThisTurn(u8),
+    /// "Triple the power and toughness of" the creature in `slot` until end of turn (Tifa's Limit
+    /// Break): +2X/+2Y.
+    TriplePowerToughness(u8),
+    /// "Choose a counter on target permanent. Put an additional counter of that kind on that
+    /// permanent." (Ichormoon Gauntlet): the permanent in `slot`; with more than one kind,
+    /// `Decision::ChooseCounterKind`.
+    AddCounterOfChosenKind(u8),
+    /// The creature in `slot` gets +`power`/+`toughness` until end of turn if it has `subtype`
+    /// (Goatnap: a Goat, +3/+0).
+    PumpIfSubtype {
+        slot: u8,
+        subtype: &'static str,
+        power: i32,
+        toughness: i32,
+    },
+    /// "You may put a creature card with mana value X or less from your hand onto the battlefield
+    /// tapped and attacking, where X is the number of attacking creatures you control." (Kinscaer
+    /// Sentry), as `Decision::CreatureFromHandAttackingMaxMv`.
+    CreatureFromHandAttackingMvAtMostAttackers,
+    /// Return the creature card in `slot` from your graveyard to the battlefield tapped and
+    /// attacking (Alesha, Who Smiles at Death).
+    ReturnSlotToBattlefieldAttacking(u8),
+    /// The source becomes a `power`/`toughness` creature with `subtypes` in addition to its other
+    /// types, for as long as it stays (Ride the Shoopuf: a 7/7 Beast).
+    SourceBecomesCreature {
+        power: i32,
+        toughness: i32,
+        subtypes: &'static [&'static str],
+    },
+    /// "You may put a permanent card with equal or lesser mana value from your hand onto the
+    /// battlefield" (Kodama of the East Tree): the entering permanent is the item's `extra`; nothing
+    /// if Kodama put it there (`Object::put_by_kodama`). As `Decision::PermanentFromHandMaxMv`.
+    MayPutPermanentFromHandMvAtMostExtra,
+    /// Return the nonland permanent in `slot` to its owner's hand, then that player exiles a card
+    /// from their hand (Ashiok, Nightmare Muse's -3), as `Decision::ExileCardFromHand`.
+    BounceThenOwnerExilesFromHand(u8),
+    /// Discard a card at random (the game's seeded rng); if it's an artifact card, the source deals
+    /// `n` damage to each opponent (Reckless Handling: 2).
+    DiscardRandomIfArtifactDamageEachOpponent(i32),
+    /// Each player, starting with the active player, sacrifices a creature or planeswalker of their
+    /// choice (Demon's Disciple), as `Decision::EachSacrificesCreatureOrPlaneswalker`.
+    EachPlayerSacrificesCreatureOrPlaneswalker,
+    /// Copy the spell in the trigger's `extra` (you control the copy, and may choose new targets;
+    /// a permanent spell's copy becomes a token) (Jin-Gitaxias, Progress Tyrant).
+    CopyExtraSpell,
+    /// "Your opponents can't cast spells this turn." (Silence), `Game::no_more_spells_turn`.
+    OpponentsCantCastThisTurn,
+    /// "Target creature you control deals damage equal to its power to target creature you don't
+    /// control. If the creature you control has trample, excess damage is dealt to that creature's
+    /// controller instead." (Ram Through)
+    BiteTrampleExcess {
+        from: u8,
+        to: u8,
+    },
+    /// Until end of turn, the creature in `slot` (each creature you control, with `None`: overload)
+    /// becomes `colors` with `subtype` and base power and toughness `power`/`toughness` (Scale Up: a
+    /// green Wurm 6/4).
+    BecomeBaseEot {
+        slot: Option<u8>,
+        power: i32,
+        toughness: i32,
+        colors: [bool; 5],
+        subtype: &'static [&'static str],
+    },
+    /// Sacrifice `n` lands of your choice (Roiling Regrowth, Planar Engineering), as
+    /// `Decision::SacrificeLands`.
+    SacrificeLands(u8),
+    /// Search for up to `n` cards (`more` instead if you control a creature with power `power` or
+    /// greater) (Entish Restoration).
+    SearchMoreIfControlPower {
+        what: SearchFor,
+        to: SearchTo,
+        n: u8,
+        more: u8,
+        power: i32,
+    },
+    /// Ad Nauseam: reveal the top card, put it into your hand, lose life equal to its mana value;
+    /// you may repeat (`Decision::AdNauseamAgain`).
+    AdNauseam,
+    /// "Each opponent sacrifices a creature or planeswalker with the greatest mana value among
+    /// creatures and planeswalkers they control." (Flare of Malice), as
+    /// `Decision::SacrificeGreatestMv` among the tied.
+    OpponentSacrificesGreatestMvCreatureOrPlaneswalker,
     /// Rev, Tithe Extractor: exile the top card of the opponent's library face down
     /// (`Game::face_down_exiled`); you may cast it for as long as it remains exiled (a land can't be
     /// cast, so a land stays there).
@@ -2905,6 +3019,8 @@ pub enum SearchFor {
     ColorlessCreature,
     /// An artifact card (Inventors' Fair, Goblin Engineer, Reckless Handling).
     Artifact,
+    /// A creature or land card (Archdruid's Charm).
+    CreatureOrLand,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -2931,6 +3047,12 @@ pub enum SearchTo {
     /// Onto the battlefield tapped; then, if you control `n` or more lands, untap it (Fabled
     /// Passage: 4).
     BattlefieldTappedUntapIfLands(u8),
+    /// Opposition Agent: exiled instead, playable by the searcher's opponent for as long as it
+    /// stays exiled, with mana of any color.
+    ExiledForOpponent,
+    /// Onto the battlefield tapped if it's a land card, otherwise into your hand (Archdruid's
+    /// Charm).
+    TappedIfLandElseHand,
 }
 
 /// What a static ability affects.
@@ -2985,6 +3107,8 @@ pub enum Scope {
     OtherYourNonHumanCreatures,
     /// Other colorless creatures you control (It That Heralds the End).
     OtherYourColorlessCreatures,
+    /// Other tapped creatures you control (Adept Watershaper).
+    OtherYourTappedCreatures,
 }
 
 /// What a scaled static ability counts.
@@ -3020,6 +3144,9 @@ pub enum Scale {
     /// Slime counters on the affected permanent itself (`Object::slime`; Toxrill, the Corrosive:
     /// "Creatures you don't control get -1/-1 for each slime counter on them").
     PerSlimeCounterOnIt,
+    /// Creatures that entered the battlefield under your control this turn (Kinbinding;
+    /// `Game::creatures_entered`).
+    PerCreatureEnteredUnderYourControlThisTurn,
 }
 
 /// A condition on a static ability ("as long as ...").
@@ -3829,6 +3956,12 @@ pub enum When {
     /// Corrosive), from d3's `Object::last_slime` as it left the battlefield; slot 0 (if
     /// `triggering`) is the creature card.
     CreatureYouDontControlWithSlimeDies,
+    /// "Whenever you cast an artifact, instant, or sorcery spell, ... This ability triggers only
+    /// once each turn." (Jin-Gitaxias, Progress Tyrant); its `extra` is that spell.
+    YouCastArtifactInstantOrSorceryOnceEachTurn,
+    /// "Whenever an opponent casts an artifact, instant, or sorcery spell, ... This ability
+    /// triggers only once each turn." (Jin-Gitaxias, Progress Tyrant); its `extra` is that spell.
+    OpponentCastsArtifactInstantOrSorceryOnceEachTurn,
 }
 
 #[derive(Clone, Debug, PartialEq)]

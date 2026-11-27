@@ -121,6 +121,7 @@ fn the_rollout_pilot_plays_legal_moves_to_the_end() {
         max_candidates: 4,
         max_actions: 3_000,
         max_objects: 2_000,
+        time_limit: None,
     };
     for seed in 0..3 {
         let (a, b) = decks(100 + seed);
@@ -150,6 +151,7 @@ fn the_rollout_pilot_is_deterministic() {
         max_candidates: 6,
         max_actions: 3_000,
         max_objects: 2_000,
+        time_limit: None,
     };
     assert_eq!(
         rollout::choose(&g, &legal, &cfg, 1),
@@ -167,6 +169,7 @@ fn a_playout_past_the_object_limit_counts_as_a_draw() {
         max_candidates: 6,
         max_actions: 3_000,
         max_objects: 1,
+        time_limit: None,
     };
     let mut searched = 0;
     for seed in 0..12 {

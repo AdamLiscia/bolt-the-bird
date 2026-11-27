@@ -2491,6 +2491,21 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::LandYouControlEnters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.dragon_egg, n: 1 }]);
             },
         ),
+        "Ashiok, Nightmare Muse" => s(
+            &[
+                "+1: Create a 2/3 blue and black Nightmare creature token with \"Whenever this token attacks or blocks, each opponent exiles the top two cards of their library.\"",
+                "−3: Return target nonland permanent to its owner's hand, then that player exiles a card from their hand.",
+                "−7: You may cast up to three spells from among face-up cards your opponents own from exile without paying their mana costs.",
+            ],
+            |d, t| {
+                loyalty(d, 1, Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.nightmare, n: 1 }]));
+                // d3's -3: the owner picks the card to exile (`Decision::ExileCardFromHand`).
+                let nonland = Filter { controller: Controller::Any, ..OPP_NONLAND };
+                loyalty(d, -3, Ability::new(vec![nonland], vec![Effect::BounceThenOwnerExilesFromHand(0)]));
+                // "Up to three": a free-cast window you may pass, closing after three spells.
+                loyalty(d, -7, Ability::new(vec![], vec![Effect::CastFaceUpOpponentExiledFreeUpTo(3)]));
+            },
+        ),
         "Fortune Teller's Talent" => s(
             &[
                 "You may look at the top card of your library any time.",
@@ -2848,5 +2863,6 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Fortune Teller's Talent",
     "Blade of the Bloodchief",
     "Nesting Dragon",
+    "Ashiok, Nightmare Muse",
     // Not "Evercoat Ursine" (unclaimed: a hidden land must be playable as a land play).
 ];

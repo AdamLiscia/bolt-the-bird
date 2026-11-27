@@ -3048,3 +3048,318 @@ mod compleated {
         assert_eq!(cast_nissa(true), 3, "both {{G/P}} paid with life: four fewer");
     }
 }
+/// "Remove three counters from among other artifacts, creatures, and planeswalkers you control"
+/// (Tekuthal): `Activated::remove_counters_from_others`, picked with
+/// `Decision::RemoveCountersFromOthers`.
+mod remove_counters_from_others {
+    use bolt_cards::set;
+    use bolt_core::{Ability, Action, Activated, Effect, Game, Pending, Step, Zone};
+
+    fn cid(name: &str) -> usize {
+        set("CMD").unwrap().index_of(name).unwrap()
+    }
+
+    #[test]
+    fn the_player_picks_three_counters_from_other_permanents() {
+        let mut defs = (*set("CMD").unwrap().defs).clone();
+        let hub = cid("Ornithopter");
+        defs[hub].activated.push(Activated {
+            remove_counters_from_others: 3,
+            ability: Ability::new(vec![], vec![Effect::CountersSelf { n: 1 }]),
+            ..Activated::default()
+        });
+        let plains = vec![cid("Plains"); 99];
+        let mut g = Game::new_commander(
+            std::sync::Arc::new(defs),
+            [&plains, &plains],
+            [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+            7,
+            0,
+        );
+        g.auto_pass = false;
+        g.start_turn(3, 0);
+        while g.step != Step::Main1 {
+            g.apply(Action::PassPriority).unwrap();
+        }
+        let h = g.add_card(0, hub, Zone::Battlefield);
+        let a = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+        let b = g.add_card(0, cid("Fyndhorn Elves"), Zone::Battlefield);
+        g.objects[a.0 as usize].counters = 2;
+        assert!(
+            !g.legal_actions()
+                .iter()
+                .any(|x| matches!(x, Action::Activate(s, _) if *s == h)),
+            "two counters"
+        );
+        g.objects[b.0 as usize].counters = 1;
+        let n = g.def_of(h).activated.len() - 1;
+        g.apply(Action::Activate(h, n)).unwrap();
+        assert!(matches!(g.pending, Pending::Decide(0)));
+        let legal = g.legal_actions();
+        assert!(
+            legal.contains(&Action::Pick(a))
+                && legal.contains(&Action::Pick(b))
+                && !legal.contains(&Action::Pick(h))
+        );
+        g.apply(Action::Pick(b)).unwrap();
+        g.apply(Action::Pick(a)).unwrap();
+        g.apply(Action::Pick(a)).unwrap();
+        while !g.items.is_empty() {
+            g.apply(Action::PassPriority).unwrap();
+        }
+        assert_eq!((g.obj(a).counters, g.obj(b).counters), (0, 0));
+        assert_eq!(g.obj(h).counters, 1, "the ability resolved");
+    }
+
+    #[test]
+    fn the_kind_removed_is_the_most_numerous_and_never_loyalty_beside_another() {
+        let mut defs = (*set("CMD").unwrap().defs).clone();
+        let hub = cid("Ornithopter");
+        defs[hub].activated.push(Activated {
+            remove_counters_from_others: 1,
+            ability: Ability::new(vec![], vec![]),
+            ..Activated::default()
+        });
+        let plains = vec![cid("Plains"); 99];
+        let mut g = Game::new_commander(
+            std::sync::Arc::new(defs),
+            [&plains, &plains],
+            [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+            7,
+            0,
+        );
+        g.auto_pass = false;
+        g.start_turn(3, 0);
+        while g.step != Step::Main1 {
+            g.apply(Action::PassPriority).unwrap();
+        }
+        let h = g.add_card(0, hub, Zone::Battlefield);
+        let w = g.add_card(0, cid("Nissa, Ascended Animist"), Zone::Battlefield);
+        g.objects[w.0 as usize].loyalty = 1;
+        g.objects[w.0 as usize].counters = 2;
+        let n = g.def_of(h).activated.len() - 1;
+        g.apply(Action::Activate(h, n)).unwrap();
+        g.apply(Action::Pick(w)).unwrap();
+        assert_eq!(
+            (g.obj(w).loyalty, g.obj(w).counters),
+            (1, 1),
+            "a +1/+1 counter, not loyalty"
+        );
+    }
+}
+/// Horizon Explorer's "Lands you control enter untapped" and Case of the Ransacked Lab's instant and
+/// sorcery discount (`ManaExt::your_lands_enter_untapped`, `ManaExt::instant_sorcery_discount`).
+mod untapped_lands_and_spell_discount {
+    use bolt_cards::set;
+    use bolt_core::{Action, Game, Step, Zone};
+
+    fn cid(name: &str) -> usize {
+        set("CMD").unwrap().index_of(name).unwrap()
+    }
+
+    #[test]
+    fn lands_enter_untapped_and_instants_cost_one_less() {
+        let mut defs = (*set("CMD").unwrap().defs).clone();
+        let explorer = cid("Ornithopter");
+        defs[explorer].mana_ext.your_lands_enter_untapped = true;
+        defs[explorer].mana_ext.instant_sorcery_discount = 1;
+        let plains = vec![cid("Plains"); 99];
+        let mut g = Game::new_commander(
+            std::sync::Arc::new(defs),
+            [&plains, &plains],
+            [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+            7,
+            0,
+        );
+        g.auto_pass = false;
+        g.start_turn(3, 0);
+        while g.step != Step::Main1 {
+            g.apply(Action::PassPriority).unwrap();
+        }
+        g.add_card(0, explorer, Zone::Battlefield);
+        let fen = g.add_card(0, cid("Vernal Fen"), Zone::Hand); // enters tapped without two basics
+        g.apply(Action::PlayLand(fen)).unwrap();
+        assert!(!g.obj(fen).tapped, "enters untapped");
+        let pyro = g.add_card(0, cid("Pyromatics"), Zone::Hand); // {1}{R}, with one Mountain: {R}
+        g.add_card(0, cid("Mountain"), Zone::Battlefield);
+        g.objects[fen.0 as usize].tapped = true;
+        assert!(
+            g.legal_actions().contains(&Action::CastX(pyro, 0)),
+            "{{1}} less (unreplicated)"
+        );
+    }
+}
+
+/// `AltCostExt::if_you_control` and `AltCostExt::opponent_gains` (Snuff Out, Invigorate), and
+/// `ManaExt::blight_chooses_last_mode` (Pyrrhic Strike).
+mod conditional_alt_costs_and_blight_modes {
+    use bolt_cards::set;
+    use bolt_core::card::AltCostExt;
+    use bolt_core::{Action, Game, Step, Target, Zone};
+
+    fn cid(name: &str) -> usize {
+        set("CMD").unwrap().index_of(name).unwrap()
+    }
+
+    fn start(defs: Vec<bolt_core::card::CardDef>) -> Game {
+        let plains = vec![cid("Plains"); 99];
+        let mut g = Game::new_commander(
+            std::sync::Arc::new(defs),
+            [&plains, &plains],
+            [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+            7,
+            0,
+        );
+        g.auto_pass = false;
+        g.start_turn(3, 0);
+        while g.step != Step::Main1 {
+            g.apply(Action::PassPriority).unwrap();
+        }
+        g
+    }
+
+    #[test]
+    fn the_alternative_cost_needs_the_subtype_and_gives_the_opponent_life() {
+        let mut defs = (*set("CMD").unwrap().defs).clone();
+        let bolt = cid("Lightning Bolt");
+        defs[bolt].mana_ext.alt_cost_ext = Some(AltCostExt {
+            if_you_control: Some("Forest"),
+            opponent_gains: 2,
+            ..Default::default()
+        });
+        let mut g = start(defs);
+        let b = g.add_card(0, bolt, Zone::Hand);
+        assert!(
+            !g.legal_actions().contains(&Action::CastAlternative(b)),
+            "no Forest"
+        );
+        g.add_card(0, cid("Forest"), Zone::Battlefield);
+        assert!(g.legal_actions().contains(&Action::CastAlternative(b)));
+        g.apply(Action::CastAlternative(b)).unwrap();
+        g.apply(Action::Target(Target::Player(1))).unwrap();
+        while !g.items.is_empty() {
+            g.apply(Action::PassPriority).unwrap();
+        }
+        assert_eq!(g.players[1].life, 39, "gained 2, then 3 damage");
+    }
+
+    #[test]
+    fn blighting_casts_the_last_mode() {
+        let mut defs = (*set("CMD").unwrap().defs).clone();
+        let strike = cid("Pyrrhic Strike");
+        assert!(defs[strike].mana_ext.blight_chooses_last_mode);
+        defs[strike].mana_ext.blight_chooses_last_mode = false;
+        let mut g = start(defs);
+        for _ in 0..3 {
+            g.add_card(0, cid("Plains"), Zone::Battlefield);
+        }
+        g.add_card(1, cid("Sol Ring"), Zone::Battlefield);
+        g.add_card(1, cid("Eternal Witness"), Zone::Battlefield);
+        let mine = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+        let s = g.add_card(0, strike, Zone::Hand);
+        let legal = g.legal_actions();
+        assert!(
+            !legal.contains(&Action::CastWith(s, mine)),
+            "without the flag: no blight cast"
+        );
+        assert!(
+            legal.contains(&Action::CastModal(s, 2)),
+            "without the flag: both is a plain mode"
+        );
+    }
+}
+
+/// `ManaExt::small_creatures_evade_big` (Delney, Streetwise Lookout) and
+/// `Activated::sacrifice_artifact_or_creature` (Ravenous Squirrel).
+mod delney_blocks_and_artifact_or_creature_sacrifice {
+    use bolt_cards::set;
+    use bolt_core::{Action, Game, Pending, Step, Zone};
+
+    fn cid(name: &str) -> usize {
+        set("CMD").unwrap().index_of(name).unwrap()
+    }
+
+    fn start(defs: Vec<bolt_core::card::CardDef>) -> Game {
+        let plains = vec![cid("Plains"); 99];
+        let mut g = Game::new_commander(
+            std::sync::Arc::new(defs),
+            [&plains, &plains],
+            [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+            7,
+            0,
+        );
+        g.auto_pass = false;
+        g.start_turn(3, 0);
+        while g.step != Step::Main1 {
+            g.apply(Action::PassPriority).unwrap();
+        }
+        g
+    }
+
+    #[test]
+    fn small_attackers_cant_be_blocked_by_power_3_or_greater() {
+        let mut defs = (*set("CMD").unwrap().defs).clone();
+        let lookout = cid("Ornithopter");
+        defs[lookout].mana_ext.small_creatures_evade_big = true;
+        let mut g = start(defs);
+        g.add_card(0, lookout, Zone::Battlefield);
+        let elf = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+        g.objects[elf.0 as usize].since_turn = 0;
+        let big = g.add_card(1, cid("Eternal Witness"), Zone::Battlefield);
+        g.until_eot.push(bolt_core::Modifier {
+            obj: big,
+            zcc: g.obj(big).zcc,
+            power: 1,
+            toughness: 0,
+            keywords: bolt_core::Keywords::NONE,
+            dies: None,
+        }); // a 3/1
+        let small = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+        while g.pending != Pending::DeclareAttackers(0) {
+            g.apply(Action::PassPriority).unwrap();
+        }
+        g.apply(Action::Attack(elf)).unwrap();
+        g.apply(Action::FinishAttacks).unwrap();
+        while !matches!(g.pending, Pending::DeclareBlockers(_)) {
+            g.apply(Action::PassPriority).unwrap();
+        }
+        let legal = g.legal_actions();
+        assert!(
+            !legal.contains(&Action::Block {
+                blocker: big,
+                attacker: elf
+            }),
+            "power 3 can't block"
+        );
+        assert!(
+            legal.contains(&Action::Block {
+                blocker: small,
+                attacker: elf
+            }),
+            "power 1 can"
+        );
+    }
+
+    #[test]
+    fn sacrifice_an_artifact_or_creature_is_the_players_pick() {
+        let mut defs = (*set("CMD").unwrap().defs).clone();
+        let engine = cid("Goblin Engineer");
+        let n = defs[engine]
+            .activated
+            .iter()
+            .position(|a| a.sacrifice_artifact)
+            .expect("its sacrifice ability");
+        defs[engine].activated[n].sacrifice_artifact = false;
+        defs[engine].activated[n].sacrifice_artifact_or_creature = true;
+        let mut g = start(defs);
+        let e = g.add_card(0, engine, Zone::Battlefield);
+        g.objects[e.0 as usize].since_turn = 0;
+        g.add_card(0, cid("Mountain"), Zone::Battlefield);
+        g.add_card(0, cid("Sol Ring"), Zone::Graveyard);
+        let ring = g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+        let elf = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+        let legal = g.legal_actions();
+        assert!(legal.contains(&Action::ActivateWith(e, n, ring)), "an artifact");
+        assert!(legal.contains(&Action::ActivateWith(e, n, elf)), "or a creature");
+    }
+}

@@ -2010,3 +2010,34 @@ fn nesting_dragon_makes_eggs_that_hatch_into_firebreathing_dragons() {
     resolve_all(&mut g, &[]);
     assert_eq!((g.power(dragon), g.toughness(dragon)), (3, 2), "{{R}}: +1/+0");
 }
+
+#[test]
+fn ashiok_makes_nightmares_that_exile_two_and_bounces_then_exiles_from_hand() {
+    let mut g = table();
+    let ashiok = put(&mut g, 0, "Ashiok, Nightmare Muse");
+    g.objects[ashiok.0 as usize].loyalty = 5;
+    act(&mut g, Action::Loyalty(ashiok, 0));
+    resolve_all(&mut g, &[]);
+    let nightmare = tokens(&g, 0, "Nightmare")[0];
+    assert_eq!((g.power(nightmare), g.toughness(nightmare)), (2, 3));
+    let a = g.add_card(1, cid("Lightning Bolt"), Zone::Library);
+    let b = g.add_card(1, cid("Hungry Ghoul"), Zone::Library);
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(nightmare));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.obj(a).zone, g.obj(b).zone), (Zone::Exile, Zone::Exile));
+    pass_to(&mut g, Step::Main2);
+    let elves = put(&mut g, 1, "Llanowar Elves");
+    act(&mut g, Action::Loyalty(ashiok, 1));
+    act(&mut g, Action::Target(obj(elves)));
+    while !matches!(g.pending, Pending::Decide(1)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Pick(elves));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Exile, "bounced, then exiled from hand");
+}

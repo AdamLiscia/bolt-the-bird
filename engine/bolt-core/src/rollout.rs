@@ -8,6 +8,13 @@
 //!
 //! Rollout `i` uses the same guessed world for every candidate (common random numbers), so the
 //! candidates are compared on equal footing.
+//!
+//! A search never panics out to its caller: a candidate whose imagined game hits an engine panic
+//! scores as a loss (so if every one fails, the baseline's move wins the tie). An optional time
+//! limit stops the search early with the best move scored so far, or the baseline's.
+
+use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::time::{Duration, Instant};
 
 use crate::baseline;
 use crate::game::{Action, Game, Outcome, Pending, PlayerId};
@@ -25,6 +32,9 @@ pub struct Config {
     /// exponentially (Homunculus Horde copying itself with an extra draw each turn), and each action
     /// gets slower as they do: one decision once ran for minutes.
     pub max_objects: usize,
+    /// Stop searching after this long and play the best move scored so far (the baseline's, if
+    /// none). Checked before every playout action. `None`: no limit (search runs to the end).
+    pub time_limit: Option<Duration>,
 }
 
 impl Default for Config {
@@ -34,6 +44,7 @@ impl Default for Config {
             max_candidates: 8,
             max_actions: 5_000,
             max_objects: 2_000,
+            time_limit: None,
         }
     }
 }
@@ -72,24 +83,27 @@ fn candidates(g: &Game, legal: &[Action], max: usize) -> Vec<Action> {
 }
 
 /// Plays `g` to the end with the baseline on both sides: 1 if `p` wins, 0.5 for a draw (or past
-/// either limit).
-fn playout(mut g: Game, p: PlayerId, cfg: &Config) -> f64 {
+/// either limit). `None` if `deadline` passes first.
+fn playout(mut g: Game, p: PlayerId, cfg: &Config, deadline: Option<Instant>) -> Option<f64> {
     for _ in 0..cfg.max_actions {
         if g.objects.len() > cfg.max_objects {
-            return 0.5;
+            return Some(0.5);
         }
         if let Some(o) = g.result {
-            return match o {
+            return Some(match o {
                 Outcome::Winner(w) => (w == p) as u8 as f64,
                 Outcome::Draw => 0.5,
-            };
+            });
+        }
+        if deadline.is_some_and(|d| Instant::now() >= d) {
+            return None;
         }
         let legal = g.legal_actions();
         if g.apply(baseline::choose(&g, &legal)).is_err() {
-            return 0.5;
+            return Some(0.5);
         }
     }
-    0.5
+    Some(0.5)
 }
 
 /// The pilot's choice from `legal` (which must be `g.legal_actions()`), searching with `seed`.
@@ -108,24 +122,35 @@ pub fn choose(g: &Game, legal: &[Action], cfg: &Config, seed: u64) -> Action {
     if cands.len() < 2 {
         return cands[0];
     }
+    let deadline = cfg.time_limit.map(|t| Instant::now() + t);
     let mut rng = Rng::new(seed);
     let worlds: Vec<u64> = (0..cfg.rollouts).map(|_| rng.next_u64()).collect();
-    let mut best = (f64::MIN, cands[0]);
-    for &a in &cands {
+    // The best (score, move) among the candidates scored in full: one cut short by the time limit
+    // isn't compared, since the others had more rollouts. None scored: the baseline's move.
+    let mut best: Option<(f64, Action)> = None;
+    'search: for &a in &cands {
         let mut total = 0.0;
         for &w in &worlds {
-            let mut h = g.clone();
-            h.manual_mana = [false; 2]; // imagined games pay automatically
-            h.determinize(p, w);
-            total += match h.apply(a) {
-                Ok(_) => playout(h, p, cfg),
-                Err(_) => 0.0,
-            };
+            // An engine panic in an imagined game scores that rollout as a loss.
+            let score = catch_unwind(AssertUnwindSafe(|| {
+                let mut h = g.clone();
+                h.manual_mana = [false; 2]; // imagined games pay automatically
+                h.determinize(p, w);
+                match h.apply(a) {
+                    Ok(_) => playout(h, p, cfg, deadline),
+                    Err(_) => Some(0.0),
+                }
+            }))
+            .unwrap_or(Some(0.0));
+            match score {
+                Some(s) => total += s,
+                None => break 'search,
+            }
         }
         // Ties go to the earlier candidate, so the baseline's pick wins a tie.
-        if total > best.0 {
-            best = (total, a);
+        if best.is_none_or(|b| total > b.0) {
+            best = Some((total, a));
         }
     }
-    best.1
+    best.map_or(cands[0], |b| b.1)
 }
