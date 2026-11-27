@@ -7468,6 +7468,78 @@
    "theme": "triggers",
    "owner": "d2",
    "status": "waiting: 'enters with three wish counters' (a CardDef field for kind counters on entering; merger) and 'an opponent gains control of this artifact' (an effect)"
+  },
+  {
+   "card": "Wild Growth",
+   "deck": "Sythis, Harvest's Hand",
+   "missing": "enchanted land adds an additional {G} [claimed by d1, idea_next11]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Utopia Sprawl",
+   "deck": "Sythis, Harvest's Hand",
+   "missing": "enchant Forest; chosen color; enchanted land adds that color [claimed by d1, idea_next11]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Shimmerwilds Growth",
+   "deck": "Sythis, Harvest's Hand",
+   "missing": "chosen color; enchanted land adds that color [claimed by d1, idea_next11] [d1 batch 37: scripted. Known limit (accepted for the demo): \"Enchanted land is the chosen color\" isn't applied, only the mana]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Concordant Crossroads",
+   "deck": "Toski, Bearer of Secrets",
+   "missing": "all creatures have haste (keywords) [claimed by d1, idea_next11]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Quirion Ranger",
+   "deck": "Toski, Bearer of Secrets",
+   "missing": "return a Forest you control as a cost; once each turn [claimed by d1, idea_next11]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Scryb Ranger",
+   "deck": "Toski, Bearer of Secrets",
+   "missing": "return a Forest you control as a cost; once each turn [claimed by d1, idea_next11]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Wirewood Symbiote",
+   "deck": "Toski, Bearer of Secrets",
+   "missing": "return an Elf you control as a cost; once each turn [claimed by d1, idea_next11]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Earthcraft",
+   "deck": "Rocco, Cabaretti Caterer",
+   "missing": "tap a named untapped creature as a cost; target basic land [claimed by d1, idea_next11]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Castle Garenbrig",
+   "deck": "Toski, Bearer of Secrets",
+   "missing": "six {G} only for creature spells or creatures' abilities [claimed by d1, idea_next11]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
   }
  ]
 }

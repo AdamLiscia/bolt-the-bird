@@ -150,6 +150,10 @@ pub struct Filter {
     /// Spells not cast from their owner's hand only, unless this spell was cast for its alternative
     /// cost (Wash Away uncleaved: "target spell that wasn't cast from its owner's hand").
     pub spell_not_from_hand_unless_alt: bool,
+    /// Land cards or permanents only (Deathrite Shaman: "target land card from a graveyard").
+    pub land_cards: bool,
+    /// Basic permanents only (Earthcraft: "target basic land").
+    pub basic_only: bool,
 }
 
 impl Filter {
@@ -220,6 +224,8 @@ impl Filter {
         tapped_only: false,
         subtypes_any: &[],
         spell_not_from_hand_unless_alt: false,
+        land_cards: false,
+        basic_only: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -2985,6 +2991,14 @@ pub enum Effect {
     /// "Each opponent exiles the top `n` cards of their library." (Ashiok's Nightmare token: 2)
     EachOpponentExilesTop(u8),
     /// Create `n` `def` tokens tapped (Alchemist's Talent: two tapped Treasures).
+    /// Imprint (Chrome Mox): you may exile a nonartifact, nonland card from your hand, as
+    /// `Decision::ImprintNonartifactNonland`; it's the source's `hideaway`.
+    ImprintNonartifactNonlandFromHand,
+    /// "Add N mana of any one color." (Lion's Eye Diamond: 3), as `Decision::ManaOfOneColor`.
+    AddManaOneColor(u8),
+    /// Cumulative upkeep—Add {R} (Braid of Fire): an age counter, then add {R} for each age counter
+    /// or sacrifice it, as `Decision::UpkeepAddManaOrSacrifice`.
+    CumulativeUpkeepAddMana(crate::Color),
     CreateTokensTapped {
         def: usize,
         n: u8,
@@ -3026,6 +3040,21 @@ pub enum Effect {
     SacrificeTargetsRevealTopPermanent(u8),
     /// Put the source onto the battlefield from the command zone (Derevi); it isn't cast.
     PutSourceOntoBattlefieldFromCommand,
+    /// "Until your next turn, instant and sorcery spells you cast cost {N} less to cast." (Ral,
+    /// Leyline Prodigy's +1: 1), kept in `Game::instant_sorcery_discount_until`.
+    InstantSorceryDiscountUntilYourNextTurn(u8),
+    /// "Choose a color. Add an amount of mana of that color equal to the number of creatures you
+    /// control of the chosen type." (Three Tree City: the source's `chosen_type`), as
+    /// `Decision::ManaOfOneColor`.
+    AddManaOneColorPerChosenType,
+    /// "You may blight `n`. If you do, ..." (Scuzzback Scrounger): `Decision::BlightCreature` picks a
+    /// creature you control for `n` -1/-1 counters, or `No` skips the rest (as does controlling none).
+    MayBlightThen(u8),
+    /// "Add N mana of this color. Spend this mana only to cast creature spells or activate
+    /// abilities of creatures." (Castle Garenbrig: six {G}): held in
+    /// `Game::creature_ability_color_mana`, it pays as Somberwald Sage's mana does, for a creature
+    /// spell or an ability whose source is a creature.
+    AddCreatureSpellOrAbilityMana(u8, crate::Color),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -3548,6 +3577,9 @@ pub struct Ability {
     pub divide_lands: bool,
     /// "Each of X target ...": exactly the ability's X targets.
     pub targets_exactly_x: bool,
+    /// "Choose any target, then choose another target for each time this spell was kicked"
+    /// (Comet Storm): exactly 1 + `Game::times_kicked` of its slots are chosen.
+    pub targets_one_plus_kicks: bool,
 }
 
 impl Ability {
@@ -3563,6 +3595,7 @@ impl Ability {
             divide: 0,
             divide_lands: false,
             targets_exactly_x: false,
+            targets_one_plus_kicks: false,
         }
     }
 
