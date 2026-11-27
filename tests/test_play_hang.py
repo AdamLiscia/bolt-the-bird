@@ -64,3 +64,20 @@ def test_a_game_over_its_time_budget_is_a_timeout_with_no_samples(monkeypatch):
     slow = out["results"][1]["slow"]
     assert slow["moves"] >= 5 and slow["permanents"][0] > slow["permanents"][1] == 1 and slow["most_common"]
     assert out["steps"] and all(st["game"] != 1 for st in out["steps"]), "the slow game leaves no samples"
+
+
+def test_stop_ends_a_run_early_and_kills_its_workers():
+    import pytest
+
+    from bolt.play_runner import Stopped
+
+    jobs = [("a", "b", 666, 0)] * 2  # both chunks would hang forever
+    t, asked = time.time(), []
+
+    def stop():
+        asked.append(1)
+        return len(asked) > 2
+
+    with pytest.raises(Stopped):
+        run_parallel(None, jobs, workers=2, chunk=1, hang_s=0, worker=worker, stop=stop, seats=("net", "net"))
+    assert time.time() - t < 30
