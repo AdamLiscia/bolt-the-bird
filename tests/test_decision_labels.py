@@ -125,6 +125,12 @@ def test_bruna_and_light_paws_attach_auras():
     assert label(dec, "No", 0) == "Done attaching Auras"
     glimpse = {"kind": "AuraEntersAttachedTo"}
     assert sv._decision_label(glimpse, "Pick", 0, "Hungry Ghoul") == "Attach the Aura to Hungry Ghoul"
+    vohar = {"kind": "DiscardThenIfInstantOrSorcery"}
+    assert sv._decision_label(vohar, "Pick", 0, "Opt") == "Discard Opt"
+    breath = {"kind": "MoveAuraTo"}
+    assert sv._decision_label(breath, "Pick", 0, "Hungry Ghoul") == "Attach the Aura to Hungry Ghoul"
+    kaalia = {"kind": "CreatureFromHandAttacking"}
+    assert sv._decision_label(kaalia, "Pick", 0, "Shivan Dragon") == "Put onto the battlefield attacking: Shivan Dragon"
 
 
 def test_venturing_names_the_dungeon_or_room():
@@ -148,6 +154,8 @@ def test_the_ring_tempting_you_names_the_ring_bearer():
 def test_a_split_or_omen_second_half_is_cast_by_its_name():
     assert sv._label("CastOmen", ["Fire // Ice"], (), 0, (0, 0, 0)) == "Cast Ice"
     assert sv._label("CastOmen", ["Sol Ring"], (), 0, (0, 0, 0)) == "Cast Sol Ring's Omen"
+    tergrid = "Tergrid, God of Fright // Tergrid's Lantern"
+    assert sv._label("CastModal", [tergrid], (1,), 0, (0, 1, 0)) == "Cast Tergrid's Lantern"
 
 
 def test_an_unknown_decision_keeps_the_generic_label():

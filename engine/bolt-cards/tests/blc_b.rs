@@ -2062,6 +2062,11 @@ fn octomancer_gifts_an_octopus_and_copies_new_tokens_each_end_step() {
     let octo = tokens_named(&g, 1, "Octopus");
     assert_eq!(octo.len(), 1);
     assert_eq!(g.power(octo[0]), 8);
+    assert_eq!(
+        g.colors_of(octo[0]),
+        [false, true, false, false, false],
+        "a blue Octopus"
+    );
     let sg = hand(&mut g, 0, "Siege-Gang Commander");
     play(&mut g, sg, false, &[], &[]);
     let old = g.add_card(0, token_def("Thopter"), Zone::Battlefield); // there since before this turn

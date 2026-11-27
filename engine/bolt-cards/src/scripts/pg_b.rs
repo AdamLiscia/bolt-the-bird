@@ -1822,6 +1822,185 @@ pub fn script(name: &str) -> Option<Script> {
                 loyalty(d, 0, Ability::new(vec![], vec![zero]));
             },
         ),
+        "Sheltered by Ghosts" => s(
+            &[
+                "Enchant creature you control",
+                "When this Aura enters, exile target nonland permanent an opponent controls until this Aura leaves the battlefield.",
+                "Enchanted creature gets +1/+0 and has lifelink and ward {2}.",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![YOUR_CREATURE], vec![]));
+                on(d, When::Enters, vec![OPP_NONLAND], vec![Effect::ExileUntilSourceLeaves(0)]);
+                attached(d, false, 1, 0, Keywords::LIFELINK);
+                d.enchanted_ward = Some(ManaCost::parse("{2}").expect("cost"));
+            },
+        ),
+        "Rankle, Master of Pranks" => s(
+            &[
+                "Whenever Rankle deals combat damage to a player, choose any number \u{2014}",
+                "\u{2022} Each player discards a card.",
+                "\u{2022} Each player loses 1 life and draws a card.",
+                "\u{2022} Each player sacrifices a creature of their choice.",
+            ],
+            |d, _| {
+                // "Choose any number": every set of the three modes is one mode (bit i: mode i), the
+                // empty set last, as Casualties of War.
+                let part = |i: usize| -> Vec<Effect> {
+                    let both = [Who::You, Who::EachOpponent];
+                    match i {
+                        0 => both.iter().map(|&who| Effect::Discard { who, n: 1 }).collect(),
+                        1 => both
+                            .iter()
+                            .flat_map(|&who| [Effect::LoseLife { who, n: 1 }, Effect::Draw { who, n: 1 }])
+                            .collect(),
+                        _ => both.iter().map(|&who| Effect::SacrificeCreatures { who, n: 1 }).collect(),
+                    }
+                };
+                let mut sets: Vec<Ability> = (1u32..8)
+                    .map(|m| {
+                        let effects = (0..3).filter(|i| m & (1 << i) != 0).flat_map(part).collect();
+                        Ability::new(vec![], effects)
+                    })
+                    .collect();
+                sets.push(Ability::new(vec![], vec![]));
+                on_modal(d, When::DealsCombatDamageToPlayer, None, sets);
+            },
+        ),
+        "Raphael, Tag Team Tough" => s(
+            &["Whenever Raphael deals combat damage to a player for the first time each turn, untap all attacking creatures. After this combat phase, there is an additional combat phase."],
+            |d, _| {
+                let effects = vec![Effect::UntapAttackersAndGrant(Keywords::NONE), Effect::AdditionalCombatAfterThisPhase];
+                on(d, When::DealsCombatDamageToPlayerFirstTimeEachTurn, vec![], effects);
+            },
+        ),
+        "The Immortal Sun" => s(
+            &[
+                "Players can't activate planeswalkers' loyalty abilities.",
+                "At the beginning of your draw step, draw an additional card.",
+                "Spells you cast cost {1} less to cast.",
+                "Creatures you control get +1/+1.",
+            ],
+            |d, _| {
+                d.players_cant_activate_loyalty = true;
+                conditional(d, When::EachDrawStep, Condition::YourTurn, vec![], vec![draw(1)]);
+                d.mana_ext.spell_discount_all = 1;
+                anthem(d, 1, 1);
+            },
+        ),
+        "Archfiend of Despair" => s(
+            &[
+                "Your opponents can't gain life.",
+                "At the beginning of each end step, each opponent loses life equal to the life that player lost this turn.",
+            ],
+            |d, _| {
+                d.opponents_cant_gain_life = true;
+                let lose = Effect::LoseLifeLostThisTurn(Who::EachOpponent);
+                on(d, When::EndStep { your_turn_only: false }, vec![], vec![lose]);
+            },
+        ),
+        "Brightclimb Pathway // Grimclimb Pathway" => s(&["{T}: Add {W}.", "Back: {T}: Add {B}."], |d, _| {
+            d.mana = Some(ManaSource::of(&[Color::White]));
+            d.modal_back = true;
+            d.back.as_mut().expect("Grimclimb Pathway").mana = Some(ManaSource::of(&[Color::Black]));
+        }),
+        "Gisela, Blade of Goldnight" => s(
+            &[
+                "If a source would deal damage to an opponent or a permanent an opponent controls, that source deals double that damage to that player or permanent instead.",
+                "If a source would deal damage to you or a permanent you control, prevent half that damage, rounded up.",
+            ],
+            |d, _| d.prevents_half_damage_to_you_and_yours = true,
+        ),
+        "Sower of Discord" => s(
+            &[
+                "As this creature enters, choose two players.",
+                "Whenever damage is dealt to one of the chosen players, the other chosen player also loses that much life.",
+            ],
+            |d, _| {
+                // Two players: both are chosen, so damage to either makes the other lose that much.
+                let other = Filter { triggering: true, ..Filter::PLAYER };
+                on(d, When::Never, vec![other], vec![Effect::LoseLifeAmount(Who::TargetPlayer(0))]);
+                d.damage_to_a_player_other_loses = Some(d.triggers.len() - 1);
+            },
+        ),
+        "Eiganjo Castle" => s(
+            &["{T}: Add {W}.", "{W}, {T}: Prevent the next 2 damage that would be dealt to target legendary creature this turn."],
+            |d, _| {
+                d.mana = Some(ManaSource::of(&[Color::White]));
+                let legendary = Filter { legendary_only: true, ..CREATURE };
+                let shield = Effect::PreventNextDamageToTargetThisTurn { slot: 0, n: 2 };
+                activated(d, "{W}", true, vec![legendary], vec![shield]);
+            },
+        ),
+        "Bennie Bracks, Zoologist" => s(
+            &["Convoke", "At the beginning of each end step, if you created a token this turn, draw a card."],
+            |d, _| {
+                d.mana_ext.convoke = true;
+                let each = When::EndStep { your_turn_only: false };
+                conditional(d, each, Condition::YouCreatedTokenThisTurn, vec![], vec![draw(1)]);
+            },
+        ),
+        "Inventors' Fair" => s(
+            &[
+                "At the beginning of your upkeep, if you control three or more artifacts, you gain 1 life.",
+                "{T}: Add {C}.",
+                "{4}, {T}, Sacrifice Inventors' Fair: Search your library for an artifact card, reveal it, put it into your hand, then shuffle. Activate only if you control three or more artifacts.",
+            ],
+            |d, _| {
+                let gain = Effect::GainLife { who: Who::You, n: 1 };
+                let upkeep = When::Upkeep { your_turn_only: true };
+                conditional(d, upkeep, Condition::ControlArtifactsAtLeast(3), vec![], vec![gain]);
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                let n = activated(d, "{4}", true, vec![], vec![search(SearchFor::Artifact, SearchTo::Hand)]);
+                d.activated[n].sacrifice_self = true;
+                d.activated[n].min_artifacts = 3;
+            },
+        ),
+        "Smaug the Magnificent" => s(
+            &[
+                "Whenever Smaug attacks, he deals damage equal to the number of Treasures you control to any target.",
+                "At the beginning of your upkeep, create a Treasure token.",
+            ],
+            |d, t| {
+                let burn = Effect::SourceDamagePerSubtypeYouControl { to: 0, sub: "Treasure" };
+                on(d, When::Attacks, vec![Filter::ANY], vec![burn]);
+                let treasure = Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 };
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![treasure]);
+            },
+        ),
+        "Mahadi, Emporium Master" => s(
+            &["At the beginning of your end step, create a Treasure token for each creature that died this turn."],
+            |d, t| {
+                let treasures = Effect::CreateTokenPerCreatureDiedThisTurn { def: t.treasure };
+                on(d, When::EndStep { your_turn_only: true }, vec![], vec![treasures]);
+            },
+        ),
+        "Goblin Engineer" => s(
+            &[
+                "When this creature enters, you may search your library for an artifact card, put it into your graveyard, then shuffle.",
+                "{R}, {T}, Sacrifice an artifact: Return target artifact card with mana value 3 or less from your graveyard to the battlefield.",
+            ],
+            |d, _| {
+                // Searching may find nothing, which covers "you may".
+                on(d, When::Enters, vec![], vec![search(SearchFor::Artifact, SearchTo::Graveyard)]);
+                let card = Filter { artifact_cards: true, max_mana_value: Some(3), ..graveyard_cards(false, Controller::You) };
+                let n = activated(d, "{R}", true, vec![card], vec![Effect::Reanimate(0)]);
+                d.activated[n].sacrifice_artifact = true;
+            },
+        ),
+        "Cavern of Souls" => s(
+            &[
+                "As this land enters, choose a creature type.",
+                "{T}: Add {C}.",
+                "{T}: Add one mana of any color. Spend this mana only to cast a creature spell of the chosen type, and that spell can't be countered.",
+            ],
+            |d, _| {
+                d.choose_creature_type = true;
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                d.any_color_for_chosen_type = true;
+                d.chosen_type_mana_uncounterable = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -2039,6 +2218,21 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Ugin, the Ineffable",
     "Crested Sunmare",
     "Ajani, Strength of the Pride",
+    "Sheltered by Ghosts",
+    "Rankle, Master of Pranks",
+    "Raphael, Tag Team Tough",
+    "The Immortal Sun",
+    "Archfiend of Despair",
+    "Brightclimb Pathway // Grimclimb Pathway",
+    "Gisela, Blade of Goldnight",
+    "Sower of Discord",
+    "Eiganjo Castle",
+    "Bennie Bracks, Zoologist",
+    "Inventors' Fair",
+    "Smaug the Magnificent",
+    "Mahadi, Emporium Master",
+    "Goblin Engineer",
+    "Cavern of Souls",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",
