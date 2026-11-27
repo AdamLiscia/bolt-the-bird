@@ -279,3 +279,80 @@ def test_mirrormind_crown_asks_copies_or_the_tokens():
     dec = {"kind": "MirrormindCopies"}
     assert label(dec, "Yes", 0) == "Make copies of the equipped creature instead"
     assert label(dec, "No", 0) == "Make the tokens"
+
+
+def test_the_gitrog_asks_for_a_rider_and_how_many_lands():
+    rider = {"kind": "SacrificeSaddler", "mount": [3, 1]}
+    assert sv._decision_label(rider, "Pick", 0, "Llanowar Elves") == "Sacrifice (it saddled the Mount): Llanowar Elves"
+    assert label(rider, "No", 0) == "Don't sacrifice"
+    count = {"kind": "GitrogLandCount", "max": 2}
+    assert label(count, "Amount", 0) == "Put no lands onto the battlefield"
+    assert label(count, "Amount", 2) == "Put 2 lands from your hand onto the battlefield tapped"
+    pick = {"kind": "GitrogLandPick", "left": 1}
+    assert sv._decision_label(pick, "Pick", 0, "Forest") == "Put onto the battlefield tapped: Forest"
+
+
+def test_pippin_protection_from_a_card_type():
+    assert label({"kind": "ProtectionCardType"}, "Mode", 1) == "Protection from creatures"
+    assert label({"kind": "ProtectionCardType"}, "Mode", 6) == "Protection from sorceries"
+
+
+def test_rose_room_treasurer_pays_x_for_x_damage():
+    dec = {"kind": "PayXDamage", "max": 4}
+    assert label(dec, "Amount", 0) == "Don't pay"
+    assert label(dec, "Amount", 3) == "Pay {3}: 3 damage"
+
+
+def test_malcolm_discards_and_may_cast_it_free():
+    dec = {"kind": "DiscardMayCastFree", "free": True}
+    assert sv._decision_label(dec, "Pick", 0, "Opt") == "Discard (you may cast it free) Opt"
+    dec = {"kind": "DiscardMayCastFree", "free": False}
+    assert sv._decision_label(dec, "Pick", 0, "Opt") == "Discard Opt"
+
+
+def test_proliferate_chooses_permanents_and_players():
+    dec = {"kind": "Proliferate", "picked": [], "players": [False, False], "rounds": 1}
+    assert sv._decision_label(dec, "Pick", 0, "Llanowar Elves") == "Proliferate: Llanowar Elves"
+    assert label(dec, "Mode", 1) == "Proliferate: player 2"
+    assert label(dec, "Yes", 0) == "Done choosing (proliferate)"
+
+
+def test_tekuthal_picks_each_counter_to_remove():
+    dec = {"kind": "RemoveCountersFromOthers", "left": 3}
+    assert sv._decision_label(dec, "Pick", 0, "Sol Ring") == "Remove a counter from Sol Ring"
+    assert label(dec, "No", 0) == "Don't activate it"
+
+
+def test_ichormoon_gauntlet_chooses_a_counter_kind():
+    dec = {"kind": "ChooseCounterKind", "kinds": [0, 2]}
+    assert label(dec, "Mode", 0) == "Another +1/+1 counter"
+    assert label(dec, "Mode", 2) == "Another stun counter"
+
+
+def test_hand_to_battlefield_and_exile_from_hand_picks():
+    sentry = {"kind": "CreatureFromHandAttackingMaxMv", "max": 2}
+    assert (
+        sv._decision_label(sentry, "Pick", 0, "Llanowar Elves") == "Put onto the battlefield attacking: Llanowar Elves"
+    )
+    kodama = {"kind": "PermanentFromHandMaxMv", "max": 3}
+    assert sv._decision_label(kodama, "Pick", 0, "Sol Ring") == "Put onto the battlefield: Sol Ring"
+    ashiok = {"kind": "ExileCardFromHand"}
+    assert sv._decision_label(ashiok, "Pick", 0, "Opt") == "Exile from your hand: Opt"
+
+
+def test_demons_disciple_each_player_sacrifices():
+    dec = {"kind": "EachSacrificesCreatureOrPlaneswalker", "next": 1}
+    assert sv._decision_label(dec, "Pick", 0, "Llanowar Elves") == "Sacrifice Llanowar Elves"
+
+
+def test_land_sacrifice_and_ad_nauseam_labels():
+    sac = {"kind": "SacrificeLands", "left": 1}
+    assert sv._decision_label(sac, "Pick", 0, "Forest") == "Sacrifice Forest"
+    ad = {"kind": "AdNauseamAgain"}
+    assert label(ad, "Yes", 0) == "Reveal another card (Ad Nauseam)"
+    assert label(ad, "No", 0) == "Stop (Ad Nauseam)"
+
+
+def test_flare_of_malice_sacrifices_the_greatest():
+    dec = {"kind": "SacrificeGreatestMv"}
+    assert sv._decision_label(dec, "Pick", 0, "Sol Ring") == "Sacrifice Sol Ring"

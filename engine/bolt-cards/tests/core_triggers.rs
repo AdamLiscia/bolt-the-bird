@@ -2006,3 +2006,62 @@ fn ring_bearer_combat_damage_drains_three_at_the_fourth_level() {
     }
     assert_eq!(life(&g, 1), 40 - 2 - 3, "2 combat damage, then the Ring's 3");
 }
+
+#[test]
+fn you_cast_triggers_carry_the_spell_and_the_game_knows_it_while_firing() {
+    // Sol Ring, given "Whenever you cast a spell, copy it" for this test.
+    let t = trigger(When::YouCast, None, vec![Effect::CopySpellNewTargets]);
+    let mut g = game_with(ring_with(t));
+    g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Hand);
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(bolt_core::Target::Player(1)));
+    assert_eq!(g.firing_spell, None, "only while the triggers fire");
+    while !g.items.is_empty()
+        || matches!(
+            g.pending,
+            bolt_core::Pending::ChooseTarget(_) | bolt_core::Pending::Decide(_)
+        )
+    {
+        let a = match g.pending {
+            bolt_core::Pending::ChooseTarget(_) => Action::Target(bolt_core::Target::Player(1)),
+            bolt_core::Pending::Decide(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(life(&g, 1), 34, "the Bolt and the copy of that spell");
+}
+
+#[test]
+fn a_creature_you_dont_control_with_slime_dies() {
+    // Sol Ring, given Toxrill's "Whenever a creature you don't control with a slime counter on it
+    // dies, create a 1/1 black Slug creature token." for this test.
+    let slug = token_def("Slug");
+    let t = trigger(
+        When::CreatureYouDontControlWithSlimeDies,
+        None,
+        vec![Effect::CreateToken {
+            who: Who::You,
+            def: slug,
+            n: 1,
+        }],
+    );
+    let mut g = game_with(ring_with(t));
+    g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    let slimed = g.add_card(1, cid("Serra Angel"), Zone::Battlefield);
+    let plain = g.add_card(1, cid("Serra Angel"), Zone::Battlefield);
+    let mine = g.add_card(0, cid("Serra Angel"), Zone::Battlefield);
+    g.objects[slimed.0 as usize].slime = 1;
+    g.objects[mine.0 as usize].slime = 1;
+    let slugs = |g: &Game| g.permanents(0).filter(|&x| g.def_of(x).name == "Slug").count();
+    kill(&mut g, plain);
+    resolve_all(&mut g, &[]);
+    assert_eq!(slugs(&g), 0, "no slime counter");
+    kill(&mut g, mine);
+    resolve_all(&mut g, &[]);
+    assert_eq!(slugs(&g), 0, "one you control");
+    kill(&mut g, slimed);
+    resolve_all(&mut g, &[]);
+    assert_eq!(slugs(&g), 1, "slime counter, as it last existed");
+}

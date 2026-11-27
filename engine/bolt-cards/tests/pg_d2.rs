@@ -2743,3 +2743,353 @@ fn currency_converter_exiles_discards_and_turns_them_into_treasure_or_rogues() {
     assert_eq!(g.obj(forest).zone, Zone::Graveyard);
     assert_eq!(tokens(&g, 0, "Treasure").len(), 1);
 }
+
+/// Resolves everything, targeting the opponent and answering yes.
+fn settle_yes_at_opponent(g: &mut Game) {
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) => Action::Target(Target::Player(1)),
+            Pending::Decide(_) => Action::Yes,
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn basking_broodscale_adapts_once_and_all_will_be_one_burns_for_the_counters() {
+    let mut g = table();
+    put(&mut g, 0, "All Will Be One");
+    let lizard = put(&mut g, 0, "Basking Broodscale");
+    act(&mut g, Action::Activate(lizard, 0)); // adapt 1
+    settle_yes_at_opponent(&mut g);
+    assert_eq!(g.obj(lizard).counters, 1);
+    assert_eq!(tokens(&g, 0, "Eldrazi Spawn").len(), 1, "a counter was put on it");
+    assert_eq!(g.players[1].life, 39, "one counter: 1 damage");
+    act(&mut g, Action::Activate(lizard, 0)); // it has a counter: adapt does nothing
+    settle_yes_at_opponent(&mut g);
+    assert_eq!(g.obj(lizard).counters, 1);
+    assert_eq!(tokens(&g, 0, "Eldrazi Spawn").len(), 1);
+    assert_eq!(g.players[1].life, 39);
+}
+
+#[test]
+fn moonstone_exiles_a_discarded_card_to_play_until_your_next_turn() {
+    let mut g = table();
+    put(&mut g, 0, "Moonstone, Harsh Mistress");
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    loot_away(&mut g, bolt); // Moonstone's may is taken
+    assert_eq!(g.obj(bolt).zone, Zone::Exile);
+    assert!(has(&g, Action::Cast(bolt)), "playable from exile");
+    play(&mut g, bolt, false, &[Target::Player(1)], &[]);
+    assert_eq!(g.players[1].life, 37);
+}
+
+#[test]
+fn the_ozolith_keeps_a_leaving_creatures_counters_and_moves_them_at_combat() {
+    let mut g = table();
+    let oz = put(&mut g, 0, "The Ozolith");
+    let lizard = put(&mut g, 0, "Basking Broodscale");
+    act(&mut g, Action::Activate(lizard, 0)); // adapt 1
+    settle_yes_at_opponent(&mut g);
+    assert_eq!(g.obj(lizard).counters, 1);
+    let d = hand(&mut g, 0, "Hero's Downfall");
+    play(&mut g, d, false, &[obj(lizard)], &[]);
+    assert_eq!(g.obj(oz).counters, 1, "those counters");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    g.start_turn(5, 0);
+    for _ in 0..100 {
+        match g.pending {
+            Pending::ChooseTarget(_) => {
+                act(&mut g, Action::Target(Target::Object(lions)));
+            }
+            Pending::Decide(_) => {
+                act(&mut g, Action::Yes);
+            }
+            _ if g.obj(oz).counters == 0 && g.items.is_empty() => break,
+            _ => {
+                act(&mut g, Action::PassPriority);
+            }
+        }
+    }
+    assert_eq!(g.obj(lions).counters, 1, "moved onto the Lions");
+    assert_eq!(g.obj(oz).counters, 0);
+}
+
+#[test]
+fn enduring_tenacity_drains_on_life_gain_and_returns_as_an_enchantment() {
+    let mut g = table();
+    let snake = put(&mut g, 0, "Enduring Tenacity");
+    let food = g.add_card(0, token_def(&g, "Food"), Zone::Battlefield);
+    act(&mut g, Action::Activate(food, 0));
+    settle_yes_at_opponent(&mut g);
+    assert_eq!(g.players[1].life, 37, "that much life");
+    let d = hand(&mut g, 0, "Hero's Downfall");
+    play(&mut g, d, false, &[obj(snake)], &[]);
+    assert_eq!(g.obj(snake).zone, Zone::Battlefield, "back");
+    assert!(!g.types_of(snake).creature && g.types_of(snake).enchantment);
+}
+
+#[test]
+fn enduring_courage_pumps_and_hastes_each_other_creature_entering() {
+    let mut g = table();
+    put(&mut g, 0, "Enduring Courage");
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    play(&mut g, elves, false, &[], &[]);
+    assert_eq!(g.power(elves), 3);
+    assert!(g.keywords(elves).has(Keywords::HASTE));
+}
+
+#[test]
+fn field_of_the_dead_makes_zombies_at_seven_land_names() {
+    let mut g = table(); // five basic names
+    let field = put(&mut g, 0, "Field of the Dead"); // six
+    assert!(tokens(&g, 0, "Zombie").is_empty());
+    let tower = hand(&mut g, 0, "Command Tower");
+    act(&mut g, Action::PlayLand(tower)); // seven names
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Zombie").len(), 1);
+    let _ = field;
+}
+
+#[test]
+fn mystic_sanctuary_untapped_puts_an_instant_on_top() {
+    let mut g = table(); // five Islands
+    let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Graveyard);
+    let sanctuary = hand(&mut g, 0, "Mystic Sanctuary");
+    act(&mut g, Action::PlayLand(sanctuary));
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) => Action::Target(Target::Object(bolt)),
+            Pending::Decide(_) => Action::Yes,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert!(!g.obj(sanctuary).tapped);
+    assert_eq!(g.players[0].library.last(), Some(&bolt), "on top");
+}
+
+#[test]
+fn bontu_attacks_only_after_a_creature_of_yours_died_and_drains_on_a_sacrifice() {
+    let mut g = table();
+    let bontu = put(&mut g, 0, "Bontu the Glorified");
+    put(&mut g, 0, "Savannah Lions");
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(!has(&g, Action::Attack(bontu)), "nothing died");
+    let mut g = table();
+    let bontu = put(&mut g, 0, "Bontu the Glorified");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    act(&mut g, Action::ActivateWith(bontu, 0, lions));
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let a = if matches!(g.pending, Pending::Decide(_) | Pending::ChooseTarget(_)) {
+            g.legal_actions()[0]
+        } else {
+            Action::PassPriority
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard);
+    assert_eq!((g.players[0].life, g.players[1].life), (41, 39));
+    while g.pending != Pending::DeclareAttackers(0) {
+        let a = match g.pending {
+            Pending::Decide(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert!(
+        has(&g, Action::Attack(bontu)),
+        "a creature died under your control this turn"
+    );
+    let _ = elves;
+}
+
+#[test]
+fn mana_drain_counters_and_adds_colorless_at_your_next_main_phase() {
+    let mut g = table();
+    let angel = hand(&mut g, 0, "Serra Angel");
+    act(&mut g, Action::Cast(angel));
+    let drain = hand(&mut g, 0, "Mana Drain");
+    act(&mut g, Action::Cast(drain));
+    act(&mut g, Action::Target(Target::Object(angel)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(angel).zone, Zone::Graveyard, "countered");
+    while g.step != Step::Main2 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(
+        g.players[0].pool.iter().filter(|m| m.colorless).count(),
+        5,
+        "its mana value in {{C}}"
+    );
+}
+
+#[test]
+fn beza_catches_up_on_each_count_an_opponent_leads() {
+    let mut g = table();
+    put(&mut g, 1, "Forest"); // more lands
+    g.players[1].life = 50; // more life
+    put(&mut g, 1, "Savannah Lions");
+    put(&mut g, 1, "Llanowar Elves"); // two creatures to Beza's one
+    for _ in 0..4 {
+        hand(&mut g, 1, "Plains"); // more cards in hand
+    }
+    let beza = hand(&mut g, 0, "Beza, the Bounding Spring");
+    let before = g.players[0].hand.len();
+    play(&mut g, beza, false, &[], &[]);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 1);
+    assert_eq!(g.players[0].life, 44);
+    assert_eq!(tokens(&g, 0, "Fish").len(), 2);
+    assert_eq!(g.players[0].hand.len(), before - 1 + 1, "cast Beza, drew one");
+
+    let mut g = table(); // level on everything
+    let beza = hand(&mut g, 0, "Beza, the Bounding Spring");
+    for _ in 0..8 {
+        hand(&mut g, 0, "Plains");
+    }
+    play(&mut g, beza, false, &[], &[]);
+    assert!(tokens(&g, 0, "Treasure").is_empty() && tokens(&g, 0, "Fish").is_empty());
+    assert_eq!(g.players[0].life, 40);
+}
+
+#[test]
+fn tandem_lookout_pairs_and_each_draws_on_damage_to_an_opponent() {
+    let mut g = table();
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let lookout = hand(&mut g, 0, "Tandem Lookout");
+    act(&mut g, Action::Cast(lookout));
+    while !g.items.is_empty() || matches!(g.pending, Pending::Decide(_)) {
+        let a = if has(&g, Action::Pick(lions)) {
+            Action::Pick(lions)
+        } else if matches!(g.pending, Pending::Decide(_)) {
+            Action::Yes
+        } else {
+            Action::PassPriority
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.paired_partner(lookout), Some(lions));
+    attack(&mut g, &[lions]);
+    let before = g.players[0].hand.len();
+    through_combat(&mut g);
+    assert_eq!(g.players[1].life, 38);
+    assert_eq!(
+        g.players[0].hand.len(),
+        before + 1,
+        "the paired Lions drew a card"
+    );
+}
+
+#[test]
+fn rose_room_treasurer_makes_two_treasures_then_pays_x_for_damage() {
+    let mut g = table();
+    put(&mut g, 0, "Rose Room Treasurer");
+    for n in 1..=3 {
+        let elves = hand(&mut g, 0, "Llanowar Elves");
+        act(&mut g, Action::Cast(elves));
+        while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+            let a = match g.pending {
+                Pending::ChooseTarget(_) => Action::Target(Target::Player(1)),
+                Pending::Decide(_) => Action::Amount(2),
+                _ => Action::PassPriority,
+            };
+            act(&mut g, a);
+        }
+        assert_eq!(
+            tokens(&g, 0, "Treasure").len(),
+            n.min(2),
+            "the first and second time"
+        );
+    }
+    assert_eq!(g.players[1].life, 38, "the third time: pay {{2}}, 2 damage");
+}
+
+#[test]
+fn sabotender_and_tannuk_burn_on_landfall_and_tannuk_draws_the_second_time() {
+    let mut g = table();
+    put(&mut g, 0, "Sabotender");
+    put(&mut g, 0, "Tannuk, Memorial Ensign");
+    put(&mut g, 0, "Composer of Spring");
+    let forest = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(forest));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 38, "1 each");
+    let island = hand(&mut g, 0, "Island");
+    let blood = hand(&mut g, 0, "Exquisite Blood");
+    let before = g.players[0].hand.len();
+    play(&mut g, blood, false, &[], &[Action::Pick(island)]); // Composer puts the Island in
+    assert_eq!(g.obj(island).zone, Zone::Battlefield);
+    assert_eq!(g.players[1].life, 36);
+    assert_eq!(
+        g.players[0].hand.len(),
+        before - 2 + 1,
+        "Tannuk's second resolution draws"
+    );
+}
+
+#[test]
+fn seasoned_dungeoneer_takes_the_initiative_and_protects_an_attacking_warrior() {
+    let mut g = table();
+    let dungeoneer = hand(&mut g, 0, "Seasoned Dungeoneer");
+    act(&mut g, Action::Cast(dungeoneer));
+    // The initiative ventures into Undercity: answer its room choices.
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) | Pending::Decide(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.initiative.map(|(p, _)| p), Some(0), "you take the initiative");
+    let angel = put(&mut g, 1, "Serra Angel");
+    let lions = put(&mut g, 0, "Savannah Lions"); // a Cat Soldier: not a party member
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        match g.pending {
+            Pending::Decide(_) | Pending::ChooseTarget(_) => {
+                let a = g.legal_actions()[0];
+                act(&mut g, a);
+            }
+            _ => {
+                act(&mut g, Action::PassPriority);
+            }
+        }
+    }
+    act(&mut g, Action::Attack(dungeoneer));
+    act(&mut g, Action::Attack(lions));
+    act(&mut g, Action::FinishAttacks);
+    assert!(
+        !has(&g, Action::Target(Target::Object(lions))),
+        "a Cleric, Rogue, Warrior or Wizard only"
+    );
+    while !matches!(g.pending, Pending::DeclareBlockers(_)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) => Action::Target(Target::Object(dungeoneer)),
+            Pending::Decide(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert!(
+        !has(
+            &g,
+            Action::Block {
+                blocker: angel,
+                attacker: dungeoneer
+            }
+        ),
+        "protection from creatures"
+    );
+    assert!(has(
+        &g,
+        Action::Block {
+            blocker: angel,
+            attacker: lions
+        }
+    ));
+}

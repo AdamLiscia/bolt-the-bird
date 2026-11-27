@@ -19,3 +19,6 @@ target/
 engine/target/
 engine/dist/
 engine/*.txt
+
+# test fixtures the engine tests read (the data/ rule above is for local training data)
+!engine/bolt-cards/tests/data/

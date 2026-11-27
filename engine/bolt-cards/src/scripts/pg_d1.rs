@@ -1351,7 +1351,7 @@ pub fn script(name: &str) -> Option<Script> {
                 "Saddle 1",
             ],
             |d, _| {
-                may(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::SacrificeSaddlerDrawXLandsX]);
+                on(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::SacrificeSaddlerDrawXLandsX]);
                 let n = activated(d, "", false, vec![], vec![Effect::BecomeSaddled]);
                 d.activated[n].saddle = 1;
                 d.activated[n].sorcery = true;
@@ -1367,6 +1367,506 @@ pub fn script(name: &str) -> Option<Script> {
             |d, _| {
                 d.reduction = Some(Reduction::PerCreatureCardInYourGraveyard);
                 d.mana_ext.creature_from_graveyard_once_each_turn = true;
+            },
+        ),
+        // ---- Animar, Soul of Elements ----
+        "Walking Ballista" => s(
+            &[
+                "This creature enters with X +1/+1 counters on it.",
+                "{4}: Put a +1/+1 counter on this creature.",
+                "Remove a +1/+1 counter from this creature: It deals 1 damage to any target.",
+            ],
+            |d, _| {
+                d.enters_with_x_counters = true;
+                activated(d, "{4}", false, vec![], vec![Effect::CountersSelf { n: 1 }]);
+                let n = activated(d, "", false, vec![Filter::ANY], vec![damage(1, Recipient::Target(0))]);
+                d.activated[n].remove_plus_counters = 1;
+            },
+        ),
+        "Somberwald Sage" => s(
+            &["{T}: Add three mana of any one color. Spend this mana only to cast creature spells."],
+            |d, _| {
+                // One ability per color (as Kami of Whispered Hopes), all three of that color.
+                for c in Color::ALL {
+                    activated(d, "", true, vec![], vec![Effect::AddCreatureSpellMana(3, c)]);
+                }
+            },
+        ),
+        "Vizier of the Menagerie" => s(
+            &[
+                "You may look at the top card of your library any time.",
+                "You may cast creature spells from the top of your library.",
+                "You can spend mana of any type to cast creature spells.",
+            ],
+            |d, _| {
+                // Looking at the top card any time is information only.
+                d.top_spells_creatures = true;
+                d.mana_ext.creature_spells_any_type_mana = true;
+            },
+        ),
+        // ---- Lonis, Genetics Expert ----
+        "Argent Sphinx" => s(
+            &["Metalcraft — {U}: Exile this creature. Return it to the battlefield under your control at the beginning of the next end step. Activate only if you control three or more artifacts."],
+            |d, _| {
+                let n = activated(d, "{U}", false, vec![], vec![Effect::FlickerSelf]);
+                d.activated[n].min_artifacts = 3;
+            },
+        ),
+        // ---- Oloro, Ageless Ascetic ----
+        "Mystic Gate" => s(&["{T}: Add {C}.", "{W/U}, {T}: Add {W}{W}, {W}{U}, or {U}{U}."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            let wu = [Color::White, Color::Blue];
+            d.paid_mana = Some((ManaCost::parse("{W/U}").expect("a mana cost"), [ManaSource::of(&wu), ManaSource::of(&wu)]));
+        }),
+        "Karlov of the Ghost Council" => s(
+            &[
+                "Whenever you gain life, put two +1/+1 counters on Karlov.",
+                "{W}{B}, Remove six +1/+1 counters from Karlov: Exile target creature.",
+            ],
+            |d, _| {
+                on(d, When::YouGainLife, vec![], vec![Effect::CountersSelf { n: 2 }]);
+                let n = activated(d, "{W}{B}", false, vec![CREATURE], vec![Effect::Exile(0)]);
+                d.activated[n].remove_plus_counters = 6;
+            },
+        ),
+        // ---- Korvold, Fae-Cursed King ----
+        "Miren, the Moaning Well" => s(
+            &["{T}: Add {C}.", "{3}, {T}, Sacrifice a creature: You gain life equal to the sacrificed creature's toughness."],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                let n = activated(d, "{3}", true, vec![], vec![Effect::GainLifeAmount]);
+                d.activated[n].sacrifice_other_creature = true;
+                d.activated[n].amount_from_victim_toughness = true;
+            },
+        ),
+        // ---- Raggadragga, Goreguts Boss ----
+        "Topiary Lecturer" => s(
+            &["Increment", "{T}: Add an amount of {G} equal to this creature's power."],
+            |d, _| {
+                on(d, When::YouCast, vec![], vec![Effect::IncrementSelf]);
+                activated(d, "", true, vec![], vec![Effect::AddManaSourcePower(Color::Green)]);
+            },
+        ),
+        // ---- Najeela, the Blade-Blossom ----
+        "Champion of Lambholt" => s(
+            &[
+                "Creatures with power less than this creature's power can't block creatures you control.",
+                "Whenever another creature you control enters, put a +1/+1 counter on this creature.",
+            ],
+            |d, _| {
+                d.mana_ext.smaller_cant_block_yours = true;
+                on(d, When::AnotherCreatureYouControlEnters, vec![], vec![Effect::CountersSelf { n: 1 }]);
+            },
+        ),
+        // ---- Oloro, Ageless Ascetic ----
+        "Will, Scion of Peace" => s(
+            &["{T}: Spells you cast this turn that are white and/or blue cost {X} less to cast, where X is the amount of life you gained this turn. Activate only as a sorcery."],
+            |d, _| {
+                let n = activated(d, "", true, vec![], vec![Effect::WhiteBlueSpellsCostLessLifeGainedThisTurn]);
+                d.activated[n].sorcery = true;
+            },
+        ),
+        // ---- Ral, Monsoon Mage ----
+        "High Tide" => s(
+            &["Until end of turn, whenever a player taps an Island for mana, that player adds an additional {U}."],
+            |d, _| spell(d, vec![], vec![Effect::IslandsAddExtraBlueThisTurn]),
+        ),
+        // ---- Ghyrson Starn, Kelermorph ----
+        "Pyromatics" => s(&["Replicate {1}{R}", "Pyromatics deals 1 damage to any target."], |d, _| {
+            d.mana_ext.multikicker = ManaCost::parse("{1}{R}");
+            on(d, When::YouCastThis, vec![], vec![Effect::CopySourceSpellPerReplicate]);
+            spell(d, vec![Filter::ANY], vec![damage(1, Recipient::Target(0))]);
+        }),
+        // ---- Atla Palani, Nest Tender ----
+        "Rith's Grove" => s(
+            &[
+                "When this land enters, sacrifice it unless you return a non-Lair land you control to its owner's hand.",
+                "{T}: Add {R}, {G}, or {W}.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::ReturnNonSubtypeLandOrSacrificeSelf("Lair")]);
+                d.mana = Some(ManaSource::of(&[Color::Red, Color::Green, Color::White]));
+            },
+        ),
+        // ---- Raffine, Scheming Seer ----
+        "Momo, Friendly Flier" => s(
+            &[
+                "The first non-Lemur creature spell with flying you cast during each of your turns costs {1} less to cast.",
+                "Whenever another creature you control with flying enters, Momo gets +1/+1 until end of turn.",
+            ],
+            |d, _| {
+                d.mana_ext.first_flier_discount_your_turn = 1;
+                on(d, When::AnotherCreatureWithFlyingYouControlEnters, vec![], vec![Effect::PumpSelf { power: 1, toughness: 1 }]);
+            },
+        ),
+        // ---- idea decks ----
+        "Path of Ancestry" => s(
+            &[
+                "This land enters tapped.",
+                "{T}: Add one mana of any color in your commander's color identity. When that mana is spent to cast a creature spell that shares a creature type with your commander, scry 1.",
+            ],
+            |d, _| {
+                d.enters_tapped = true;
+                d.mana_commander_identity = true;
+                d.mana_ext.scry_if_commander_type_creature = true;
+                on(d, When::ManaSpentOnCommanderTypeCreature, vec![], vec![Effect::Scry { n: 1 }]);
+            },
+        ),
+        "Rain of Riches" => s(
+            &[
+                "When this enchantment enters, create two Treasure tokens.",
+                "The first spell you cast each turn that mana from a Treasure was spent to cast has cascade.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.treasure, n: 2 }]);
+                on(d, When::YouCast, vec![], vec![Effect::StopUnlessFirstTreasureSpellThisTurn, Effect::Cascade]);
+            },
+        ),
+        // ---- Najeela, the Blade-Blossom ----
+        "Make Disappear" => s(
+            &["Casualty 1", "Counter target spell unless its controller pays {2}."],
+            |d, _| {
+                d.extra_cost = Some(ExtraCost::Casualty(1));
+                on(d, When::YouCastThis, vec![], vec![Effect::CopySourceSpellIfCasualty]);
+                spell(d, vec![SPELL], vec![Effect::CounterUnlessPays(0, 2, 2)]);
+            },
+        ),
+        // ---- idea decks: Hearthhull, Kenrith ----
+        "Vernal Fen" => s(&["This land enters tapped unless you control two or more basic lands."], |d, _| {
+            d.enters_tapped_unless_basics = 2;
+            d.mana = Some(ManaSource::of(&[Color::Black, Color::Green]));
+        }),
+        "Tropical Island" => s(&[], |d, _| d.mana = Some(ManaSource::of(&[Color::Green, Color::Blue]))),
+        "Underground Sea" => s(&[], |d, _| d.mana = Some(ManaSource::of(&[Color::Blue, Color::Black]))),
+        "Volcanic Island" => s(&[], |d, _| d.mana = Some(ManaSource::of(&[Color::Blue, Color::Red]))),
+        "Noble Hierarch" => s(&["Exalted", "{T}: Add {G}, {W}, or {U}."], |d, _| {
+            exalted(d);
+            d.mana = Some(ManaSource::of(&[Color::Green, Color::White, Color::Blue]));
+        }),
+        "Dark Ritual" => s(&["Add {B}{B}{B}."], |d, _| {
+            spell(d, vec![], vec![Effect::AddMana { color: Color::Black, n: 3 }]);
+        }),
+        // ---- idea decks: Sephiroth ----
+        "Culling the Weak" => s(&["As an additional cost to cast this spell, sacrifice a creature.", "Add {B}{B}{B}{B}."], |d, _| {
+            d.extra_cost = Some(ExtraCost::SacrificeCreature);
+            spell(d, vec![], vec![Effect::AddMana { color: Color::Black, n: 4 }]);
+        }),
+        "Blood Pet" => s(&["Sacrifice this creature: Add {B}."], |d, _| {
+            d.mana = Some(ManaSource::of(&[Color::Black]));
+            d.sac_for_mana = true;
+            d.mana_ext.sac_mana_no_tap = true;
+        }),
+        // ---- idea decks: Niv-Mizzet ----
+        "Unexpected Assistance" => s(&["Convoke", "Draw three cards, then discard a card."], |d, _| {
+            d.mana_ext.convoke = true;
+            spell(d, vec![], vec![draw(3), discard(1)]);
+        }),
+        // ---- Ral, Monsoon Mage ----
+        "Emry, Lurker of the Loch" => s(
+            &[
+                "Affinity for artifacts",
+                "When Emry enters, mill four cards.",
+                "{T}: Choose target artifact card in your graveyard. You may cast that card this turn.",
+            ],
+            |d, _| {
+                d.reduction = Some(Reduction::PerArtifactYouControl);
+                on(d, When::Enters, vec![], vec![Effect::Mill { who: Who::You, n: 4 }]);
+                let card = Filter { artifact_cards: true, ..graveyard_cards(false, Controller::You) };
+                activated(d, "", true, vec![card], vec![Effect::PlayableThisTurn(0)]);
+            },
+        ),
+        // ---- Atraxa, Praetors' Voice ----
+        "Nissa, Ascended Animist" => s(
+            &[
+                "Compleated",
+                "+1: Create an X/X green Phyrexian Horror creature token, where X is Nissa's loyalty.",
+                "\u{2212}1: Destroy target artifact or enchantment.",
+                "\u{2212}7: Until end of turn, creatures you control get +1/+1 for each Forest you control and gain trample.",
+            ],
+            |d, t| {
+                d.mana_ext.compleated = true;
+                loyalty(d, 1, Ability::new(vec![], vec![Effect::CreateTokenXxSourceLoyalty { def: t.phyrexian_horror_x }]));
+                loyalty(d, -1, Ability::new(vec![ARTIFACT_OR_ENCHANTMENT], vec![Effect::Destroy(0)]));
+                let pump = Effect::PumpYourCreaturesPerSubtype { sub: "Forest", keywords: Keywords::TRAMPLE };
+                loyalty(d, -7, Ability::new(vec![], vec![pump]));
+            },
+        ),
+        "Wash Away" => s(
+            &["Cleave {1}{U}{U}", "Counter target spell [that wasn't cast from its owner's hand]."],
+            |d, _| {
+                // Uncleaved, a spell cast from its owner's hand isn't a legal target.
+                d.mana_ext.cleave = ManaCost::parse("{1}{U}{U}");
+                let target = Filter { spell_not_from_hand_unless_alt: true, ..SPELL };
+                spell(d, vec![target], vec![Effect::Counter(0)]);
+            },
+        ),
+        // ---- idea decks: Tifa; Atla Palani ----
+        "Brokers Hideout" => s(
+            &["When this land enters, sacrifice it. When you do, search your library for a basic Forest, Plains, or Island card, put it onto the battlefield tapped, then shuffle and you gain 1 life."],
+            |d, _| {
+                let what = SearchFor::LandTypes { types: land_types(&["Forest", "Plains", "Island"]), basic: true };
+                let effects = vec![
+                    Effect::SacrificeSource,
+                    search(what, SearchTo::Battlefield { tapped: true }),
+                    Effect::GainLife { who: Who::You, n: 1 },
+                ];
+                on(d, When::Enters, vec![], effects);
+            },
+        ),
+        "Riveteers Overlook" => s(
+            &["When this land enters, sacrifice it. When you do, search your library for a basic Swamp, Mountain, or Forest card, put it onto the battlefield tapped, then shuffle and you gain 1 life."],
+            |d, _| {
+                let what = SearchFor::LandTypes { types: land_types(&["Swamp", "Mountain", "Forest"]), basic: true };
+                let effects = vec![
+                    Effect::SacrificeSource,
+                    search(what, SearchTo::Battlefield { tapped: true }),
+                    Effect::GainLife { who: Who::You, n: 1 },
+                ];
+                on(d, When::Enters, vec![], effects);
+            },
+        ),
+        "Cabaretti Courtyard" => s(
+            &["When this land enters, sacrifice it. When you do, search your library for a basic Mountain, Forest, or Plains card, put it onto the battlefield tapped, then shuffle and you gain 1 life."],
+            |d, _| {
+                let what = SearchFor::LandTypes { types: land_types(&["Mountain", "Forest", "Plains"]), basic: true };
+                let effects = vec![
+                    Effect::SacrificeSource,
+                    search(what, SearchTo::Battlefield { tapped: true }),
+                    Effect::GainLife { who: Who::You, n: 1 },
+                ];
+                on(d, When::Enters, vec![], effects);
+            },
+        ),
+        // ---- Ghyrson Starn, Kelermorph ----
+        "Sorcerer Class" => s(
+            &[
+                "When this Class enters, draw two cards, then discard two cards.",
+                "{U}{R}: Level 2",
+                "Creatures you control have \"{T}: Add {U} or {R}. Spend this mana only to cast an instant or sorcery spell or to gain a Class level.\"",
+                "{3}{U}{R}: Level 3",
+                "Whenever you cast an instant or sorcery spell, that spell deals damage to each opponent equal to the number of instant and sorcery spells you've cast this turn.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![draw(2), discard(2)]);
+                let n = activated(d, "{U}{R}", false, vec![], vec![Effect::ClassLevelUp(2)]);
+                d.activated[n].sorcery = true;
+                d.activated[n].level_up_to = 2;
+                d.mana_ext.creatures_tap_for_instant_sorcery = Some((2, [false, true, false, true, false]));
+                let n = activated(d, "{3}{U}{R}", false, vec![], vec![Effect::ClassLevelUp(3)]);
+                d.activated[n].sorcery = true;
+                d.activated[n].level_up_to = 3;
+                let mut burn = Ability::new(vec![], vec![Effect::ExtraDamagesEachOpponentInstantsSorceriesThisTurn]);
+                burn.condition = Some(Condition::ClassLevelAtLeast(3));
+                d.triggers.push(Trigger { when: When::YouCastInstantOrSorceryCounted, ability: burn });
+            },
+        ),
+        // ---- idea decks: Neriv, Hearthhull, Niv-Mizzet ----
+        "Bogslither's Embrace" => s(
+            &["As an additional cost to cast this spell, blight 1 or pay {3}.", "Exile target creature."],
+            |d, _| {
+                d.extra_cost = Some(ExtraCost::BlightOrPay(1, ManaCost::parse("{3}").expect("cost")));
+                spell(d, vec![CREATURE], vec![Effect::Exile(0)]);
+            },
+        ),
+        "Wild Unraveling" => s(
+            &["As an additional cost to cast this spell, blight 2 or pay {1}.", "Counter target spell."],
+            |d, _| {
+                d.extra_cost = Some(ExtraCost::BlightOrPay(2, ManaCost::parse("{1}").expect("cost")));
+                spell(d, vec![SPELL], vec![Effect::Counter(0)]);
+            },
+        ),
+        "Firdoch Core" => s(
+            &["Changeling", "{T}: Add one mana of any color.", "{4}: This artifact becomes a 4/4 artifact creature until end of turn."],
+            |d, _| {
+                d.changeling = true;
+                d.mana = Some(ManaSource::of(&Color::ALL));
+                let animate = Effect::BecomeCreatureUntilEot { power: 4, toughness: 4, subtype: "", keywords: Keywords::NONE };
+                activated(d, "{4}", false, vec![], vec![animate]);
+            },
+        ),
+        "Lavaleaper" => s(
+            &["All creatures have haste.", "Whenever a player taps a basic land for mana, that player adds one mana of any type that land produced."],
+            |d, _| {
+                static_on(d, Scope::CreaturesWithFlying, false, Keywords::HASTE);
+                static_on(d, Scope::CreaturesWithoutFlying, false, Keywords::HASTE);
+                d.mana_ext.basic_lands_add_extra = true;
+            },
+        ),
+        "Iridescent Vinelasher" => s(
+            &["Offspring {2}", "Landfall — Whenever a land you control enters, this creature deals 1 damage to target opponent."],
+            |d, _| {
+                d.offspring = ManaCost::parse("{2}");
+                on(d, When::LandYouControlEnters, vec![Filter::PLAYER], vec![damage(1, Recipient::Target(0))]);
+            },
+        ),
+        "Orcish Lumberjack" => s(
+            &["{T}, Sacrifice a Forest: Add three mana in any combination of {R} and/or {G}."],
+            |d, _| {
+                // One ability per combination: {R}{R}{R}, {R}{R}{G}, {R}{G}{G}, {G}{G}{G}.
+                for reds in (0..=3u8).rev() {
+                    let mut effects = Vec::new();
+                    if reds > 0 {
+                        effects.push(Effect::AddMana { color: Color::Red, n: reds });
+                    }
+                    if reds < 3 {
+                        effects.push(Effect::AddMana { color: Color::Green, n: 3 - reds });
+                    }
+                    let n = activated(d, "", true, vec![], effects);
+                    d.activated[n].sacrifice_subtype = Some("Forest");
+                }
+            },
+        ),
+        "Disruptor of Currents" => s(
+            &["Convoke", "When this creature enters, return up to one other target nonland permanent to its owner's hand."],
+            |d, _| {
+                d.mana_ext.convoke = true;
+                let other = Filter { controller: Controller::Any, other: true, ..OPP_NONLAND };
+                d.triggers.push(Trigger { when: When::Enters, ability: up_to(vec![other], vec![Effect::Bounce(0)]) });
+            },
+        ),
+        // ---- idea decks: Tifa ----
+        "Roaring Earth" => s(
+            &[
+                "Landfall — Whenever a land you control enters, put a +1/+1 counter on target creature or Vehicle you control.",
+                "Channel — {X}{G}{G}, Discard this card: Put X +1/+1 counters on target land you control. It becomes a 0/0 green Spirit creature with haste. It's still a land.",
+            ],
+            |d, _| {
+                // Simplification: a Vehicle isn't a target unless it's a creature; the Spirit keeps
+                // the land's colors.
+                on(d, When::LandYouControlEnters, vec![YOUR_CREATURE], vec![Effect::Counters { slot: 0, n: 1 }]);
+                let land = Filter { players: false, creatures: false, planeswalkers: false, lands: true, controller: Controller::You, ..Filter::ANY };
+                let n = activated(d, "{X}{G}{G}", false, vec![land], vec![Effect::AwakenX { slot: 0, subtype: "Spirit" }]);
+                d.activated[n].from_hand_discard = true;
+            },
+        ),
+        // ---- idea decks: Sephiroth, Tifa ----
+        "Cabal Ritual" => s(
+            &["Add {B}{B}{B}.", "Threshold — Add {B}{B}{B}{B}{B} instead if there are seven or more cards in your graveyard."],
+            |d, _| {
+                let three = Effect::AddMana { color: Color::Black, n: 3 };
+                let two = Effect::AddMana { color: Color::Black, n: 2 };
+                let mut a = Ability::new(vec![], vec![three, Effect::StopUnlessCondition, two]);
+                a.condition = Some(Condition::Threshold);
+                d.spell = Some(a);
+            },
+        ),
+        "Volrath's Stronghold" => s(
+            &["{T}: Add {C}.", "{1}{B}, {T}: Put target creature card from your graveyard on top of your library."],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                activated(d, "{1}{B}", true, vec![graveyard_cards(true, Controller::You)], vec![Effect::ToLibrary(0, true)]);
+            },
+        ),
+        "Crop Rotation" => s(
+            &["As an additional cost to cast this spell, sacrifice a land.", "Search your library for a land card, put that card onto the battlefield, then shuffle."],
+            |d, _| {
+                d.extra_cost = Some(ExtraCost::SacrificeLand);
+                spell(d, vec![], vec![search(SearchFor::Land, SearchTo::Battlefield { tapped: false })]);
+            },
+        ),
+        // ---- idea decks: Sephiroth ----
+        "Snuff Out" => s(
+            &[
+                "If you control a Swamp, you may pay 4 life rather than pay this spell's mana cost.",
+                "Destroy target nonblack creature. It can't be regenerated.",
+            ],
+            |d, _| {
+                d.mana_ext.alt_cost_ext = Some(bolt_core::card::AltCostExt {
+                    life: 4,
+                    if_you_control: Some("Swamp"),
+                    ..Default::default()
+                });
+                spell(d, vec![Filter { not_color: Some(2), ..CREATURE }], vec![Effect::DestroyNoRegen(0)]);
+            },
+        ),
+        "Spymaster's Vault" => s(
+            &[
+                "This land enters tapped unless you control a Swamp.",
+                "{T}: Add {B}.",
+                "{B}, {T}: Target creature you control connives X, where X is the number of creatures that died this turn.",
+            ],
+            |d, _| {
+                d.enters_tapped_unless = Some(["Swamp", "Swamp"]);
+                d.mana = Some(ManaSource::of(&[Color::Black]));
+                activated(d, "{B}", true, vec![YOUR_CREATURE], vec![Effect::ConniveDiedThisTurn(0)]);
+            },
+        ),
+        "The Black Gate" => s(
+            &[
+                "As The Black Gate enters, you may pay 3 life. If you don't, it enters tapped.",
+                "{T}: Add {B}.",
+                "{1}{B}, {T}: Choose a player with the most life or tied for most life. Target creature can't be blocked by creatures that player controls this turn.",
+            ],
+            |d, _| {
+                // One opponent: see `Effect::GrantUnblockableIfBlockersMostLife`.
+                d.shock_land = true;
+                d.zones.shock_life = 3;
+                d.mana = Some(ManaSource::of(&[Color::Black]));
+                activated(d, "{1}{B}", true, vec![CREATURE], vec![Effect::GrantUnblockableIfBlockersMostLife(0)]);
+            },
+        ),
+        // ---- idea decks: Tifa ----
+        "Escape Tunnel" => s(
+            &[
+                "{T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
+                "{T}, Sacrifice this land: Target creature with power 2 or less can't be blocked this turn.",
+            ],
+            |d, _| {
+                let n = activated(d, "", true, vec![], vec![search(SearchFor::BasicLand, SearchTo::Battlefield { tapped: true })]);
+                d.activated[n].sacrifice_self = true;
+                let small = Filter { creature_max_power: Some(2), ..CREATURE };
+                let n = activated(d, "", true, vec![small], vec![Effect::Grant { slot: 0, keywords: Keywords::UNBLOCKABLE }]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Invigorate" => s(
+            &[
+                "If you control a Forest, rather than pay this spell's mana cost, you may have an opponent gain 3 life.",
+                "Target creature gets +4/+4 until end of turn.",
+            ],
+            |d, _| {
+                d.mana_ext.alt_cost_ext = Some(bolt_core::card::AltCostExt {
+                    opponent_gains: 3,
+                    if_you_control: Some("Forest"),
+                    ..Default::default()
+                });
+                spell(d, vec![CREATURE], vec![Effect::Pump { slot: 0, power: 4, toughness: 4 }]);
+            },
+        ),
+        "Tifa's Limit Break" => s(
+            &[
+                "Tiered",
+                "• Somersault — {0} — Target creature gets +2/+2 until end of turn.",
+                "• Meteor Strikes — {2} — Double target creature's power and toughness until end of turn.",
+                "• Final Heaven — {6}{G} — Triple target creature's power and toughness until end of turn.",
+            ],
+            |d, _| {
+                // Tiered: exactly one mode, each with its additional cost.
+                d.modes = vec![
+                    Ability::new(vec![CREATURE], vec![Effect::Pump { slot: 0, power: 2, toughness: 2 }]),
+                    Ability::new(vec![CREATURE], vec![Effect::DoublePowerToughness(0)]),
+                    Ability::new(vec![CREATURE], vec![Effect::TriplePowerToughness(0)]),
+                ];
+                d.mode_costs = ["{0}", "{2}", "{6}{G}"].map(|c| ManaCost::parse(c).expect("cost")).to_vec();
+            },
+        ),
+        // ---- idea decks: Zurgo ----
+        "Pyrrhic Strike" => s(
+            &[
+                "As an additional cost to cast this spell, you may blight 2.",
+                "Choose one. If this spell's additional cost was paid, choose both instead.",
+                "• Destroy target artifact or enchantment.",
+                "• Destroy target creature with mana value 3 or greater.",
+            ],
+            |d, _| {
+                d.extra_cost = Some(ExtraCost::BlightOrPay(2, ManaCost::default()));
+                d.mana_ext.blight_chooses_last_mode = true;
+                let big = Filter { min_mana_value: Some(3), ..CREATURE };
+                d.modes = vec![
+                    Ability::new(vec![ARTIFACT_OR_ENCHANTMENT], vec![Effect::Destroy(0)]),
+                    Ability::new(vec![big], vec![Effect::Destroy(0)]),
+                    Ability::new(vec![ARTIFACT_OR_ENCHANTMENT, big], vec![Effect::Destroy(0), Effect::Destroy(1)]),
+                ];
             },
         ),
         _ => None,
@@ -1546,4 +2046,55 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Sunbird's Invocation",
     "The Gitrog, Ravenous Ride",
     "Karador, Ghost Chieftain",
+    "Walking Ballista",
+    "Somberwald Sage",
+    "Vizier of the Menagerie",
+    "Argent Sphinx",
+    "Mystic Gate",
+    "Karlov of the Ghost Council",
+    "Miren, the Moaning Well",
+    "Topiary Lecturer",
+    "Champion of Lambholt",
+    "Will, Scion of Peace",
+    "High Tide",
+    "Pyromatics",
+    "Rith's Grove",
+    "Momo, Friendly Flier",
+    "Path of Ancestry",
+    "Rain of Riches",
+    "Make Disappear",
+    "Vernal Fen",
+    "Tropical Island",
+    "Underground Sea",
+    "Volcanic Island",
+    "Noble Hierarch",
+    "Dark Ritual",
+    "Culling the Weak",
+    "Blood Pet",
+    "Unexpected Assistance",
+    "Emry, Lurker of the Loch",
+    "Nissa, Ascended Animist",
+    "Wash Away",
+    "Brokers Hideout",
+    "Riveteers Overlook",
+    "Cabaretti Courtyard",
+    "Sorcerer Class",
+    "Bogslither's Embrace",
+    "Wild Unraveling",
+    "Firdoch Core",
+    "Lavaleaper",
+    "Iridescent Vinelasher",
+    "Orcish Lumberjack",
+    "Disruptor of Currents",
+    "Roaring Earth",
+    "Cabal Ritual",
+    "Volrath's Stronghold",
+    "Crop Rotation",
+    "Snuff Out",
+    "Spymaster's Vault",
+    "The Black Gate",
+    "Escape Tunnel",
+    "Invigorate",
+    "Pyrrhic Strike",
+    "Tifa's Limit Break",
 ];

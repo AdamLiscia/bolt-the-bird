@@ -948,4 +948,75 @@ impl Game {
             })
             .collect()
     }
+
+    /// Elspeth Tirel's −5: destroy every permanent other than `src` that isn't a land or a token.
+    pub(super) fn destroy_all_other_nonland_nontoken(&mut self, src: ObjId) {
+        let all: Vec<ObjId> = self
+            .battlefield
+            .iter()
+            .copied()
+            .filter(|&c| c != src && !self.types_of(c).land && !self.is_token(c))
+            .collect();
+        for c in all {
+            self.destroy(c);
+        }
+    }
+
+    /// Arthur, Marigold Knight: `c` onto the battlefield tapped and attacking, back to its owner's
+    /// hand at end of combat.
+    pub(super) fn put_attacking_until_end_of_combat(&mut self, c: ObjId, p: PlayerId) {
+        self.put_onto_battlefield_attacking(c, p);
+        if self.obj(c).zone == Zone::Battlefield {
+            let zcc = self.obj(c).zcc;
+            self.hand_at_end_combat.push((c, zcc));
+        }
+    }
+
+    /// At end of combat: Arthur's creatures still on the battlefield go back to their owners' hands.
+    pub(super) fn return_hand_at_end_combat(&mut self) {
+        for (c, zcc) in std::mem::take(&mut self.hand_at_end_combat) {
+            if self.obj(c).zone == Zone::Battlefield && self.obj(c).zcc == zcc {
+                self.move_to(c, Zone::Hand);
+            }
+        }
+    }
+
+    /// Goliath Daydreamer: a resolving spell marked to be exiled with a dream counter. Returns
+    /// whether it was exiled that way.
+    pub(super) fn exile_with_dream_counter(&mut self, c: ObjId) -> bool {
+        let zcc = self.obj(c).zcc;
+        let Some(pos) = self.dream_marked.iter().position(|&x| x == (c, zcc)) else {
+            return false;
+        };
+        self.dream_marked.remove(pos);
+        self.move_to(c, Zone::Exile);
+        if self.obj(c).zone == Zone::Exile {
+            let zcc = self.obj(c).zcc;
+            self.dream_counters.push((c, zcc));
+        }
+        true
+    }
+
+    /// Goliath Daydreamer's attack trigger: `p` may cast one card they own in exile with a dream
+    /// counter on it, free.
+    pub(super) fn open_dream_free_cast(&mut self, p: PlayerId) {
+        self.dream_counters.retain(|&(c, zcc)| {
+            self.objects[c.0 as usize].zone == Zone::Exile && self.objects[c.0 as usize].zcc == zcc
+        });
+        let cards: Vec<ObjId> = self
+            .dream_counters
+            .iter()
+            .map(|&(c, _)| c)
+            .filter(|&c| self.obj(c).owner == p)
+            .collect();
+        if cards.is_empty() {
+            return;
+        }
+        for c in cards {
+            self.obj_mut(c).cast_free = true;
+            self.free_casts.push(c);
+        }
+        self.free_casts_one = true;
+        self.free_caster = p;
+    }
 }

@@ -23,6 +23,7 @@ fn main() {
         max_candidates: a[4].parse().expect("c"),
         max_actions: 5_000,
         max_objects: 2_000,
+        time_limit: None,
     };
     let stop: Option<u64> = a.get(5).and_then(|s| s.parse().ok());
     let mut g = Game::new(

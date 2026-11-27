@@ -143,6 +143,14 @@ pub enum ExtraCost {
     /// (Titan's Presence): cast with `Action::CastWith` naming it; it stays in your hand, and is the
     /// spell's `extra`.
     RevealColorlessCreature,
+    /// Casualty N (CR 702.153): "As you cast this spell, you may sacrifice a creature with power N
+    /// or greater." Cast with `Action::Cast` (none) or `Action::CastWith` naming it (it's the
+    /// spell's `extra`); `Effect::CopySourceSpellIfCasualty` makes the copy.
+    Casualty(u8),
+    /// "As an additional cost to cast this spell, blight N or pay [mana]." (Bogslither's Embrace:
+    /// 1, {3}; Wild Unraveling: 2, {1}): `Action::Cast` pays the mana, `Action::CastWith` names a
+    /// creature you control to put N -1/-1 counters on (to blight N).
+    BlightOrPay(u8, ManaCost),
 }
 
 /// "This spell costs {N} less to cast if ..." (CR 601.2f).
@@ -189,6 +197,9 @@ pub enum Reduction {
     NoncombatDamageToOpponentsThisTurn,
     /// {1} less for each creature card in your graveyard (Karador, Ghost Chieftain).
     PerCreatureCardInYourGraveyard,
+    /// Affinity for artifacts (CR 702.41): {1} less for each artifact you control (Emry, Lurker of
+    /// the Loch).
+    PerArtifactYouControl,
 }
 
 /// An activated ability: "[cost]: [effect]" (CR 602).
@@ -378,6 +389,21 @@ pub struct Activated {
     /// "Activate only if an opponent has N or more cards in their graveyard." (Sheoldred // The
     /// True Scriptures: 8)
     pub opponent_min_graveyard: u8,
+    /// "Remove N +1/+1 counters from this creature" in the cost (Walking Ballista: 1, Karlov of
+    /// the Ghost Council: 6).
+    pub remove_plus_counters: u8,
+    /// The stack item's amount is the sacrificed creature's toughness (Miren, the Moaning Well).
+    pub amount_from_victim_toughness: bool,
+    /// "Remove N counters from among other artifacts, creatures, and planeswalkers you control" in
+    /// the cost (Tekuthal, Inquiry Dominus: 3): the player picks each permanent
+    /// (`Decision::RemoveCountersFromOthers`) before the ability is activated. Demo rule for the
+    /// kind (until it's a Mode pick): the kind with the most counters on that permanent, never
+    /// loyalty (or lore) while another kind is present (`Game::remove_any_counter`).
+    pub remove_counters_from_others: u8,
+    /// "Sacrifice an artifact or creature" in the cost (Ravenous Squirrel): one
+    /// `Action::ActivateWith` per artifact or creature you control (the player's pick), kept out of
+    /// the mana payment.
+    pub sacrifice_artifact_or_creature: bool,
     /// Activated only while the card is in the command zone, by its owner (Derevi: "{1}{G}{W}{U}:
     /// Put Derevi onto the battlefield from the command zone.").
     pub from_command_zone: bool,
@@ -1081,6 +1107,39 @@ pub struct CardDef {
     /// would create one or more tokens each turn, you may instead create that many tokens that are
     /// copies of equipped creature." (`Game::mirrormind_crown`; the engine always takes the copies)
     pub first_tokens_copy_equipped: bool,
+    /// "[This] can't attack or block unless a creature died under your control this turn." (Bontu
+    /// the Glorified), from `Game::creature_died_under`.
+    pub fights_only_if_creature_died: bool,
+    /// Tandem Lookout: while paired (soulbond), each of the pair has "Whenever this creature deals
+    /// damage to an opponent, draw a card.": this card's `When::PairedDealsDamageToOpponent` trigger.
+    pub soulbond_damage_draw: bool,
+    /// "Each [subtype] and [subtype] you control has \"{T}: Add {G}.\"" (Brightcap Badger:
+    /// Fungus, Saproling), in the mana-source pass.
+    pub your_subtypes_tap_for_green: &'static [&'static str],
+    /// "If you would proliferate, proliferate twice instead." (Tekuthal, Inquiry Dominus), in
+    /// `Effect::Proliferate`.
+    pub proliferate_twice: bool,
+    /// "[This] can't be the target of abilities your opponents control." (Shanna, Sisay's
+    /// Legacy), in `target_legal`.
+    pub untargetable_by_opponents_abilities: bool,
+    /// An Aura: "Enchanted creature ... is a [type]" losing all other creature types (Noggle the
+    /// Mind: "Noggle"), in `Game::has_subtype`; its static gives the rest.
+    pub enchanted_creature_type_becomes: Option<&'static str>,
+    /// "Creatures you control are every creature type. The same is true for creature spells you
+    /// control and creature cards you own that aren't on the battlefield." (Maskwood Nexus)
+    pub your_creatures_every_creature_type: bool,
+    /// "Your opponents can't cast spells from anywhere other than their hands." (Drannith
+    /// Magistrate), in the priority and free-cast actions.
+    pub opponents_cast_only_from_hand: bool,
+    /// "If one or more -1/-1 counters would be put on a creature you control, that many -1/-1
+    /// counters minus one are put on it instead." (Vizier of Remedies), `Game::minus_counters_for`.
+    pub your_minus_counters_minus_one: bool,
+    /// Opposition Agent: "While an opponent is searching their library, they exile each card they
+    /// find. You may play those cards for as long as they remain exiled, and you may spend mana as
+    /// though it were mana of any color to cast them." (`SearchTo::ExiledForOpponent`). Not
+    /// modeled: "You control your opponents while they're searching their libraries" (1v1, the
+    /// searcher still chooses).
+    pub opponents_searches_exiled_for_you: bool,
     /// Loyalty abilities planeswalkers you control have (Ichormoon Gauntlet: "[0]: Proliferate" and
     /// "[−12]: Take an extra turn after this one."), after their own (`Game::loyalty_ability`).
     pub your_planeswalkers_have_loyalty: Vec<(i32, crate::effect::Ability)>,
@@ -1282,6 +1341,40 @@ pub struct ManaExt {
     /// "Once during each of your turns, you may cast a creature spell from your graveyard."
     /// (Karador, Ghost Chieftain): `Action::CastFromGraveyardAs(card, KARADOR_CAST)`.
     pub creature_from_graveyard_once_each_turn: bool,
+    /// "You can spend mana of any type to cast creature spells." (Vizier of the Menagerie): your
+    /// creature spells' colored, hybrid and {C} pips are paid as generic.
+    pub creature_spells_any_type_mana: bool,
+    /// "Creatures with power less than this creature's power can't block creatures you control."
+    /// (Champion of Lambholt)
+    pub smaller_cant_block_yours: bool,
+    /// Compleated (CR 702.150): for each Phyrexian pip paid with life (its
+    /// `Action::CastAlternative`), it enters with two fewer loyalty counters.
+    pub compleated: bool,
+    /// Path of Ancestry: when its mana is spent on a creature spell that shares a creature type
+    /// with your commander, `When::ManaSpentOnCommanderTypeCreature` fires on it.
+    pub scry_if_commander_type_creature: bool,
+    /// Cleave (CR 702.148): cast for this cost with `Action::CastAlternative`; the spell's effect
+    /// reads the item's `alt` (Wash Away: {1}{U}{U}).
+    pub cleave: Option<ManaCost>,
+    /// Sorcerer Class, level 2: "Creatures you control have '{T}: Add {U} or {R}. Spend this mana
+    /// only to cast an instant or sorcery spell or to gain a Class level.'" as (Class level
+    /// needed, colors): each untapped creature you control that could tap is a source of those
+    /// colors when paying for an instant or sorcery spell or a Class's level-up.
+    pub creatures_tap_for_instant_sorcery: Option<(u8, [bool; 5])>,
+    /// "Whenever a player taps a basic land for mana, that player adds one mana of any type that
+    /// land produced." (Lavaleaper): each basic land makes one more of its mana.
+    pub basic_lands_add_extra: bool,
+    /// "Lands you control enter untapped." (Horizon Explorer): overrides every "enters tapped".
+    pub your_lands_enter_untapped: bool,
+    /// "Instant and sorcery spells you cast cost {N} less to cast." (Case of the Ransacked Lab: 1)
+    pub instant_sorcery_discount: u8,
+    /// With `ExtraCost::BlightOrPay` on a modal spell: "If this spell's additional cost was paid,
+    /// choose both instead." (Pyrrhic Strike). `Action::CastModal` offers every mode but the last
+    /// (both); `Action::CastWith` naming a creature to blight casts the last mode.
+    pub blight_chooses_last_mode: bool,
+    /// "Creatures you control with power 2 or less can't be blocked by creatures with power 3 or
+    /// greater." (Delney, Streetwise Lookout)
+    pub small_creatures_evade_big: bool,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana
@@ -1305,6 +1398,11 @@ pub struct AltCostExt {
     /// Only while you haven't cast a spell this game (Once Upon a Time: "If this spell is the first
     /// spell you've cast this game, you may cast it without paying its mana cost.").
     pub first_spell_this_game: bool,
+    /// Only while you control a permanent with this subtype (Snuff Out: "If you control a Swamp").
+    pub if_you_control: Option<&'static str>,
+    /// Instead of paying, the opponent gains this much life (Invigorate: "you may have an opponent
+    /// gain 3 life"; one opponent).
+    pub opponent_gains: i32,
 }
 
 /// Which events don't cause abilities to trigger (see [`CardDef::suppresses_triggers`]).
@@ -1645,6 +1743,16 @@ impl CardDef {
             triples_creature_tokens: false,
             lands_in_graveyard_have_dredge: None,
             first_tokens_copy_equipped: false,
+            fights_only_if_creature_died: false,
+            soulbond_damage_draw: false,
+            your_subtypes_tap_for_green: &[],
+            proliferate_twice: false,
+            untargetable_by_opponents_abilities: false,
+            enchanted_creature_type_becomes: None,
+            your_creatures_every_creature_type: false,
+            opponents_cast_only_from_hand: false,
+            your_minus_counters_minus_one: false,
+            opponents_searches_exiled_for_you: false,
             your_planeswalkers_have_loyalty: Vec::new(),
             artifact_tokens_plus_one: None,
             protection_chosen_card_type: false,
@@ -1941,6 +2049,16 @@ impl CardDef {
             triples_creature_tokens: false,
             lands_in_graveyard_have_dredge: None,
             first_tokens_copy_equipped: false,
+            fights_only_if_creature_died: false,
+            soulbond_damage_draw: false,
+            your_subtypes_tap_for_green: &[],
+            proliferate_twice: false,
+            untargetable_by_opponents_abilities: false,
+            enchanted_creature_type_becomes: None,
+            your_creatures_every_creature_type: false,
+            opponents_cast_only_from_hand: false,
+            your_minus_counters_minus_one: false,
+            opponents_searches_exiled_for_you: false,
             your_planeswalkers_have_loyalty: Vec::new(),
             artifact_tokens_plus_one: None,
             protection_chosen_card_type: false,
@@ -2237,6 +2355,16 @@ impl CardDef {
             triples_creature_tokens: false,
             lands_in_graveyard_have_dredge: None,
             first_tokens_copy_equipped: false,
+            fights_only_if_creature_died: false,
+            soulbond_damage_draw: false,
+            your_subtypes_tap_for_green: &[],
+            proliferate_twice: false,
+            untargetable_by_opponents_abilities: false,
+            enchanted_creature_type_becomes: None,
+            your_creatures_every_creature_type: false,
+            opponents_cast_only_from_hand: false,
+            your_minus_counters_minus_one: false,
+            opponents_searches_exiled_for_you: false,
             your_planeswalkers_have_loyalty: Vec::new(),
             artifact_tokens_plus_one: None,
             protection_chosen_card_type: false,
