@@ -1152,3 +1152,20 @@ Built cold, two test fixes: Aquitect's Defenses now passes through cleanup (star
 `until_eot` was never cleared), and Elspeth Tirel's test sets her loyalty to 4 first. 2,335 Rust tests pass
 (core_objects 73, 4 ignored: 3 play.rs, 1 rollout); every binary's count equals its `#[test]` count; clippy,
 fmt, ruff (check and format) clean; pytest 194 passed, 1 skipped.
+
+## Batch 19 (unbuilt): Rev, Tithe Extractor; Ashiok, Nightmare Muse's pieces
+
+Core (appended; arms after `MayCastDreamCardFree`, functions in game/zones.rs):
+- `Effect::ExileTopOfOpponentFaceDownCastable` (Rev): the opponent's top card to exile, recorded in the new
+  `Game::face_down_exiled` (not `Object::face_down`, which would make `def_of` a 2/2 with no cost); `playable =
+  Some((you, u32::MAX))` unless it's a land (a land can't be cast). `Game::exiled_face_down(c)` reads both.
+  Limit: the observation still shows the card's face; only the rules treat it as face down.
+- `Effect::CastFaceUpOpponentExiledFreeUpTo(n)` (Ashiok's −7) with `Game::free_casts_max`: **approved edits in
+  existing functions**, a guard in `free_cast_actions` (closes once `n` of the window's cards have left exile,
+  `free_casts_cast`) and the reset in `close_free_casts`.
+- `Effect::EachOpponentExilesTop(n)` (the Nightmare token's attack/block trigger, n = 2).
+Cards (1): Rev, Tithe Extractor ("that player" is the one opponent). Ashiok waits on d3's −3 and on token 120
+(appended after d2's 111-118 and d3's 119 once they're on tarkir; no placeholders). Tests in core_objects (77:
+two for Rev, the −7 and the exile-two on an edited Inkshield).
+Likely failure spots when built: Rev's attack trigger target answer in `resolve_all`, the −7 window reopening
+after each cast (three `Cast` + `Target` in a row), Bolt from exile paid with the table's Mountains.

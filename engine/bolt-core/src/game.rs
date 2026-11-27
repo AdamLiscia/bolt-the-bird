@@ -1939,6 +1939,11 @@ pub struct Game {
     pub dream_marked: Vec<(ObjId, u32)>,
     /// Cards in exile with a dream counter on them (with their zone-change counts in exile).
     pub dream_counters: Vec<(ObjId, u32)>,
+    /// Cards exiled face down that are still objects in exile, with their zone-change counts (Rev,
+    /// Tithe Extractor), beside `Object::face_down`: kept apart so the card can still be cast.
+    pub face_down_exiled: Vec<(ObjId, u32)>,
+    /// The open free-cast window allows this many spells (0: no limit; Ashiok's −7: 3).
+    pub free_casts_max: u8,
     /// The other creatures a crew cost taps with its named one (from `Decision::CrewTap`).
     crew_extra: Vec<ObjId>,
     /// Saddled Mounts (CR 702.171b) and the creatures that saddled them: (mount, its zcc, rider,
@@ -2299,6 +2304,8 @@ impl Game {
             hand_at_end_combat: Vec::new(),
             dream_marked: Vec::new(),
             dream_counters: Vec::new(),
+            face_down_exiled: Vec::new(),
+            free_casts_max: 0,
             saddled: Vec::new(),
             karador_turn: [0; 2],
             any_graveyard_spells_turn: [0; 2],
@@ -12406,6 +12413,9 @@ impl Game {
         if self.free_casts_one && self.free_casts.iter().any(|&c| !free_zone(self.obj(c).zone)) {
             return v; // one spell, already cast (Rishkar's Expertise)
         }
+        if self.free_casts_max > 0 && self.free_casts_cast() >= self.free_casts_max as usize {
+            return v; // "up to three spells" (Ashiok, Nightmare Muse), all cast
+        }
         for &c in &self.free_casts {
             let def = self.def_of(c);
             if !free_zone(self.obj(c).zone) || def.types.land {
@@ -12444,6 +12454,7 @@ impl Game {
         let to_hand = std::mem::take(&mut self.free_casts_to_hand);
         let to_bottom = std::mem::take(&mut self.free_casts_to_bottom);
         self.free_casts_one = false;
+        self.free_casts_max = 0;
         for c in std::mem::take(&mut self.free_casts_rest_to_graveyard) {
             if self.obj(c).zone == Zone::Exile {
                 self.move_to(c, Zone::Graveyard); // Epic Experiment: those not cast
@@ -24957,6 +24968,20 @@ impl Game {
                 }
             }
             Effect::MayCastDreamCardFree => self.open_dream_free_cast(item.controller),
+            Effect::ExileTopOfOpponentFaceDownCastable => {
+                self.exile_top_face_down_castable(item.controller, opponent(item.controller))
+            }
+            Effect::CastFaceUpOpponentExiledFreeUpTo(n) => {
+                self.open_free_casts_from_opponents_exile(item.controller, n)
+            }
+            Effect::EachOpponentExilesTop(n) => {
+                let q = opponent(item.controller);
+                for _ in 0..n {
+                    if let Some(&c) = self.players[q].library.last() {
+                        self.move_to(c, Zone::Exile);
+                    }
+                }
+            }
             Effect::GainLifePerCreatureYouControl => {
                 let n = self.creatures(item.controller).count() as i32;
                 if n > 0 {

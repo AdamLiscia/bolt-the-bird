@@ -2439,6 +2439,18 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].sacrifice_subtype = Some("Slug");
             },
         ),
+        "Rev, Tithe Extractor" => s(
+            &[
+                "Whenever you attack, target creature gains deathtouch until end of turn.",
+                "Whenever one or more creatures you control deal combat damage to a player, create a Treasure token, then look at the top card of that player's library and exile it face down. You may cast that card for as long as it remains exiled.",
+            ],
+            |d, t| {
+                on(d, When::YouAttack, vec![Filter::CREATURE], vec![Effect::Grant { slot: 0, keywords: Keywords::DEATHTOUCH }]);
+                // "That player" is the one opponent (1v1).
+                let treasure = Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 };
+                on(d, When::YourCreaturesDealCombatDamageToPlayer, vec![], vec![treasure, Effect::ExileTopOfOpponentFaceDownCastable]);
+            },
+        ),
         "Deep-Cavern Bat" => s(
             &["When this creature enters, look at target opponent's hand. You may exile a nonland card from it until this creature leaves the battlefield."],
             |d, _| {
@@ -2764,4 +2776,5 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Goliath Daydreamer",
     "Pippin, Guard of the Citadel",
     "Toxrill, the Corrosive",
+    "Rev, Tithe Extractor",
 ];

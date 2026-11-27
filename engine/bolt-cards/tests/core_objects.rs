@@ -1747,3 +1747,102 @@ fn toxrill_slimes_shrinks_makes_slugs_and_draws_off_them() {
     assert_eq!(g.players[0].hand.len(), cards + 1);
     assert!(tokens(&g, 0, "Slug").is_empty(), "the Slug was sacrificed");
 }
+
+// ---- Rev, Tithe Extractor; Ashiok, Nightmare Muse's pieces (batch 19) ----
+
+#[test]
+fn rev_grants_deathtouch_and_exiles_their_top_card_face_down_castable() {
+    let mut g = table();
+    let rev = put(&mut g, 0, "Rev, Tithe Extractor");
+    let bolt = g.add_card(1, cid("Lightning Bolt"), Zone::Library);
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(rev));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[Action::Target(obj(rev))]);
+    assert!(g.keywords(rev).has(Keywords::DEATHTOUCH));
+    pass_to(&mut g, Step::Main2);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 1);
+    assert_eq!(g.obj(bolt).zone, Zone::Exile);
+    assert!(g.exiled_face_down(bolt));
+    assert!(
+        g.legal_actions().contains(&Action::Cast(bolt)),
+        "castable while exiled"
+    );
+    to_main1(&mut g, 9, 0);
+    assert!(
+        g.legal_actions().contains(&Action::Cast(bolt)),
+        "for as long as it remains exiled"
+    );
+}
+
+#[test]
+fn rev_leaves_an_exiled_land_uncastable() {
+    let mut g = table();
+    let land = g.add_card(1, cid("Mountain"), Zone::Library);
+    let rev = put(&mut g, 0, "Rev, Tithe Extractor");
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(rev));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[Action::Target(obj(rev))]);
+    pass_to(&mut g, Step::Main2);
+    assert_eq!(g.obj(land).zone, Zone::Exile);
+    assert!(!g.legal_actions().contains(&Action::PlayLand(land)));
+}
+
+#[test]
+fn casting_up_to_three_face_up_opponent_exiled_spells_free() {
+    let mut g = table_with(|defs| {
+        defs[cid("Inkshield")].spell = Some(bolt_core::Ability::new(
+            vec![],
+            vec![bolt_core::Effect::CastFaceUpOpponentExiledFreeUpTo(3)],
+        ));
+    });
+    let bolts: Vec<ObjId> = (0..4)
+        .map(|_| g.add_card(1, cid("Lightning Bolt"), Zone::Exile))
+        .collect();
+    let hidden = g.add_card(1, cid("Lightning Bolt"), Zone::Exile);
+    let zcc = g.obj(hidden).zcc;
+    g.face_down_exiled.push((hidden, zcc));
+    let mine = g.add_card(0, cid("Lightning Bolt"), Zone::Exile);
+    let muse = hand(&mut g, 0, "Inkshield"); // standing in for Ashiok's −7
+    act(&mut g, Action::Cast(muse));
+    while !matches!(g.pending, Pending::FreeCast(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::Cast(hidden)), "face-up cards only");
+    assert!(!legal.contains(&Action::Cast(mine)), "cards your opponents own");
+    for &b in &bolts[..3] {
+        act(&mut g, Action::Cast(b));
+        act(&mut g, Action::Target(Target::Player(1)));
+    }
+    assert!(
+        !matches!(g.pending, Pending::FreeCast(_)),
+        "up to three: the window closes"
+    );
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 31);
+    assert_eq!(g.obj(bolts[3]).zone, Zone::Exile);
+    assert!(!g.obj(bolts[3]).cast_free);
+}
+
+#[test]
+fn each_opponent_exiles_the_top_two_cards() {
+    let mut g = table_with(|defs| {
+        defs[cid("Inkshield")].spell = Some(bolt_core::Ability::new(
+            vec![],
+            vec![bolt_core::Effect::EachOpponentExilesTop(2)],
+        ));
+    });
+    let a = g.add_card(1, cid("Lightning Bolt"), Zone::Library);
+    let b = g.add_card(1, cid("Hungry Ghoul"), Zone::Library);
+    let c = hand(&mut g, 0, "Inkshield"); // standing in for the Nightmare token's trigger
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!((g.obj(a).zone, g.obj(b).zone), (Zone::Exile, Zone::Exile));
+}

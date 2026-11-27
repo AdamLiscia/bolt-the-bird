@@ -3794,7 +3794,7 @@
   {
    "card": "Ashiok, Nightmare Muse",
    "deck": "Atraxa, Praetors' Voice",
-   "missing": "needs core: a 2/3 blue and black Nightmare creature token with an attack/block trigger, and casting from exile",
+   "missing": "needs core: a 2/3 blue and black Nightmare creature token with an attack/block trigger, and casting from exile [lane C 2026-11-27, batch 19 (unbuilt): the -7 (Effect::CastFaceUpOpponentExiledFreeUpTo) and the Nightmare's trigger (Effect::EachOpponentExilesTop) are in; the script waits on d3's -3 and token 120 (after d2's 111-118 and d3's 119)]",
    "lane": "d3",
    "theme": "triggers",
    "owner": "d2"
@@ -7034,7 +7034,7 @@
   {
    "card": "Rev, Tithe Extractor",
    "deck": "Sephiroth, Fabled SOLDIER // Sephiroth, One-Winged Angel",
-   "missing": "whenever you attack; one or more creatures deal combat damage to a player",
+   "missing": "whenever you attack; one or more creatures deal combat damage to a player [lane C 2026-11-27: scripted in pg_c, batch 19 (unbuilt); both triggers already existed, the face-down castable exile is lane C's]",
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2"

@@ -2801,6 +2801,15 @@ pub enum Effect {
     /// "You may cast a spell from among cards you own in exile with dream counters on them without
     /// paying its mana cost." (Goliath Daydreamer): a one-spell free-cast window.
     MayCastDreamCardFree,
+    /// Rev, Tithe Extractor: exile the top card of the opponent's library face down
+    /// (`Game::face_down_exiled`); you may cast it for as long as it remains exiled (a land can't be
+    /// cast, so a land stays there).
+    ExileTopOfOpponentFaceDownCastable,
+    /// Ashiok, Nightmare Muse's −7: you may cast up to `n` spells from among face-up cards your
+    /// opponents own in exile without paying their mana costs (`Game::free_casts_max`).
+    CastFaceUpOpponentExiledFreeUpTo(u8),
+    /// "Each opponent exiles the top `n` cards of their library." (Ashiok's Nightmare token: 2)
+    EachOpponentExilesTop(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
