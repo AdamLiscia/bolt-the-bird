@@ -3206,3 +3206,157 @@ fn momo_discounts_a_flier_and_grows_when_one_enters() {
     resolve_all(&mut g, &[]);
     assert_eq!(g.power(momo), p0 + 1);
 }
+
+// ---- idea decks, Najeela ----
+
+#[test]
+fn path_of_ancestry_scries_when_its_mana_casts_a_creature_of_the_commanders_type() {
+    let mut g = game(&[]);
+    let path = put(&mut g, 0, "Path of Ancestry");
+    let raccoon = hand(&mut g, 0, "Trailtracker Scout"); // {1}{G}, a Raccoon like Bello
+    g.add_card(0, cid("Forest"), Zone::Battlefield);
+    act(&mut g, Action::Cast(raccoon));
+    assert!(g.obj(path).tapped);
+    assert!(
+        g.items.iter().any(|i| i.source == path),
+        "the scry trigger, above the Raccoon"
+    );
+}
+
+#[test]
+fn rain_of_riches_gives_the_first_treasure_spell_cascade() {
+    let mut g = game(&[]);
+    let rain = put(&mut g, 0, "Rain of Riches");
+    let treasure = g
+        .defs
+        .iter()
+        .position(|d| d.token && d.name == "Treasure")
+        .expect("Treasure");
+    g.add_card(0, treasure, Zone::Battlefield);
+    g.add_card(0, treasure, Zone::Battlefield);
+    let top = g.add_card(0, cid("Ornithopter"), Zone::Library); // mana value 0
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    act(&mut g, Action::Cast(elves));
+    assert!(g.items.iter().any(|i| i.source == rain), "cascade");
+    while !matches!(g.pending, Pending::FreeCast(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(g.legal_actions().contains(&Action::Cast(top)));
+    act(&mut g, Action::PassPriority);
+    resolve_all(&mut g, &[]);
+    let fyndhorn = hand(&mut g, 0, "Fyndhorn Elves");
+    let top2 = g.add_card(0, cid("Ornithopter"), Zone::Library);
+    act(&mut g, Action::Cast(fyndhorn));
+    while !g.items.is_empty() {
+        assert!(
+            !matches!(g.pending, Pending::FreeCast(_)),
+            "only the first each turn"
+        );
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.obj(top2).zone, Zone::Library, "no cascade");
+}
+
+#[test]
+fn make_disappear_with_casualty_is_copied() {
+    let mut g = table();
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let tiny = put(&mut g, 0, "Ornithopter"); // power 0: not enough
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    let md = hand(&mut g, 0, "Make Disappear");
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Cast(md)), "casualty is optional");
+    assert!(!legal.contains(&Action::CastWith(md, tiny)), "power 1 or greater");
+    act(&mut g, Action::CastWith(md, elves));
+    act(&mut g, Action::Target(Target::Object(bolt)));
+    assert_eq!(g.obj(elves).zone, Zone::Graveyard, "sacrificed as it was cast");
+    let before = g.items.len();
+    // The casualty trigger resolves into a copy.
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::PassPriority);
+    assert!(g.items.len() >= before, "a copy on the stack");
+    for _ in 0..40 {
+        if g.items.is_empty() && !matches!(g.pending, Pending::Decide(_) | Pending::ChooseTarget(_)) {
+            break;
+        }
+        let a = match g.pending {
+            Pending::Decide(_) | Pending::ChooseTarget(_) => {
+                let l = g.legal_actions();
+                if l.contains(&Action::No) {
+                    Action::No
+                } else {
+                    l[0]
+                }
+            }
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.players[1].life, 40, "the Bolt was countered");
+}
+
+// ---- idea decks: lands, rituals, mana creatures ----
+
+#[test]
+fn idea_deck_lands_tap_for_their_colors_and_vernal_fen_checks_basics() {
+    let mut g = game(&[]);
+    for (name, n) in [
+        ("Tropical Island", 2),
+        ("Underground Sea", 2),
+        ("Volcanic Island", 2),
+    ] {
+        let l = put(&mut g, 0, name);
+        let m = g
+            .mana_sources(0)
+            .into_iter()
+            .find(|&(x, _)| x == l)
+            .expect("a source")
+            .1;
+        assert_eq!(m.colors.iter().filter(|&&b| b).count(), n, "{name}");
+    }
+    let fen = hand(&mut g, 0, "Vernal Fen");
+    act(&mut g, Action::PlayLand(fen));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(fen).tapped, "no basic lands");
+}
+
+#[test]
+fn dark_ritual_and_culling_the_weak_add_black() {
+    let mut g = game(&["Swamp"]);
+    let ritual = hand(&mut g, 0, "Dark Ritual");
+    act(&mut g, Action::Cast(ritual));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].pool.len(), 3);
+    let mut g = game(&["Swamp"]);
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let cull = hand(&mut g, 0, "Culling the Weak");
+    act(&mut g, Action::CastWith(cull, elves));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].pool.len(), 4);
+}
+
+#[test]
+fn blood_pet_sacrifices_for_black_and_unexpected_assistance_convokes() {
+    let mut g = game(&[]);
+    let pet = put(&mut g, 0, "Blood Pet");
+    let elves = hand(&mut g, 0, "Llanowar Elves"); // can't: {G}
+    let ritual = hand(&mut g, 0, "Dark Ritual"); // {B}: the Pet pays
+    let _ = elves;
+    act(&mut g, Action::Cast(ritual));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(pet).zone, Zone::Graveyard, "sacrificed for its {{B}}");
+
+    let mut g = game(&["Island", "Island"]);
+    for _ in 0..4 {
+        let c = put(&mut g, 0, "Llanowar Elves");
+        g.objects[c.0 as usize].since_turn = 0;
+    }
+    let ua = hand(&mut g, 0, "Unexpected Assistance");
+    assert!(
+        g.legal_actions().contains(&Action::Cast(ua)),
+        "convoked with four Elves and two Islands"
+    );
+}

@@ -1499,6 +1499,68 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::AnotherCreatureWithFlyingYouControlEnters, vec![], vec![Effect::PumpSelf { power: 1, toughness: 1 }]);
             },
         ),
+        // ---- idea decks ----
+        "Path of Ancestry" => s(
+            &[
+                "This land enters tapped.",
+                "{T}: Add one mana of any color in your commander's color identity. When that mana is spent to cast a creature spell that shares a creature type with your commander, scry 1.",
+            ],
+            |d, _| {
+                d.enters_tapped = true;
+                d.mana_commander_identity = true;
+                d.mana_ext.scry_if_commander_type_creature = true;
+                on(d, When::ManaSpentOnCommanderTypeCreature, vec![], vec![Effect::Scry { n: 1 }]);
+            },
+        ),
+        "Rain of Riches" => s(
+            &[
+                "When this enchantment enters, create two Treasure tokens.",
+                "The first spell you cast each turn that mana from a Treasure was spent to cast has cascade.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.treasure, n: 2 }]);
+                on(d, When::YouCast, vec![], vec![Effect::StopUnlessFirstTreasureSpellThisTurn, Effect::Cascade]);
+            },
+        ),
+        // ---- Najeela, the Blade-Blossom ----
+        "Make Disappear" => s(
+            &["Casualty 1", "Counter target spell unless its controller pays {2}."],
+            |d, _| {
+                d.extra_cost = Some(ExtraCost::Casualty(1));
+                on(d, When::YouCastThis, vec![], vec![Effect::CopySourceSpellIfCasualty]);
+                spell(d, vec![SPELL], vec![Effect::CounterUnlessPays(0, 2, 2)]);
+            },
+        ),
+        // ---- idea decks: Hearthhull, Kenrith ----
+        "Vernal Fen" => s(&["This land enters tapped unless you control two or more basic lands."], |d, _| {
+            d.enters_tapped_unless_basics = 2;
+            d.mana = Some(ManaSource::of(&[Color::Black, Color::Green]));
+        }),
+        "Tropical Island" => s(&[], |d, _| d.mana = Some(ManaSource::of(&[Color::Green, Color::Blue]))),
+        "Underground Sea" => s(&[], |d, _| d.mana = Some(ManaSource::of(&[Color::Blue, Color::Black]))),
+        "Volcanic Island" => s(&[], |d, _| d.mana = Some(ManaSource::of(&[Color::Blue, Color::Red]))),
+        "Noble Hierarch" => s(&["Exalted", "{T}: Add {G}, {W}, or {U}."], |d, _| {
+            exalted(d);
+            d.mana = Some(ManaSource::of(&[Color::Green, Color::White, Color::Blue]));
+        }),
+        "Dark Ritual" => s(&["Add {B}{B}{B}."], |d, _| {
+            spell(d, vec![], vec![Effect::AddMana { color: Color::Black, n: 3 }]);
+        }),
+        // ---- idea decks: Sephiroth ----
+        "Culling the Weak" => s(&["As an additional cost to cast this spell, sacrifice a creature.", "Add {B}{B}{B}{B}."], |d, _| {
+            d.extra_cost = Some(ExtraCost::SacrificeCreature);
+            spell(d, vec![], vec![Effect::AddMana { color: Color::Black, n: 4 }]);
+        }),
+        "Blood Pet" => s(&["Sacrifice this creature: Add {B}."], |d, _| {
+            d.mana = Some(ManaSource::of(&[Color::Black]));
+            d.sac_for_mana = true;
+            d.mana_ext.sac_mana_no_tap = true;
+        }),
+        // ---- idea decks: Niv-Mizzet ----
+        "Unexpected Assistance" => s(&["Convoke", "Draw three cards, then discard a card."], |d, _| {
+            d.mana_ext.convoke = true;
+            spell(d, vec![], vec![draw(3), discard(1)]);
+        }),
         _ => None,
     }
 }
@@ -1690,4 +1752,16 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Pyromatics",
     "Rith's Grove",
     "Momo, Friendly Flier",
+    "Path of Ancestry",
+    "Rain of Riches",
+    "Make Disappear",
+    "Vernal Fen",
+    "Tropical Island",
+    "Underground Sea",
+    "Volcanic Island",
+    "Noble Hierarch",
+    "Dark Ritual",
+    "Culling the Weak",
+    "Blood Pet",
+    "Unexpected Assistance",
 ];
