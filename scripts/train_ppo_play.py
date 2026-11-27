@@ -29,7 +29,7 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from bolt.backup import upload_quietly  # noqa: E402
-from bolt.play_data import concat  # noqa: E402
+from bolt.play_data import concat, within  # noqa: E402
 from bolt.play_net import load_into, pad_optimizer  # noqa: E402
 from bolt.play_ppo import gae, league, ppo_step  # noqa: E402
 from bolt.play_runner import run_parallel  # noqa: E402
@@ -243,16 +243,23 @@ def main():
                     ends[x["result"]] += 1
             beat["t"] = time.time()
         arr = concat(parts)
-        n = len(arr["action"])
+        n_all = len(arr["action"])
+        # Positions over --max-objects are dropped whole, never truncated (2026-11-27: Scute Swarm boards of
+        # 213-559 permanents made the update grow 185 -> 344 s). Advantages were computed per game beforehand.
+        keep = within(arr, a.max_objects)
+        dropped_big = n_all - len(keep)
+        n = len(keep)
         adv = arr["adv"]
-        adv = torch.as_tensor((adv - adv.mean()) / (adv.std() + 1e-6))
+        if n > 1:
+            adv = (adv - adv[keep].mean()) / (adv[keep].std() + 1e-6)
+        adv = torch.as_tensor(adv)
         ret = torch.as_tensor(arr["ret"])
         t1 = time.time()
         net.train()
         sums, steps = {"loss": 0.0, "clipped": 0.0, "kl": 0.0, "value_mse": 0.0}, 0
         prng = np.random.default_rng(it)
         for _ in range(a.epochs):
-            perm = prng.permutation(n)
+            perm = keep[prng.permutation(n)]
             for s in range(0, n - a.batch + 1, a.batch):
                 idx = np.sort(perm[s : s + a.batch])
                 st = ppo_step(net, ref, opt, arr, idx, adv[idx], a.clip, kl_coef, a.value_coef, ret=ret[idx])
@@ -267,7 +274,7 @@ def main():
             state["past"].append(f"iter_{it}.pt")
             if job:
                 job._put(f"{job.prefix}/past/iter_{it}.pt", (ck / f"iter_{it}.pt").read_bytes())
-        row = {"iter": it, "games": a.games, "decisions": n, "kl_coef": round(kl_coef, 4), "errors": ends["error"],
+        row = {"iter": it, "games": a.games, "decisions": n, "dropped_big": dropped_big, "kl_coef": round(kl_coef, 4), "errors": ends["error"],
                "timeouts": ends["timeout"],
                **{f"won_{k}": round(float(np.mean(v)), 3) for k, v in won.items()},
                **{k: round(v / max(1, steps), 4) for k, v in sums.items()},
