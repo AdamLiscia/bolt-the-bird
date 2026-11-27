@@ -2727,6 +2727,18 @@ pub enum Effect {
         slot: u8,
         n: i32,
     },
+    /// "Choose a counter on target permanent. Put an additional counter of that kind on that
+    /// permanent." (Ichormoon Gauntlet): the permanent in `slot`; with more than one kind,
+    /// `Decision::ChooseCounterKind`.
+    AddCounterOfChosenKind(u8),
+    /// The creature in `slot` gets +`power`/+`toughness` until end of turn if it has `subtype`
+    /// (Goatnap: a Goat, +3/+0).
+    PumpIfSubtype {
+        slot: u8,
+        subtype: &'static str,
+        power: i32,
+        toughness: i32,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -2880,6 +2892,8 @@ pub enum Scope {
     OtherYourNonHumanCreatures,
     /// Other colorless creatures you control (It That Heralds the End).
     OtherYourColorlessCreatures,
+    /// Other tapped creatures you control (Adept Watershaper).
+    OtherYourTappedCreatures,
 }
 
 /// What a scaled static ability counts.

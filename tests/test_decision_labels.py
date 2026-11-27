@@ -298,3 +298,9 @@ def test_proliferate_chooses_permanents_and_players():
     assert sv._decision_label(dec, "Pick", 0, "Llanowar Elves") == "Proliferate: Llanowar Elves"
     assert label(dec, "Mode", 1) == "Proliferate: player 2"
     assert label(dec, "Yes", 0) == "Done choosing (proliferate)"
+
+
+def test_ichormoon_gauntlet_chooses_a_counter_kind():
+    dec = {"kind": "ChooseCounterKind", "kinds": [0, 2]}
+    assert label(dec, "Mode", 0) == "Another +1/+1 counter"
+    assert label(dec, "Mode", 2) == "Another stun counter"

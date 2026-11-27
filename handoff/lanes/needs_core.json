@@ -3834,7 +3834,7 @@
   {
    "card": "Ichormoon Gauntlet",
    "deck": "Atraxa, Praetors' Voice",
-   "missing": "needs core: loyalty abilities granted to planeswalkers, and an extra counter of a chosen kind [routing 2026-11-27: lane B the granted loyalty abilities, d3 the additional counter of the chosen kind]",
+   "missing": "needs core: loyalty abilities granted to planeswalkers, and an extra counter of a chosen kind [routing 2026-11-27: lane B the granted loyalty abilities, d3 the additional counter of the chosen kind] [d3 batch 33: Effect::AddCounterOfChosenKind(slot) (Decision::ChooseCounterKind) is in; still lane B: the granted loyalty abilities]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -6635,7 +6635,7 @@
    "card": "Chandra, Dressed to Kill",
    "deck": "Ghyrson Starn, Kelermorph",
    "owner": "d3",
-   "missing": "its loyalty effects (exile top, play it); d4: the emblem [added from the live validator, 2026-11-27] [d3 batch 31: Effect::ExileTopCastColorThisTurn { n, color } is in (both +1 and -7); the card waits for d4 emblem on tarkir]",
+   "missing": "its loyalty effects (exile top, play it); d4: the emblem [added from the live validator, 2026-11-27] [d3 batch 31: Effect::ExileTopCastColorThisTurn { n, color } is in (both +1 and -7); the card waits for d4 emblem on tarkir] [done by d3 batch 33: scripted (pg_d3) with d4 EmblemKind::OnYourColorSpellCast]",
    "lane": "d3",
    "theme": "effects and statics"
   },
@@ -6750,6 +6750,70 @@
    "lane": "mac-b",
    "theme": "replace_filter",
    "owner": "mac-b"
+  },
+  {
+   "card": "Adept Watershaper",
+   "deck": "IDEA Neriv, Heart of the Storm",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 33: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Riverguard's Reflexes",
+   "deck": "IDEA Neriv, Heart of the Storm",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 33: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Keep Out",
+   "deck": "IDEA Neriv, Heart of the Storm",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 33: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Terminate",
+   "deck": "IDEA Hearthhull, the Worldseed",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 33: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Sear",
+   "deck": "IDEA Zurgo, Thunder's Decree; IDEA Niv-Mizzet, Visionary",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 33: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Boulder Dash",
+   "deck": "IDEA Niv-Mizzet, Visionary",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 33: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Goatnap",
+   "deck": "IDEA Niv-Mizzet, Visionary",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 33: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Crib Swap",
+   "deck": "IDEA Zurgo, Thunder's Decree",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 33: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
   }
  ]
 }

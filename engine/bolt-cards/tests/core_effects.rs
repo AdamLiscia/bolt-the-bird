@@ -3394,3 +3394,30 @@ fn proliferating_a_saga_triggers_its_next_chapter() {
     assert_eq!(g.obj(city).lore, 2, "a lore counter");
     assert_eq!(treasures(&g).len(), 2, "chapter II copied the Treasure");
 }
+
+#[test]
+fn another_counter_of_the_chosen_kind() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![Filter::CREATURE],
+        vec![Effect::AddCounterOfChosenKind(0)],
+    )]);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    g.objects[elves.0 as usize].counters = 1;
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::Target(obj(elves)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elves).counters, 2, "one kind: no choice");
+    g.objects[elves.0 as usize].stun = 1;
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::Target(obj(elves)));
+    while !matches!(g.pending, Pending::Decide(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert_eq!(legal, vec![Action::Mode(0), Action::Mode(2)], "+1/+1 or stun");
+    act(&mut g, Action::Mode(2));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.obj(elves).counters, g.obj(elves).stun), (2, 2));
+}

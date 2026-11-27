@@ -4229,3 +4229,132 @@ fn shanna_grows_per_creature_and_dodges_opponents_abilities() {
         "spells still can"
     );
 }
+
+#[test]
+fn chandra_dressed_to_kill_pings_exiles_red_and_makes_her_emblem() {
+    let mut g = table();
+    let chandra = put(&mut g, 0, "Chandra, Dressed to Kill");
+    g.objects[chandra.0 as usize].loyalty = 7;
+    let life = g.players[1].life;
+    act(&mut g, Action::Loyalty(chandra, 0));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, life - 1, "1 damage");
+    assert_eq!(g.obj(chandra).loyalty, 8);
+    // The -7 next turn: the top five exiled, red ones castable, and the emblem.
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Library);
+    let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Library);
+    act(&mut g, Action::Loyalty(chandra, 2));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.obj(bolt).zone, g.obj(elves).zone), (Zone::Exile, Zone::Exile));
+    assert!(g.obj(bolt).playable.is_some() && g.obj(elves).playable.is_none());
+    assert!(g.emblems.iter().any(|e| e.0 == 0), "an emblem");
+    let life = g.players[1].life;
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[Action::Target(Target::Player(1))]);
+    assert_eq!(g.players[1].life, life - 4, "the Bolt's 3 and the emblem's 1");
+}
+
+#[test]
+fn adept_watershaper_makes_other_tapped_creatures_indestructible() {
+    let mut g = table();
+    let w = put(&mut g, 0, "Adept Watershaper");
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let theirs = put(&mut g, 1, "Llanowar Elves");
+    assert!(!g.keywords(elves).has(Keywords::INDESTRUCTIBLE), "untapped");
+    g.objects[elves.0 as usize].tapped = true;
+    g.objects[w.0 as usize].tapped = true;
+    g.objects[theirs.0 as usize].tapped = true;
+    assert!(g.keywords(elves).has(Keywords::INDESTRUCTIBLE));
+    assert!(!g.keywords(w).has(Keywords::INDESTRUCTIBLE), "other");
+    assert!(!g.keywords(theirs).has(Keywords::INDESTRUCTIBLE), "yours");
+}
+
+#[test]
+fn riverguards_reflexes_pumps_grants_first_strike_and_untaps() {
+    let mut g = table();
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    g.objects[elves.0 as usize].tapped = true;
+    let r = hand(&mut g, 0, "Riverguard's Reflexes");
+    play(&mut g, r, false, &[obj(elves)], &[]);
+    assert_eq!((g.power(elves), g.toughness(elves)), (3, 3));
+    assert!(g.keywords(elves).has(Keywords::FIRST_STRIKE) && !g.obj(elves).tapped);
+}
+
+#[test]
+fn keep_out_hits_a_tapped_creature_or_destroys_an_enchantment() {
+    let mut g = table();
+    let tapped = put(&mut g, 1, "Pippin, Guard of the Citadel");
+    let untapped = put(&mut g, 1, "Llanowar Elves");
+    g.objects[tapped.0 as usize].tapped = true;
+    let k = hand(&mut g, 0, "Keep Out");
+    act(&mut g, Action::CastModal(k, 0));
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Target(obj(tapped))) && !legal.contains(&Action::Target(obj(untapped))));
+    act(&mut g, Action::Target(obj(tapped)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(tapped).zone, Zone::Graveyard);
+    let tide = put(&mut g, 1, "Inexorable Tide");
+    let k = hand(&mut g, 0, "Keep Out");
+    act(&mut g, Action::CastModal(k, 1));
+    act(&mut g, Action::Target(obj(tide)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(tide).zone, Zone::Graveyard);
+}
+
+#[test]
+fn terminate_sear_and_boulder_dash() {
+    let mut g = table();
+    let a = put(&mut g, 1, "Pippin, Guard of the Citadel");
+    let t = hand(&mut g, 0, "Terminate");
+    play(&mut g, t, false, &[obj(a)], &[]);
+    assert_eq!(g.obj(a).zone, Zone::Graveyard);
+    let b = put(&mut g, 1, "Pippin, Guard of the Citadel");
+    let sear = hand(&mut g, 0, "Sear");
+    act(&mut g, Action::Cast(sear));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(Target::Player(1))),
+        "no players"
+    );
+    act(&mut g, Action::Target(obj(b)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(b).zone, Zone::Graveyard);
+    let c = put(&mut g, 1, "Pippin, Guard of the Citadel");
+    let life = g.players[1].life;
+    let dash = hand(&mut g, 0, "Boulder Dash");
+    play(&mut g, dash, false, &[obj(c), Target::Player(1)], &[]);
+    assert_eq!(g.obj(c).zone, Zone::Graveyard, "2 damage");
+    assert_eq!(g.players[1].life, life - 1, "1 damage to the other target");
+}
+
+#[test]
+fn goatnap_steals_untaps_and_hastes() {
+    let mut g = table();
+    let theirs = put(&mut g, 1, "Pippin, Guard of the Citadel");
+    g.objects[theirs.0 as usize].tapped = true;
+    let gn = hand(&mut g, 0, "Goatnap");
+    play(&mut g, gn, false, &[obj(theirs)], &[]);
+    assert_eq!(g.obj(theirs).controller, 0);
+    assert!(!g.obj(theirs).tapped && g.keywords(theirs).has(Keywords::HASTE));
+    assert_eq!(g.power(theirs), 2, "not a Goat");
+}
+
+#[test]
+fn crib_swap_exiles_and_gives_its_controller_a_changeling() {
+    let mut g = table();
+    let theirs = put(&mut g, 1, "Pippin, Guard of the Citadel");
+    let cs = hand(&mut g, 0, "Crib Swap");
+    assert!(g.def_of(cs).changeling, "every creature type");
+    play(&mut g, cs, false, &[obj(theirs)], &[]);
+    assert_eq!(g.obj(theirs).zone, Zone::Exile);
+    let shifters = tokens(&g, 1, "Shapeshifter");
+    assert_eq!(shifters.len(), 1, "its controller's");
+    let x = shifters[0];
+    assert_eq!((g.power(x), g.toughness(x)), (1, 1));
+    assert!(g.has_subtype(x, "Goat") && g.colors_of(x) == [false; 5]);
+}
