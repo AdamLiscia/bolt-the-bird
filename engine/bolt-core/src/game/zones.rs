@@ -589,4 +589,22 @@ impl Game {
         self.become_copy(src, of);
         self.obj_mut(src).copy_exceptions = keep_own;
     }
+
+    /// `fire`, with the triggers it adds carrying `card` as their `extra` ("that spell": Wandering
+    /// Archaic's copy).
+    pub(super) fn fire_with_extra(&mut self, p: PlayerId, when: When, card: ObjId) {
+        let before = self.triggered.len();
+        self.fire(p, when, None);
+        for t in &mut self.triggered[before..] {
+            t.extra = Some(card);
+        }
+    }
+
+    /// "Whenever you play a card from exile" (Prosper): `p` is about to cast `card` or play it as a
+    /// land; called before it moves, so its zone is still the one it's played from.
+    pub(super) fn played_from_exile(&mut self, p: PlayerId, card: ObjId) {
+        if self.obj(card).zone == Zone::Exile {
+            self.fire(p, When::YouPlayCardFromExile, None);
+        }
+    }
 }

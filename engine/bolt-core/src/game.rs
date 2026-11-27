@@ -9795,6 +9795,7 @@ impl Game {
                 if self.def_of(c).modal_back && !self.def_of(c).types.land {
                     self.obj_mut(c).transformed = true; // its land face (CR 712.12)
                 }
+                self.played_from_exile(p, c); // Prosper's Pact Boon
                 self.move_to(c, Zone::Battlefield);
                 self.players[p].lands_played += 1;
                 self.passes = 0;
@@ -10337,6 +10338,7 @@ impl Game {
             self.obj_mut(card).command_zone_casts = casts.saturating_add(1);
             self.commander_casts[owner] = self.commander_casts[owner].saturating_add(1);
         }
+        self.played_from_exile(p, card); // Prosper's Pact Boon
         self.move_to(card, Zone::Stack);
         self.obj_mut(card).citadel_cast = citadel;
         if mode.alt && self.def_of(card).mana_ext.evoke {
@@ -10594,7 +10596,8 @@ impl Game {
             }
         }
         if self.types_of(card).instant || self.types_of(card).sorcery {
-            self.fire(opponent(p), When::OpponentCastsInstantOrSorcery, None);
+            self.fire_with_extra(opponent(p), When::OpponentCastsInstantOrSorcery, card);
+            // "that spell"
         }
         for (owner, kind, card) in self.emblems.clone() {
             if let EmblemKind::OnAnySpellCast { trigger } = kind {

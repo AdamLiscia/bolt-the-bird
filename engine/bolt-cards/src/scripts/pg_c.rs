@@ -2178,6 +2178,18 @@ pub fn script(name: &str) -> Option<Script> {
                 activated(d, "{X}", true, vec![artifact], vec![become_copy]);
             },
         ),
+        // ---- Borrowed d2 pieces (the desktop is offline) ----
+        "Prosper, Tome-Bound" => s(
+            &[
+                "Mystic Arcanum — At the beginning of your end step, exile the top card of your library. Until the end of your next turn, you may play that card.",
+                "Pact Boon — Whenever you play a card from exile, create a Treasure token.",
+            ],
+            |d, t| {
+                on(d, When::EndStep { your_turn_only: true }, vec![], vec![Effect::ExileTopToPlayAll(1)]);
+                let treasure = Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 };
+                on(d, When::YouPlayCardFromExile, vec![], vec![treasure]);
+            },
+        ),
         _ => None,
     }
 }
@@ -2430,4 +2442,5 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Mystic Forge",
     "Lithoform Engine",
     "Thespian's Stage",
+    "Prosper, Tome-Bound",
 ];

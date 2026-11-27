@@ -856,11 +856,31 @@ Built first: the batch 1 WIP plus the tarkir 0834aa0 merge, verified at d72d923 
 - The Mycosynth Gardens: scripted with the same effect (`keep_own: false`), **not listed**: "{1}, {T}: Add one mana
   of any color." needs d1 (a mana ability with a mana cost). It also needs the merger: the activation listing's
   `trigger_can_target` pre-check uses X = 0, so a `mana_value_is_x` target rejects every X and the ability is never
-  offered (its test was dropped at the build; `keep_own: false` is otherwise the tested Stage path).
+  offered. The merger fixed that on tarkir (X-dependent targets are checked for each X), so its test is back.
 - Wandering Archaic // Explore the Vastlands: not scripted. The copy part needs no new Mac C core:
   `may(d, When::OpponentCastsInstantOrSorcery, vec![], vec![Effect::UnlessOpponentPays(2), Effect::CopySpellNewTargets])`,
   as Rhystic Study does. But it needs d2 to set the cast spell as `extra` on `OpponentCastsInstantOrSorcery`
   triggers (that `fire` passes None, and `CopySpellNewTargets` reads `extra`). The back face needs a sorcery
   modal back cast (`back_face_castable` covers permanent backs only; Mac C) and an "Each player looks at the top
   five..." effect (d3).
-Tests: pg_c 212 (4 new), core_objects 39 (1 new: a copied Rogue's Passage ability chooses a new target).
+Tests: pg_c 212 (4 new), core_objects 39 at 49d2821 (Rogue's Passage; the Mycosynth test is back in batch 3).
+
+## Borrowed d2 pieces (the desktop is offline), batch 3 (unbuilt)
+
+Fast-forwarded to tarkir 53fd106 (the merger's X-dependent activation targets; needs_core borrow notes).
+- `When::OpponentCastsInstantOrSorcery` now carries the cast spell as `extra`: its emit in `finish_cast` is one
+  line, `Game::fire_with_extra` (game/zones.rs: `fire`, then `extra` on the triggers it added). Arasta and
+  Niv-Mizzet, Parun ignore `extra`.
+- `When::YouPlayCardFromExile`, emitted by `Game::played_from_exile(p, card)`: one line in `cast_now` (before the
+  card moves to the stack) and one in the `PlayLand` arm (before it moves to the battlefield); it fires only if the
+  card is in exile then. A spell's trigger goes on the stack above it.
+- Prosper, Tome-Bound (listed): the existing `ExileTopToPlayAll(1)` at your end step ("until the end of your next
+  turn") and Pact Boon's Treasure.
+- Wandering Archaic // Explore the Vastlands: still not scripted. Its front is ready to write
+  (`may(d, When::OpponentCastsInstantOrSorcery, vec![], vec![Effect::UnlessOpponentPays(2), Effect::CopySpellNewTargets])`),
+  but the back needs an effect that doesn't exist yet: each player looks at the top five, may reveal a land
+  and/or an instant or sorcery, takes them, the rest go to the bottom in random order, and everyone gains 3
+  (d3's look-at-five). It also needs `back_face_castable` extended to instant and sorcery backs (Mac C). I'll do
+  that piece when the effect lands, or both if it's handed to me.
+Tests: core_objects 42 (the Mycosynth copy test back, Arasta's trigger carrying the spell, Prosper playing a land
+from exile and not from hand); pg_c 212.

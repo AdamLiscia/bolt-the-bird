@@ -3436,6 +3436,9 @@ pub enum When {
     /// "Whenever [this] deals combat damage to a player for the first time each turn" (Raphael, Tag
     /// Team Tough), with the damage as the amount; see `Game::combat_damaged_player`.
     DealsCombatDamageToPlayerFirstTimeEachTurn,
+    /// "Whenever you play a card from exile" (Prosper, Tome-Bound): a land played or a spell cast
+    /// from exile, fired by `Game::played_from_exile` (game/zones.rs).
+    YouPlayCardFromExile,
 }
 
 #[derive(Clone, Debug, PartialEq)]
