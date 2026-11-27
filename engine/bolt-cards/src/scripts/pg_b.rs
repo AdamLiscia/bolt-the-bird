@@ -2411,6 +2411,36 @@ pub fn script(name: &str) -> Option<Script> {
                 d.keywords = d.keywords.with(Keywords::FLYING).with(Keywords::TRAMPLE);
             },
         ),
+        "The Earth Crystal" => s(
+            &[
+                "Green spells you cast cost {1} less to cast.",
+                "If one or more +1/+1 counters would be put on a creature you control, twice that many +1/+1 counters are put on that creature instead.",
+                "{4}{G}{G}, {T}: Distribute two +1/+1 counters among one or two target creatures you control.",
+            ],
+            |d, _| {
+                d.green_spell_discount = 1;
+                d.doubles_plus_counters_on_your_creatures = true;
+                let mut a = up_to(vec![YOUR_CREATURE; 2], vec![Effect::DividedCounters]);
+                a.min_targets = Some(1);
+                a.divide = 2;
+                let n = activated(d, "{4}{G}{G}", true, vec![], vec![]);
+                d.activated[n].ability = a;
+            },
+        ),
+        "Blossombind" => s(
+            &[
+                "Enchant creature",
+                "When this Aura enters, tap enchanted creature.",
+                "Enchanted creature can't become untapped and can't have counters put on it.",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                on(d, When::Enters, vec![], vec![Effect::TapAttached]);
+                d.enchanted_cant_become_untapped = true;
+                d.enchanted_cant_have_counters = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -2688,6 +2718,8 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Reckless Handling",
     "Demon's Disciple",
     "Gluttonous Hellkite",
+    "The Earth Crystal",
+    "Blossombind",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",

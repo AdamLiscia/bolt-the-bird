@@ -1128,3 +1128,18 @@ One Ring's check in `deal_damage`). Claims recorded in needs_core.json.
   enter-with-counters paths still don't apply Hardened Scales; that is unchanged.
 - The card waits for d3's "distribute two +1/+1 counters among one or two target creatures you
   control". The green discount is `green_spell_discount`. The tests use a flagged Sol Ring.
+- The Earth Crystal is now scripted in full: `green_spell_discount = 1`, the doubler, and
+  "{4}{G}{G}, {T}: Distribute two" through `Effect::DividedCounters` (`up_to` two of your
+  creatures, `min_targets` 1, `divide` 2), as on Armament Dragon.
+
+### Blossombind (Niv-Mizzet idea, 2026-11-27)
+
+- `CardDef::enchanted_cant_become_untapped`: counted by `enchanted_doesnt_untap`, so all three
+  untap-step paths skip the creature, and `untap_by_effect` does nothing to it. The two remaining
+  direct untaps are land-only (`UntapLandsYouControl`, a search that untaps lands) and don't check
+  it.
+- `CardDef::enchanted_cant_have_counters`: `add_counters` returns early, `add_counter_kind` puts
+  nothing, and `minus_counters_for` gives 0 -1/-1 counters. Not covered: counters a creature
+  enters with (the Aura can't be attached yet) and direct counter writes that bypass these three
+  (`endure_token` and a few cost removals; removals aren't "put").
+- Script: an Aura with `Effect::TapAttached` on enters.

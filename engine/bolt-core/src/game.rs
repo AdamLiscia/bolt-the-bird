@@ -4149,6 +4149,9 @@ impl Game {
     /// An effect untaps a permanent: a tapped one with a stun counter loses the counter instead
     /// (CR 122.1d).
     fn untap_by_effect(&mut self, id: ObjId) {
+        if self.attached_aura_has(id, |d| d.enchanted_cant_become_untapped) {
+            return; // Blossombind
+        }
         let o = self.obj_mut(id);
         let was_tapped = o.tapped;
         if o.tapped && o.stun > 0 {
@@ -4162,13 +4165,22 @@ impl Game {
     }
 
     /// An Aura on it says "Enchanted creature doesn't untap during its controller's untap step."
+    /// (or "can't become untapped", Blossombind).
     fn enchanted_doesnt_untap(&self, id: ObjId) -> bool {
+        self.attached_aura_has(id, |d| d.enchanted_doesnt_untap || d.enchanted_cant_become_untapped)
+    }
+
+    /// Whether an Aura attached to `id` with its abilities has `what`.
+    fn attached_aura_has(&self, id: ObjId, what: fn(&CardDef) -> bool) -> bool {
         let zcc = self.obj(id).zcc;
         self.battlefield.iter().any(|&a| {
-            self.obj(a).attached_to == Some((id, zcc))
-                && self.def_of(a).enchanted_doesnt_untap
-                && !self.lost_abilities(a)
+            self.obj(a).attached_to == Some((id, zcc)) && what(self.def_of(a)) && !self.lost_abilities(a)
         })
+    }
+
+    /// Blossombind: "Enchanted creature ... can't have counters put on it."
+    fn cant_have_counters(&self, id: ObjId) -> bool {
+        self.attached_aura_has(id, |d| d.enchanted_cant_have_counters)
     }
 
     /// Total toughness of the creatures `p` controls.
@@ -4230,6 +4242,9 @@ impl Game {
     /// How many of `n` -1/-1 counters are put on `id`: one fewer per Vizier of Remedies its
     /// controller controls, if it's a creature.
     fn minus_counters_for(&self, id: ObjId, n: i32) -> i32 {
+        if self.cant_have_counters(id) {
+            return 0;
+        }
         if n <= 0 || !self.types_of(id).creature {
             return n.max(0);
         }
@@ -4359,6 +4374,9 @@ impl Game {
     /// `add_counters` and lore through `add_lore` (a Saga's next chapter triggers, CR 714.2c), which
     /// report their own placement; for the rest it returns 1 for the caller to report.
     fn add_counter_kind(&mut self, id: ObjId, k: u8) -> i32 {
+        if self.cant_have_counters(id) {
+            return 0;
+        }
         match k {
             0 => {
                 self.add_counters(id, 1);
@@ -13936,7 +13954,7 @@ impl Game {
     }
 
     fn add_counters(&mut self, id: ObjId, n: i32) {
-        if n <= 0 || self.obj(id).zone != Zone::Battlefield {
+        if n <= 0 || self.obj(id).zone != Zone::Battlefield || self.cant_have_counters(id) {
             return;
         }
         // Replacements in the order the controller would pick (CR 616.1): Hardened Scales' "that

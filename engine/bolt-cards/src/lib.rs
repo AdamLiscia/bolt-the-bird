@@ -567,6 +567,8 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         begins_game_with_luck_counter: false,
         loyalty_plus_instants_sorceries_cast: false,
         doubles_plus_counters_on_your_creatures: false,
+        enchanted_cant_become_untapped: false,
+        enchanted_cant_have_counters: false,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;

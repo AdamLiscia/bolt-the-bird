@@ -1158,6 +1158,12 @@ pub struct CardDef {
     /// put on it instead." (The Earth Crystal), in `Game::add_counters` and entering with counters.
     /// Each one doubles again, after Hardened Scales' +1 (the order its controller would pick).
     pub doubles_plus_counters_on_your_creatures: bool,
+    /// "Enchanted creature can't become untapped" (Blossombind): no untap step and no untap effect
+    /// untaps it (`Game::enchanted_doesnt_untap`, `Game::untap_by_effect`).
+    pub enchanted_cant_become_untapped: bool,
+    /// "Enchanted creature ... can't have counters put on it" (Blossombind): in `add_counters`,
+    /// `add_counter_kind` and `minus_counters_for`.
+    pub enchanted_cant_have_counters: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1770,6 +1776,8 @@ impl CardDef {
             begins_game_with_luck_counter: false,
             loyalty_plus_instants_sorceries_cast: false,
             doubles_plus_counters_on_your_creatures: false,
+            enchanted_cant_become_untapped: false,
+            enchanted_cant_have_counters: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2079,6 +2087,8 @@ impl CardDef {
             begins_game_with_luck_counter: false,
             loyalty_plus_instants_sorceries_cast: false,
             doubles_plus_counters_on_your_creatures: false,
+            enchanted_cant_become_untapped: false,
+            enchanted_cant_have_counters: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2388,6 +2398,8 @@ impl CardDef {
             begins_game_with_luck_counter: false,
             loyalty_plus_instants_sorceries_cast: false,
             doubles_plus_counters_on_your_creatures: false,
+            enchanted_cant_become_untapped: false,
+            enchanted_cant_have_counters: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

@@ -4558,3 +4558,46 @@ fn a_walker_enters_with_a_loyalty_counter_per_instant_and_sorcery_cast_this_turn
     play(&mut g, j, false, &[], &[]);
     assert_eq!(g.obj(j).loyalty, 3 + 2, "two instants cast this turn");
 }
+
+// ---- The Earth Crystal (Korvold), Blossombind (Niv-Mizzet idea) ----
+
+#[test]
+fn the_earth_crystal_distributes_two_counters_and_doubles_them() {
+    let mut g = table();
+    let crystal = put(&mut g, 0, "The Earth Crystal");
+    let a = put(&mut g, 0, "Llanowar Elves");
+    let b = put(&mut g, 0, "Savannah Lions");
+    let theirs = put(&mut g, 1, "Llanowar Elves");
+    act(&mut g, Action::Activate(crystal, 0));
+    assert!(!g.legal_actions().contains(&Action::Target(obj(theirs))), "yours");
+    act(&mut g, Action::Target(obj(a)));
+    act(&mut g, Action::Target(obj(b)));
+    if g.legal_actions().contains(&Action::No) {
+        act(&mut g, Action::No);
+    }
+    assert!(matches!(g.pending, Pending::Divide(0)));
+    act(&mut g, Action::Amount(1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        (g.obj(a).counters, g.obj(b).counters),
+        (2, 2),
+        "one each, doubled"
+    );
+}
+
+#[test]
+fn blossombind_taps_and_keeps_the_creature_tapped_and_counterless() {
+    let mut g = table();
+    let champ = put(&mut g, 0, "Setessan Champion");
+    let bind = hand(&mut g, 0, "Blossombind");
+    play(&mut g, bind, false, &[obj(champ)], &[]);
+    assert!(g.obj(champ).tapped, "tapped as it enters");
+    let guardian = hand(&mut g, 0, "Grim Guardian");
+    play(&mut g, guardian, false, &[], &[]);
+    assert_eq!(g.obj(champ).counters, 0, "can't have counters put on it");
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(g.obj(champ).tapped, "can't become untapped");
+}
