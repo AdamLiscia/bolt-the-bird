@@ -3134,6 +3134,11 @@ pub enum Effect {
     /// The source deals damage equal to the mana value of the spell in the item's `extra` (X
     /// included while it's on the stack) to the target in `slot` (Passionate Archaeologist).
     DamageEqualExtrasManaValue(u8),
+    /// Create a `def` token for each token you created this turn (`Game::tokens_created_count`,
+    /// counted as it resolves: Thalisse, Reverent Medium's end step Spirits).
+    CreateTokensPerTokenCreatedThisTurn {
+        def: usize,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -4298,6 +4303,9 @@ pub enum When {
     OpponentCastsChosenNumber,
     /// "Whenever you cast a spell from exile", the spell in `extra` (Passionate Archaeologist).
     YouCastSpellFromExile,
+    /// "Whenever one or more artifacts you control enter", batched like the token batches, with how
+    /// many entered as the amount (Ingenious Artillerist: "deals that much damage").
+    OneOrMoreArtifactsYouControlEnter,
 }
 
 #[derive(Clone, Debug, PartialEq)]

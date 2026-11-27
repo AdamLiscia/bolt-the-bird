@@ -5502,7 +5502,8 @@
    "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
    "lane": "mac-c",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "core done: d2 batch 48 (When::OneOrMoreArtifactsYouControlEnter, batched, the count as amount; with Effect::DamageEachOpponentAmount). Malik fence: the Mac lane scripts the card"
   },
   {
    "card": "Thalisse, Reverent Medium",
@@ -5510,7 +5511,8 @@
    "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
    "lane": "mac-c",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "core done: d2 batch 48 (Game::tokens_created_count, Effect::CreateTokensPerTokenCreatedThisTurn { def } on When::EndStep { your_turn_only: false }; the 1/1 flying Spirit token exists). Malik fence: the Mac lane scripts the card"
   },
   {
    "card": "Gisa's Favorite Shovel",

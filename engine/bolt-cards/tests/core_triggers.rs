@@ -3042,3 +3042,73 @@ fn creature_deals_combat_damage_to_you_carries_the_creature_and_the_damage() {
     assert_eq!(life(&g, 1), 40, "lost 2 in combat, gained the 2 back");
     assert_eq!(g.obj(lions).zone, Zone::Graveyard, "the creature in slot 0");
 }
+
+// ---- batch 48: batched artifact entries, tokens created this turn ----
+
+#[test]
+fn one_or_more_artifacts_entering_batch_with_the_count() {
+    let defs = set("CMD").unwrap().defs.clone();
+    let treasure = (0..defs.len())
+        .find(|&i| defs[i].token && defs[i].name == "Treasure")
+        .expect("a token");
+    let mut g = game_with(move |defs| {
+        blood_with(vec![trigger(
+            When::OneOrMoreArtifactsYouControlEnter,
+            None,
+            vec![Effect::GainLifeAmount],
+        )])(defs);
+        defs[cid("Sol Ring")].triggers.push(trigger(
+            When::Enters,
+            None,
+            vec![Effect::CreateToken {
+                who: Who::You,
+                def: treasure,
+                n: 2,
+            }],
+        ));
+    });
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Hand);
+    play(&mut g, ring, false, &[], &[]);
+    assert_eq!(
+        life(&g, 0),
+        40 + 1 + 2,
+        "Sol Ring, then both Treasures as one batch of 2"
+    );
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Hand);
+    play(&mut g, lions, false, &[], &[]);
+    assert_eq!(life(&g, 0), 43, "not an artifact");
+}
+
+#[test]
+fn tokens_created_this_turn_are_counted_per_player() {
+    let defs = set("CMD").unwrap().defs.clone();
+    let treasure = (0..defs.len())
+        .find(|&i| defs[i].token && defs[i].name == "Treasure")
+        .expect("a token");
+    let mut g = game_with(blood_with(vec![trigger(
+        When::EndStep {
+            your_turn_only: false,
+        },
+        None,
+        vec![Effect::CreateTokensPerTokenCreatedThisTurn { def: treasure }],
+    )]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    g.tokens_created_count[0] = (g.turn, 2);
+    g.tokens_created_count[1] = (g.turn, 5);
+    while g.step != Step::End {
+        let a = if matches!(g.pending, bolt_core::Pending::DeclareAttackers(_)) {
+            Action::FinishAttacks
+        } else {
+            Action::PassPriority
+        };
+        act(&mut g, a);
+    }
+    resolve_all(&mut g, &[]);
+    let treasures = g
+        .permanents(0)
+        .filter(|&c| g.def_of(c).name == "Treasure")
+        .count();
+    assert_eq!(treasures, 2, "your two tokens, not the opponent's");
+    assert_eq!(g.tokens_created_count[0], (g.turn, 4), "the new ones count too");
+}

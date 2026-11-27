@@ -2186,6 +2186,8 @@ pub struct Game {
     /// "Do this only once each turn" (`Effect::StopIfDoneThisTurn`, `Effect::MarkDoneThisTurn`):
     /// (source, its zcc, the turn).
     pub done_once_turn: Vec<(ObjId, u32, u32)>,
+    /// Tokens each player created this turn: (the turn, how many) (Thalisse, Reverent Medium).
+    pub tokens_created_count: [(u32, u32); 2],
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2520,6 +2522,7 @@ impl Game {
             end_reason: None,
             token_enter_batches: Vec::new(),
             done_once_turn: Vec::new(),
+            tokens_created_count: [(0, 0); 2],
         }
     }
 
@@ -6049,9 +6052,26 @@ impl Game {
         if to == Zone::Battlefield && from != Zone::Battlefield && self.is_token(id) {
             let c = self.obj(id).controller;
             self.token_created_turn[c] = self.turn;
+            let (t, n) = self.tokens_created_count[c];
+            self.tokens_created_count[c] = (self.turn, if t == self.turn { n + 1 } else { 1 });
             self.fire(c, When::TokenYouControlEnters, Some(id));
             self.fire_token_batch(c, id, false);
             self.fire_token_batch(opponent(c), id, true);
+        }
+        if to == Zone::Battlefield && from != Zone::Battlefield && self.types_of(id).artifact {
+            // "Whenever one or more artifacts you control enter" (Ingenious Artillerist).
+            let c = self.obj(id).controller;
+            for src in self.permanents(c).collect::<Vec<_>>() {
+                if self.lost_abilities(src) {
+                    continue;
+                }
+                let whens: Vec<When> = self.def_of(src).triggers.iter().map(|tr| tr.when).collect();
+                for (n, w) in whens.into_iter().enumerate() {
+                    if w == When::OneOrMoreArtifactsYouControlEnter {
+                        self.batch_trigger(src, n, c);
+                    }
+                }
+            }
         }
         if to == Zone::Battlefield && from != Zone::Battlefield && self.types_of(id).enchantment {
             let c = self.obj(id).controller;
@@ -27146,6 +27166,15 @@ impl Game {
                 };
                 if mv > 0 {
                     self.deal_damage(src, target, mv);
+                }
+            }
+            Effect::CreateTokensPerTokenCreatedThisTurn { def } => {
+                let p = item.controller;
+                let (t, n) = self.tokens_created_count[p];
+                if t == self.turn {
+                    for _ in 0..n {
+                        self.create_token(p, def);
+                    }
                 }
             }
             Effect::DiscoverSourceToughness => {
