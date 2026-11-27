@@ -281,6 +281,14 @@ def test_mirrormind_crown_asks_copies_or_the_tokens():
     assert label(dec, "No", 0) == "Make the tokens"
 
 
+def test_gemstone_caverns_asks_to_begin_on_the_battlefield_then_exile_a_card():
+    dec = {"kind": "GemstoneCaverns", "card": [7, 2], "exile": False}
+    assert label(dec, "Yes", 0) == "Begin the game with Secluded Courtyard on the battlefield (a luck counter)"
+    assert label(dec, "No", 0) == "Keep Secluded Courtyard in your hand"
+    exile = {"kind": "GemstoneCaverns", "card": [7, 2], "exile": True}
+    assert sv._decision_label(exile, "Pick", 0, "Forest") == "Exile from your hand: Forest"
+
+
 def test_the_gitrog_asks_for_a_rider_and_how_many_lands():
     rider = {"kind": "SacrificeSaddler", "mount": [3, 1]}
     assert sv._decision_label(rider, "Pick", 0, "Llanowar Elves") == "Sacrifice (it saddled the Mount): Llanowar Elves"

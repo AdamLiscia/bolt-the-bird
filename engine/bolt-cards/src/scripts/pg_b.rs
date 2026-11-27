@@ -2390,6 +2390,17 @@ pub fn script(name: &str) -> Option<Script> {
                 d.artifact_tokens_plus_one = Some(t.thopter);
             },
         ),
+        "Reckless Handling" => s(
+            &["Search your library for an artifact card, reveal it, put it into your hand, shuffle, then discard a card at random. If an artifact card was discarded this way, Reckless Handling deals 2 damage to each opponent."],
+            |d, _| {
+                let find = search(SearchFor::Artifact, SearchTo::Hand);
+                spell(d, vec![], vec![find, Effect::DiscardRandomIfArtifactDamageEachOpponent(2)]);
+            },
+        ),
+        "Demon's Disciple" => s(
+            &["When this creature enters, each player sacrifices a creature or planeswalker of their choice."],
+            |d, _| on(d, When::Enters, vec![], vec![Effect::EachPlayerSacrificesCreatureOrPlaneswalker]),
+        ),
         _ => None,
     }
 }
@@ -2664,6 +2675,8 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Derevi, Empyrial Tactician",
     "There and Back Again",
     "Stridehangar Automaton",
+    "Reckless Handling",
+    "Demon's Disciple",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",

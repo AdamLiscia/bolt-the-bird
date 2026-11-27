@@ -1493,6 +1493,10 @@ pub enum Decision {
     /// `Pick` one of your creatures or planeswalkers tied for the greatest mana value to sacrifice
     /// (Flare of Malice).
     SacrificeGreatestMv,
+    /// Gemstone Caverns, asked of the non-starting player before the first turn: with `exile`
+    /// false, `Yes` begins the game with `card` on the battlefield with a luck counter, `No` keeps
+    /// it in hand; with `exile` true, `Pick` the card in hand to exile.
+    GemstoneCaverns { card: ObjId, exile: bool },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -2036,6 +2040,8 @@ pub struct Game {
     /// While one effect creates its tokens: whether Stridehangar Automaton's Thopter has been made
     /// for it ("one or more artifact tokens": once per event), as `xorn_batch`.
     artifact_plus_batch: Option<bool>,
+    /// The Gemstone Caverns already asked about before the first turn (`Game::pregame_actions`).
+    pregame_asked: Vec<ObjId>,
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2342,6 +2348,7 @@ impl Game {
             mirrormind_used: [0; 2],
             loyalty_snapshots: Vec::new(),
             artifact_plus_batch: None,
+            pregame_asked: Vec::new(),
             hand_links: Vec::new(),
             hand_at_end_combat: Vec::new(),
             dream_marked: Vec::new(),
@@ -12029,12 +12036,26 @@ impl Game {
                     self.move_to(c, Zone::Battlefield);
                 }
             }
-            self.triggered.clear();
-            self.triggered_scanned = 0;
-            self.turn = 0;
-            self.active = opponent(self.first);
-            self.begin_next_turn();
+            self.pregame_actions();
         }
+    }
+
+    /// The pregame actions that are choices (CR 103.6): Gemstone Caverns, for the non-starting
+    /// player, one copy at a time (`Decision::GemstoneCaverns`); then the first turn begins.
+    fn pregame_actions(&mut self) {
+        let q = opponent(self.first);
+        let next = self.players[q].hand.iter().copied().find(|&c| {
+            self.def_of(c).begins_game_with_luck_counter && !self.pregame_asked.contains(&c)
+        });
+        if let Some(card) = next {
+            self.pregame_asked.push(card);
+            return self.ask(q, Decision::GemstoneCaverns { card, exile: false });
+        }
+        self.triggered.clear();
+        self.triggered_scanned = 0;
+        self.turn = 0;
+        self.active = opponent(self.first);
+        self.begin_next_turn();
     }
 
     /// CR 601.2: move to the stack, choose targets, pay, then the caster gets priority again
@@ -13995,6 +14016,8 @@ impl Game {
             Decision::ChooseEnterMode { .. } => vec![Action::Mode(0), Action::Mode(1)],
             Decision::Riot { .. } => vec![Action::Mode(0), Action::Mode(1)],
             Decision::MirrormindCopies { .. } => vec![Action::Yes, Action::No],
+            Decision::GemstoneCaverns { exile: false, .. } => vec![Action::Yes, Action::No],
+            Decision::GemstoneCaverns { exile: true, .. } => hand.iter().copied().map(Action::Pick).collect(),
             Decision::Dredge { player, .. } => {
                 let mut v: Vec<Action> = self
                     .dredge_options(*player)
@@ -15190,6 +15213,20 @@ impl Game {
                 self.open_free_casts();
             }
             return;
+        }
+        if let Decision::GemstoneCaverns { card, exile } = d {
+            match (exile, a) {
+                (false, Action::Yes) => {
+                    self.move_to(card, Zone::Battlefield);
+                    self.obj_mut(card).kind_counters = 1;
+                    if !self.players[p].hand.is_empty() {
+                        return self.ask(p, Decision::GemstoneCaverns { card, exile: true });
+                    }
+                }
+                (true, Action::Pick(c)) => self.move_to(c, Zone::Exile),
+                _ => {}
+            }
+            return self.pregame_actions();
         }
         if let Decision::MirrormindCopies { player, def, n } = d {
             self.mirrormind_used[player] = self.turn; // the first time this turn, either way

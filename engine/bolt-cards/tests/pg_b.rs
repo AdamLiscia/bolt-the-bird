@@ -4425,3 +4425,82 @@ fn stridehangar_automaton_adds_a_thopter_to_artifact_tokens() {
         (2, 2)
     );
 }
+
+// ---- Gemstone Caverns' pregame action (Kenrith) ----
+
+/// Two 60-Plains decks plus a land with Gemstone Caverns' pregame action (the last def), player 0
+/// starting; `caverns` adds one to that player's opening hand before the keeps.
+fn caverns_game(caverns: usize) -> (Game, ObjId) {
+    let mut defs = set("CMD").unwrap().defs.as_ref().clone();
+    let mut gem = bolt_core::CardDef::basic_land("Gemstone Test", bolt_core::Color::White);
+    gem.begins_game_with_luck_counter = true;
+    defs.push(gem);
+    let gem = defs.len() - 1;
+    let plains = vec![cid("Plains"); 60];
+    let mut g = Game::new(std::sync::Arc::new(defs), [&plains, &plains], 7, 0);
+    g.auto_pass = false;
+    let c = g.add_card(caverns, gem, Zone::Hand);
+    (g, c)
+}
+
+#[test]
+fn gemstone_caverns_may_begin_on_the_battlefield_for_the_player_going_second() {
+    let (mut g, gem) = caverns_game(1);
+    act(&mut g, Action::Keep);
+    act(&mut g, Action::Keep);
+    assert_eq!(g.pending, Pending::Decide(1), "asked before the first turn");
+    assert_eq!(g.legal_actions(), vec![Action::Yes, Action::No]);
+    act(&mut g, Action::Yes);
+    assert_eq!(g.obj(gem).zone, Zone::Battlefield);
+    assert_eq!(g.obj(gem).kind_counters, 1, "a luck counter");
+    let victim = g.players[1].hand[0];
+    assert!(g.legal_actions().contains(&Action::Pick(victim)), "then exile a card from hand");
+    act(&mut g, Action::Pick(victim));
+    assert_eq!(g.obj(victim).zone, Zone::Exile);
+    assert_eq!(g.players[1].hand.len(), 6);
+    assert_eq!((g.turn, g.active), (1, 0), "the starting player's first turn");
+}
+
+#[test]
+fn gemstone_caverns_can_stay_in_hand_and_isnt_offered_to_the_starting_player() {
+    let (mut g, gem) = caverns_game(1);
+    act(&mut g, Action::Keep);
+    act(&mut g, Action::Keep);
+    act(&mut g, Action::No);
+    assert_eq!(g.obj(gem).zone, Zone::Hand);
+    assert_eq!((g.turn, g.active), (1, 0));
+
+    let (mut g, gem) = caverns_game(0);
+    act(&mut g, Action::Keep);
+    act(&mut g, Action::Keep);
+    assert_eq!(g.obj(gem).zone, Zone::Hand, "the starting player isn't asked");
+    assert_eq!((g.turn, g.active), (1, 0));
+}
+
+// ---- Malik: Reckless Handling, Demon's Disciple ----
+
+#[test]
+fn reckless_handling_tutors_an_artifact_then_discards_at_random() {
+    let mut g = table();
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    let t = hand(&mut g, 0, "Reckless Handling");
+    let before = g.players[0].hand.len();
+    play(&mut g, t, false, &[], &[Action::Pick(ring)]);
+    // One card in (the Sol Ring), the spell and one random card out.
+    assert_eq!(g.players[0].hand.len(), before - 1);
+    let hit = g.obj(ring).zone == Zone::Graveyard;
+    assert!(hit || g.obj(ring).zone == Zone::Hand);
+    // The Sol Ring is the only artifact: 2 damage exactly when it was the discard.
+    assert_eq!(g.players[1].life, if hit { 38 } else { 40 });
+}
+
+#[test]
+fn demons_disciple_makes_each_player_sacrifice_a_creature_or_planeswalker() {
+    let mut g = table();
+    let mine = put(&mut g, 0, "Llanowar Elves");
+    let theirs = put(&mut g, 1, "Llanowar Elves");
+    let c = hand(&mut g, 0, "Demon's Disciple");
+    play(&mut g, c, false, &[], &[Action::Pick(mine), Action::Pick(theirs)]);
+    assert_eq!((g.obj(mine).zone, g.obj(theirs).zone), (Zone::Graveyard, Zone::Graveyard));
+    assert_eq!(g.obj(c).zone, Zone::Battlefield, "it kept its own creature");
+}

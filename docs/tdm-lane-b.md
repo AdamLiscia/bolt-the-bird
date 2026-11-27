@@ -1083,3 +1083,17 @@ One Ring's check in `deal_damage`). Claims recorded in needs_core.json.
   `create_token`'s extras, once per event (`Game::artifact_plus_batch`, as Xorn's); token doublers
   then double the Thopter too (the order its controller would pick). Mirrormind Crown's copies
   aren't given the extra Thopter.
+
+### Gemstone Caverns' pregame action, Malik's two (2026-11-27)
+
+- Gemstone Caverns (Kenrith; d1 scripts the card): `CardDef::begins_game_with_luck_counter`.
+  After both players keep and the leylines are in (CR 103.6), `Game::pregame_actions` asks the
+  non-starting player `Decision::GemstoneCaverns` for each copy in their opening hand, one at a
+  time: `Yes` puts it onto the battlefield with a luck counter (`Object::kind_counters` = 1), then
+  `Pick` a card from hand to exile (`exile: true`; skipped if the hand is empty); `No` keeps it.
+  The first turn begins after the last answer. The starting player is never asked. Its enters
+  triggers aren't fired (the leyline path clears them too).
+- Reckless Handling: `search(Artifact, Hand)` then d3's
+  `DiscardRandomIfArtifactDamageEachOpponent(2)`. The reveal isn't modelled (no hidden-info
+  tracking).
+- Demon's Disciple: enters trigger with d3's `EachPlayerSacrificesCreatureOrPlaneswalker`.

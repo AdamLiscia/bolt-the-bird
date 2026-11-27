@@ -1146,6 +1146,11 @@ pub struct CardDef {
     /// Stridehangar Automaton: "If one or more artifact tokens would be created under your control,
     /// those tokens plus an additional [Thopter] are created instead." (the token, once per event)
     pub artifact_tokens_plus_one: Option<usize>,
+    /// Gemstone Caverns (CR 103.6): "If [this] is in your opening hand and you're not the starting
+    /// player, you may begin the game with [this] on the battlefield with a luck counter on it. If
+    /// you do, exile a card from your hand." Asked in `Game::pregame_actions`
+    /// (`Decision::GemstoneCaverns`); the luck counter is `Object::kind_counters`.
+    pub begins_game_with_luck_counter: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1755,6 +1760,7 @@ impl CardDef {
             opponents_searches_exiled_for_you: false,
             your_planeswalkers_have_loyalty: Vec::new(),
             artifact_tokens_plus_one: None,
+            begins_game_with_luck_counter: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2061,6 +2067,7 @@ impl CardDef {
             opponents_searches_exiled_for_you: false,
             your_planeswalkers_have_loyalty: Vec::new(),
             artifact_tokens_plus_one: None,
+            begins_game_with_luck_counter: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2367,6 +2374,7 @@ impl CardDef {
             opponents_searches_exiled_for_you: false,
             your_planeswalkers_have_loyalty: Vec::new(),
             artifact_tokens_plus_one: None,
+            begins_game_with_luck_counter: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
