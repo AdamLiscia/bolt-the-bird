@@ -2128,11 +2128,32 @@ impl Game {
 
     /// Bolas's Citadel: whether `c` is the top card of `p`'s library while `p` controls one.
     fn citadel_top(&self, p: PlayerId, c: ObjId) -> bool {
+        if self.valgavoth_exiled(p, c) {
+            return true; // Valgavoth: cast for life equal to its mana value, too
+        }
         self.obj(c).zone == Zone::Library
             && self.players[p].library.last() == Some(&c)
             && self
                 .permanents(p)
                 .any(|x| self.def_of(x).citadel && !self.lost_abilities(x))
+    }
+
+    /// Valgavoth: `c` is a card in exile exiled with a Valgavoth `p` controls (the same objects),
+    /// during `p`'s turn.
+    fn valgavoth_exiled(&self, p: PlayerId, c: ObjId) -> bool {
+        let o = self.obj(c);
+        self.active == p
+            && o.zone == Zone::Exile
+            && self.exiled_with.iter().any(|&(v, vz, x, xz)| {
+                let vo = self.obj(v);
+                x == c
+                    && xz == o.zcc
+                    && vo.zone == Zone::Battlefield
+                    && vo.zcc == vz
+                    && vo.controller == p
+                    && self.def_of(v).exiles_opponents_cards_to_play
+                    && !self.lost_abilities(v)
+            })
     }
 
     /// Whether a Silent Arbiter is on the battlefield ("no more than one creature can attack /
@@ -2480,7 +2501,19 @@ impl Game {
         {
             t.creature = true;
         }
+        if t.creature && !t.artifact && self.ygra_food(id) {
+            t.artifact = true; // Ygra: "Food artifacts in addition to their other types"
+        }
         t
+    }
+
+    /// Ygra, Eater of All: a creature on the battlefield while another permanent with
+    /// `other_creatures_are_food_artifacts` (a static source) is on the battlefield.
+    fn ygra_food(&self, id: ObjId) -> bool {
+        self.obj(id).zone == Zone::Battlefield
+            && self.static_sources.iter().any(|&x| {
+                x != id && self.def_of(x).other_creatures_are_food_artifacts && !self.lost_abilities(x)
+            })
     }
 
     /// Whether Kormus Bell makes `id` a 1/1 black creature now.
@@ -2754,10 +2787,28 @@ impl Game {
                 return s == "Mountain"; // its other land types are gone
             }
         }
+        if s == "Food" && self.ygra_food(id) && self.types_of(id).creature {
+            return true; // Ygra
+        }
+        if s == "Food" && self.artifact_food_on_your_turn(id) {
+            return true; // Gourmand's Talent
+        }
         self.has_base_subtype(id, s)
             || self.statics_on(id).any(|st| st.subtype == Some(s))
             || (matches!(s, "Plains" | "Island" | "Swamp" | "Mountain" | "Forest")
                 && self.every_basic_type(id))
+    }
+
+    /// Gourmand's Talent: an artifact on the battlefield, during its controller's turn, whose
+    /// controller has a permanent with `your_artifacts_are_food_your_turn`.
+    fn artifact_food_on_your_turn(&self, id: ObjId) -> bool {
+        let o = self.obj(id);
+        o.zone == Zone::Battlefield
+            && self.active == o.controller
+            && self.types_of(id).artifact
+            && self
+                .permanents(o.controller)
+                .any(|x| self.def_of(x).your_artifacts_are_food_your_turn && !self.lost_abilities(x))
     }
 
     /// Dryad of the Ilysian Grove: a land on the battlefield whose controller has it.
@@ -2911,6 +2962,9 @@ impl Game {
                                                 && (self.def_of(a).aura || self.def_of(a).reanimating_aura)
                                         })
                                 })
+                            }
+                            Some(StaticCondition::OutsideCommanderIdentity(c)) => {
+                                self.outside_commander_identity(so.controller, c)
                             }
                         };
                         applies && condition_ok && (!s.your_turn_only || self.active == so.controller)
@@ -4022,6 +4076,15 @@ impl Game {
     /// sacrificed.
     fn cant_be_sacrificed(&self, id: ObjId) -> bool {
         let p = self.obj(id).controller;
+        if self.forced_sacrifice_blocked(p) {
+            return true; // Sigarda, Host of Herons
+        }
+        self.unsacrificeable(id)
+    }
+
+    /// Permanents that can't be sacrificed at all right now, whoever asks (Zurgo, Thunder's Decree's Warrior tokens).
+    fn unsacrificeable(&self, id: ObjId) -> bool {
+        let p = self.obj(id).controller;
         self.step == Step::End
             && self.active == p
             && self.is_token(id)
@@ -4029,6 +4092,30 @@ impl Game {
             && self
                 .permanents(p)
                 .any(|x| self.def_of(x).warrior_tokens_unsacrificeable_end_step)
+    }
+
+    /// `cant_be_sacrificed`, for a sacrifice made by an ability of a permanent `by` controls: Sigarda
+    /// stops it only if `by` is an opponent, whatever is resolving.
+    fn cant_be_sacrificed_by(&self, id: ObjId, by: PlayerId) -> bool {
+        let p = self.obj(id).controller;
+        let sigarda = by != p
+            && self
+                .permanents(p)
+                .any(|x| self.def_of(x).opponents_cant_make_you_sacrifice && !self.lost_abilities(x));
+        if sigarda {
+            return true;
+        }
+        self.unsacrificeable(id)
+    }
+
+    /// Sigarda, Host of Herons: an opponent's spell or ability is resolving, so it can't make `p`
+    /// sacrifice. Every forced sacrifice chooses from `cant_be_sacrificed`; `p`'s own costs and
+    /// effects (and mana abilities) are unaffected.
+    pub(crate) fn forced_sacrifice_blocked(&self, p: PlayerId) -> bool {
+        self.resolving.as_ref().is_some_and(|r| r.item.controller != p)
+            && self
+                .permanents(p)
+                .any(|x| self.def_of(x).opponents_cant_make_you_sacrifice && !self.lost_abilities(x))
     }
 
     /// Voice of Victory: `p` can't cast spells while an opponent with it takes their turn.
@@ -4431,6 +4518,19 @@ impl Game {
         if gisa.is_some() {
             to = Zone::Exile;
         }
+        // Valgavoth: a card its controller didn't control, headed for that player's opponent's
+        // graveyard, is exiled instead.
+        let valgavoth = if to == Zone::Graveyard && !self.is_token(id) {
+            let v = opponent(owner);
+            self.permanents(v)
+                .find(|&x| self.def_of(x).exiles_opponents_cards_to_play && !self.lost_abilities(x))
+                .filter(|_| self.obj(id).controller != v)
+        } else {
+            None
+        };
+        if valgavoth.is_some() {
+            to = Zone::Exile;
+        }
         // Unearth (CR 702.84a): if it would leave the battlefield, it's exiled instead.
         if from == Zone::Battlefield && to != Zone::Battlefield && self.obj(id).unearthed {
             to = Zone::Exile;
@@ -4522,7 +4622,9 @@ impl Game {
         if let (Some((c, z)), true) = (reanimated, to != Zone::Battlefield) {
             // "When this Aura leaves the battlefield, that creature's controller sacrifices it."
             let o = self.obj(c);
-            if o.zcc == z && o.zone == Zone::Battlefield && !self.cant_be_sacrificed(c) {
+            // The Aura's own ability does the sacrificing (Sigarda looks at its controller, not at
+            // a spell that's resolving).
+            if o.zcc == z && o.zone == Zone::Battlefield && !self.cant_be_sacrificed_by(c, last_controller) {
                 self.move_to(c, Zone::Graveyard);
             }
         }
@@ -4662,6 +4764,10 @@ impl Game {
             self.players[owner].library = lib;
         }
         self.events.push(Event::Moved { card: id, from, to });
+        if let (Some(v), Zone::Exile) = (valgavoth, self.obj(id).zone) {
+            let entry = (v, self.obj(v).zcc, id, self.obj(id).zcc);
+            self.exiled_with.push(entry); // "cards exiled with Valgavoth"
+        }
         if let (Some(g), Zone::Exile) = (gisa, self.obj(id).zone) {
             let entry = (g, self.obj(g).zcc, id, self.obj(id).zcc);
             self.exiled_with.push(entry); // "creature cards exiled with Gisa"
@@ -6465,9 +6571,14 @@ impl Game {
                 .is_some_and(|(t, zcc)| zcc == o.zcc && t < turn && o.owner == p && sorcery_timing);
             // Squee, the Immortal: its owner may cast it from exile (game/zones.rs).
             let own_permission = o.owner == p && self.def_of(c).zones.cast_from_graveyard_or_exile;
+            // Valgavoth: a land, or a spell whose mana value you can pay in life.
+            let valgavoth = self.valgavoth_exiled(p, c)
+                && (self.def_of(c).types.land
+                    || self.players[p].life >= self.def_of(c).cost.mana_value() as i32);
             stashed
                 || plotted
                 || own_permission
+                || valgavoth
                 || o.playable.is_some_and(|(q, until)| q == p && turn <= until)
         });
         // Cards an effect lets you cast from your graveyard this turn (Zul Ashur).
@@ -8214,7 +8325,12 @@ impl Game {
     /// below zero loyalty (CR 606.3-606.6).
     fn loyalty_actions(&self, p: PlayerId, sorcery_timing: bool) -> Vec<Action> {
         let mut v = Vec::new();
-        if !sorcery_timing {
+        // Teferi, Master of Time: its loyalty abilities any time you could cast an instant.
+        if !sorcery_timing
+            && !self
+                .permanents(p)
+                .any(|x| self.def_of(x).loyalty_at_instant_speed && !self.lost_abilities(x))
+        {
             return v;
         }
         // The Immortal Sun: "Players can't activate planeswalkers' loyalty abilities."
@@ -8228,6 +8344,10 @@ impl Game {
         for id in self.permanents(p) {
             let o = self.obj(id);
             if (o.loyalty_turn == self.turn && self.turn > 0) || self.activation_stopped(id) {
+                continue;
+            }
+            let any_time = self.def_of(id).loyalty_at_instant_speed && !self.lost_abilities(id);
+            if !sorcery_timing && !any_time {
                 continue;
             }
             for (n, (cost, ability)) in self.def_of(id).loyalty_abilities.iter().enumerate() {
@@ -9730,6 +9850,10 @@ impl Game {
     /// The d1 theme's other block restrictions (see [`crate::card::ManaExt`]): shadow, attacking
     /// alone (Yuan-Ti Malison), only legendary blockers (Midnight Pathlighter).
     fn mana_ext_block_ok(&self, blocker: ObjId, attacker: ObjId) -> bool {
+        // The Ring's first ability (d4): the Ring-bearer can't be blocked by greater power.
+        if self.ring_evasion_forbids_block(blocker, attacker) {
+            return false;
+        }
         // Shadow (CR 702.28b): blocks and is blocked only by creatures with shadow.
         if self.keywords(attacker).has(Keywords::SHADOW) != self.keywords(blocker).has(Keywords::SHADOW) {
             return false;
@@ -12022,7 +12146,7 @@ impl Game {
                 if *sacrifice {
                     v.extend(
                         self.permanents(p)
-                            .filter(|&x| !self.types_of(x).land)
+                            .filter(|&x| !self.types_of(x).land && !self.cant_be_sacrificed(x))
                             .map(Action::Pick),
                     );
                 }
