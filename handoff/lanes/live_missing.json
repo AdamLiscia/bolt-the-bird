@@ -1,5 +1,5 @@
 {
- "engine": "0b50655",
+ "engine": "02d8f10",
  "note": "pending_on = lane branches on origin that already script the card (not merged yet)",
  "decks": [
   {
@@ -61,10 +61,6 @@
     },
     {
      "card": "Panglacial Wurm",
-     "pending_on": []
-    },
-    {
-     "card": "Turntimber Symbiosis // Turntimber, Serpentine Wood",
      "pending_on": []
     }
    ]
@@ -146,16 +142,7 @@
    "owner": "RuricMo",
    "commander": "Atla Palani, Nest Tender",
    "list": "31",
-   "missing": [
-    {
-     "card": "Irregular Cohort",
-     "pending_on": []
-    },
-    {
-     "card": "Spawning Pit",
-     "pending_on": []
-    }
-   ]
+   "missing": []
   },
   {
    "owner": "Time",
@@ -1031,10 +1018,6 @@
     },
     {
      "card": "Slate of Ancestry",
-     "pending_on": []
-    },
-    {
-     "card": "Spawning Pit",
      "pending_on": []
     },
     {
