@@ -2288,6 +2288,18 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.shapeshifter_changeling_2, n: 1 }]);
             },
         ),
+        "Invasion of Ikoria // Zilortha, Apex of Ikoria" => s(
+            &[
+                "When this Siege enters, search your library and/or graveyard for a non-Human creature card with mana value X or less and put it onto the battlefield. If you search your library this way, shuffle.",
+                "Back: For each non-Human creature you control, you may have that creature assign its combat damage as though it weren't blocked.",
+            ],
+            |d, _| {
+                siege_battle(d, 6);
+                on(d, When::Enters, vec![], vec![Effect::NonHumanCreatureFromLibraryOrGraveyardMvAtMostSourceX]);
+                let b = d.back.as_mut().expect("Zilortha, Apex of Ikoria");
+                b.zones.nonhuman_assign_as_unblocked = true;
+            },
+        ),
         "Spawning Pit" => s(
             &[
                 "Sacrifice a creature: Put a charge counter on this artifact.",
@@ -2672,5 +2684,6 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     // round 7
     "Irregular Cohort",
     "Spawning Pit",
+    "Invasion of Ikoria // Zilortha, Apex of Ikoria",
     "Turntimber Symbiosis // Turntimber, Serpentine Wood",
 ];

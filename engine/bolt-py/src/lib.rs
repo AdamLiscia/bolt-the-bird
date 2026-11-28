@@ -630,6 +630,7 @@ impl Game {
                     }
                     D::SacrificeAnother { source } => e.set_item("card", one(*source))?,
                     D::CommanderToCommandZone { card } => e.set_item("card", one(*card))?,
+                    D::AssignAsThoughUnblocked { card, .. } => e.set_item("card", one(*card))?,
                     D::ShockLand { card } => {
                         e.set_item("card", one(*card))?;
                         let life = g.def_of(*card).zones.shock_life; // 0: the usual 2

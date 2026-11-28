@@ -2585,6 +2585,9 @@ pub struct ZonesExt {
     /// "This artifact enters with N [kind] counters on it." (Wishclaw Talisman: three wish counters,
     /// `Object::kind_counters`).
     pub enters_with_kind_counters: u8,
+    /// "For each non-Human creature you control, you may have that creature assign its combat
+    /// damage as though it weren't blocked." (Zilortha, Apex of Ikoria; `Decision::AssignAsThoughUnblocked`)
+    pub nonhuman_assign_as_unblocked: bool,
 }
 
 impl Keywords {

@@ -3293,6 +3293,11 @@ pub enum Effect {
     /// "Then if you have the city's blessing, for each token you control that entered this turn,
     /// create a token that's a copy of it." (Ocelot Pride; "entered this turn" is `since_turn`)
     CopyTokensEnteredThisTurnIfBlessing,
+    /// "search your library and/or graveyard for a non-Human creature card with mana value X or
+    /// less and put it onto the battlefield. If you search your library this way, shuffle."
+    /// (Invasion of Ikoria): X is the source permanent's X as cast; one `Decision::LookPick` over
+    /// both zones, after the library is shuffled (as Finale of Devastation's).
+    NonHumanCreatureFromLibraryOrGraveyardMvAtMostSourceX,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -3631,6 +3636,8 @@ pub enum Pick {
     CreatureOrPlaneswalker,
     /// A noncreature, nonland card (Narset, Parter of Veils).
     NoncreatureNonland,
+    /// A non-Human creature card with mana value at most this (Invasion of Ikoria).
+    NonHumanCreatureManaValueAtMost(u32),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

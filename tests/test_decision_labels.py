@@ -526,3 +526,9 @@ def test_sanars_vivid_exile_and_color():
     assert sv._decision_label(dec, "Pick", 0, "Opt") == "Exile (you may cast it this turn): Opt"
     assert label(dec, "No", 0) == "Exile nothing more (shuffle)"
     assert label({"kind": "VividColor"}, "Mode", 3) == "It counts as Red (Sanar)"
+
+
+def test_zilorthas_unblocked_damage_choice_names_the_attacker():
+    dec = {"kind": "AssignAsThoughUnblocked", "card": [5, 1], "first_strike": False}
+    assert label(dec, "Yes", 0) == "Thriving Heath assigns its combat damage as though it weren't blocked"
+    assert label(dec, "No", 0) == "Thriving Heath deals its combat damage to its blockers"

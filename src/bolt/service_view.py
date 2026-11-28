@@ -299,6 +299,10 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         "SplitPiles": (f"Put {subject} in pile A", f"Put {subject} in pile B"),
         "ShockLand": (f"Pay {dec.get('life', 2)} life: {subject} enters untapped", f"{subject} enters tapped"),
         "CommanderToCommandZone": (f"Move {subject} to the command zone", f"Leave {subject} there"),
+        "AssignAsThoughUnblocked": (
+            f"{subject} assigns its combat damage as though it weren't blocked",
+            f"{subject} deals its combat damage to its blockers",
+        ),
         "ChoosePile": ("Choose pile A", "Choose pile B"),
         "PayToStop": (f"Pay {dec.get('cost', '')}", "Don't pay"),
         "MayDrawGainOne": ("Draw a card and gain 1 life", "Don't draw"),
@@ -420,6 +424,7 @@ def actions(obs: dict, me: int) -> list[dict]:
                     "PayWardDiscard",
                     "ShockLand",
                     "CommanderToCommandZone",
+                    "AssignAsThoughUnblocked",
                     "PayOrCountered",
                     "SplitPiles",
                 ):

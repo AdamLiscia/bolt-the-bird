@@ -5089,3 +5089,121 @@ fn turntimber_serpentine_wood_asks_three_life_or_enters_tapped() {
         assert_eq!(g.obj(tw).tapped, !pay);
     }
 }
+
+#[test]
+fn invasion_of_ikoria_finds_a_non_human_creature_with_mana_value_x_or_less() {
+    let mut g = table();
+    let lib_lions = g.add_card(0, cid("Savannah Lions"), Zone::Library);
+    let lib_angel = g.add_card(0, cid("Serra Angel"), Zone::Library);
+    let lib_mother = g.add_card(0, cid("Mother of Runes"), Zone::Library);
+    let gy_elves = g.add_card(0, cid("Fyndhorn Elves"), Zone::Graveyard);
+    let inv = hand(&mut g, 0, "Invasion of Ikoria // Zilortha, Apex of Ikoria");
+    act(&mut g, Action::CastX(inv, 2));
+    for _ in 0..20 {
+        if matches!(g.pending, Pending::Decide(_)) {
+            break;
+        }
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(has(&g, Action::Pick(lib_lions)), "a non-Human in the library");
+    assert!(has(&g, Action::Pick(gy_elves)), "a non-Human in the graveyard");
+    assert!(!has(&g, Action::Pick(lib_angel)), "mana value 5 is more than X");
+    assert!(!has(&g, Action::Pick(lib_mother)), "a Human");
+    assert!(has(&g, Action::No));
+    resolve_all(&mut g, &[Action::Pick(gy_elves)]);
+    assert_eq!(g.obj(gy_elves).zone, Zone::Battlefield);
+    assert_eq!(g.obj(lib_lions).zone, Zone::Library);
+    assert_eq!(g.obj(inv).zone, Zone::Battlefield);
+    assert!(g.types_of(inv).battle);
+    assert_eq!(g.obj(inv).defense, 6);
+}
+
+#[test]
+fn zilortha_may_have_a_blocked_non_human_assign_damage_as_though_unblocked() {
+    for yes in [true, false] {
+        let mut g = table();
+        let z = put(&mut g, 0, "Invasion of Ikoria // Zilortha, Apex of Ikoria");
+        g.objects[z.0 as usize].transformed = true;
+        assert_eq!(g.def_of(z).name, "Zilortha, Apex of Ikoria");
+        assert!(g.keywords(z).has(Keywords::REACH));
+        let lions = put(&mut g, 0, "Savannah Lions");
+        let mother = put(&mut g, 0, "Mother of Runes");
+        let w1 = put(&mut g, 1, "Serra Angel");
+        let w2 = put(&mut g, 1, "Serra Angel");
+        attack(&mut g, &[lions, mother]);
+        for _ in 0..10 {
+            if g.pending == Pending::DeclareBlockers(1) {
+                break;
+            }
+            act(&mut g, Action::PassPriority);
+        }
+        act(
+            &mut g,
+            Action::Block {
+                blocker: w1,
+                attacker: lions,
+            },
+        );
+        act(
+            &mut g,
+            Action::Block {
+                blocker: w2,
+                attacker: mother,
+            },
+        );
+        act(&mut g, Action::FinishBlocks);
+        let life = g.players[1].life;
+        for _ in 0..10 {
+            if matches!(g.pending, Pending::Decide(_)) {
+                break;
+            }
+            act(&mut g, Action::PassPriority);
+        }
+        assert_eq!(
+            g.legal_actions(),
+            vec![Action::Yes, Action::No],
+            "the Savannah Lions' choice"
+        );
+        act(&mut g, if yes { Action::Yes } else { Action::No });
+        assert!(
+            !matches!(g.pending, Pending::Decide(_)),
+            "Mother of Runes is a Human: not asked"
+        );
+        assert_eq!(g.players[1].life, if yes { life - 2 } else { life });
+        assert_eq!(
+            g.obj(lions).zone,
+            Zone::Graveyard,
+            "the blocker still deals its damage"
+        );
+        assert_eq!(g.obj(w1).zone, Zone::Battlefield);
+    }
+}
+
+#[test]
+fn without_zilortha_blocked_creatures_deal_damage_as_usual() {
+    let mut g = table();
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let w1 = put(&mut g, 1, "Serra Angel");
+    attack(&mut g, &[lions]);
+    for _ in 0..10 {
+        if g.pending == Pending::DeclareBlockers(1) {
+            break;
+        }
+        act(&mut g, Action::PassPriority);
+    }
+    act(
+        &mut g,
+        Action::Block {
+            blocker: w1,
+            attacker: lions,
+        },
+    );
+    act(&mut g, Action::FinishBlocks);
+    let life = g.players[1].life;
+    for _ in 0..4 {
+        assert!(!matches!(g.pending, Pending::Decide(_)), "no choice to make");
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[1].life, life);
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard);
+}

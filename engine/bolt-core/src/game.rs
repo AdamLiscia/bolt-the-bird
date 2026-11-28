@@ -675,6 +675,9 @@ pub struct Combat {
     pub first_strike_step: bool,
     /// Attackers attacking a planeswalker instead of the player: (attacker, planeswalker).
     pub at_planeswalker: Vec<(ObjId, ObjId)>,
+    /// Blocked attackers assigning their combat damage this step as though they weren't blocked
+    /// (Zilortha, Apex of Ikoria; `Decision::AssignAsThoughUnblocked`).
+    pub unblocked_damage: Vec<ObjId>,
 }
 
 impl Combat {
@@ -1669,6 +1672,14 @@ pub enum Decision {
         cards: Vec<ObjId>,
         colors: [bool; 5],
         card: ObjId,
+    },
+    /// Zilortha, Apex of Ikoria: `Yes` to have the blocked non-Human attacker `card` assign its
+    /// combat damage this step as though it weren't blocked, `No` to deal it to its blockers; then
+    /// the next of `rest`. `first_strike`: the first-strike damage step.
+    AssignAsThoughUnblocked {
+        card: ObjId,
+        rest: Vec<ObjId>,
+        first_strike: bool,
     },
 }
 
@@ -15582,6 +15593,12 @@ impl Game {
             Pick::CreatureManaValueAtMost(n) => d.types.creature && d.cost.mana_value() <= n,
             Pick::CreatureOrPlaneswalker => d.types.creature || d.types.planeswalker,
             Pick::NoncreatureNonland => !d.types.creature && !d.types.land,
+            Pick::NonHumanCreatureManaValueAtMost(n) => {
+                d.types.creature
+                    && d.cost.mana_value() <= n
+                    && !d.changeling
+                    && !d.subtypes.iter().any(|s| s == "Human")
+            }
         }
     }
 
@@ -16002,6 +16019,7 @@ impl Game {
             }
             Decision::CommanderToCommandZone { .. } => vec![Action::Yes, Action::No],
             Decision::ShockLand { .. } => vec![Action::Yes, Action::No],
+            Decision::AssignAsThoughUnblocked { .. } => vec![Action::Yes, Action::No],
             Decision::SacrificeLandOrThis { .. } => {
                 let mut v: Vec<Action> = self
                     .permanents(p)
@@ -17094,6 +17112,21 @@ impl Game {
 
     fn decide(&mut self, p: PlayerId, a: Action) {
         let d = self.decision.take().expect("a decision");
+        if let Decision::AssignAsThoughUnblocked {
+            card,
+            rest,
+            first_strike,
+        } = &d
+        {
+            let (card, rest, first_strike) = (*card, rest.clone(), *first_strike);
+            if a == Action::Yes {
+                if let Some(c) = self.combat.as_mut() {
+                    c.unblocked_damage.push(card);
+                }
+            }
+            self.ask_unblocked_damage(rest, first_strike);
+            return;
+        }
         if let Decision::EnterAsCopy { card } = d {
             if let Action::Pick(of) = a {
                 let def = self.obj(of).def;
@@ -27346,6 +27379,29 @@ impl Game {
                     self.add_type_change(c, change);
                 }
             }
+            Effect::NonHumanCreatureFromLibraryOrGraveyardMvAtMostSourceX => {
+                let p = item.controller;
+                let pick = Pick::NonHumanCreatureManaValueAtMost(self.obj(item.source).x as u32);
+                self.shuffle_library(p);
+                let cards: Vec<ObjId> = self.players[p]
+                    .library
+                    .iter()
+                    .chain(&self.players[p].graveyard)
+                    .copied()
+                    .filter(|&c| self.picks(c, pick))
+                    .collect();
+                if !cards.is_empty() {
+                    self.ask(
+                        p,
+                        Decision::LookPick {
+                            cards,
+                            pick,
+                            to: LookTo::Battlefield,
+                            rest: None,
+                        },
+                    );
+                }
+            }
             Effect::CreatureFromLibraryOrGraveyardMvAtMostX => {
                 let p = item.controller;
                 let pick = Pick::CreatureManaValueAtMost(item.x as u32);
@@ -30295,12 +30351,13 @@ impl Game {
                 }
             }
             Step::FirstStrikeDamage => {
-                self.combat_damage(true);
-                self.give_priority(a);
+                // Zilortha: each choice first, then the damage and priority.
+                let left = self.unblocked_damage_candidates(true);
+                self.ask_unblocked_damage(left, true);
             }
             Step::CombatDamage => {
-                self.combat_damage(false);
-                self.give_priority(a);
+                let left = self.unblocked_damage_candidates(false);
+                self.ask_unblocked_damage(left, false);
             }
             Step::EndCombat => {
                 self.return_hand_at_end_combat(); // Arthur, Marigold Knight
@@ -30757,6 +30814,57 @@ impl Game {
     }
 
     /// CR 510.1-510.2: every creature assigns its combat damage, then all of it is dealt at once.
+    /// Zilortha, Apex of Ikoria: the attackers whose controller may have them assign this step's
+    /// combat damage as though they weren't blocked: blocked, non-Human, with damage to deal now,
+    /// while the active player controls a Zilortha. Clears last step's choices.
+    fn unblocked_damage_candidates(&mut self, first_strike: bool) -> Vec<ObjId> {
+        let Some(combat) = self.combat.as_mut() else {
+            return Vec::new();
+        };
+        combat.unblocked_damage.clear();
+        let combat = combat.clone();
+        let p = self.active;
+        let zilortha = self
+            .permanents(p)
+            .any(|x| self.def_of(x).zones.nonhuman_assign_as_unblocked && !self.lost_abilities(x));
+        if !zilortha {
+            return Vec::new();
+        }
+        combat
+            .attackers
+            .iter()
+            .copied()
+            .filter(|&a| {
+                combat.is_blocked(a)
+                    && self.obj(a).controller == p
+                    && self.types_of(a).creature
+                    && !self.has_subtype(a, "Human")
+                    && self.power(a) > 0
+                    && self.deals_damage_now(a, first_strike)
+            })
+            .collect()
+    }
+
+    /// Asks the active player about the next attacker in `left` (`Decision::AssignAsThoughUnblocked`);
+    /// with none left, deals this step's combat damage and gives the active player priority.
+    fn ask_unblocked_damage(&mut self, mut left: Vec<ObjId>, first_strike: bool) {
+        if left.is_empty() {
+            self.combat_damage(first_strike);
+            self.give_priority(self.active);
+        } else {
+            let card = left.remove(0);
+            let p = self.active;
+            self.ask(
+                p,
+                Decision::AssignAsThoughUnblocked {
+                    card,
+                    rest: left,
+                    first_strike,
+                },
+            );
+        }
+    }
+
     fn combat_damage(&mut self, first_strike_step: bool) {
         let combat = self.combat.clone().expect("in combat");
         let defender = opponent(self.active);
@@ -30775,7 +30883,7 @@ impl Game {
                 .blockers_of(a)
                 .filter(|&b| self.obj(b).zone == Zone::Battlefield)
                 .collect();
-            if !combat.is_blocked(a) {
+            if !combat.is_blocked(a) || combat.unblocked_damage.contains(&a) {
                 match combat.at_planeswalker.iter().find(|&&(x, _)| x == a) {
                     // CR 506.4c: if the planeswalker left combat, the attacker deals no damage.
                     Some(&(_, w)) if self.obj(w).zone == Zone::Battlefield => {
