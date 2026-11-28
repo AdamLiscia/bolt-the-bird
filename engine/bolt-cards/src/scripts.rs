@@ -49,7 +49,12 @@ pub fn token_defs() -> Vec<CardDef> {
         },
         token("Koma's Coil", "Serpent", 3, 3, Keywords::NONE),
         token("Drake", "Drake", 2, 2, Keywords::FLYING),
-        token("Spirit", "Spirit", 1, 1, Keywords::FLYING),
+        {
+            // "a 1/1 white Spirit creature token with flying" (every maker that uses this slot).
+            let mut t = token("Spirit", "Spirit", 1, 1, Keywords::FLYING);
+            t.colors = [true, false, false, false, false];
+            t
+        },
         {
             // "a 1/1 blue Fish creature token" (Fishing Pole, Fountainport).
             let mut t = token("Fish", "Fish", 1, 1, Keywords::NONE);

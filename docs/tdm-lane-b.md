@@ -1162,3 +1162,19 @@ One Ring's check in `deal_damage`). Claims recorded in needs_core.json.
 - Script: `When::DealsCombatDamageToPlayer` makes an `ExtraTurn`. Test: it connects on turn 5;
   turn 6 is player 0's extra turn, where Medomai isn't offered as an attacker; turn 7 is the
   opponent's; on turn 8 it can attack again.
+
+### Ichormoon Gauntlet (Atraxa, 2026-11-27)
+
+- Scripted on 4a09096's `your_planeswalkers_have_loyalty` ([0] `Proliferate`, [−12]
+  `ExtraTurn`) and d3's `AddCounterOfChosenKind(0)`, triggered by `When::YouCastNoncreature`.
+- The oracle row says "target permanent", so the trigger targets any permanent, not only yours.
+  The player picks the kind (`Decision::ChooseCounterKind`) only when it has more than one.
+
+### `t.spirit` is white (2026-11-27)
+
+- Every maker that uses the slot prints "1/1 white Spirit creature token with flying". Checked
+  across tarkir-b, tarkir, origin/tarkir, lane-d1 to d4, tarkir-c, tarkir-s, tarkir-t and
+  tarkir-b-malik: Kaya, Geist Hunter; Hanged Executioner; Ethereal Investigator; Kykar, Zephyr
+  Awakener; Court of Grace (when you aren't the monarch); Twilight Drover (d2); and Thalisse.
+- The token_defs entry now sets white, in place, with no slot change. Test: Kaya's −6 Spirit is a
+  white flier.

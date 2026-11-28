@@ -1291,7 +1291,7 @@ fn attacks_and_isnt_blocked_sets_life_to_one_and_assigns_no_damage() {
 
 #[test]
 fn granted_loyalty_abilities_for_your_planeswalkers() {
-    // Ichormoon Gauntlet's grant on its own definition for this test (its counter trigger is d3's).
+    // The grant set again on the definition, so this core test doesn't depend on the card's script.
     let mut defs = (*set("CMD").unwrap().defs).clone();
     defs[cid("Ichormoon Gauntlet")].your_planeswalkers_have_loyalty = vec![
         (
