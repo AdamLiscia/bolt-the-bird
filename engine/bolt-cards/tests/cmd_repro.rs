@@ -12,7 +12,7 @@ mod common;
 
 use bolt_cards::set;
 use bolt_core::rng::Rng;
-use bolt_core::{baseline, rollout, Action, Game, Pending, StackItem, StackKind, Step, Target, Zone};
+use bolt_core::{baseline, rollout, Action, Game, ObjId, Pending, StackItem, StackKind, Step, Target, Zone};
 use common::{act, resolve_all};
 
 fn cid(name: &str) -> usize {
@@ -426,4 +426,139 @@ fn scute_swarm_past_the_permanent_cap_ends_in_a_draw() {
         "{}",
         g.battlefield.len()
     );
+}
+
+/// Farm, 2026-11-27: `finish_cast` panicked "payable": a spell offered as castable whose mana, as
+/// cast, couldn't be paid. The guard's backstop: a cast whose payment fails (forced with the test
+/// hook) is rolled back (the card in hand, nothing tapped, nothing on the stack), and that cast isn't
+/// offered again this step.
+#[test]
+fn an_unpayable_cast_rolls_back_instead_of_panicking() {
+    let mut g = table();
+    let card = g.add_card(0, cid("Lightning Bolt"), Zone::Hand);
+    assert!(g.legal_actions().contains(&Action::Cast(card)));
+    let untapped = |g: &Game| g.permanents(0).filter(|&x| !g.obj(x).tapped).count();
+    let before = untapped(&g);
+    g.fail_next_payment = true;
+    act(&mut g, Action::Cast(card));
+    act(&mut g, Action::Target(Target::Player(1)));
+    assert_eq!(g.obj(card).zone, Zone::Hand, "rolled back");
+    assert_eq!(untapped(&g), before, "nothing paid");
+    assert!(g.items.is_empty() && g.choosing.is_none());
+    assert_eq!(g.pending, Pending::Priority(0));
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(card)),
+        "not offered again this step"
+    );
+}
+
+/// A spell priced by its target (Dragon's Prey's "{2} more if it targets a Dragon", as "{5} more at
+/// an Elf" on Lightning Bolt here): with one Mountain, the Elf isn't offered as a target (it
+/// couldn't be paid, CR 601.2h), the player is, and the cast at the player completes.
+#[test]
+fn only_targets_that_keep_a_spell_payable_are_offered() {
+    let mut defs = (*set("CMD").unwrap().defs).clone();
+    let bolt = cid("Lightning Bolt");
+    defs[bolt].reduction = Some(bolt_core::Reduction::MoreIfTargetsSubtype("Elf", 5));
+    let mut g = Game::empty(std::sync::Arc::new(defs), 1, 0);
+    g.auto_pass = false;
+    g.add_card(0, cid("Mountain"), Zone::Battlefield);
+    let elves = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+    let card = g.add_card(0, bolt, Zone::Hand);
+    for p in 0..2 {
+        for _ in 0..10 {
+            g.add_card(p, cid("Plains"), Zone::Library); // no one decks out
+        }
+    }
+    g.start_turn(3, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Cast(card));
+    let legal = g.legal_actions();
+    assert!(
+        !legal.contains(&Action::Target(Target::Object(elves))),
+        "{legal:?}"
+    );
+    assert!(legal.contains(&Action::Target(Target::Player(1))), "{legal:?}");
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 17);
+    assert_eq!(g.obj(card).zone, Zone::Graveyard);
+}
+
+/// The guard covers activated abilities too: Mind Stone's "{1}, {T}, Sacrifice: Draw a card" whose
+/// payment fails (forced with the test hook) rolls back, the Stone untapped on the battlefield,
+/// nothing drawn, and isn't offered again this step.
+#[test]
+fn an_unpayable_activation_rolls_back_instead_of_panicking() {
+    let mut g = table();
+    let stone = g.add_card(0, cid("Mind Stone"), Zone::Battlefield);
+    let draw = Action::Activate(stone, 0);
+    assert!(g.legal_actions().contains(&draw), "{:?}", g.legal_actions());
+    let hand = g.players[0].hand.len();
+    g.fail_next_payment = true;
+    act(&mut g, draw);
+    assert_eq!(g.obj(stone).zone, Zone::Battlefield);
+    assert!(!g.obj(stone).tapped && g.items.is_empty());
+    assert_eq!(g.players[0].hand.len(), hand);
+    assert_eq!(g.pending, Pending::Priority(0));
+    assert!(!g.legal_actions().contains(&draw), "not offered again this step");
+}
+
+/// Farm, 2026-11-27, the "payable" panic (Aesi vs Damia, seed 20301042, move 129): The Great Henge
+/// costs {X} less, X the greatest power among your creatures, and Psychosis Crawler's power is your
+/// hand size. Henge leaves the hand as it's cast (CR 601.2a) before its cost is locked in (601.2f),
+/// so the Crawler is one smaller then. The check priced it from the hand. Three lands (Ghost Town,
+/// Tectonic Edge, a Snow-Covered Island, each a Forest too with Dryad of the Ilysian Grove) pay
+/// {1}{G}{G}: Henge is castable with seven cards in hand (Crawler 6 as it's paid), not with six.
+fn henge_table(other_cards: usize) -> (Game, ObjId) {
+    let plains = vec![cid("Plains"); 99];
+    let mut g = Game::new_commander(
+        set("CMD").unwrap().defs.clone(),
+        [&plains, &plains],
+        [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+        7,
+        0,
+    );
+    g.auto_pass = false;
+    for c in [
+        "Dryad of the Ilysian Grove",
+        "Psychosis Crawler",
+        "Ghost Town",
+        "Tectonic Edge",
+        "Snow-Covered Island",
+    ] {
+        g.add_card(0, cid(c), Zone::Battlefield);
+    }
+    g.start_turn(3, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    for c in g.players[0].hand.clone() {
+        g.move_card(c, Zone::Library); // exactly the hand the test sets
+    }
+    let henge = g.add_card(0, cid("The Great Henge"), Zone::Hand);
+    for _ in 0..other_cards {
+        g.add_card(0, cid("Plains"), Zone::Hand);
+    }
+    (g, henge)
+}
+
+#[test]
+fn the_great_henge_is_priced_without_itself_in_hand() {
+    let (g, henge) = henge_table(5); // six in hand: the Crawler is 5 once Henge is cast
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(henge)),
+        "{{2}}{{G}}{{G}} with three lands: not castable"
+    );
+    let (mut g, henge) = henge_table(6); // seven: the Crawler is 6 as it's paid, {1}{G}{G}
+    assert!(
+        g.legal_actions().contains(&Action::Cast(henge)),
+        "{:?}",
+        g.legal_actions()
+    );
+    act(&mut g, Action::Cast(henge));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(henge).zone, Zone::Battlefield);
 }

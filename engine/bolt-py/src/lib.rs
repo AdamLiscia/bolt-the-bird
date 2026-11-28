@@ -342,6 +342,18 @@ impl Game {
         })
     }
 
+    /// Whether a cast or activation whose mana turns out to be unpayable is rolled back (on by
+    /// default) instead of raising. Each guarded cast or activation copies the game once.
+    #[getter]
+    fn get_cast_guard(&self) -> bool {
+        self.g.cast_guard
+    }
+
+    #[setter]
+    fn set_cast_guard(&mut self, on: bool) {
+        self.g.cast_guard = on;
+    }
+
     /// Why the engine ended the game itself (a loop cap tripped; the result is a draw), or None.
     #[getter]
     fn end_reason(&self) -> Option<&'static str> {
