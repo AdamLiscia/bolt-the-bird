@@ -4742,7 +4742,8 @@ fn kaya_geist_hunters_spirits_are_white_fliers() {
     act(&mut g, Action::Loyalty(kaya, 2)); // −6
     resolve_all(&mut g, &[]);
     let spirits = tokens(&g, 0, "Spirit");
-    assert_eq!(spirits.len(), cards, "one per card exiled");
+    // Kaya's own "twice that many tokens" doubles the Spirits: two per card exiled.
+    assert_eq!(spirits.len(), 2 * cards, "one per card exiled, doubled by Kaya");
     assert_eq!(
         g.colors_of(spirits[0]),
         [true, false, false, false, false],

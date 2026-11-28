@@ -9810,7 +9810,13 @@ impl Game {
                                 pay_for_spell(c, mode.mode),
                             )
                         }
-                        Target::Player(_) => false,
+                        // A player is neither tapped nor of a subtype: the cost as it is.
+                        Target::Player(_) => self.can_pay_for(
+                            p,
+                            &self.spell_cost(p, c, mode, &[]),
+                            exclude,
+                            pay_for_spell(c, mode.mode),
+                        ),
                     })
             });
         }
