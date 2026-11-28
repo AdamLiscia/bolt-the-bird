@@ -1,5 +1,5 @@
 {
- "engine": "56d2944",
+ "engine": "0b50655",
  "note": "pending_on = lane branches on origin that already script the card (not merged yet)",
  "decks": [
   {
@@ -79,14 +79,7 @@
    "owner": "Time",
    "commander": "Najeela, the Blade-Blossom",
    "list": "31",
-   "missing": [
-    {
-     "card": "Druids' Repository",
-     "pending_on": [
-      "tarkir-c"
-     ]
-    }
-   ]
+   "missing": []
   },
   {
    "owner": "Spr3adsh33t",
@@ -539,27 +532,13 @@
    "owner": "Adam",
    "commander": "Atraxa, Praetors' Voice",
    "list": "31",
-   "missing": [
-    {
-     "card": "Ichormoon Gauntlet",
-     "pending_on": [
-      "tarkir-b"
-     ]
-    }
-   ]
+   "missing": []
   },
   {
    "owner": "RuricMo",
    "commander": "Vaevictis Asmadi, the Dire",
    "list": "31",
-   "missing": [
-    {
-     "card": "Descendants' Path",
-     "pending_on": [
-      "tarkir-c"
-     ]
-    }
-   ]
+   "missing": []
   },
   {
    "owner": "Adam",
@@ -632,18 +611,6 @@
     {
      "card": "Ashling, Rekindled // Ashling, Rimebound",
      "pending_on": []
-    },
-    {
-     "card": "Mirrorform",
-     "pending_on": [
-      "tarkir-c"
-     ]
-    },
-    {
-     "card": "Sanar, Innovative First-Year",
-     "pending_on": [
-      "tarkir-c"
-     ]
     }
    ]
   },
@@ -657,20 +624,8 @@
      "pending_on": []
     },
     {
-     "card": "Midgar, City of Mako // Reactor Raid",
-     "pending_on": [
-      "tarkir-c"
-     ]
-    },
-    {
      "card": "Saw in Half",
      "pending_on": []
-    },
-    {
-     "card": "Wishclaw Talisman",
-     "pending_on": [
-      "tarkir-c"
-     ]
     }
    ]
   },
@@ -768,12 +723,6 @@
      "pending_on": []
     },
     {
-     "card": "Kambal, Profiteering Mayor",
-     "pending_on": [
-      "tarkir-c"
-     ]
-    },
-    {
      "card": "Nasty End",
      "pending_on": []
     },
@@ -833,12 +782,6 @@
      "pending_on": []
     },
     {
-     "card": "Forth Eorlingas!",
-     "pending_on": [
-      "tarkir-c"
-     ]
-    },
-    {
      "card": "Jinnie Fay, Jetmir's Second",
      "pending_on": []
     },
@@ -849,12 +792,6 @@
     {
      "card": "Kher Keep",
      "pending_on": []
-    },
-    {
-     "card": "Ocelot Pride",
-     "pending_on": [
-      "tarkir-c"
-     ]
     },
     {
      "card": "Season of the Burrow",
@@ -1215,12 +1152,6 @@
      ]
     },
     {
-     "card": "Court of Grace",
-     "pending_on": [
-      "tarkir-c"
-     ]
-    },
-    {
      "card": "Ethersworn Adjudicator",
      "pending_on": []
     },
@@ -1433,12 +1364,6 @@
     {
      "card": "Spellseeker",
      "pending_on": []
-    },
-    {
-     "card": "Wishclaw Talisman",
-     "pending_on": [
-      "tarkir-c"
-     ]
     }
    ]
   },
@@ -3135,12 +3060,6 @@
     {
      "card": "Cosmos Elixir (not in the CMD pool)",
      "pending_on": []
-    },
-    {
-     "card": "Court of Grace",
-     "pending_on": [
-      "tarkir-c"
-     ]
     },
     {
      "card": "Dawnbreak Reclaimer (not in the CMD pool)",
