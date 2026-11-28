@@ -519,3 +519,10 @@ def test_attacking_a_battle_says_so(monkeypatch):
     assert battle == "Attack the battle Invasion of Arcavios // Invocation of the Founders with Serra Angel"
     walker = sv._label("AttackPlaneswalker", ["Serra Angel", "Chandra, Torch of Defiance"], (), 0, (0, 0, 0))
     assert walker == "Attack Chandra, Torch of Defiance with Serra Angel"
+
+
+def test_sanars_vivid_exile_and_color():
+    dec = {"kind": "VividExile"}
+    assert sv._decision_label(dec, "Pick", 0, "Opt") == "Exile (you may cast it this turn): Opt"
+    assert label(dec, "No", 0) == "Exile nothing more (shuffle)"
+    assert label({"kind": "VividColor"}, "Mode", 3) == "It counts as Red (Sanar)"

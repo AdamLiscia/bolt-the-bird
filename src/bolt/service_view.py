@@ -169,6 +169,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         if kind == "Yes":
             return "Done choosing (proliferate)"
     if kind == "Mode":
+        if d == "VividColor" and 0 <= value < 5:
+            return f"It counts as {COLORS[value]} (Sanar)"
         if d == "ChooseColor" and 0 <= value < 5:
             return f"{src}: choose {COLORS[value]}"
         if d == "ChooseCreatureType" and 0 <= value < len(dec.get("options", [])):
@@ -231,6 +233,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"ReanimateTotalManaValue": "Put onto the battlefield under your control:"}.get(d)
         verb = verb or {"SacrificeNontokenCreatureEach": "Sacrifice"}.get(d)
         verb = verb or {"SacrificeNontokenCreatureOrPlaneswalker": "Sacrifice"}.get(d)
+        verb = verb or {"VividExile": "Exile (you may cast it this turn):"}.get(d)
         verb = verb or {"SacrificeNontokenArtifact": "Sacrifice", "ExileThreeForFood": "Exile (three for a Food):"}.get(d)  # fmt: skip
         verb = verb or {"SylvanPick": "Choose (pay 4 life or put it back):"}.get(d)
         verb = verb or {"CrewTap": "Also tap (to crew or saddle):"}.get(d)
@@ -380,7 +383,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
                 "SacrificeAnother": "Don't sacrifice", "Search": "Find nothing", "LookPick": "Take nothing",
                 "GenesisPick": "Done choosing", "EnterAsCopy": "Don't copy anything",
                 "MaySacrificeLand": "Don't sacrifice", "MaySacrificeArtifactOrCreature": "Don't sacrifice",
-                "NameCardInLibrary": "Name a card that isn't in your library"}.get(d)  # fmt: skip
+                "NameCardInLibrary": "Name a card that isn't in your library",
+                "VividExile": "Exile nothing more (shuffle)"}.get(d)  # fmt: skip
     return None
 
 
@@ -500,6 +504,7 @@ def state(game, seat: int, version: int, game_id: str) -> dict:
     kind, who = obs["pending"]
     out = {
         "game_id": game_id, "version": version, "seat": seat, "turn": obs["turn"], "step": obs["step"],
+        "monarch": obs.get("monarch"),
         "active": obs["active"], "to_act": None if over else game.to_act(),
         "pending": _pending(kind, who, obs.get("decision"), obs.get("choosing"), obs.get("bottom_left")), "over": over, "result": result,
         "view": {

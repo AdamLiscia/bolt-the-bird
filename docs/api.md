@@ -420,7 +420,8 @@ game"; show an icon only when present and active.
 |---|---|---|
 | `commander_damage` | per player: a list of `{id, name, card_id, owner, damage}`, one per commander object (see *Commander games*) | Ships with Commander games (see *Commander games* below, Bloomburrow first); the engine already tracks it, Limited games omit it |
 | `poison`, `energy`, `experience` | per player, integers | Not modeled (no Foundations or Tarkir card uses them) |
-| `monarch`, `initiative` | game level: the seat that has it, or null | Not modeled |
+| `monarch` | game level (top of the state): the seat that is the monarch, or null | Modeled (lane C, 2026-11-27) |
+| `initiative` | game level: the seat that has it, or null | Not in the view yet |
 | `city_blessing` | game level: list of seats | Not modeled |
 | `day_night` | game level: `"day"`, `"night"` or null | Not modeled |
 

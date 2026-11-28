@@ -1144,4 +1144,252 @@ impl Game {
             self.add_counters(c, k);
         }
     }
+
+    /// Wishclaw Talisman: "An opponent gains control of this artifact." (for good, CR 613.1b).
+    pub(super) fn give_source_to_opponent(&mut self, src: ObjId, p: PlayerId) {
+        if self.obj(src).zone == Zone::Battlefield && self.obj(src).controller == p {
+            let turn = self.turn;
+            let o = self.obj_mut(src);
+            o.controller = opponent(p);
+            o.since_turn = turn; // CR 302.6
+        }
+    }
+
+    /// "This artifact enters with N [kind] counters on it." (`ZonesExt::enters_with_kind_counters`)
+    pub(super) fn enter_with_kind_counters(&mut self, id: ObjId) {
+        let n = self.def_of(id).zones.enters_with_kind_counters as i32;
+        if n > 0 {
+            self.obj_mut(id).kind_counters += n;
+            let controller = self.obj(id).controller;
+            self.counters_placed(controller, n);
+        }
+    }
+
+    /// The monarch's end-step draw (CR 724.2): a triggered ability of the active player, if they're
+    /// the monarch.
+    pub(super) fn monarch_end_step(&mut self) {
+        if let Some((q, source)) = self.monarch {
+            if q == self.active {
+                self.triggered.push(StackItem {
+                    kind: StackKind::MonarchDraw,
+                    ..Game::casting(source, q)
+                });
+            }
+        }
+    }
+
+    /// The monarch passes (CR 724.2): combat damage from `p`'s creatures to the monarch makes `p` the
+    /// monarch, as does Forth Eorlingas! this turn (1v1: a player dealt damage is the opponent).
+    pub(super) fn fire_monarch(&mut self, p: PlayerId, when: When) {
+        if when != When::YourCreaturesDealCombatDamageToPlayer {
+            return;
+        }
+        match (self.monarch, self.monarch_on_combat_damage[p]) {
+            (Some((q, s)), _) if q == opponent(p) => self.monarch = Some((p, s)),
+            (_, Some((turn, s))) if turn == self.turn => self.monarch = Some((p, s)),
+            _ => {}
+        }
+    }
+
+    /// Mirrorform: each nonland permanent `p` controls becomes a copy of `t` (for good; `t` itself,
+    /// if it's one of them, is unchanged).
+    pub(super) fn nonland_permanents_become_copy(&mut self, p: PlayerId, t: ObjId) {
+        let def = self.obj(t).def;
+        let mine: Vec<ObjId> = self
+            .permanents(p)
+            .filter(|&x| x != t && !self.types_of(x).land)
+            .collect();
+        for id in mine {
+            self.become_copy(id, def);
+        }
+    }
+
+    /// Sanar's vivid reveal: X is the colors among `p`'s permanents; reveal from the top until X
+    /// nonland cards (they stay in the library while `p` chooses).
+    pub(super) fn vivid_reveal(&mut self, p: PlayerId) {
+        let mut colors = [false; 5];
+        for x in self.permanents(p).collect::<Vec<_>>() {
+            for (c, has) in self.colors_of(x).into_iter().enumerate() {
+                colors[c] |= has;
+            }
+        }
+        let x = colors.iter().filter(|&&b| b).count();
+        let mut cards = Vec::new();
+        let mut nonland = 0;
+        for &c in self.players[p].library.iter().rev() {
+            if nonland >= x {
+                break;
+            }
+            cards.push(c);
+            if !self.def_of(c).types.land {
+                nonland += 1;
+            }
+        }
+        self.vivid_next(p, cards, colors);
+    }
+
+    /// The revealed cards `p` may still exile for one of `colors`.
+    fn vivid_candidates(&self, cards: &[ObjId], colors: &[bool; 5]) -> Vec<ObjId> {
+        cards
+            .iter()
+            .copied()
+            .filter(|&c| self.obj(c).zone == Zone::Library)
+            .filter(|&c| self.colors_of(c).iter().zip(colors).any(|(&a, &b)| a && b))
+            .collect()
+    }
+
+    /// Asks for the next card to exile, or shuffles once there's nothing left to choose.
+    pub(super) fn vivid_next(&mut self, p: PlayerId, cards: Vec<ObjId>, colors: [bool; 5]) {
+        if self.vivid_candidates(&cards, &colors).is_empty() {
+            self.shuffle_library(p);
+        } else {
+            self.ask(p, Decision::VividExile { cards, colors });
+        }
+    }
+
+    pub(super) fn vivid_exile_actions(&self, cards: &[ObjId], colors: &[bool; 5]) -> Vec<Action> {
+        let mut v: Vec<Action> = self
+            .vivid_candidates(cards, colors)
+            .into_iter()
+            .map(Action::Pick)
+            .collect();
+        v.push(Action::No);
+        v
+    }
+
+    pub(super) fn vivid_color_actions(&self, card: ObjId, colors: &[bool; 5]) -> Vec<Action> {
+        let has = self.colors_of(card);
+        (0..5u8)
+            .filter(|&i| has[i as usize] && colors[i as usize])
+            .map(Action::Mode)
+            .collect()
+    }
+
+    /// `Pick(c)`: exile it, castable this turn; it uses up one of its colors (asked if it has more
+    /// than one left). `No`: stop and shuffle.
+    pub(super) fn vivid_exile_decide(
+        &mut self,
+        p: PlayerId,
+        cards: Vec<ObjId>,
+        colors: [bool; 5],
+        a: Action,
+    ) {
+        let Action::Pick(c) = a else {
+            self.shuffle_library(p);
+            return;
+        };
+        let has = self.colors_of(c);
+        self.move_to(c, Zone::Exile);
+        if self.obj(c).zone == Zone::Exile {
+            let turn = self.turn;
+            self.obj_mut(c).playable = Some((p, turn));
+        }
+        let left: Vec<usize> = (0..5).filter(|&i| has[i] && colors[i]).collect();
+        if left.len() > 1 {
+            self.ask(
+                p,
+                Decision::VividColor {
+                    cards,
+                    colors,
+                    card: c,
+                },
+            );
+        } else {
+            let mut colors = colors;
+            for i in left {
+                colors[i] = false;
+            }
+            self.vivid_next(p, cards, colors);
+        }
+    }
+
+    /// Whether the card `c` shares a creature type with a creature `p` controls (changeling on
+    /// either side counts as every creature type; `has_subtype` covers the creature's own).
+    pub(super) fn shares_creature_type_with_yours(&self, p: PlayerId, c: ObjId) -> bool {
+        let d = self.def_of(c);
+        self.creatures(p).any(|x| {
+            if d.changeling {
+                self.def_of(x).changeling || !self.def_of(x).subtypes.is_empty()
+            } else {
+                d.subtypes.iter().any(|s| self.has_subtype(x, s))
+            }
+        })
+    }
+
+    /// Descendants' Path's upkeep: the top card, castable free if it's a creature card sharing a
+    /// creature type with one of `p`'s creatures (the window's pass is "you don't cast it"); else, or
+    /// if it isn't cast, to the bottom.
+    pub(super) fn descendants_path(&mut self, p: PlayerId) {
+        let Some(&c) = self.players[p].library.last() else {
+            return;
+        };
+        if self.def_of(c).types.creature && self.shares_creature_type_with_yours(p, c) {
+            self.obj_mut(c).cast_free = true;
+            self.free_casts.push(c);
+            self.free_caster = p;
+            self.free_casts_one = true;
+            self.free_casts_from_library = true;
+        } else {
+            self.put_on_bottom_of_library(c);
+        }
+    }
+
+    /// Moves the library card `c` to the bottom of its owner's library.
+    fn put_on_bottom_of_library(&mut self, c: ObjId) {
+        let owner = self.obj(c).owner;
+        let lib = &mut self.players[owner].library;
+        if let Some(i) = lib.iter().position(|&x| x == c) {
+            lib.remove(i);
+            lib.insert(0, c); // index 0 is the bottom
+        }
+    }
+
+    /// As a free-cast window closes: a library card it offered and that wasn't cast goes to the
+    /// bottom (Descendants' Path).
+    pub(super) fn library_free_casts_to_bottom(&mut self) {
+        if std::mem::take(&mut self.free_casts_from_library) {
+            let left: Vec<ObjId> = self
+                .free_casts
+                .iter()
+                .copied()
+                .filter(|&c| self.obj(c).zone == Zone::Library)
+                .collect();
+            for c in left {
+                self.put_on_bottom_of_library(c);
+            }
+        }
+    }
+
+    /// Kambal: for each token in `batch` still on the battlefield as that object, a tapped token copy
+    /// of it for `p` (doubled like any token).
+    pub(super) fn tapped_token_copies(&mut self, p: PlayerId, batch: Vec<(ObjId, u32)>) {
+        for (t, zcc) in batch {
+            if self.obj(t).zone != Zone::Battlefield || self.obj(t).zcc != zcc {
+                continue;
+            }
+            for _ in 0..self.token_doubling(p) {
+                if let Some(id) = self.token_copy_of(p, t) {
+                    self.obj_mut(id).tapped = true;
+                }
+            }
+        }
+    }
+
+    /// Ocelot Pride: with the city's blessing, a token copy of each token `p` controls that came onto
+    /// the battlefield this turn (`since_turn`; doubled like any token).
+    pub(super) fn copy_tokens_entered_this_turn(&mut self, p: PlayerId) {
+        if !self.city_blessing[p] {
+            return;
+        }
+        let turn = self.turn;
+        let today: Vec<ObjId> = self
+            .permanents(p)
+            .filter(|&x| self.is_token(x) && self.obj(x).since_turn == turn)
+            .collect();
+        for t in today {
+            for _ in 0..self.token_doubling(p) {
+                self.token_copy_of(p, t);
+            }
+        }
+    }
 }

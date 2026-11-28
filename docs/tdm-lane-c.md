@@ -1223,3 +1223,114 @@ Ashiok, Nightmare Muse scripted (+1 the Nightmare, −3 d3's `BounceThenOwnerExi
 test in core_objects (84). Built cold, no fixes needed: 2,412 Rust tests pass (core_objects 84, 4 ignored: 3
 play.rs, 1 rollout), every binary's count equals its `#[test]` count; clippy, fmt, ruff (check and format) clean;
 pytest 201 passed, 2 skipped.
+
+## Batch 22 (unbuilt): Wishclaw Talisman (Kenrith), Midgar, City of Mako (d2's handback)
+
+Core (appended; functions in game/zones.rs):
+- `Effect::OpponentGainsControlOfSource` (`give_source_to_opponent`: controller and `since_turn`, for good).
+- `ZonesExt::enters_with_kind_counters` with one call (`enter_with_kind_counters`) after the vanishing block in the
+  enter path. **An edit in the enter path (merger's): one line.** d1's `remove_counters_self` isn't on tarkir;
+  the wish counter is paid with the existing `Activated::remove_kind_counters`.
+- Midgar: in `priority_actions`' cast list, a land with an Omen/Adventure half no longer `continue`s before the
+  Omen block (`def.types.land && def.omen.is_none()`), and a `continue` after it keeps the land itself from being
+  offered as a `Cast`. After the Adventure the card is `playable` from exile, played as a land.
+- Reactor Raid uses **d2's** `Effect::MaySacrificeArtifactOrCreature` and `Decision::MaySacrificeArtifactOrCreature
+  { source }` (lane-d2 b35, 592dc7b, with its labels): lane C's same-named pair was dropped (merger, 2026-11-27).
+  **Doesn't compile until d2's b35 is on tarkir.**
+Cards (2): Wishclaw Talisman, Midgar, City of Mako // Reactor Raid. Tests in core_objects (87).
+Likely failure spots when built: the Talisman's activation legality for player 1 after `to_main1(6, 1)` (it must
+untap in their untap step), the Midgar hand-count arithmetic.
+
+## Batch 23 (unbuilt): the monarch; Court of Grace, Forth Eorlingas!
+
+Core (appended; functions in game/zones.rs), modelled on d4's initiative:
+- `Game::monarch: Option<(PlayerId, ObjId)>` (the seat, and the card that made them monarch: the source of the
+  draw trigger) and `Game::monarch_on_combat_damage: [Option<(turn, card)>; 2]` (Forth Eorlingas!).
+- `StackKind::MonarchDraw` with `monarch_draw_ability()` (draw a card): **one arm in `ability_of`'s
+  exhaustive `StackKind` match.**
+- **One call at the top of `Step::End`** (`monarch_end_step`: the active monarch's draw trigger goes on
+  `triggered`). Turn structure: the merger's.
+- **One call at the end of `fire()`** (`fire_monarch`, after `fire_subsystems`): on
+  `When::YourCreaturesDealCombatDamageToPlayer` for `p`, the opponent's monarchy passes to `p`, or `p` becomes
+  the monarch if Forth Eorlingas! resolved for them this turn (1v1: the player dealt damage is the opponent).
+  `fire()` is d2's.
+- `Effect::{BecomeMonarch, BecomeMonarchOnCombatDamageThisTurn, CreateTokenIfMonarchElse { monarch, other }}`.
+- Observation: `monarch` (a seat or None) after `starting_life` (bolt-py); the view's state has a top-level
+  `monarch` (service_view, docs/api.md row updated), with a test in tests/test_service_view.py.
+Cards (2, drafted against idea_next11.json; they compile only once the 172 new cards and token 133 are in):
+Court of Grace (`t.spirit`, `t.angel_4`), Forth Eorlingas! (`t.human_knight_2_trample_haste`, **token 133 asked
+for**: a 2/2 red Human Knight with trample and haste). Tests in core_objects (90).
+Likely failure spots when built: the end-step draw count in the Court test (the trigger resolves at End), the
+Ghoul's attack on turn 6 for player 1, `CastX(forth, 2)` paying {2}{R}{W}.
+
+## Batch 24 (unbuilt): Mirrorform; Walk-In Closet held
+
+- `Effect::YourNonlandPermanentsBecomeCopyOf(slot)` (zones.rs `nonland_permanents_become_copy`, through the
+  existing `become_copy`, for good). Mirrorform's target is d3's `Filter::not_subtype = Some("Aura")` on any
+  permanent (no Filter change). Test in core_objects (91).
+- Walk-In Closet // Forgotten Cellar: **held.** The oracle data has only the first door ("You may play lands
+  from your graveyard.") and the Room reminder; Forgotten Cellar's text and cost aren't in it, and Rooms (two
+  doors, unlocking) aren't in the engine. Needs `fetch_oracle.py` to keep both doors (as d4's split fields do)
+  and a Room/unlock subsystem; claiming the card on its first door alone would leave out half of it.
+- Sanar, Innovative First-Year: `Effect::VividRevealExileByColor` on `When::FirstMainPhaseYourTurn`, with
+  `Decision::VividExile { cards, colors }` (Pick a revealed card with a color still open, or No: stop and
+  shuffle) and `Decision::VividColor { cards, colors, card }` (Mode: which of its open colors a multicolored
+  card uses up; asked only when there's more than one). Exiled cards get `playable` this turn. Labelled in
+  service_view, tested in test_decision_labels; test in core_objects (92). The revealed cards stay in the
+  library while choosing, then it's shuffled.
+Merger approved (2026-11-27): token 133 `human_knight_2_trample_haste` (append its row once 125-132 are on
+tarkir, at the build), the three monarch hooks, and holding Walk-In Closet (logged in needs_core.json, owner
+mac-c: "Rooms subsystem plus a second-door oracle fetch").
+
+## Batch 25 (unbuilt): Druids' Repository (Najeela)
+
+On d1's `ManaExt::counter_mana_no_tap` (lane-d1 e4ce66a, **doesn't compile until it's on tarkir**): any-color
+`ManaSource`, `mana_per_kind_counter`, `counter_mana_no_tap`; charge counters are `kind_counters`, one per
+attacking creature you control (`When::CreatureYouControlAttacks`, `KindCounterSelf(1)`). Test in core_objects
+(93): two attackers, two counters; a landless Bolt paid by removing one.
+
+### Kambal, Profiteering Mayor: held, needs d2
+
+Both of its triggers are batched ("one or more tokens ... enter"). `When::TokenYouControlEnters` fires once per
+token (move_to's enter path), and there's no event for tokens entering under an opponent's control. Needs d2:
+the two batched events, with the batch's token list (and "only once each turn" on the first). Lane C's part is
+then small: for each listed token, `token_copy_of(you, it)` and tap it. Logged in needs_core.json (owner d2).
+
+## Batch 26 (unbuilt): Descendants' Path (Vaevictis)
+
+Core (appended; functions in game/zones.rs): `Effect::RevealTopCastFreeIfSharesCreatureType` and
+`Game::free_casts_from_library`. A matching top card opens a one-spell free-cast window over the library card,
+where `Cast` or `PassPriority` is the player's own "you may", not the engine's. `shares_creature_type_with_yours`
+counts changeling on either side as every creature type. A card that doesn't match, or isn't cast, goes to the
+bottom. **Edits in existing functions:**
+- `free_cast_actions`' `free_zone` also takes the library while `free_casts_from_library` is set;
+- `close_free_casts` calls `library_free_casts_to_bottom` (one line).
+The merger asked for a Yes/No decision; the window is used instead because it is that choice, and casting goes
+through the normal cast path (targets, X), as for cascade. Tests in core_objects (95): cast free, declined
+(bottom), no shared type (bottom, no window), changeling.
+Likely failure spots when built: casting from the library through `cast_modes` in the window, the
+`upkeep_window` helper's loop.
+Merger approved (2026-11-27) both edits and the window. View check: the free-cast window's moves are ordinary
+`Cast` actions, labelled from `legal_cards`; bolt-py's `seen()` hides only face-down cards, so the revealed
+library card is named ("Cast Gravecrawler") exactly as cascade's exiled card is. No view change needed;
+re-check in the service view at build.
+
+## Batch 27 (unbuilt): Kambal, Profiteering Mayor (unblocked by d2 cdc7082)
+
+On d2's `When::{OneOrMoreTokensOpponentsControlEnter { once_each_turn: true }, OneOrMoreTokensYouControlEnter}`
+and `Game::token_batch` (lane-d2 cdc7082, **doesn't compile until it's on tarkir**). Core (appended):
+`Effect::TappedTokenCopiesOfBatch` (zones.rs `tapped_token_copies`: each batch token still there as that
+object, `token_copy_of` per `token_doubling`, tapped). The drain is the existing LoseLife/GainLife pair. Test in
+core_objects (96, on an edited Inkshield making two Soldiers for player 1). needs_core entry marked unblocked.
+
+## Batch 28 (unbuilt): Ocelot Pride; Decadent Dragon waits on its oracle
+
+- Ocelot Pride: `ascend`, then on `When::EndStep { your_turn_only: true }` behind
+  `Condition::YouGainedLifeThisTurn`: a Cat (`t.cat`, the engine's 1/1 Cat), then
+  `Effect::CopyTokensEnteredThisTurnIfBlessing` (zones.rs: with `city_blessing`, a `token_copy_of` per
+  `token_doubling` of each token you control whose `since_turn` is this turn, the new Cat included). Limit:
+  `since_turn` also moves on a control change, so a token gained this turn counts as having entered.
+  Tests in core_objects (98).
+- Decadent Dragon // Expensive Taste: the Omen/Adventure cast path exists, but the oracle data (idea_next11.json)
+  has only the creature face ("Flying, trample", the attack Treasure); the Expensive Taste half isn't in it yet.
+  It needs the pool push with its `omen` field, then a script with an "Omen: ..." line and `d.adventure = true`.

@@ -2041,3 +2041,324 @@ fn ashiok_makes_nightmares_that_exile_two_and_bounces_then_exiles_from_hand() {
     resolve_all(&mut g, &[]);
     assert_eq!(g.obj(elves).zone, Zone::Exile, "bounced, then exiled from hand");
 }
+
+// ---- Wishclaw Talisman; Midgar, City of Mako (batch 22) ----
+
+#[test]
+fn wishclaw_talisman_tutors_then_goes_to_the_opponent() {
+    let mut g = table();
+    let talisman = hand(&mut g, 0, "Wishclaw Talisman");
+    play(&mut g, talisman, false, &[], &[]);
+    assert_eq!(g.obj(talisman).kind_counters, 3, "three wish counters");
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    act(&mut g, Action::Activate(talisman, 0));
+    resolve_all(&mut g, &[Action::Pick(ring)]);
+    assert_eq!(g.obj(ring).zone, Zone::Hand);
+    assert_eq!(g.obj(talisman).kind_counters, 2);
+    assert_eq!(g.obj(talisman).controller, 1, "an opponent gains control of it");
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(talisman, 0)),
+        "only its controller, during their turn"
+    );
+    to_main1(&mut g, 6, 1);
+    assert!(g.legal_actions().contains(&Action::Activate(talisman, 0)));
+}
+
+#[test]
+fn midgar_is_a_tapped_swamp_or_an_adventure_that_sacrifices_to_draw_two() {
+    let mut g = table();
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let midgar = hand(&mut g, 0, "Midgar, City of Mako // Reactor Raid");
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::PlayLand(midgar)) && legal.contains(&Action::CastOmen(midgar)));
+    assert!(!legal.contains(&Action::Cast(midgar)), "a land isn't cast");
+    let cards = g.players[0].hand.len();
+    act(&mut g, Action::CastOmen(midgar));
+    resolve_all(&mut g, &[Action::Pick(ghoul)]);
+    assert_eq!(g.obj(ghoul).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].hand.len(), cards - 1 + 2, "Midgar left, two drawn");
+    assert_eq!(g.obj(midgar).zone, Zone::Exile, "on an adventure");
+    act(&mut g, Action::PlayLand(midgar));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(midgar).zone, Zone::Battlefield, "played later from exile");
+    assert!(g.obj(midgar).tapped);
+}
+
+#[test]
+fn reactor_raid_declined_draws_nothing() {
+    let mut g = table();
+    put(&mut g, 0, "Hungry Ghoul");
+    let midgar = hand(&mut g, 0, "Midgar, City of Mako // Reactor Raid");
+    let cards = g.players[0].hand.len();
+    act(&mut g, Action::CastOmen(midgar));
+    resolve_all(&mut g, &[Action::No]);
+    assert_eq!(g.players[0].hand.len(), cards - 1);
+}
+
+// ---- The monarch (batch 23): Court of Grace, Forth Eorlingas! ----
+
+#[test]
+fn court_of_grace_makes_you_the_monarch_who_draws_and_gets_angels() {
+    let mut g = table();
+    let court = hand(&mut g, 0, "Court of Grace");
+    play(&mut g, court, false, &[], &[]);
+    assert_eq!(g.monarch.map(|(p, _)| p), Some(0));
+    let cards = g.players[0].hand.len();
+    pass_to(&mut g, Step::End);
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.players[0].hand.len(),
+        cards + 1,
+        "the monarch draws at their end step"
+    );
+    to_main1(&mut g, 5, 0);
+    assert_eq!(tokens(&g, 0, "Angel").len(), 1, "an Angel instead of a Spirit");
+    assert!(tokens(&g, 0, "Spirit").is_empty());
+}
+
+#[test]
+fn combat_damage_to_the_monarch_takes_it_and_court_makes_spirits_without_it() {
+    let mut g = table();
+    put(&mut g, 0, "Court of Grace");
+    let ghoul = put(&mut g, 1, "Hungry Ghoul");
+    let court = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Court of Grace")
+        .expect("court");
+    g.monarch = Some((0, court));
+    g.start_turn(6, 1);
+    while g.pending != Pending::DeclareAttackers(1) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(ghoul));
+    act(&mut g, Action::FinishAttacks);
+    pass_to(&mut g, Step::Main2);
+    assert_eq!(g.monarch.map(|(p, _)| p), Some(1), "combat damage to the monarch");
+    to_main1(&mut g, 7, 0);
+    assert_eq!(tokens(&g, 0, "Spirit").len(), 1, "not the monarch: a Spirit");
+}
+
+#[test]
+fn forth_eorlingas_makes_knights_and_the_monarch_on_combat_damage() {
+    let mut g = table();
+    let forth = hand(&mut g, 0, "Forth Eorlingas!");
+    act(&mut g, Action::CastX(forth, 2));
+    resolve_all(&mut g, &[]);
+    let knights = tokens(&g, 0, "Human Knight");
+    assert_eq!(knights.len(), 2);
+    assert!(g.keywords(knights[0]).has(Keywords::HASTE));
+    assert_eq!(g.monarch, None);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(knights[0]));
+    act(&mut g, Action::FinishAttacks);
+    pass_to(&mut g, Step::Main2);
+    assert_eq!(g.monarch.map(|(p, _)| p), Some(0));
+}
+
+#[test]
+fn mirrorform_turns_your_nonland_permanents_into_copies() {
+    let mut g = table();
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let ring = put(&mut g, 0, "Sol Ring");
+    let elves = put(&mut g, 1, "Llanowar Elves");
+    let mirror = hand(&mut g, 0, "Mirrorform");
+    play(&mut g, mirror, false, &[obj(elves)], &[]);
+    assert_eq!(g.def_of(ghoul).name, "Llanowar Elves");
+    assert_eq!(g.def_of(ring).name, "Llanowar Elves");
+    assert!(
+        g.permanents(0)
+            .filter(|&x| g.types_of(x).land)
+            .all(|x| g.def_of(x).name != "Llanowar Elves"),
+        "lands stay"
+    );
+    assert_eq!(g.def_of(elves).name, "Llanowar Elves");
+}
+
+#[test]
+fn sanar_reveals_until_x_nonland_and_exiles_one_per_color_to_cast_this_turn() {
+    let mut g = table();
+    put(&mut g, 0, "Sanar, Innovative First-Year"); // blue and red: X = 2
+    let opt = top(&mut g, "Opt");
+    let mountain = top(&mut g, "Mountain");
+    let bolt = top(&mut g, "Lightning Bolt");
+    top(&mut g, "Plains"); // drawn in the draw step
+    to_main1(&mut g, 5, 0);
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(bolt)) && legal.contains(&Action::Pick(opt)));
+    assert!(!legal.contains(&Action::Pick(mountain)), "a land has no color");
+    resolve_all(&mut g, &[Action::Pick(bolt), Action::Pick(opt)]);
+    assert_eq!((g.obj(bolt).zone, g.obj(opt).zone), (Zone::Exile, Zone::Exile));
+    assert_eq!(g.obj(mountain).zone, Zone::Library, "shuffled back");
+    assert!(
+        g.legal_actions().contains(&Action::Cast(opt)),
+        "castable this turn"
+    );
+    to_main1(&mut g, 7, 0);
+    assert!(!g.legal_actions().contains(&Action::Cast(opt)), "only this turn");
+}
+
+#[test]
+fn druids_repository_stores_a_charge_per_attacker_and_spends_them_as_mana() {
+    let mut g = game(&[]);
+    let repo = put(&mut g, 0, "Druids' Repository");
+    let a = put(&mut g, 0, "Hungry Ghoul");
+    let b = put(&mut g, 0, "Llanowar Elves");
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(a));
+    act(&mut g, Action::Attack(b));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.obj(repo).kind_counters,
+        2,
+        "one charge counter per attacking creature"
+    );
+    pass_to(&mut g, Step::Main2);
+    // No lands: the Bolt is paid by removing a charge counter.
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[Target::Player(1)], &[]);
+    assert_eq!(g.obj(repo).kind_counters, 1);
+}
+
+// ---- Descendants' Path (batch 26) ----
+
+/// To the upkeep's free-cast window (or past the upkeep if none opens).
+fn upkeep_window(g: &mut Game) -> bool {
+    g.start_turn(5, 0);
+    while g.step == Step::Upkeep || !g.items.is_empty() {
+        if matches!(g.pending, Pending::FreeCast(_)) {
+            return true;
+        }
+        act(g, Action::PassPriority);
+    }
+    false
+}
+
+#[test]
+fn descendants_path_casts_a_top_creature_sharing_a_type_free_or_bottoms_it() {
+    let mut g = table();
+    put(&mut g, 0, "Descendants' Path");
+    put(&mut g, 0, "Hungry Ghoul"); // a Zombie
+    let crawler = top(&mut g, "Gravecrawler");
+    assert!(upkeep_window(&mut g), "a Zombie on top: you may cast it");
+    act(&mut g, Action::Cast(crawler));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(crawler).zone, Zone::Battlefield, "cast free");
+    // Declined: it goes to the bottom.
+    let mut g = table();
+    put(&mut g, 0, "Descendants' Path");
+    put(&mut g, 0, "Hungry Ghoul");
+    let crawler = top(&mut g, "Gravecrawler");
+    assert!(upkeep_window(&mut g));
+    act(&mut g, Action::PassPriority);
+    assert_eq!(g.players[0].library.first(), Some(&crawler), "to the bottom");
+    // No shared type: straight to the bottom, no window.
+    let mut g = table();
+    put(&mut g, 0, "Descendants' Path");
+    put(&mut g, 0, "Hungry Ghoul");
+    let elves = top(&mut g, "Llanowar Elves");
+    assert!(!upkeep_window(&mut g));
+    assert_eq!(g.players[0].library.first(), Some(&elves));
+}
+
+#[test]
+fn descendants_path_counts_changeling_as_every_creature_type() {
+    let mut g = table();
+    put(&mut g, 0, "Descendants' Path");
+    let shapeshifter = g
+        .defs
+        .iter()
+        .position(|d| d.token && d.name == "Shapeshifter" && d.changeling)
+        .expect("a changeling token");
+    g.add_card(0, shapeshifter, Zone::Battlefield);
+    let elves = top(&mut g, "Llanowar Elves");
+    assert!(upkeep_window(&mut g), "a changeling shares every creature type");
+    assert!(g.legal_actions().contains(&Action::Cast(elves)));
+}
+
+// ---- Kambal, Profiteering Mayor (batch 27, on d2's batched token triggers) ----
+
+#[test]
+fn kambal_copies_an_opponents_token_batch_tapped_once_a_turn_and_drains_for_its_own() {
+    let mut g = table_with(|defs| {
+        let soldier = defs
+            .iter()
+            .position(|d| d.token && d.name == "Soldier")
+            .expect("Soldier");
+        defs[cid("Inkshield")].spell = Some(bolt_core::Ability::new(
+            vec![],
+            vec![bolt_core::Effect::CreateToken {
+                who: bolt_core::Who::You,
+                def: soldier,
+                n: 2,
+            }],
+        ));
+    });
+    put(&mut g, 0, "Kambal, Profiteering Mayor");
+    to_main1(&mut g, 6, 1);
+    let (mine, theirs) = (g.players[0].life, g.players[1].life);
+    let raise = hand(&mut g, 1, "Inkshield"); // standing in for two Soldier tokens
+    play(&mut g, raise, false, &[], &[]);
+    let copies = tokens(&g, 0, "Soldier");
+    assert_eq!(copies.len(), 2, "a copy of each");
+    assert!(copies.iter().all(|&c| g.obj(c).tapped), "tapped");
+    assert_eq!(
+        (g.players[0].life, g.players[1].life),
+        (mine + 1, theirs - 1),
+        "one drain for the batch of copies"
+    );
+    let again = hand(&mut g, 1, "Inkshield");
+    play(&mut g, again, false, &[], &[]);
+    assert_eq!(tokens(&g, 0, "Soldier").len(), 2, "only once each turn");
+}
+
+// ---- Ocelot Pride (batch 28) ----
+
+#[test]
+fn ocelot_pride_makes_a_cat_after_lifegain_and_with_the_blessing_copies_todays_tokens() {
+    let mut g = table_with(|defs| {
+        let soldier = defs
+            .iter()
+            .position(|d| d.token && d.name == "Soldier")
+            .expect("Soldier");
+        defs[cid("Inkshield")].spell = Some(bolt_core::Ability::new(
+            vec![],
+            vec![
+                bolt_core::Effect::GainLife {
+                    who: bolt_core::Who::You,
+                    n: 1,
+                },
+                bolt_core::Effect::CreateToken {
+                    who: bolt_core::Who::You,
+                    def: soldier,
+                    n: 1,
+                },
+            ],
+        ));
+    });
+    put(&mut g, 0, "Ocelot Pride");
+    let gain = hand(&mut g, 0, "Inkshield"); // standing in for gaining life and making a token
+    play(&mut g, gain, false, &[], &[]);
+    pass_to(&mut g, Step::End);
+    resolve_all(&mut g, &[]);
+    assert!(g.city_blessing[0], "ascend: ten or more permanents");
+    assert_eq!(tokens(&g, 0, "Cat").len(), 2, "the Cat, and a copy of it");
+    assert_eq!(tokens(&g, 0, "Soldier").len(), 2, "today's Soldier, copied");
+}
+
+#[test]
+fn ocelot_pride_does_nothing_without_lifegain() {
+    let mut g = table();
+    put(&mut g, 0, "Ocelot Pride");
+    pass_to(&mut g, Step::End);
+    resolve_all(&mut g, &[]);
+    assert!(tokens(&g, 0, "Cat").is_empty());
+}

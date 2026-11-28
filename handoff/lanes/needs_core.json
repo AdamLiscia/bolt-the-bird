@@ -8411,6 +8411,22 @@
    "lane": "d1",
    "theme": "mana",
    "owner": "mac-b"
+  },
+  {
+   "card": "Walk-In Closet // Forgotten Cellar",
+   "deck": "idea (top 9)",
+   "missing": "Rooms subsystem plus a second-door oracle fetch: the oracle data has only Walk-In Closet's door (and the Room reminder); Forgotten Cellar's text and cost need fetch_oracle.py to keep both doors, and the engine needs Rooms (cast either half, unlock a door as a sorcery). Held by lane C 2026-11-27.",
+   "lane": "mac-c",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Kambal, Profiteering Mayor",
+   "deck": "idea",
+   "missing": "d2: two batched token-enter triggers that fire once per event, not once per token. 'Whenever one or more tokens your opponents control enter' (no opponent-side event exists; once each turn) and 'Whenever one or more tokens you control enter' (today's When::TokenYouControlEnters fires once per token). Both need the event's token list. Then lane C adds 'for each of them, create a tapped token that's a copy of it' over that list, with the existing token_copy_of. Looked at by lane C 2026-11-27. [unblocked: d2's OneOrMoreTokens* triggers and Game::token_batch (lane-d2 cdc7082); lane C scripted it in pg_c, batch 27 (unbuilt)]",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "mac-c"
   }
  ]
 }

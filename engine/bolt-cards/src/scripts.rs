@@ -616,8 +616,14 @@ pub fn token_defs() -> Vec<CardDef> {
             t.colors = [false, false, false, true, false];
             t
         },
-        // 133: another lane's token, a placeholder until it lands on tarkir.
-        token("Placeholder 133", "Placeholder", 0, 0, Keywords::NONE),
+        // 133, lane C: Forth Eorlingas!'s "2/2 red Human Knight creature tokens with trample and haste".
+        red(token(
+            "Human Knight",
+            "Human Knight",
+            2,
+            2,
+            Keywords::TRAMPLE.with(Keywords::HASTE),
+        )),
         {
             // 134, lane d1: Wolfwillow Haven's "2/2 green Wolf creature token".
             let mut t = token("Wolf", "Wolf", 2, 2, Keywords::NONE);
@@ -905,14 +911,14 @@ pub struct Tokens {
     pub vampire_lifelink: usize,
     /// 129, lane d2: G'raha Tia's 1/1 colorless Hero.
     pub hero: usize,
-    /// 130, lane d2: Hermes's 1/1 blue Bird with flying and vigilance.
+    /// 133: lane C's Forth Eorlingas! Human Knight, a 2/2 red with trample and haste.
     pub bird_flying_vigilance: usize,
     /// 131: another lane's token, a placeholder until it lands on tarkir.
     pub placeholder_131: usize,
     /// 132, lane d3: Lathliss, Dragon Queen's 5/5 red Dragon with flying.
     pub red_dragon_5: usize,
     /// 133: another lane's token, a placeholder until it lands on tarkir.
-    pub placeholder_133: usize,
+    pub human_knight_2_trample_haste: usize,
     /// 134: d1's Wolfwillow Haven Wolf, a plain 2/2 green.
     pub wolf_green: usize,
     /// 135, lane d3: Garruk, Primal Hunter's 6/6 green Wurm.
@@ -1057,7 +1063,7 @@ impl Tokens {
             bird_flying_vigilance: base + 130,
             placeholder_131: base + 131,
             red_dragon_5: base + 132,
-            placeholder_133: base + 133,
+            human_knight_2_trample_haste: base + 133,
             wolf_green: base + 134,
             wurm_6: base + 135,
             rat_cant_block: base + 136,

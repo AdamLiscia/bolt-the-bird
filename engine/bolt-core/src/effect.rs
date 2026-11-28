@@ -3261,6 +3261,38 @@ pub enum Effect {
     /// (Invasion of Arcavios; nothing is outside the game here), as
     /// `Decision::SearchLibraryOrGraveyardInstantOrSorcery`.
     SearchLibraryOrGraveyardInstantOrSorcery,
+    /// "An opponent gains control of this artifact." (Wishclaw Talisman): the source, if you control
+    /// it, passes to the opponent for good.
+    OpponentGainsControlOfSource,
+    /// "You become the monarch." (CR 724; `Game::monarch`)
+    BecomeMonarch,
+    /// "Whenever one or more creatures you control deal combat damage to one or more players this
+    /// turn, you become the monarch." (Forth Eorlingas!; `Game::monarch_on_combat_damage`)
+    BecomeMonarchOnCombatDamageThisTurn,
+    /// Create a `monarch` token if you're the monarch, a `other` token otherwise (Court of Grace:
+    /// "If you're the monarch, create a 4/4 white Angel ... instead").
+    CreateTokenIfMonarchElse {
+        monarch: usize,
+        other: usize,
+    },
+    /// "Each nonland permanent you control becomes a copy of" the permanent in `slot`, for good
+    /// (Mirrorform).
+    YourNonlandPermanentsBecomeCopyOf(u8),
+    /// Sanar, Innovative First-Year's vivid trigger: reveal from the top until X nonland cards (X the
+    /// colors among your permanents); for each of those colors you may exile a card of that color
+    /// from among them (`Decision::{VividExile, VividColor}`); then shuffle; you may cast the exiled
+    /// cards this turn.
+    VividRevealExileByColor,
+    /// Descendants' Path: reveal the top card of your library; if it's a creature card that shares a
+    /// creature type with a creature you control, you may cast it free (a one-spell free-cast window
+    /// over the library card); if you don't cast it, it goes to the bottom.
+    RevealTopCastFreeIfSharesCreatureType,
+    /// "For each of them, create a tapped token that's a copy of it." (Kambal, Profiteering Mayor):
+    /// the tokens of the resolving trigger's batch (d2's `Game::token_batch`) still on the battlefield.
+    TappedTokenCopiesOfBatch,
+    /// "Then if you have the city's blessing, for each token you control that entered this turn,
+    /// create a token that's a copy of it." (Ocelot Pride; "entered this turn" is `since_turn`)
+    CopyTokensEnteredThisTurnIfBlessing,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

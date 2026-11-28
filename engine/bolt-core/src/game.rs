@@ -745,6 +745,8 @@ pub enum StackKind {
     /// Undying from the keyword (`Keywords::UNDYING`, printed or granted): "When this creature
     /// dies, if it had no +1/+1 counters on it, return it ... with a +1/+1 counter on it."
     Undying,
+    /// The monarch's "At the beginning of your end step, draw a card." (CR 724.2)
+    MonarchDraw,
 }
 
 /// The ability of a ward trigger, which has no targets or effects of its own.
@@ -774,6 +776,12 @@ fn sacrifice_when_targeted_ability() -> &'static Ability {
 }
 
 /// Undying's triggered ability (CR 702.93a), for `StackKind::Undying`.
+/// The monarch's end-step draw (CR 724.2), lane C's (game/zones.rs).
+fn monarch_draw_ability() -> &'static Ability {
+    static A: std::sync::OnceLock<Ability> = std::sync::OnceLock::new();
+    A.get_or_init(|| Ability::new(Vec::new(), vec![Effect::Draw { who: Who::You, n: 1 }]))
+}
+
 fn undying_ability() -> &'static Ability {
     static A: std::sync::OnceLock<Ability> = std::sync::OnceLock::new();
     A.get_or_init(|| Ability::new(Vec::new(), vec![Effect::Undying]))
@@ -1652,6 +1660,16 @@ pub enum Decision {
     /// `No` to find nothing; picking from the library (or finding nothing) shuffles it (Invasion of
     /// Arcavios).
     SearchLibraryOrGraveyardInstantOrSorcery,
+    /// Sanar's vivid reveal: `Pick` one of the revealed `cards` with a color still in `colors` to
+    /// exile (you may cast it this turn), or `No` to stop; then the library is shuffled.
+    VividExile { cards: Vec<ObjId>, colors: [bool; 5] },
+    /// Which of its colors the card just exiled counts for: `Mode(i)` for color `i` (WUBRG) among
+    /// `colors`.
+    VividColor {
+        cards: Vec<ObjId>,
+        colors: [bool; 5],
+        card: ObjId,
+    },
 }
 
 /// One batch of a "one or more tokens ... enter" trigger (`Game::token_enter_batches`): (source,
@@ -2143,6 +2161,15 @@ pub struct Game {
     /// Hideaway cards beyond a source's `Object::hideaway`: (source, its zcc, card, the card's zcc
     /// in exile) (Evercoat Ursine's second hideaway).
     pub hideaway_more: Vec<(ObjId, u32, ObjId, u32)>,
+    /// The monarch (CR 724), and the card that made them the monarch (the source of the end-step
+    /// draw trigger).
+    pub monarch: Option<(PlayerId, ObjId)>,
+    /// Forth Eorlingas!: (the turn, the card) on which each player becomes the monarch when their
+    /// creatures deal combat damage to a player.
+    pub monarch_on_combat_damage: [Option<(u32, ObjId)>; 2],
+    /// The open free-cast window offers its cards from the library (Descendants' Path's top card);
+    /// one not cast goes to the bottom as the window closes.
+    pub free_casts_from_library: bool,
     /// The other creatures a crew cost taps with its named one (from `Decision::CrewTap`).
     crew_extra: Vec<ObjId>,
     /// Saddled Mounts (CR 702.171b) and the creatures that saddled them: (mount, its zcc, rider,
@@ -2612,6 +2639,9 @@ impl Game {
             face_down_exiled: Vec::new(),
             free_casts_max: 0,
             hideaway_more: Vec::new(),
+            monarch: None,
+            monarch_on_combat_damage: [None; 2],
+            free_casts_from_library: false,
             saddled: Vec::new(),
             karador_turn: [0; 2],
             any_graveyard_spells_turn: [0; 2],
@@ -5267,6 +5297,7 @@ impl Game {
         }
         // Emblems' triggered abilities and the initiative (lane d4's subsystems).
         self.fire_subsystems(p, when);
+        self.fire_monarch(p, when); // the monarch (CR 724), game/zones.rs
     }
 
     /// "If a creature attacking causes a triggered ability of a permanent you control to trigger,
@@ -7114,6 +7145,7 @@ impl Game {
                 let controller = self.obj(id).controller;
                 self.counters_placed(controller, def.vanishing as i32);
             }
+            self.enter_with_kind_counters(id); // Wishclaw Talisman's wish counters (game/zones.rs)
             let bonus = bonus + flat + non + chauffeur;
             if bonus > 0 {
                 let n = bonus * self.doubling(controller) * self.creature_counter_doubling(id);
@@ -7825,6 +7857,7 @@ impl Game {
             StackKind::Room { .. } | StackKind::InitiativeVenture => self.subsystem_ability(item.kind),
             StackKind::SacrificeWhenTargeted { .. } => sacrifice_when_targeted_ability(),
             StackKind::Undying => undying_ability(),
+            StackKind::MonarchDraw => monarch_draw_ability(),
         }
     }
 
@@ -8502,7 +8535,7 @@ impl Game {
                 if sorcery_timing && self.land_play_left(p) {
                     v.push(Action::PlayLand(c));
                 }
-                if def.types.land {
+                if def.types.land && def.omen.is_none() {
                     continue;
                 }
             }
@@ -8532,6 +8565,9 @@ impl Game {
                 {
                     v.push(Action::CastOmen(c));
                 }
+            }
+            if def.types.land {
+                continue; // a land with an Adventure (Midgar): only its spell half is cast
             }
             // A modal double-faced card's nonland back face, cast from hand (game/zones.rs).
             if self.back_face_castable(p, c, sorcery_timing || flash_all) {
@@ -14585,7 +14621,12 @@ impl Game {
         }
         // A one-spell window may also offer cards in hand or a graveyard (see `free_casts_one`).
         let one = self.free_casts_one;
-        let free_zone = |z: Zone| z == Zone::Exile || (one && matches!(z, Zone::Hand | Zone::Graveyard));
+        let lib = self.free_casts_from_library; // Descendants' Path
+        let free_zone = |z: Zone| {
+            z == Zone::Exile
+                || (one && matches!(z, Zone::Hand | Zone::Graveyard))
+                || (lib && z == Zone::Library)
+        };
         if self.free_casts_one && self.free_casts.iter().any(|&c| !free_zone(self.obj(c).zone)) {
             return v; // one spell, already cast (Rishkar's Expertise)
         }
@@ -14644,6 +14685,7 @@ impl Game {
         self.free_casts_one = false;
         self.free_casts_lands = false;
         self.free_casts_max = 0;
+        self.library_free_casts_to_bottom(); // Descendants' Path, game/zones.rs
         for c in std::mem::take(&mut self.free_casts_rest_to_graveyard) {
             if self.obj(c).zone == Zone::Exile {
                 self.move_to(c, Zone::Graveyard); // Epic Experiment: those not cast
@@ -17011,6 +17053,8 @@ impl Game {
             Decision::PatronOfChaosSacrifice { first, .. } => self.patron_of_chaos_actions(p, *first),
             Decision::ExileFromHandUntilSourceLeaves { victim, .. } => self.hand_link_actions(*victim),
             Decision::MayPutExiledLandOntoBattlefield { .. } => vec![Action::Yes, Action::No],
+            Decision::VividExile { cards, colors } => self.vivid_exile_actions(cards, colors),
+            Decision::VividColor { colors, card, .. } => self.vivid_color_actions(*card, colors),
             Decision::SacrificeNontokenCreatureOrPlaneswalker => self
                 .nontoken_creature_or_planeswalker_options(p)
                 .into_iter()
@@ -19127,6 +19171,12 @@ impl Game {
             (Decision::SacrificeNontokenCreatureOrPlaneswalker, Action::Pick(c)) => {
                 self.move_to(c, Zone::Graveyard);
                 self.sacrificed(c, p);
+            }
+            (Decision::VividExile { cards, colors }, a) => self.vivid_exile_decide(p, cards, colors, a),
+            (Decision::VividColor { cards, colors, .. }, Action::Mode(i)) => {
+                let mut colors = colors;
+                colors[i as usize % 5] = false;
+                self.vivid_next(p, cards, colors);
             }
             (Decision::MayPutExiledLandOntoBattlefield { card }, a) => {
                 if a == Action::Yes && self.obj(card).zone == Zone::Exile {
@@ -29086,6 +29136,30 @@ impl Game {
                 }
             }
             Effect::HideawayAnother(n) => self.hideaway_another(src, item.controller, n),
+            Effect::OpponentGainsControlOfSource => self.give_source_to_opponent(src, item.controller),
+            Effect::BecomeMonarch => self.monarch = Some((item.controller, src)),
+            Effect::VividRevealExileByColor => self.vivid_reveal(item.controller),
+            Effect::RevealTopCastFreeIfSharesCreatureType => self.descendants_path(item.controller),
+            Effect::CopyTokensEnteredThisTurnIfBlessing => {
+                self.copy_tokens_entered_this_turn(item.controller)
+            }
+            Effect::TappedTokenCopiesOfBatch => {
+                let batch = self.token_batch(item);
+                self.tapped_token_copies(item.controller, batch);
+            }
+            Effect::YourNonlandPermanentsBecomeCopyOf(slot) => {
+                if let Some(t) = Game::slot_object(item, legal, slot) {
+                    self.nonland_permanents_become_copy(item.controller, t);
+                }
+            }
+            Effect::BecomeMonarchOnCombatDamageThisTurn => {
+                self.monarch_on_combat_damage[item.controller] = Some((self.turn, src))
+            }
+            Effect::CreateTokenIfMonarchElse { monarch, other } => {
+                let mine = self.monarch.is_some_and(|(q, _)| q == item.controller);
+                self.create_token(item.controller, if mine { monarch } else { other });
+            }
+
             Effect::CountersOnAttachedBySubtype { n, subtype, n_if } => {
                 self.counters_on_attached_by_subtype(src, n, subtype, n_if)
             }
@@ -30297,8 +30371,9 @@ impl Game {
                 self.give_priority(a);
             }
             Step::End => {
-                // Ilharg: "Return that creature to your hand at the beginning of the next end step."
-                // Warp: exiled at the beginning of the next end step; its owner may cast it from exile.
+                self.monarch_end_step(); // the monarch draws (CR 724.2), game/zones.rs
+                                         // Ilharg: "Return that creature to your hand at the beginning of the next end step."
+                                         // Warp: exiled at the beginning of the next end step; its owner may cast it from exile.
                 let warped: Vec<ObjId> = self
                     .battlefield
                     .iter()

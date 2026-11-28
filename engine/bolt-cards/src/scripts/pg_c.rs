@@ -2506,6 +2506,108 @@ pub fn script(name: &str) -> Option<Script> {
                 loyalty(d, -7, Ability::new(vec![], vec![Effect::CastFaceUpOpponentExiledFreeUpTo(3)]));
             },
         ),
+        "Wishclaw Talisman" => s(
+            &[
+                "This artifact enters with three wish counters on it.",
+                "{1}, {T}, Remove a wish counter from this artifact: Search your library for a card, put it into your hand, then shuffle. An opponent gains control of this artifact. Activate only during your turn.",
+            ],
+            |d, _| {
+                // Wish counters are the artifact's own kind (`kind_counters`).
+                d.zones.enters_with_kind_counters = 3;
+                let wish = vec![search(SearchFor::Any, SearchTo::Hand), Effect::OpponentGainsControlOfSource];
+                let n = activated(d, "{1}", true, vec![], wish);
+                d.activated[n].remove_kind_counters = 1;
+                d.activated[n].your_turn_only = true;
+            },
+        ),
+        "Midgar, City of Mako // Reactor Raid" => s(
+            &[
+                "This land enters tapped.",
+                "{T}: Add {B}.",
+                "Omen: You may sacrifice an artifact or creature. If you do, draw two cards.",
+            ],
+            |d, _| {
+                d.enters_tapped = true;
+                d.mana = Some(ManaSource::of(&[Color::Black]));
+                omen(d, Ability::new(vec![], vec![Effect::MaySacrificeArtifactOrCreature, draw(2)]));
+                d.adventure = true;
+            },
+        ),
+        "Court of Grace" => s(
+            &[
+                "When this enchantment enters, you become the monarch.",
+                "At the beginning of your upkeep, create a 1/1 white Spirit creature token with flying. If you're the monarch, create a 4/4 white Angel creature token with flying instead.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::BecomeMonarch]);
+                let token = Effect::CreateTokenIfMonarchElse { monarch: t.angel_4, other: t.spirit };
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![token]);
+            },
+        ),
+        "Forth Eorlingas!" => s(
+            &[
+                "Create X 2/2 red Human Knight creature tokens with trample and haste.",
+                "Whenever one or more creatures you control deal combat damage to one or more players this turn, you become the monarch.",
+            ],
+            |d, t| {
+                let knights = Effect::CreateTokensX { def: t.human_knight_2_trample_haste };
+                spell(d, vec![], vec![knights, Effect::BecomeMonarchOnCombatDamageThisTurn]);
+            },
+        ),
+        "Mirrorform" => s(&["Each nonland permanent you control becomes a copy of target non-Aura permanent."], |d, _| {
+            let non_aura = Filter { players: false, creatures: false, planeswalkers: false, any_permanent: true, not_subtype: Some("Aura"), controller: Controller::Any, ..Filter::ANY };
+            spell(d, vec![non_aura], vec![Effect::YourNonlandPermanentsBecomeCopyOf(0)]);
+        }),
+        "Sanar, Innovative First-Year" => s(
+            &["Vivid — At the beginning of your first main phase, reveal cards from the top of your library until you reveal X nonland cards, where X is the number of colors among permanents you control. For each of those colors, you may exile a card of that color from among the revealed cards. Then shuffle. You may cast the exiled cards this turn."],
+            |d, _| on(d, When::FirstMainPhaseYourTurn, vec![], vec![Effect::VividRevealExileByColor]),
+        ),
+        "Druids' Repository" => s(
+            &[
+                "Whenever a creature you control attacks, put a charge counter on this enchantment.",
+                "Remove a charge counter from this enchantment: Add one mana of any color.",
+            ],
+            |d, _| {
+                // Charge counters are the enchantment's own kind (`kind_counters`); d1's no-{T}
+                // counter mana removes one per mana.
+                on(d, When::CreatureYouControlAttacks, vec![], vec![Effect::KindCounterSelf(1)]);
+                d.mana = Some(ManaSource::of(&Color::ALL));
+                d.mana_ext.mana_per_kind_counter = true;
+                d.mana_ext.counter_mana_no_tap = true;
+            },
+        ),
+        "Descendants' Path" => s(
+            &["At the beginning of your upkeep, reveal the top card of your library. If it's a creature card that shares a creature type with a creature you control, you may cast it without paying its mana cost. If you don't cast it, put it on the bottom of your library."],
+            |d, _| {
+                // "You may cast it": a one-spell free-cast window over the top card; passing is "you
+                // don't cast it", and the card goes to the bottom as the window closes.
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::RevealTopCastFreeIfSharesCreatureType]);
+            },
+        ),
+        "Kambal, Profiteering Mayor" => s(
+            &[
+                "Whenever one or more tokens your opponents control enter, for each of them, create a tapped token that's a copy of it. This ability triggers only once each turn.",
+                "Whenever one or more tokens you control enter, each opponent loses 1 life and you gain 1 life.",
+            ],
+            |d, _| {
+                // d2's batched token triggers (`Game::token_batch`).
+                let theirs = When::OneOrMoreTokensOpponentsControlEnter { once_each_turn: true };
+                on(d, theirs, vec![], vec![Effect::TappedTokenCopiesOfBatch]);
+                let drain = vec![Effect::LoseLife { who: Who::EachOpponent, n: 1 }, Effect::GainLife { who: Who::You, n: 1 }];
+                on(d, When::OneOrMoreTokensYouControlEnter, vec![], drain);
+            },
+        ),
+        "Ocelot Pride" => s(
+            &[
+                "Ascend",
+                "At the beginning of your end step, if you gained life this turn, create a 1/1 white Cat creature token. Then if you have the city's blessing, for each token you control that entered this turn, create a token that's a copy of it.",
+            ],
+            |d, t| {
+                d.ascend = true;
+                let cat = Effect::CreateToken { who: Who::You, def: t.cat, n: 1 };
+                conditional(d, When::EndStep { your_turn_only: true }, Condition::YouGainedLifeThisTurn, vec![], vec![cat, Effect::CopyTokensEnteredThisTurnIfBlessing]);
+            },
+        ),
         "Fortune Teller's Talent" => s(
             &[
                 "You may look at the top card of your library any time.",
@@ -2869,4 +2971,15 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Nesting Dragon",
     "Ashiok, Nightmare Muse",
     "Evercoat Ursine",
+    "Wishclaw Talisman",
+    "Midgar, City of Mako // Reactor Raid",
+    "Court of Grace",
+    "Forth Eorlingas!",
+    "Mirrorform",
+    "Sanar, Innovative First-Year",
+    "Druids' Repository",
+    "Descendants' Path",
+    "Kambal, Profiteering Mayor",
+    "Ocelot Pride",
+    // Not "Evercoat Ursine" (unclaimed: a hidden land must be playable as a land play).
 ];
