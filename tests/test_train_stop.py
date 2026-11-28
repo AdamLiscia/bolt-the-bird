@@ -25,7 +25,8 @@ def fake_run_parallel(net, jobs, record=(0, 1), stop=None, **kw):
                               "value": 0.0})  # fmt: skip
         results.append({"result": "p0", "turn": 3})
     arr = to_arrays(steps, results)
-    arr["logp"][0] = np.nan  # one decision with a non-finite input: dropped, not fatal
+    if len(arr["logp"]):
+        arr["logp"][0] = np.nan  # one decision with a non-finite input: dropped, not fatal
     return {"results": results, "arrays": arr}
 
 
@@ -44,6 +45,7 @@ def trainer(tmp_path, monkeypatch):
     monkeypatch.setattr(t, "PLAY_SET", None)
     monkeypatch.setattr(t, "deck_sets", lambda: ([[1], [2], [3]], [[1], [2], [3]]))
     monkeypatch.setattr(t, "run_parallel", fake_run_parallel)
+    monkeypatch.setattr(t, "REAL_EVALUATE", t.evaluate, raising=False)
     monkeypatch.setattr(t, "evaluate", lambda *a, **k: {"rules": 0.5, "smart": 0.5})
     monkeypatch.setattr(t, "upload_quietly", lambda p: None)
     s3, made = FakeS3(), []
@@ -191,3 +193,35 @@ def test_without_ref_the_kl_reference_is_init(trainer, monkeypatch, capsys):
     monkeypatch.setattr(sys, "argv", [*sys.argv[:7], "1", *sys.argv[8:]])
     t.main()
     assert f"KL reference: {tmp_path / 'init.pt'}" in capsys.readouterr().out
+
+
+def test_every_game_is_logged_with_its_decks_and_phase(trainer, monkeypatch):
+    import json
+
+    t, made, s3, tmp_path = trainer
+    monkeypatch.setattr(t, "evaluate", t.REAL_EVALUATE)  # the real one, over the fake games
+    argv = [*sys.argv[:7], "1", *sys.argv[8:]]
+    i = argv.index("--eval-every")
+    argv[i + 1] = "1"
+    monkeypatch.setattr(sys, "argv", [*argv, "--eval-pairs", "2"])
+    t.main()
+    lines = [json.loads(x) for x in (tmp_path / "results" / "games_stoptest.jsonl").read_text().splitlines()]
+    phases = [(x["iter"], x["phase"]) for x in lines]
+    # eval 0: 2 pairs x 2 seat orders, against rules then smart; iteration 1: 4 self-play games; then eval 1
+    assert (
+        phases
+        == [(0, "eval_rules")] * 4
+        + [(0, "eval_smart")] * 4
+        + [(1, "self")] * 4
+        + [(1, "eval_rules")] * 4
+        + [(1, "eval_smart")] * 4
+    )
+    ev = [x for x in lines if x["phase"] == "eval_rules" and x["iter"] == 0]
+    assert [(x["deck_a"]["key"], x["deck_b"]["key"], x["seed"], x["first"]) for x in ev] == [
+        (0, 1, 9000, 0),
+        (1, 2, 9001, 1),
+    ] * 2
+    assert [x["seats"] for x in ev] == [["net", "rules"]] * 2 + [["rules", "net"]] * 2
+    for x in lines:
+        assert x["deck_a"]["key"] != x["deck_b"]["key"] and x["result"] == "p0" and x["turn"] == 3
+        assert x["timeout"] is False and x["error"] is False and "moves" in x

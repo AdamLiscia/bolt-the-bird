@@ -293,6 +293,8 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
                 else ""
             )
             print(f"[worker {os.getpid()}] {done}/{len(games)} games done, {time.time() - t0:.0f}s{tail}", flush=True)
+    for gi, r in enumerate(results):  # every game's length, for the trainer's game log
+        r.setdefault("moves", moves[gi])
     if slow:  # games stopped for time, or ended by an engine error, leave no samples
         for st in steps:
             gi = st["game"] - game_offset

@@ -117,4 +117,5 @@ def test_commander_games_are_capped(monkeypatch):
     monkeypatch.setattr(pr, "CMD_MAX_MOVES", 6_000)
     monkeypatch.setattr(pr, "CMD_MAX_TURNS", 3)
     out = pr.run_games(None, [(d[0], d[1], 3, 0)], seats=("rules", "rules"))
-    assert out["results"][0] == {"result": "timeout", "turn": 4}
+    r = out["results"][0]
+    assert (r["result"], r["turn"]) == ("timeout", 4)

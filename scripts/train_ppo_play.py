@@ -55,10 +55,47 @@ def deck_sets():
     return [list(map(int, x.split())) for x in lines[:512]], [list(map(int, x.split())) for x in lines[512:1024]]
 
 
+def eval_pairs(n, pairs):
+    """(deck index, deck index) of each evaluation game: each deck against each other in turn (never itself)."""
+    return [(i % n, (i + 1 + (i // n) % (n - 1)) % n) for i in range(pairs)]
+
+
 def eval_jobs(decks, pairs):
     """Evaluation games: each deck against each other in turn (never itself), seeds fixed."""
-    n = len(decks)
-    return [(decks[i % n], decks[(i + 1 + (i // n) % (n - 1)) % n], 9_000 + i, i % 2) for i in range(pairs)]
+    return [(decks[a], decks[b], 9_000 + i, i % 2) for i, (a, b) in enumerate(eval_pairs(len(decks), pairs))]
+
+
+class GameLog:
+    """One JSON line per game played, appended to results/games_<run>.jsonl (Adam, 2026-11-28): which decks (by
+    commander and by line in the deck file), who went first, the seats, the result, its length."""
+
+    def __init__(self, path: Path, decks: list):
+        self.path, self.decks = path, decks
+        try:
+            from bolt.play_net import current_names
+
+            names = current_names(PLAY_SET) if PLAY_SET else []
+        except Exception:  # noqa: BLE001 - names are a convenience: without an engine, keys only
+            names = []
+        self.names = names
+
+    def deck(self, k: int, decks=None) -> dict:
+        d = (decks or self.decks)[k]
+        cmd = d[0] if COMMANDER else []
+        name = " + ".join(self.names[c] for c in cmd if 0 <= c < len(self.names)) or None
+        return {"key": k, "commander": name}
+
+    def write(self, it: int, phase: str, pairs: list, jobs: list, seats, results: list, decks=None) -> None:
+        """`pairs`: each game's deck indices into `decks` (default the training decks; keys are deck-file lines in
+        Commander, where every deck both trains and evaluates)."""
+        with open(self.path, "a") as f:
+            for (a, b), job, r in zip(pairs, jobs, results, strict=True):
+                res = r["result"]
+                f.write(json.dumps({"iter": it, "phase": phase, "deck_a": self.deck(a, decks), "deck_b": self.deck(b, decks),
+                                    "seed": job[2], "first": job[3], "seats": list(seats),
+                                    "result": res if res in ("p0", "p1") else "draw", "turn": r.get("turn"),
+                                    "moves": r.get("moves"), "timeout": res == "timeout",
+                                    "error": res == "error"}) + "\n")  # fmt: skip
 
 
 PLAY_SET = os.environ.get("BOLT_PLAY_SET", "FDN").upper()
@@ -119,16 +156,27 @@ def save_atomic(obj, path: Path):
     tmp.replace(path)
 
 
-def evaluate(net, pairs, workers, smart_ms=None, stop=None):
-    from eval_play import match, summary
+def evaluate(net, pairs, workers, smart_ms=None, stop=None, log=None):
+    """Win rates against the rules and smart players (eval_play.match: the network in each seat in turn). With
+    log=(GameLog, iteration), every game is also written to the game log."""
+    from eval_play import score, summary
 
-    jobs = eval_jobs(deck_sets()[1], pairs)
+    decks = deck_sets()[1]
+    jobs = eval_jobs(decks, pairs)
+    idx = eval_pairs(len(decks), pairs)
     net.eval()
     out = {}
     for opp in ("rules", "smart"):
         t = time.time()
         smart = (1, 2) if smart_ms is None else (1, 2, smart_ms)
-        out[opp] = summary(match(net, "net", opp, jobs, workers, smart=smart, stop=stop))["win_rate"]
+        scores = []
+        for me, seats in ((0, ("net", opp)), (1, (opp, "net"))):
+            r = run_parallel(net, jobs, workers=workers, seats=seats, sample=False, record=(), smart=smart,
+                             stop=stop)  # fmt: skip
+            scores += score(r["results"], me)
+            if log is not None:
+                log[0].write(log[1], f"eval_{opp}", idx, jobs, seats, r["results"], decks)
+        out[opp] = summary(scores)["win_rate"]
         out[f"{opp}_s"] = round(time.time() - t)  # wall seconds for its 2 x pairs games
     return out
 
@@ -220,6 +268,7 @@ def main():
             state["past"] = [f for f in state["past"] if (ck / f).exists()]
             print(f"resumed from S3 at iteration {state['iter']}", flush=True)
     decks = deck_sets()[0]
+    game_log = GameLog(ROOT / "results" / f"games_{a.name}.jsonl", decks)
     # The KL leash's reference: --ref, else the one this run had (resume), else --init; loaded on today's pool
     state["ref"] = a.ref or state.get("ref") or a.init
     ref = load_net(ROOT / state["ref"]).eval()
@@ -256,7 +305,7 @@ def main():
                                       indent=1))  # fmt: skip
 
     if state["iter"] == 0 and not state["evals"]:
-        e = evaluate(net, a.eval_pairs, a.workers, a.eval_smart_ms)
+        e = evaluate(net, a.eval_pairs, a.workers, a.eval_smart_ms, log=(game_log, 0))
         state["evals"].append({"iter": 0, **e})
         print(json.dumps({"eval": 0, **e}), flush=True)
         write_results()
@@ -272,10 +321,11 @@ def main():
         parts, won, ends = [], {}, {"error": 0, "timeout": 0}
         dropped_error = 0  # decisions of games an engine error ended, dropped before GAE (run_games)
         for k, (seats, n) in enumerate(league(a.games, state["past"], self_only=a.self_play)):
-            jobs = []
+            jobs, pairs = [], []
             for i in range(n):
                 d1, d2 = rng.sample(range(len(decks)), 2)
                 jobs.append((decks[d1], decks[d2], 20_000_000 + it * 10_000 + k * 1_000 + i, i % 2))
+                pairs.append((d1, d2))
             opp = load_net(ck / rng.choice(state["past"])) if "opp" in seats else None
             record = tuple(i for i, s in enumerate(seats) if s == "net")
             # Commander games vary a lot in length: small chunks (4 a worker) keep every worker busy to the end
@@ -287,6 +337,7 @@ def main():
                                  stop=stopping)  # fmt: skip
             except Stopped:  # SIGTERM mid-play: this iteration is dropped, the last finished one saved
                 return stop_now()
+            game_log.write(it, "opp" if "opp" in seats else "self", pairs, jobs, seats, r["results"])
             part = r["arrays"]
             part["adv"], part["ret"] = gae(part, lam=a.lam)  # per matchup: game numbers restart per call
             parts.append(part)
@@ -396,7 +447,7 @@ def main():
             return stop_now()
         if it % a.eval_every == 0:
             try:
-                e = evaluate(net, a.eval_pairs, a.workers, a.eval_smart_ms, stop=stopping)
+                e = evaluate(net, a.eval_pairs, a.workers, a.eval_smart_ms, stop=stopping, log=(game_log, it))
             except Stopped:
                 return stop_now()
             state["evals"].append({"iter": it, **e})
