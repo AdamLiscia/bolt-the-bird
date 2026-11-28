@@ -911,13 +911,13 @@ pub struct Tokens {
     pub vampire_lifelink: usize,
     /// 129, lane d2: G'raha Tia's 1/1 colorless Hero.
     pub hero: usize,
-    /// 133: lane C's Forth Eorlingas! Human Knight, a 2/2 red with trample and haste.
+    /// 130, lane d2: Hermes's 1/1 blue Bird with flying and vigilance.
     pub bird_flying_vigilance: usize,
     /// 131: another lane's token, a placeholder until it lands on tarkir.
     pub placeholder_131: usize,
     /// 132, lane d3: Lathliss, Dragon Queen's 5/5 red Dragon with flying.
     pub red_dragon_5: usize,
-    /// 133: another lane's token, a placeholder until it lands on tarkir.
+    /// 133: lane C's Forth Eorlingas! Human Knight, a 2/2 red with trample and haste.
     pub human_knight_2_trample_haste: usize,
     /// 134: d1's Wolfwillow Haven Wolf, a plain 2/2 green.
     pub wolf_green: usize,
