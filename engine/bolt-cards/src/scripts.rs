@@ -608,8 +608,13 @@ pub fn token_defs() -> Vec<CardDef> {
             t.colors = [false, true, false, false, false];
             t
         },
-        // 131: another lane's token, a placeholder until it lands on tarkir.
-        token("Placeholder 131", "Placeholder", 0, 0, Keywords::NONE),
+        {
+            // 131, lane d2: Irregular Cohort's "2/2 colorless Shapeshifter creature token with
+            // changeling".
+            let mut t = token("Shapeshifter", "Shapeshifter", 2, 2, Keywords::NONE);
+            t.changeling = true;
+            t
+        },
         // 132, lane d3: Lathliss, Dragon Queen's "5/5 red Dragon creature token with flying".
         {
             let mut t = token("Dragon", "Dragon", 5, 5, Keywords::FLYING);
@@ -642,6 +647,12 @@ pub fn token_defs() -> Vec<CardDef> {
             let mut t = token("Rat", "Rat", 1, 1, Keywords::NONE);
             t.colors = [false, false, true, false, false];
             t.cant_block = true;
+            t
+        },
+        {
+            // 137, lane d2: Spawning Pit's "2/2 colorless Spawn artifact creature token".
+            let mut t = token("Spawn", "Spawn", 2, 2, Keywords::NONE);
+            t.types.artifact = true;
             t
         },
     ]
@@ -913,8 +924,8 @@ pub struct Tokens {
     pub hero: usize,
     /// 130, lane d2: Hermes's 1/1 blue Bird with flying and vigilance.
     pub bird_flying_vigilance: usize,
-    /// 131: another lane's token, a placeholder until it lands on tarkir.
-    pub placeholder_131: usize,
+    /// 131, lane d2: Irregular Cohort's 2/2 colorless Shapeshifter with changeling.
+    pub shapeshifter_changeling_2: usize,
     /// 132, lane d3: Lathliss, Dragon Queen's 5/5 red Dragon with flying.
     pub red_dragon_5: usize,
     /// 133: lane C's Forth Eorlingas! Human Knight, a 2/2 red with trample and haste.
@@ -925,6 +936,8 @@ pub struct Tokens {
     pub wurm_6: usize,
     /// 136, lane d3: Song of Totentanz's 1/1 black Rat with "This token can't block."
     pub rat_cant_block: usize,
+    /// 137, lane d2: Spawning Pit's 2/2 colorless Spawn artifact creature.
+    pub spawn_artifact_2: usize,
 }
 
 impl Tokens {
@@ -1061,12 +1074,13 @@ impl Tokens {
             vampire_lifelink: base + 128,
             hero: base + 129,
             bird_flying_vigilance: base + 130,
-            placeholder_131: base + 131,
+            shapeshifter_changeling_2: base + 131,
             red_dragon_5: base + 132,
             human_knight_2_trample_haste: base + 133,
             wolf_green: base + 134,
             wurm_6: base + 135,
             rat_cant_block: base + 136,
+            spawn_artifact_2: base + 137,
         }
     }
 }

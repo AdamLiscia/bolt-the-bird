@@ -2280,6 +2280,48 @@ pub fn script(name: &str) -> Option<Script> {
                 may(b, When::YouCastInstantOrSorceryFromHand, vec![], vec![Effect::CopySpellNewTargets]);
             },
         ),
+        // ---- round 7: Atla and Raggadragga ----
+        "Irregular Cohort" => s(
+            &["Changeling", "When this creature enters, create a 2/2 colorless Shapeshifter creature token with changeling."],
+            |d, t| {
+                d.changeling = true;
+                on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.shapeshifter_changeling_2, n: 1 }]);
+            },
+        ),
+        "Spawning Pit" => s(
+            &[
+                "Sacrifice a creature: Put a charge counter on this artifact.",
+                "{1}, Remove two charge counters from this artifact: Create a 2/2 colorless Spawn artifact creature token.",
+            ],
+            |d, t| {
+                let n = activated(d, "", false, vec![], vec![Effect::KindCounterSelf(1)]);
+                d.activated[n].sacrifice_creature = true;
+                let spawn = Effect::CreateToken { who: Who::You, def: t.spawn_artifact_2, n: 1 };
+                let n = activated(d, "{1}", false, vec![], vec![spawn]);
+                d.activated[n].remove_counters_self = 2;
+            },
+        ),
+        "Turntimber Symbiosis // Turntimber, Serpentine Wood" => s(
+            &[
+                "Look at the top seven cards of your library. You may put a creature card from among them onto the battlefield. If that card has mana value 3 or less, it enters with three additional +1/+1 counters on it. Put the rest on the bottom of your library in a random order.",
+                "Back: As this land enters, you may pay 3 life. If you don't, it enters tapped.",
+                "Back: {T}: Add {G}.",
+            ],
+            |d, _| {
+                let look = Effect::LookAtTop {
+                    n: 7,
+                    pick: Pick::CreaturePowerAtMost(i32::MAX),
+                    chosen_to: LookTo::BattlefieldThreeCountersIfMvAtMost3,
+                    rest_to: LookRest::BottomRandom,
+                };
+                spell(d, vec![], vec![look]);
+                d.modal_back = true;
+                let b = d.back.as_mut().expect("Turntimber, Serpentine Wood");
+                b.shock_land = true;
+                b.zones.shock_life = 3;
+                b.mana = Some(ManaSource::of(&[Color::Green]));
+            },
+        ),
         _ => None,
     }
 }
@@ -2627,4 +2669,8 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Wizard's Staff",
     // Core: triggers, batch 49
     "Invasion of Arcavios // Invocation of the Founders",
+    // round 7
+    "Irregular Cohort",
+    "Spawning Pit",
+    "Turntimber Symbiosis // Turntimber, Serpentine Wood",
 ];

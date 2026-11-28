@@ -4996,3 +4996,96 @@ fn invasion_of_arcavios_tutors_an_instant_is_defeated_in_combat_and_copies_spell
     resolve_all(&mut g, &[Action::Yes, Action::Target(Target::Player(1))]);
     assert_eq!(g.players[1].life, 34, "the Bolt and its copy");
 }
+
+// ---- round 7: Irregular Cohort, Spawning Pit, Turntimber Symbiosis ----
+
+#[test]
+fn irregular_cohort_is_a_changeling_and_makes_a_changeling_shapeshifter() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Irregular Cohort");
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(g.obj(c).zone, Zone::Battlefield);
+    assert!(g.def_of(c).changeling);
+    let toks = tokens(&g, 0, "Shapeshifter");
+    assert_eq!(toks.len(), 1);
+    let t = toks[0];
+    assert_eq!((g.power(t), g.toughness(t)), (2, 2));
+    assert!(g.def_of(t).changeling);
+    assert_eq!(g.def_of(t).colors, [false; 5], "colorless");
+}
+
+#[test]
+fn spawning_pit_charges_on_a_sacrifice_and_spends_two_for_a_spawn() {
+    let mut g = table();
+    let pit = put(&mut g, 0, "Spawning Pit");
+    let lions: Vec<ObjId> = (0..2).map(|_| put(&mut g, 0, "Savannah Lions")).collect();
+    assert!(!has(&g, Action::Activate(pit, 1)), "no charge counters yet");
+    assert!(!has(&g, Action::ActivateWith(pit, 0, pit)), "not a creature");
+    act(&mut g, Action::ActivateWith(pit, 0, lions[0]));
+    resolve_all(&mut g, &[]);
+    assert!(in_graveyard(&g, 0, lions[0]));
+    assert_eq!(g.obj(pit).kind_counters, 1, "a charge counter");
+    assert!(!has(&g, Action::Activate(pit, 1)), "one counter isn't enough");
+    act(&mut g, Action::ActivateWith(pit, 0, lions[1]));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(pit).kind_counters, 2);
+    assert!(has(&g, Action::Activate(pit, 1)));
+    act(&mut g, Action::Activate(pit, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(pit).kind_counters, 0, "two removed");
+    let spawn = tokens(&g, 0, "Spawn");
+    assert_eq!(spawn.len(), 1);
+    assert_eq!((g.power(spawn[0]), g.toughness(spawn[0])), (2, 2));
+    assert!(g.types_of(spawn[0]).artifact && g.types_of(spawn[0]).creature);
+    assert_eq!(g.def_of(spawn[0]).colors, [false; 5], "colorless");
+}
+
+/// Player 0 casts Turntimber Symbiosis over a library topped with Savannah Lions and Serra Angel;
+/// returns the game at the look-pick.
+fn turntimber() -> (Game, ObjId, ObjId) {
+    let mut g = table();
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Library);
+    let angel = g.add_card(0, cid("Serra Angel"), Zone::Library);
+    let ts = hand(&mut g, 0, "Turntimber Symbiosis // Turntimber, Serpentine Wood");
+    act(&mut g, Action::Cast(ts));
+    for _ in 0..20 {
+        if matches!(g.pending, Pending::Decide(_)) {
+            break;
+        }
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(has(&g, Action::Pick(lions)));
+    assert!(has(&g, Action::Pick(angel)));
+    assert!(has(&g, Action::No), "you may");
+    (g, lions, angel)
+}
+
+#[test]
+fn turntimber_symbiosis_gives_a_small_creature_three_counters() {
+    let (mut g, lions, angel) = turntimber();
+    resolve_all(&mut g, &[Action::Pick(lions)]);
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield);
+    assert_eq!(g.obj(lions).counters, 3, "mana value 1");
+    assert_eq!(g.power(lions), 5);
+    let lib = &g.players[0].library;
+    assert!(lib[..6].contains(&angel), "the rest on the bottom");
+
+    let (mut g, _, angel) = turntimber();
+    resolve_all(&mut g, &[Action::Pick(angel)]);
+    assert_eq!(g.obj(angel).zone, Zone::Battlefield);
+    assert_eq!(g.obj(angel).counters, 0, "mana value 5");
+}
+
+#[test]
+fn turntimber_serpentine_wood_asks_three_life_or_enters_tapped() {
+    for pay in [true, false] {
+        let mut g = table();
+        let tw = hand(&mut g, 0, "Turntimber Symbiosis // Turntimber, Serpentine Wood");
+        let life = g.players[0].life;
+        act(&mut g, Action::PlayLand(tw));
+        resolve_all(&mut g, &[if pay { Action::Yes } else { Action::No }]);
+        assert_eq!(g.def_of(tw).name, "Turntimber, Serpentine Wood");
+        assert_eq!(g.players[0].life, if pay { life - 3 } else { life });
+        assert_eq!(g.obj(tw).tapped, !pay);
+    }
+}

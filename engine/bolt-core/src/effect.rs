@@ -3649,6 +3649,9 @@ pub enum LookTo {
     /// Onto the battlefield tapped and attacking; returned to its owner's hand at end of combat
     /// (Arthur, Marigold Knight; `Game::hand_at_end_combat`).
     BattlefieldAttackingReturnAtEndOfCombat,
+    /// Onto the battlefield, with three +1/+1 counters if its mana value is 3 or less (Turntimber
+    /// Symbiosis).
+    BattlefieldThreeCountersIfMvAtMost3,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

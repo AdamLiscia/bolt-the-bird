@@ -17790,6 +17790,13 @@ impl Game {
                         LookTo::BattlefieldAttackingReturnAtEndOfCombat => {
                             self.put_attacking_until_end_of_combat(c, p)
                         }
+                        LookTo::BattlefieldThreeCountersIfMvAtMost3 => {
+                            let small = self.def_of(c).cost.mana_value() <= 3;
+                            self.move_to(c, Zone::Battlefield);
+                            if small {
+                                self.add_counters(c, 3);
+                            }
+                        }
                         LookTo::Top => {
                             let lib = &mut self.players[p].library;
                             let pos = lib.iter().position(|&x| x == c).expect("in library");
