@@ -69,6 +69,70 @@ def _beat(gi: int) -> None:
         arr[2 * slot + 1] = gi
 
 
+CAST_KINDS = {"Cast", "CastKicked", "CastWith", "CastFlashback", "CastModal", "CastAlternative", "CastX",
+              "CastFromGraveyard", "CastFromGraveyardAs", "CastHarmonize", "CastOmen"}  # fmt: skip
+
+
+def _commander_cards(g) -> list:
+    """Each player's commander card numbers, from the opening command zones ([] each outside Commander)."""
+    try:
+        o = g.observation(0)
+        return [{c for _i, c, _t in o["players"][p].get("command") or []} for p in (0, 1)]
+    except BaseException as e:
+        if isinstance(e, (KeyboardInterrupt, SystemExit)):
+            raise
+        return [set(), set()]
+
+
+def end_summary(g, r: dict, track: dict, max_moves: int, max_turns: int) -> dict:
+    """How a game ended and what it looked like, for the trainer's game log: end_reason, final life and
+    commander damage taken per player, and the loop/board flags (cheap: one observation at the end)."""
+    engine = getattr(g, "end_reason", None) if g is not None else None
+    res = r["result"]
+    out: dict = {"loop_capped": bool(engine and "loop cap" in engine),
+                 "board_too_large": bool(engine and engine.startswith("board too large"))}  # fmt: skip
+    obs = None
+    if g is not None and res != "error":
+        try:
+            obs = g.observation(0)
+        except BaseException as e:
+            if isinstance(e, (KeyboardInterrupt, SystemExit)):
+                raise
+    if obs is not None and "players" not in obs:  # a stand-in game without a full observation
+        obs = None
+    if obs is not None:
+        out["life"] = [obs["players"][p]["life"] for p in (0, 1)]
+        out["commander_damage_taken"] = [max((n for *_, n in obs["players"][p].get("commander_damage") or []),
+                                             default=0) for p in (0, 1)]  # fmt: skip
+        field = obs["battlefield"]
+        for p in (0, 1):
+            track["max_permanents"][p] = max(track["max_permanents"][p], sum(e["controller"] == p for e in field))
+    if res == "error":
+        why = "error"
+    elif r.get("hung") or r.get("slow"):
+        why = "timeout"
+    elif res == "timeout":
+        why = (
+            "move_cap" if r.get("moves", 0) >= max_moves else "turn_cap" if r.get("turn", 0) > max_turns else "timeout"
+        )
+    elif engine:
+        why = "board_too_large" if out["board_too_large"] else "loop_cap" if out["loop_capped"] else engine
+    elif res in ("p0", "p1") and obs is not None:
+        q = 1 - int(res[1])
+        pl = obs["players"][q]
+        why = ("life" if pl["life"] <= 0 else "commander_damage" if out["commander_damage_taken"][q] >= 21
+               else "decked" if pl["library"] == 0 else "other")  # fmt: skip
+    else:
+        why = "draw" if res == "draw" else "other"
+    out["end_reason"] = why
+    if engine:
+        out["engine_reason"] = engine
+    out.update(cards_played=track["cards"], lands_played=[sum(1 for _t, _c, land in x if land) for x in
+               track["kinds"]], commander_cast_turn=track["cmd_turn"], commander_casts=track["cmd_casts"],
+               max_permanents=track["max_permanents"])  # fmt: skip
+    return out
+
+
 def _card_names() -> list:
     try:
         return list(be.card_names() if PLAY_SET == "FDN" else be.card_names(PLAY_SET))
@@ -137,6 +201,10 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
     for gi, (a, b, s, f) in enumerate(jobs):
         _beat(gi)
         games.append(None if gi in skip else new_game(a, b, s, f))
+    # what each game did, for the game log: [[turn, card], ...] cast or played per player, and the rest
+    track = [{"cards": [[], []], "kinds": [[], []], "cmd_turn": [None, None], "cmd_casts": [0, 0],
+              "max_permanents": [0, 0], "cmd": _commander_cards(g) if g is not None else [set(), set()]}
+             for g in games]  # fmt: skip
     moves = [0] * len(games)
     results: list = [{"result": "timeout", "turn": 0, "hung": True} if gi in skip else None for gi in range(len(games))]
     steps = []
@@ -180,6 +248,23 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
                 kind, cards = games[gi].legal_actions()[i][0], ()
             c = next((x for x in cards if x >= 0), None)
             last[gi].append((kind, names[c] if c is not None and c < len(names) else None))
+            if kind in CAST_KINDS or kind == "PlayLand":
+                g, t = games[gi], track[gi]
+                who = g.to_act()
+                if c is None:  # a rules or smart move: its card from the observation (casts and lands only)
+                    c = next((x for x in g.observation(who)["legal_cards"][i] if x >= 0), None)
+                if c is not None:
+                    t["cards"][who].append([g.turn, c])
+                    t["kinds"][who].append((g.turn, c, kind == "PlayLand"))
+                    if kind != "PlayLand" and c in t["cmd"][who]:
+                        t["cmd_casts"][who] += 1
+                        if t["cmd_turn"][who] is None:
+                            t["cmd_turn"][who] = g.turn
+            if obs is not None:  # permanents per player, from observations already at hand
+                field = obs["battlefield"]
+                mp = track[gi]["max_permanents"]
+                for p in (0, 1):
+                    mp[p] = max(mp[p], sum(e["controller"] == p for e in field))
         except BaseException as e:
             if isinstance(e, (KeyboardInterrupt, SystemExit)):
                 raise
@@ -293,8 +378,9 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
                 else ""
             )
             print(f"[worker {os.getpid()}] {done}/{len(games)} games done, {time.time() - t0:.0f}s{tail}", flush=True)
-    for gi, r in enumerate(results):  # every game's length, for the trainer's game log
+    for gi, r in enumerate(results):  # every game's length and ending, for the trainer's game log
         r.setdefault("moves", moves[gi])
+        r["summary"] = end_summary(games[gi], r, track[gi], max_moves, max_turns)
     if slow:  # games stopped for time, or ended by an engine error, leave no samples
         for st in steps:
             gi = st["game"] - game_offset

@@ -101,6 +101,11 @@ def test_the_runner_plays_commander_games(monkeypatch):
     assert all(r["result"] in ("timeout", "p0", "p1", "draw") for r in out["results"])
     assert out["steps"] and {s["seat"] for s in out["steps"]} == {0, 1}
     assert all(len(s["enc"]["globals"]) == len(GLOBAL_NAMES) for s in out["steps"])
+    for r in out["results"]:  # the game log's summary, from a real engine
+        m = r["summary"]
+        assert m["end_reason"] in ("move_cap", "life", "commander_damage", "decked", "other", "draw")
+        assert len(m["life"]) == 2 and len(m["cards_played"]) == 2 and sum(m["lands_played"]) > 0
+        assert all(0 <= c < len(be.card_names("CMD")) for side in m["cards_played"] for _t, c in side)
 
 
 def test_commander_games_are_capped(monkeypatch):

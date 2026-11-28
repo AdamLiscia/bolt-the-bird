@@ -155,6 +155,9 @@ def test_an_errored_past_checkpoint_game_is_counted_in_the_row(trainer, monkeypa
     r = rows[1]
     assert r["errors"] == 1
     assert r["dropped_error"] == 3, "the net seat's 3 decisions before the panic"
+    games = [json.loads(x) for x in (tmp_path / "results" / "games_stoptest.jsonl").read_text().splitlines()]
+    assert all("end_reason" in g and "cards_played" in g and "loop_capped" in g for g in games)
+    assert [g["end_reason"] for g in games if g["error"]] == ["error"]
 
 
 def test_ref_sets_the_kl_reference_and_a_resume_keeps_it(trainer, monkeypatch, capsys):

@@ -221,3 +221,51 @@ def test_an_errored_game_drops_its_recorded_steps_in_every_seat_layout(monkeypat
     assert out["results"][0]["dropped_steps"] == 3 * len(record), "the recorded seats' moves before the panic"
     assert {st["game"] for st in out["steps"]} == {1}
     assert {st["seat"] for st in out["steps"]} == set(record)
+
+
+class SummaryGame:
+    """Six moves, then p0 wins with p1 at 0 life. Seat 0 casts its commander (card 5) on turn 1 and plays a land
+    (card 9); seat 1 casts card 7. Every move: [Cast, PlayLand]-style choices with their cards."""
+
+    def __init__(self):
+        self.n, self.turn = 0, 1
+        self.script = [(0, 0), (1, 0), (0, 1), (1, 1), (0, 0), (1, 1)]  # (seat, action index)
+
+    def is_over(self):
+        return self.n >= len(self.script)
+
+    def result(self):
+        return "p0"
+
+    def to_act(self):
+        return self.script[self.n][0] if self.n < len(self.script) else 0
+
+    def legal_actions(self):
+        return [("Cast", 1, -1, -1), ("PlayLand", 2, -1, -1)]
+
+    def baseline(self):
+        return self.script[self.n][1]
+
+    def observation(self, who):
+        cast = {0: 5, 1: 7}[who] if self.n < len(self.script) else 0
+        field = [{"controller": 0, "card": 9}] * (1 + self.n // 2) + [{"controller": 1, "card": 7}]
+        return {"legal_actions": self.legal_actions(), "legal_cards": [(cast, -1, -1), (9, -1, -1)],
+                "battlefield": field, "commanders": [(100, 0)],
+                "players": [{"life": 31, "library": 60, "command": [(100, 5, 0)], "commander_damage": []},
+                            {"life": 0, "library": 55, "command": [], "commander_damage": [(100, 5, 0, 9)]}]}  # fmt: skip
+
+    def step(self, i):
+        self.n += 1
+        self.turn = 1 + self.n // 4
+
+
+def test_a_games_summary_has_its_ending_life_casts_and_commander(monkeypatch):
+    import bolt.play_runner as pr
+
+    monkeypatch.setattr(pr, "new_game", lambda a, b, s, f: SummaryGame())
+    out = pr.run_games(None, [("a", "b", 1, 0)], seats=("rules", "rules"), record=())
+    s = out["results"][0]["summary"]
+    assert s["end_reason"] == "life" and s["life"] == [31, 0] and s["commander_damage_taken"] == [0, 9]
+    assert s["cards_played"] == [[[1, 5], [1, 9], [2, 5]], [[1, 7], [1, 9], [2, 9]]]
+    assert s["lands_played"] == [1, 2] and s["commander_casts"] == [2, 0] and s["commander_cast_turn"] == [1, None]
+    assert s["loop_capped"] is False and s["board_too_large"] is False and s["max_permanents"][0] >= 1

@@ -67,7 +67,10 @@ def eval_jobs(decks, pairs):
 
 class GameLog:
     """One JSON line per game played, appended to results/games_<run>.jsonl (Adam, 2026-11-28): which decks (by
-    commander and by line in the deck file), who went first, the seats, the result, its length."""
+    commander and by line in the deck file), who went first, the seats, the result, its length, and run_games'
+    end summary (end_reason, final life, commander damage taken, cards cast or played as [turn, card] per player,
+    lands played, commander first cast turn and casts, max permanents, loop_capped, board_too_large).
+    scripts/game_report.py reads it."""
 
     def __init__(self, path: Path, decks: list):
         self.path, self.decks = path, decks
@@ -95,7 +98,7 @@ class GameLog:
                                     "seed": job[2], "first": job[3], "seats": list(seats),
                                     "result": res if res in ("p0", "p1") else "draw", "turn": r.get("turn"),
                                     "moves": r.get("moves"), "timeout": res == "timeout",
-                                    "error": res == "error"}) + "\n")  # fmt: skip
+                                    "error": res == "error", **r.get("summary", {})}) + "\n")  # fmt: skip
 
 
 PLAY_SET = os.environ.get("BOLT_PLAY_SET", "FDN").upper()
